@@ -1,0 +1,15 @@
+:8080 {
+  encode zstd gzip
+
+  handle_path /api/* {
+    reverse_proxy server:4000
+  }
+
+  handle /socket.io* {
+    reverse_proxy server:4000
+  }
+
+  handle {
+    reverse_proxy web:3000
+  }
+}

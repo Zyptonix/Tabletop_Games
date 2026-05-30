@@ -1,0 +1,24 @@
+{
+  "name": "tabletop-arena",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "corepack pnpm -r --parallel dev",
+    "dev:web": "corepack pnpm --filter @tabletop/web dev",
+    "dev:server": "corepack pnpm --filter @tabletop/server dev",
+    "build": "corepack pnpm -r build",
+    "typecheck": "corepack pnpm -r typecheck",
+    "test": "corepack pnpm -r test",
+    "lint": "corepack pnpm -r lint",
+    "db:generate": "corepack pnpm --filter @tabletop/db prisma:generate",
+    "db:migrate": "corepack pnpm --filter @tabletop/db prisma:migrate",
+    "db:push": "corepack pnpm --filter @tabletop/db prisma:push",
+    "db:seed": "corepack pnpm --filter @tabletop/db prisma:seed"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2"
+  }
+}

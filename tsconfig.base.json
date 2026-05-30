@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@tabletop/shared": ["packages/shared/src/index.ts"],
+      "@tabletop/shared/*": ["packages/shared/src/*"],
+      "@tabletop/game-core": ["packages/game-core/src/index.ts"],
+      "@tabletop/game-core/*": ["packages/game-core/src/*"],
+      "@tabletop/db": ["packages/db/src/client.ts"],
+      "@tabletop/db/*": ["packages/db/src/*"]
+    }
+  }
+}

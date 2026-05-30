@@ -1,0 +1,16 @@
+﻿node_modules
+.next
+dist
+coverage
+.env
+.env.local
+.turbo
+*.log
+packages/db/prisma/migrations/dev.db
+.conda
+.pgdata
+postgres.log
+.env.*.local
+.tmp
+*.zip
+*.tsbuildinfo

@@ -1,0 +1,169 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum RoomStatus {
+  lobby
+  in_game
+  paused
+  finished
+  abandoned
+}
+
+enum MatchPlayerResult {
+  WIN
+  LOSS
+  DRAW
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  email        String?  @unique
+  passwordHash String
+  role         UserRole @default(USER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  profile          Profile?
+  hostedRooms      Room[]            @relation("HostedRooms")
+  matchPlayers     MatchPlayer[]
+  playerGameStats  PlayerGameStats[]
+  achievements     ProfileAchievement[]
+}
+
+model Profile {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  displayName       String
+  avatarUrl         String?
+  xp                Int      @default(0)
+  level             Int      @default(1)
+  coins             Int      @default(0)
+  totalGamesPlayed  Int      @default(0)
+  totalWins         Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Room {
+  id          String     @id @default(cuid())
+  code        String     @unique
+  gameId      String
+  hostUserId  String
+  status      RoomStatus @default(lobby)
+  settingsJson Json
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  endedAt     DateTime?
+
+  host      User           @relation("HostedRooms", fields: [hostUserId], references: [id])
+  snapshots RoomSnapshot[]
+  matches   Match[]
+
+  @@index([code])
+  @@index([status])
+  @@index([gameId])
+}
+
+model RoomSnapshot {
+  id           String   @id @default(cuid())
+  roomId       String
+  gameId       String
+  stateJson    Json
+  roomStateJson Json?
+  actionNumber Int
+  createdAt    DateTime @default(now())
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, actionNumber])
+}
+
+model Match {
+  id              String   @id @default(cuid())
+  roomId          String
+  gameId          String
+  gameVersion     String
+  startedAt       DateTime
+  endedAt         DateTime?
+  winnerUserId    String?
+  durationSeconds Int?
+  playerCount     Int
+  createdAt       DateTime @default(now())
+
+  room    Room          @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  players MatchPlayer[]
+
+  @@index([gameId])
+  @@index([winnerUserId])
+}
+
+model MatchPlayer {
+  id       String            @id @default(cuid())
+  matchId  String
+  userId   String
+  placement Int
+  score    Int               @default(0)
+  result   MatchPlayerResult
+  xpEarned Int               @default(0)
+
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, userId])
+  @@index([userId])
+}
+
+model PlayerGameStats {
+  id          String @id @default(cuid())
+  userId      String
+  gameId      String
+  gamesPlayed Int    @default(0)
+  wins        Int    @default(0)
+  losses      Int    @default(0)
+  totalScore  Int    @default(0)
+  bestScore   Int    @default(0)
+  rating      Int    @default(1000)
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, gameId])
+  @@index([gameId, wins])
+  @@index([gameId, rating])
+}
+
+model Achievement {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  title       String
+  description String
+  createdAt   DateTime @default(now())
+
+  profiles ProfileAchievement[]
+}
+
+model ProfileAchievement {
+  id            String   @id @default(cuid())
+  userId        String
+  achievementId String
+  unlockedAt    DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+}

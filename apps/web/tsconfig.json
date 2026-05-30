@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "allowJs": false,
+    "baseUrl": ".",
+    "jsx": "preserve",
+    "noEmit": true,
+    "incremental": true,
+    "plugins": [{ "name": "next" }],
+    "paths": {
+      "@/*": ["./src/*"],
+      "@tabletop/shared": ["../../packages/shared/src/index.ts"],
+      "@tabletop/shared/*": ["../../packages/shared/src/*"],
+      "@tabletop/game-core": ["../../packages/game-core/src/index.ts"],
+      "@tabletop/game-core/*": ["../../packages/game-core/src/*"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}
