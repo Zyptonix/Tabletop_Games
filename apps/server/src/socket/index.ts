@@ -46,6 +46,7 @@ function chooseBotAction(legalActions: unknown[]): { type: string; payload: Reco
   const actions = legalActions.filter(isRecord);
   const preferred =
     actions.find((action) => action.type === "play_card") ??
+    actions.find((action) => action.type === "resolve_roulette") ??
     actions.find((action) => action.type === "draw_card") ??
     actions.find((action) => action.type === "pass_turn") ??
     actions.find((action) => action.type === "call_uno");

@@ -44,6 +44,13 @@ export interface NoMercyPendingPenalty {
   targetPlayerId: string;
 }
 
+export interface NoMercyPendingRoulette {
+  targetPlayerId: string;
+  playedByPlayerId: string;
+  chosenColor?: NoMercyDeclaredColor | undefined;
+  revealedCards: NoMercyCard[];
+}
+
 export interface NoMercySettings {
   cardsPerPlayer: number;
   turnSeconds: number | null;
@@ -64,7 +71,9 @@ export interface NoMercyState {
   currentColor: NoMercyDeclaredColor;
   drawPile: NoMercyCard[];
   discardPile: NoMercyCard[];
+  mercyPile: NoMercyCard[];
   pendingPenalty: NoMercyPendingPenalty | null;
+  pendingRoulette: NoMercyPendingRoulette | null;
   lastDrawnCardId: string | null;
   actionNumber: number;
   rngState: RngState;
@@ -79,7 +88,8 @@ export type NoMercyAction =
   | { type: "play_card"; cardId: string; declaredColor?: NoMercyDeclaredColor | undefined; targetPlayerId?: string | undefined }
   | { type: "draw_card" }
   | { type: "pass_turn" }
-  | { type: "call_uno" };
+  | { type: "call_uno" }
+  | { type: "resolve_roulette"; chosenColor: NoMercyDeclaredColor };
 
 export interface PublicNoMercyPlayer {
   userId: string;
@@ -102,9 +112,14 @@ export interface PublicNoMercyState {
   topDiscard: NoMercyCard;
   drawPileCount: number;
   discardPileCount: number;
+  mercyPileCount: number;
   pendingPenalty: NoMercyPendingPenalty | null;
+  pendingRoulette: NoMercyPendingRoulette | null;
   lastDrawnCardId: string | null;
   actionNumber: number;
   winnerUserId: string | null;
   results: GameResults | null;
+  turnStartedAt: string | null;
+  turnDurationMs: number | null;
+  turnExpiresAt: string | null;
 }

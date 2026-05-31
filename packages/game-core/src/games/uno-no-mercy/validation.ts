@@ -40,6 +40,29 @@ export function validateNoMercyAction(params: {
     return { ok: false, code: "NOT_YOUR_TURN", message: "It is not your turn." };
   }
 
+  if (state.pendingRoulette) {
+    if (state.pendingRoulette.targetPlayerId !== playerId) {
+      return { ok: false, code: "ILLEGAL_ACTION", message: "Roulette is aimed at another player." };
+    }
+
+    if (!state.pendingRoulette.chosenColor) {
+      if (action.type !== "resolve_roulette") {
+        return { ok: false, code: "ILLEGAL_ACTION", message: "Choose a roulette color first." };
+      }
+      return { ok: true };
+    }
+
+    if (action.type !== "draw_card") {
+      return { ok: false, code: "ILLEGAL_ACTION", message: "Draw roulette cards until the chosen color appears." };
+    }
+
+    return { ok: true };
+  }
+
+  if (action.type === "resolve_roulette") {
+    return { ok: false, code: "ILLEGAL_ACTION", message: "There is no roulette to resolve." };
+  }
+
   if (action.type === "draw_card") {
     if (state.pendingPenalty) {
       if (state.pendingPenalty.targetPlayerId !== playerId) {
@@ -81,6 +104,10 @@ export function validateNoMercyAction(params: {
 
   if (cardRequiresDeclaredColor(card) && !action.declaredColor) {
     return { ok: false, code: "INVALID_PAYLOAD", message: "Choose a color for that wild card." };
+  }
+
+  if (!cardRequiresDeclaredColor(card) && action.declaredColor) {
+    return { ok: false, code: "INVALID_PAYLOAD", message: "This card does not choose a color now." };
   }
 
   const targetablePlayers = getActivePlayers(state).filter((target) => target.userId !== playerId);

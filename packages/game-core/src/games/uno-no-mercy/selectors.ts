@@ -27,6 +27,19 @@ export function getLegalNoMercyActions(params: { state: NoMercyState; playerId: 
     return actions;
   }
 
+  if (state.pendingRoulette) {
+    if (state.pendingRoulette.targetPlayerId === playerId) {
+      if (state.pendingRoulette.chosenColor) {
+        actions.push({ type: "draw_card" });
+      } else {
+        for (const chosenColor of declaredColors) {
+          actions.push({ type: "resolve_roulette", chosenColor });
+        }
+      }
+    }
+    return actions;
+  }
+
   if (state.pendingPenalty) {
     if (state.pendingPenalty.targetPlayerId === playerId) {
       actions.push({ type: "draw_card" });

@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { UnoDeclaredColor } from "@tabletop/game-core";
 import { Button } from "@/components/ui/button";
-import { Dialog } from "@/components/ui/dialog";
 import type { RenderableCard } from "@/lib/cards";
 import { UnoCard } from "./UnoCard";
 import { UnoColorPicker } from "./UnoColorPicker";
@@ -277,26 +276,107 @@ export function PlayerHand({
         />
       ) : null}
 
-      <Dialog open={Boolean(targetCardId)} title="Swap Hands" onClose={() => setTargetCardId(null)}>
-        <div className="space-y-2">
-          {availableTargets.map((target) => (
-            <Button
-              key={target.userId}
-              type="button"
-              variant="outline"
-              className="w-full justify-start"
-              onClick={() => {
-                if (targetCardId) {
-                  onPlay({ cardId: targetCardId, targetPlayerId: target.userId });
-                }
-                setTargetCardId(null);
-              }}
+      <AnimatePresence>
+        {targetCardId ? (
+          <motion.div
+            className="fixed inset-0 z-[120] flex items-center justify-center bg-black/72 px-4 pb-4 pt-0 backdrop-blur-md"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Swap hands target picker"
+              className="flex h-[min(76dvh,40rem)] w-[min(94vw,54rem)] -translate-y-[6vh] flex-col overflow-hidden rounded-[2rem] border border-amber-200/20 bg-[linear-gradient(135deg,rgba(9,10,12,0.98),rgba(20,16,10,0.96)_48%,rgba(0,0,0,0.98))] text-white shadow-[0_30px_110px_rgba(0,0,0,0.82),0_0_50px_rgba(245,158,11,0.13)]"
+              style={{ marginTop: "-14vh" }}
+              initial={{ opacity: 0, y: 18, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 18, scale: 0.97 }}
+              transition={{ type: "spring", stiffness: 360, damping: 34 }}
             >
-              {target.displayName}
-            </Button>
-          ))}
-        </div>
-      </Dialog>
+              <div className="flex shrink-0 items-start justify-between gap-4 border-b border-white/10 px-5 py-4">
+                <div className="min-w-0">
+                  <p className="text-[0.7rem] font-black uppercase tracking-[0.28em] text-amber-200/80">
+                    Swap Hands
+                  </p>
+                  <h2 className="mt-1 truncate text-xl font-black text-white">Choose a player</h2>
+                  <p className="mt-1 text-sm font-semibold text-white/55">
+                    Every active opponent is listed here. Scroll inside this panel for large lobbies.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-xl font-black text-white/70 transition hover:bg-white/[0.12] hover:text-white"
+                  aria-label="Close swap target picker"
+                  onClick={() => setTargetCardId(null)}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">
+                <div className="mb-3 rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-3">
+                  <p className="text-[0.65rem] font-black uppercase tracking-[0.22em] text-amber-200/75">
+                    Available targets
+                  </p>
+                  <p className="mt-1 text-sm font-semibold leading-relaxed text-white/60">
+                    Pick the player whose hand you want to swap with.
+                  </p>
+                </div>
+
+                <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-white/10 bg-black/55 p-2 pr-2 shadow-inner [scrollbar-color:rgba(245,158,11,0.75)_rgba(255,255,255,0.08)] [scrollbar-width:thin]">
+                  {availableTargets.length > 0 ? (
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                      {availableTargets.map((target, index) => (
+                        <button
+                          key={target.userId}
+                          type="button"
+                          className="group flex min-h-[4.1rem] w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.065] px-3 py-2.5 text-left text-white shadow-[0_8px_24px_rgba(0,0,0,0.22)] transition hover:-translate-y-0.5 hover:border-amber-200/40 hover:bg-amber-300/14 focus:outline-none focus:ring-2 focus:ring-amber-300/50"
+                          onClick={() => {
+                            if (targetCardId) {
+                              onPlay({ cardId: targetCardId, targetPlayerId: target.userId });
+                            }
+                            setTargetCardId(null);
+                          }}
+                        >
+                          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-amber-200/30 bg-black/70 text-xs font-black text-amber-100 shadow-[0_0_18px_rgba(245,158,11,0.18)]">
+                            {index + 1}
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-black text-white group-hover:text-amber-100">
+                              {target.displayName}
+                            </span>
+                            <span className="mt-0.5 block text-[0.65rem] font-bold uppercase tracking-[0.14em] text-white/40">
+                              Swap target
+                            </span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-8 text-center text-sm font-bold text-white/55">
+                      No active players can be targeted right now.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex shrink-0 justify-end border-t border-white/10 px-5 py-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-full border-white/15 bg-white/[0.06] px-5 text-white hover:bg-white/12"
+                  onClick={() => setTargetCardId(null)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

@@ -6,6 +6,11 @@ export function getPublicClassicUnoState(params: {
   viewerId: string;
 }): PublicClassicUnoState {
   const { state, viewerId } = params;
+  
+  const turnDurationMs = state.settings.turnSeconds ? state.settings.turnSeconds * 1000 : null;
+  const turnExpiresAt = state.turnStartedAt && turnDurationMs 
+    ? new Date(new Date(state.turnStartedAt).getTime() + turnDurationMs).toISOString()
+    : null;
 
   return {
     gameId: "classic-uno",
@@ -38,6 +43,9 @@ export function getPublicClassicUnoState(params: {
     lastDrawnCardId: state.lastDrawnCardId,
     actionNumber: state.actionNumber,
     winnerUserId: state.winnerUserId,
-    results: state.results
+    results: state.results,
+    turnStartedAt: state.turnStartedAt,
+    turnDurationMs,
+    turnExpiresAt
   };
 }

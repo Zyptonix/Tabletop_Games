@@ -24,7 +24,9 @@ export function isWild(card: NoMercyCard): boolean {
 }
 
 export function cardRequiresDeclaredColor(card: NoMercyCard): boolean {
-  return card.color === "wild";
+  // Roulette is special in No Mercy: the targeted next player chooses the color.
+  // The player who lays the Roulette card should not declare a color on play.
+  return card.color === "wild" && card.value !== "roulette";
 }
 
 export function isDrawPenaltyCard(card: NoMercyCard): boolean {
@@ -113,18 +115,26 @@ export function advanceTurn(state: NoMercyState, params: { steps: number; now: s
 }
 
 export function refillDrawPileIfNeeded(state: NoMercyState): NoMercyState {
-  if (state.drawPile.length > 0 || state.discardPile.length <= 1) {
+  if (state.drawPile.length > 0) {
     return state;
   }
 
   const topDiscard = getTopDiscard(state);
-  const rest = state.discardPile.slice(0, -1);
-  const shuffled = shuffleWithState(rest, state.rngState);
+  const discardRest = state.discardPile.slice(0, -1);
+  const mercyPile = state.mercyPile ?? [];
+  const refillCards = [...discardRest, ...mercyPile];
+
+  if (refillCards.length === 0) {
+    return state;
+  }
+
+  const shuffled = shuffleWithState(refillCards, state.rngState);
 
   return {
     ...state,
     drawPile: shuffled.values,
     discardPile: [topDiscard],
+    mercyPile: [],
     rngState: shuffled.rngState
   };
 }
@@ -154,6 +164,15 @@ export function drawCards(state: NoMercyState, playerId: string, count: number):
 }
 
 export function resolveDeclaredColor(card: NoMercyCard, declaredColor: NoMercyDeclaredColor | undefined): NoMercyDeclaredColor {
+  if (card.value === "roulette") {
+    // Roulette keeps the previous current color until the targeted player chooses one.
+    // The reducer handles that previous-color preservation before calling this helper.
+    if (!declaredColor) {
+      throw new Error("Roulette color is resolved by the target player, not by resolveDeclaredColor.");
+    }
+    return declaredColor;
+  }
+
   if (card.color === "wild") {
     if (!declaredColor) {
       throw new Error("Wild cards require a declared color.");

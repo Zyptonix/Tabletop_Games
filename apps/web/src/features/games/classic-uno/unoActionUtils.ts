@@ -8,6 +8,11 @@ export interface PlayCardAction {
   targetPlayerId?: string;
 }
 
+export interface ResolveRouletteAction {
+  type: "resolve_roulette";
+  chosenColor: UnoDeclaredColor;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -24,6 +29,16 @@ export function getPlayCardActions(legalActions: unknown[], cardId: string): Pla
 
 export function getPlayCardAction(legalActions: unknown[], cardId: string): PlayCardAction | null {
   return getPlayCardActions(legalActions, cardId)[0] ?? null;
+}
+
+export function getResolveRouletteActions(legalActions: unknown[]): ResolveRouletteAction[] {
+  return legalActions.filter(
+    (candidate): candidate is ResolveRouletteAction =>
+      isRecord(candidate) &&
+      candidate.type === "resolve_roulette" &&
+      typeof candidate.chosenColor === "string" &&
+      ["red", "yellow", "green", "blue"].includes(candidate.chosenColor)
+  );
 }
 
 export function isPlayableCard(legalActions: unknown[], card: Pick<RenderableCard, "id">): boolean {

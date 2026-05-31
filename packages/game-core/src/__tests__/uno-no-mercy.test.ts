@@ -86,6 +86,15 @@ function expectNotPlayable(state: NoMercyState, action: { type: "play_card"; car
   expect(validateNoMercyAction({ state, settings: state.settings, playerId: "p1", action }).ok).toBe(false);
 }
 
+function getEventPayload<T extends Record<string, unknown>>(
+  events: Array<{ type: string; payload?: unknown }>,
+  type: string
+): T {
+  const event = events.find((item) => item.type === type);
+  expect(event).toBeDefined();
+  return event?.payload as T;
+}
+
 describe("uno no mercy", () => {
   it("builds the exact provided No Mercy deck counts", () => {
     const deck = createNoMercyDeck();
@@ -193,6 +202,15 @@ describe("uno no mercy", () => {
     expect(result.state.pendingPenalty).toBeNull();
     expect(result.state.players.find((player) => player.userId === "p1")?.hand).toHaveLength(6);
     expect(result.state.currentPlayerId).toBe("p2");
+
+    const payload = getEventPayload<{ playerId: string; amount: number; actuallyDrawn: number; source: string }>(
+      result.events,
+      "uno-no-mercy:penalty_resolved"
+    );
+    expect(payload.playerId).toBe("p1");
+    expect(payload.amount).toBe(6);
+    expect(payload.actuallyDrawn).toBe(6);
+    expect(payload.source).toBe("stack");
   });
 
   it("eliminates a player at the 25-card mercy limit", () => {
@@ -211,6 +229,8 @@ describe("uno no mercy", () => {
     });
 
     expect(result.state.players.find((player) => player.userId === "p1")?.eliminated).toBe(true);
+    expect(result.state.players.find((player) => player.userId === "p1")?.hand).toHaveLength(0);
+    expect(result.state.mercyPile).toHaveLength(25);
   });
 
   it("swaps hands when a 7 is played with a valid target", () => {
@@ -231,6 +251,15 @@ describe("uno no mercy", () => {
 
     expect(result.state.players.find((player) => player.userId === "p1")?.hand).toHaveLength(2);
     expect(result.state.players.find((player) => player.userId === "p2")?.hand).toHaveLength(0);
+
+    const payload = getEventPayload<{ fromPlayerId: string; toPlayerId: string; fromCount: number; toCount: number }>(
+      result.events,
+      "uno-no-mercy:seven_swap"
+    );
+    expect(payload.fromPlayerId).toBe("p1");
+    expect(payload.toPlayerId).toBe("p2");
+    expect(payload.fromCount).toBe(0);
+    expect(payload.toCount).toBe(2);
   });
 
   it("passes hands when a 0 is played", () => {
@@ -254,6 +283,12 @@ describe("uno no mercy", () => {
     expect(result.state.players.find((player) => player.userId === "p1")?.hand[0]?.id).toBe(p3Card.id);
     expect(result.state.players.find((player) => player.userId === "p2")?.hand).toHaveLength(0);
     expect(result.state.players.find((player) => player.userId === "p3")?.hand[0]?.id).toBe(p2Card.id);
+
+    const payload = getEventPayload<{ transfers: Array<{ fromPlayerId: string; toPlayerId: string; cardCount: number }> }>(
+      result.events,
+      "uno-no-mercy:zero_pass"
+    );
+    expect(payload.transfers.map((transfer) => transfer.cardCount).sort()).toEqual([0, 1, 1]);
   });
 
 
@@ -335,26 +370,152 @@ describe("uno no mercy", () => {
     expect(result.state.currentPlayerId).toBe("p1");
   });
 
-  it("roulette ignores wild cards until the chosen color appears", () => {
+  it("starts pending roulette, then target chooses a color and draws revealed cards one by one", () => {
     const roulette = card("wild", "roulette");
     const wildSix = card("wild", "wild_draw_six");
     const blue = card("blue", "2");
     const yellow = card("yellow", "3");
     const state = stateWithHands(
-      { p1: [roulette], p2: [card("red", "1")], p3: [card("green", "1")] },
+      { p1: [roulette, card("blue", "9")], p2: [card("red", "1")], p3: [card("green", "1")] },
       "red",
       [wildSix, blue, yellow]
     );
 
-    const result = applyNoMercyAction({
+    const pending = applyNoMercyAction({
       state,
       settings: state.settings,
       playerId: "p1",
-      action: { type: "play_card", cardId: roulette.id, declaredColor: "yellow" },
+      action: { type: "play_card", cardId: roulette.id },
       now: "2026-05-30T00:00:01.000Z"
     });
 
+    expect(pending.state.pendingRoulette).toEqual({ targetPlayerId: "p2", playedByPlayerId: "p1", revealedCards: [] });
+    expect(pending.state.currentPlayerId).toBe("p2");
+    expect(pending.state.players.find((player) => player.userId === "p2")?.hand).toHaveLength(1);
+    expect(validateNoMercyAction({ state: pending.state, settings: pending.state.settings, playerId: "p2", action: { type: "draw_card" } }).ok).toBe(false);
+    expect(validateNoMercyAction({ state: pending.state, settings: pending.state.settings, playerId: "p2", action: { type: "resolve_roulette", chosenColor: "yellow" } }).ok).toBe(true);
+
+    const chosen = applyNoMercyAction({
+      state: pending.state,
+      settings: pending.state.settings,
+      playerId: "p2",
+      action: { type: "resolve_roulette", chosenColor: "yellow" },
+      now: "2026-05-30T00:00:02.000Z"
+    });
+
+    expect(chosen.state.pendingRoulette).toEqual({
+      targetPlayerId: "p2",
+      playedByPlayerId: "p1",
+      chosenColor: "yellow",
+      revealedCards: []
+    });
+    expect(chosen.state.currentPlayerId).toBe("p2");
+    expect(validateNoMercyAction({ state: chosen.state, settings: chosen.state.settings, playerId: "p2", action: { type: "draw_card" } }).ok).toBe(true);
+
+    const firstReveal = applyNoMercyAction({
+      state: chosen.state,
+      settings: chosen.state.settings,
+      playerId: "p2",
+      action: { type: "draw_card" },
+      now: "2026-05-30T00:00:03.000Z"
+    });
+
+    expect(firstReveal.state.pendingRoulette?.revealedCards.map((item) => item.id)).toEqual([wildSix.id]);
+    expect(firstReveal.state.currentPlayerId).toBe("p2");
+    expect(firstReveal.state.players.find((player) => player.userId === "p2")?.hand).toHaveLength(2);
+
+    const secondReveal = applyNoMercyAction({
+      state: firstReveal.state,
+      settings: firstReveal.state.settings,
+      playerId: "p2",
+      action: { type: "draw_card" },
+      now: "2026-05-30T00:00:04.000Z"
+    });
+
+    expect(secondReveal.state.pendingRoulette?.revealedCards.map((item) => item.id)).toEqual([wildSix.id, blue.id]);
+    expect(secondReveal.state.currentPlayerId).toBe("p2");
+    expect(secondReveal.state.players.find((player) => player.userId === "p2")?.hand).toHaveLength(3);
+
+    const result = applyNoMercyAction({
+      state: secondReveal.state,
+      settings: secondReveal.state.settings,
+      playerId: "p2",
+      action: { type: "draw_card" },
+      now: "2026-05-30T00:00:05.000Z"
+    });
+
+    expect(result.state.pendingRoulette).toBeNull();
     expect(result.state.players.find((player) => player.userId === "p2")?.hand).toHaveLength(4);
+    expect(result.state.currentPlayerId).toBe("p3");
+
+    const payload = getEventPayload<{
+      targetPlayerId: string;
+      chosenColor: string;
+      revealedCards: NoMercyCard[];
+      matchedCardId?: string;
+      actuallyDrawn: number;
+    }>(result.events, "uno-no-mercy:roulette");
+    expect(payload.targetPlayerId).toBe("p2");
+    expect(payload.chosenColor).toBe("yellow");
+    expect(payload.revealedCards.map((item) => item.id)).toEqual([wildSix.id, blue.id, yellow.id]);
+    expect(payload.matchedCardId).toBe(yellow.id);
+    expect(payload.actuallyDrawn).toBe(3);
+  });
+
+  it("sets eliminated hands aside and refills from mercy pile for full stack penalties", () => {
+    const filler = card("blue", "1");
+    let state = stateWithHands(
+      { p1: many(card("red", "1"), 24), p2: [], p3: [] },
+      "red",
+      [filler]
+    );
+
+    const eliminated = applyNoMercyAction({
+      state,
+      settings: state.settings,
+      playerId: "p1",
+      action: { type: "draw_card" },
+      now: "2026-05-30T00:00:01.000Z"
+    });
+
+    expect(eliminated.state.players.find((player) => player.userId === "p1")?.eliminated).toBe(true);
+    expect(eliminated.state.players.find((player) => player.userId === "p1")?.hand).toHaveLength(0);
+    expect(eliminated.state.mercyPile).toHaveLength(25);
+
+    state = {
+      ...eliminated.state,
+      phase: "playing",
+      currentPlayerId: "p2",
+      pendingPenalty: {
+        amount: 20,
+        source: "wild_draw_ten",
+        requiredResponseMinPower: 10,
+        targetPlayerId: "p2"
+      },
+      drawPile: many(card("green", "2"), 4),
+      discardPile: [card("red", "5")],
+      players: eliminated.state.players.map((player) =>
+        player.userId === "p2" ? { ...player, hand: [], eliminated: false } : player
+      )
+    };
+
+    const resolved = applyNoMercyAction({
+      state,
+      settings: state.settings,
+      playerId: "p2",
+      action: { type: "draw_card" },
+      now: "2026-05-30T00:00:02.000Z"
+    });
+
+    const p2 = resolved.state.players.find((player) => player.userId === "p2");
+    expect(p2?.hand).toHaveLength(20);
+
+    const payload = getEventPayload<{ amount: number; actuallyDrawn: number }>(
+      resolved.events,
+      "uno-no-mercy:penalty_resolved"
+    );
+    expect(payload.amount).toBe(20);
+    expect(payload.actuallyDrawn).toBe(20);
   });
 
   it("filters private hands per viewer", () => {
@@ -367,6 +528,9 @@ describe("uno no mercy", () => {
     expect(publicForP1.players.find((player) => player.userId === "p1")?.hand).toHaveLength(1);
     expect(publicForP1.players.find((player) => player.userId === "p2")?.hand).toBeUndefined();
     expect(publicForP1.players.find((player) => player.userId === "p2")?.handCount).toBe(1);
+    expect(publicForP1.turnStartedAt).toBe(state.turnStartedAt);
+    expect(publicForP1.turnDurationMs).toBe((state.settings.turnSeconds ?? 0) * 1000);
+    expect(publicForP1.turnExpiresAt).toBeTruthy();
   });
 });
 

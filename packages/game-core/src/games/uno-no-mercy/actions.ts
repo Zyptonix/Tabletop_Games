@@ -1,4 +1,4 @@
-﻿import { z } from "zod";
+import { z } from "zod";
 import { NO_MERCY_COLORS } from "./types";
 
 export const noMercySettingsSchema = z.object({
@@ -18,5 +18,9 @@ export const noMercyActionSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("draw_card") }),
   z.object({ type: z.literal("pass_turn") }),
-  z.object({ type: z.literal("call_uno") })
+  z.object({ type: z.literal("call_uno") }),
+  z.object({
+    type: z.literal("resolve_roulette"),
+    chosenColor: z.enum(NO_MERCY_COLORS)
+  })
 ]);

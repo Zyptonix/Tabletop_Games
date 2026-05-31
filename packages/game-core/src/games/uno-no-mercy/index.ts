@@ -26,6 +26,13 @@ function getTimeoutAction(params: {
     return null;
   }
 
+  if (params.state.pendingRoulette?.targetPlayerId === params.playerId) {
+    return {
+      playerId: params.playerId,
+      action: { type: "resolve_roulette", chosenColor: params.state.currentColor }
+    };
+  }
+
   return {
     playerId: params.playerId,
     action: params.state.lastDrawnCardId === null ? { type: "draw_card" } : { type: "pass_turn" }

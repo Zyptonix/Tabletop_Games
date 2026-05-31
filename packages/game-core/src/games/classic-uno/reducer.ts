@@ -82,7 +82,7 @@ function applyCardEffect(params: {
       events.push(
         createGameEvent("uno:draw_two", {
           message: "Draw two applied.",
-          payload: { targetPlayerId, count: drawn.cards.length }
+          payload: { playerId: targetPlayerId, targetPlayerId, count: drawn.cards.length, actuallyDrawn: drawn.cards.length, pendingAmount: 2, source: "penalty" }
         })
       );
     }
@@ -97,7 +97,7 @@ function applyCardEffect(params: {
       events.push(
         createGameEvent("uno:wild_draw_four", {
           message: "Wild draw four applied.",
-          payload: { targetPlayerId, count: drawn.cards.length }
+          payload: { playerId: targetPlayerId, targetPlayerId, count: drawn.cards.length, actuallyDrawn: drawn.cards.length, pendingAmount: 4, source: "penalty" }
         })
       );
     }
@@ -149,7 +149,7 @@ export function applyClassicUnoAction(params: {
     events.push(
       createGameEvent("uno:draw", {
         message: `${player.displayName} drew a card.`,
-        payload: { playerId, count: drawn.cards.length }
+        payload: { playerId, count: drawn.cards.length, actuallyDrawn: drawn.cards.length, source: "normal_draw" }
       })
     );
 

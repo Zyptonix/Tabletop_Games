@@ -97,4 +97,7 @@ export interface PublicClassicUnoState {
   actionNumber: number;
   winnerUserId: string | null;
   results: GameResults | null;
+  turnStartedAt: string | null;
+  turnDurationMs: number | null;
+  turnExpiresAt: string | null;
 }

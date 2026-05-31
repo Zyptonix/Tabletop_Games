@@ -14,9 +14,11 @@ import { CardDrawAnimationOverlay } from "./CardDrawAnimationOverlay";
 import { DiscardPile } from "./DiscardPile";
 import { DirectionIndicator } from "./DirectionIndicator";
 import { DrawPile } from "./DrawPile";
+import { HandTransferAnimationOverlay } from "./HandTransferAnimationOverlay";
 import { PlayerHand } from "./PlayerHand";
 import { PlayerSeat } from "./PlayerSeat";
 import { ReactionOverlay, REACTION_PREFIX } from "./ReactionOverlay";
+import { TurnTimerCircle } from "./TurnTimerCircle";
 import { TurnTransitionOverlay } from "./TurnTransitionOverlay";
 import { UnoActionBar } from "./UnoActionBar";
 import { UnoGameStatus } from "./UnoGameStatus";
@@ -177,6 +179,7 @@ export function ClassicUnoTable({
     playerName: string;
     amount: number;
   } | null>(null);
+  const [now, setNow] = useState(() => Date.now());
 
   const me = state.players.find((player) => player.userId === currentUserId);
 
@@ -317,7 +320,7 @@ export function ClassicUnoTable({
       null
     : null;
 
-  const activeAccent = playAreaAccent[state.currentColor] ?? playAreaAccent.blue;
+  const activeAccent = playAreaAccent[state.currentColor] ?? playAreaAccent.blue!;
 
   const reactionMessages = useMemo(
     () =>
@@ -326,6 +329,18 @@ export function ClassicUnoTable({
       ),
     [room.chat]
   );
+
+  // Timer calculations
+  const turnDurationMs = state.turnDurationMs ?? 30000;
+  const turnExpiresAt = state.turnExpiresAt ? new Date(state.turnExpiresAt).getTime() : null;
+  const turnRemainingMs = turnExpiresAt ? Math.max(0, turnExpiresAt - now) : turnDurationMs;
+  const turnProgress = Math.max(0, Math.min(1, turnRemainingMs / turnDurationMs));
+  const turnSecondsLeft = Math.max(0, Math.ceil(turnRemainingMs / 1000));
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 250);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     if (state.currentPlayerId !== lastCurrentPlayerIdRef.current) {
@@ -511,6 +526,16 @@ export function ClassicUnoTable({
                 seatRefs={seatRefs}
               />
 
+              <HandTransferAnimationOverlay
+                events={gameEvents}
+                players={state.players}
+                currentUserId={currentUserId}
+                theme={cardTheme}
+                containerRef={tableRootRef}
+                seatRefs={seatRefs}
+                handDockRef={handDockRef}
+              />
+
               <section className="relative z-10 grid h-full min-h-0 grid-rows-[minmax(0,1fr)_13.25rem] gap-2 px-3 pb-3">
                 <div className="classic-uno-table relative min-h-0 overflow-hidden rounded-[2.25rem] bg-transparent shadow-none">
                   <div
@@ -572,6 +597,8 @@ export function ClassicUnoTable({
                         fanSide={getFanSide(side, left)}
                         seatSide={side}
                         stackHitAmount={stackHitNotice?.playerId === player.userId ? stackHitNotice.amount : undefined}
+
+                        turnProgress={player.isCurrentTurn ? turnProgress : undefined}
                       />
                     </div>
                   ))}
@@ -588,6 +615,8 @@ export function ClassicUnoTable({
                         isSelf
                         seatSide="left"
                         stackHitAmount={stackHitNotice?.playerId === me.userId ? stackHitNotice.amount : undefined}
+
+                        turnProgress={me.isCurrentTurn ? turnProgress : undefined}
                       />
                     </div>
                   ) : null}
@@ -633,30 +662,40 @@ export function ClassicUnoTable({
 
                 <div ref={handDockRef} className="uno-hand-zone relative z-20 -mt-5 min-h-0 overflow-visible px-2">
                   <div className="mx-auto flex max-w-[76rem] items-center justify-between gap-3 px-2 pb-1">
-                    {me?.isCurrentTurn ? (
-                      <motion.div
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="inline-flex min-h-9 items-center gap-2 rounded-full px-4 text-xs font-black uppercase tracking-[0.22em]"
-                        style={{
-                          border: `1px solid ${activeAccent.border}`,
-                          background: activeAccent.bg,
-                          color: activeAccent.text,
-                          boxShadow: `0 0 30px ${activeAccent.glow}`
-                        }}
-                      >
-                        <span
-                          className="h-2.5 w-2.5 rounded-full"
-                          style={{
-                            backgroundColor: activeAccent.text,
-                            boxShadow: `0 0 18px ${activeAccent.strongGlow}`
-                          }}
+                    <div className="flex min-h-14 items-center gap-3">
+                      <div className="rounded-full border border-white/10 bg-black/42 p-1.5 shadow-[0_0_28px_rgb(0_0_0_/_0.36)] backdrop-blur-xl">
+                        <TurnTimerCircle
+                          active={Boolean(currentPlayer)}
+                          progress={turnProgress}
+                          secondsLeft={turnSecondsLeft}
+                          size={56}
+                          color={activeAccent.text}
                         />
-                        Your turn
-                      </motion.div>
-                    ) : (
-                      <div className="min-h-9" />
-                    )}
+                      </div>
+
+                      {me?.isCurrentTurn ? (
+                        <motion.div
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="inline-flex min-h-9 items-center gap-2 rounded-full px-4 text-xs font-black uppercase tracking-[0.22em]"
+                          style={{
+                            border: `1px solid ${activeAccent.border}`,
+                            background: activeAccent.bg,
+                            color: activeAccent.text,
+                            boxShadow: `0 0 30px ${activeAccent.glow}`
+                          }}
+                        >
+                          <span
+                            className="h-2.5 w-2.5 rounded-full"
+                            style={{
+                              backgroundColor: activeAccent.text,
+                              boxShadow: `0 0 18px ${activeAccent.strongGlow}`
+                            }}
+                          />
+                          Your turn
+                        </motion.div>
+                      ) : null}
+                    </div>
 
                     <div className="hidden md:block">
                       <UnoActionBar
@@ -664,6 +703,7 @@ export function ClassicUnoTable({
                         onDraw={() => onAction("draw_card")}
                         onPass={() => onAction("pass_turn")}
                         onUno={() => onAction("call_uno")}
+                        onResolveRoulette={(chosenColor) => onAction("resolve_roulette", { chosenColor })}
                       />
                     </div>
                   </div>
@@ -734,6 +774,7 @@ export function ClassicUnoTable({
             onDraw={() => onAction("draw_card")}
             onPass={() => onAction("pass_turn")}
             onUno={() => onAction("call_uno")}
+            onResolveRoulette={(chosenColor) => onAction("resolve_roulette", { chosenColor })}
           />
         </div>
 
@@ -742,9 +783,9 @@ export function ClassicUnoTable({
         {canEndMatch ? (
           <Dialog open={confirmEndOpen} title="End match" onClose={() => setConfirmEndOpen(false)}>
             <div className="space-y-4">
-              <p className="text-sm font-semibold leading-relaxed text-zinc-700">End this match for everyone?</p>
+              <p className="text-sm font-semibold leading-relaxed text-white/70">End this match for everyone?</p>
               <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setConfirmEndOpen(false)}>
+                <Button type="button" variant="outline" className="border-white/15 bg-white/[0.06] text-white hover:bg-white/12" onClick={() => setConfirmEndOpen(false)}>
                   Cancel
                 </Button>
                 <Button type="button" className="bg-red-700 hover:bg-red-800" onClick={confirmEndMatch}>
@@ -756,45 +797,45 @@ export function ClassicUnoTable({
         ) : null}
 
         {state.phase === "finished" ? (
-          <Dialog open title="Results" onClose={goDashboard}>
+          <Dialog open title="Match Results" onClose={goDashboard}>
             <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="space-y-4">
-              <div className="rounded-xl bg-zinc-950 p-4 text-white">
+              <div className="overflow-hidden rounded-[1.45rem] border border-amber-200/20 bg-[radial-gradient(circle_at_18%_20%,rgba(251,191,36,0.28),transparent_38%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(3,7,18,0.96))] p-4 text-white shadow-[0_18px_60px_rgba(0,0,0,0.38)]">
                 <div className="flex items-center gap-3">
-                  <span className="grid h-11 w-11 place-items-center rounded-full bg-amber-300 text-zinc-950">
+                  <span className="grid h-12 w-12 place-items-center rounded-full bg-amber-300 text-zinc-950 shadow-[0_0_32px_rgba(251,191,36,0.42)]">
                     <Trophy className="h-5 w-5" />
                   </span>
-                  <div>
-                    <p className="text-lg font-black">
+                  <div className="min-w-0">
+                    <p className="truncate text-xl font-black">
                       {winner?.userId === currentUserId ? "You won" : `${winnerName ?? "Someone"} won`}
                     </p>
-                    <p className="text-xs font-semibold text-white/60">Final scores are calculated by the server.</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/50">Final scoreboard</p>
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
+              <div className="max-h-[42vh] space-y-2 overflow-y-auto pr-1 [scrollbar-color:rgba(251,191,36,0.65)_rgba(255,255,255,0.08)] [scrollbar-width:thin]">
                 {placementRows.map((placement) => (
                   <div
                     key={placement.userId}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm"
+                    className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.055] p-3 text-sm shadow-[0_10px_30px_rgba(0,0,0,0.24)]"
                   >
                     <div className="min-w-0">
-                      <p className="truncate font-black text-zinc-950">
+                      <p className="truncate font-black text-white">
                         #{placement.placement} {placement.displayName}
                       </p>
-                      <p className="text-xs font-semibold text-zinc-500">
+                      <p className="text-xs font-semibold text-white/45">
                         {placement.result === "WIN" ? "Winner" : "Finished"}
                       </p>
                     </div>
-                    <span className="rounded-full bg-white px-3 py-1 font-black text-zinc-950 shadow-sm">
+                    <span className="rounded-full border border-amber-200/20 bg-amber-300/14 px-3 py-1 font-black text-amber-100 shadow-sm">
                       {placement.score}
                     </span>
                   </div>
                 ))}
               </div>
 
-              <Button type="button" className="w-full" onClick={goDashboard}>
-                Dashboard
+              <Button type="button" className="w-full rounded-full bg-amber-300 font-black text-zinc-950 hover:bg-amber-200" onClick={goDashboard}>
+                Back to Dashboard
               </Button>
             </motion.div>
           </Dialog>

@@ -6,10 +6,57 @@ import { fileURLToPath } from "node:url";
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const logsDir = path.join(rootDir, "logs", "dev");
-const args = new Set(process.argv.slice(2));
+const rawArgs = process.argv.slice(2);
+const args = new Set(rawArgs);
+
+function readOption(name) {
+  const inlinePrefix = `--${name}=`;
+  const inline = rawArgs.find((arg) => arg.startsWith(inlinePrefix));
+  if (inline) return inline.slice(inlinePrefix.length);
+
+  const index = rawArgs.indexOf(`--${name}`);
+  if (index >= 0 && rawArgs[index + 1] && !rawArgs[index + 1].startsWith("--")) {
+    return rawArgs[index + 1];
+  }
+
+  return null;
+}
+
+function parseOnlyServices() {
+  const selected = new Set();
+  const only = readOption("only") ?? readOption("service");
+
+  if (only) {
+    for (const entry of only.split(",")) {
+      const name = entry.trim().toLowerCase();
+      if (name) selected.add(name);
+    }
+  }
+
+  if (args.has("--web-only")) selected.add("web");
+  if (args.has("--server-only")) selected.add("server");
+  if (args.has("--backend-only")) selected.add("server");
+  if (args.has("--proxy-only")) selected.add("proxy");
+  if (args.has("--postgres-only") || args.has("--db-only")) selected.add("postgres");
+  if (args.has("--tunnel-only")) selected.add("tunnel");
+
+  return selected;
+}
+
+const onlyServices = parseOnlyServices();
 const skipPortCleanup = args.has("--no-kill-ports");
-const enableTunnel = args.has("--tunnel") && !args.has("--no-tunnel");
-const enableStudio = args.has("--studio");
+const enableTunnel = (args.has("--tunnel") || onlyServices.has("tunnel")) && !args.has("--no-tunnel");
+const enableStudio = args.has("--studio") || onlyServices.has("studio");
+
+function shouldStart(serviceName) {
+  if (onlyServices.size === 0) return true;
+
+  if (serviceName === "postgres" && onlyServices.has("server") && !args.has("--no-postgres")) {
+    return true;
+  }
+
+  return onlyServices.has(serviceName);
+}
 const proxyPort = process.env.DEV_PROXY_PORT ?? "8080";
 const serverPort = process.env.SERVER_PORT ?? "4000";
 const webPort = process.env.WEB_PORT ?? "3000";
@@ -87,7 +134,7 @@ function cleanupDevPorts() {
     { port: webPort, label: "web" },
     { port: serverPort, label: "server" },
     { port: proxyPort, label: "proxy" }
-  ];
+  ].filter((item) => shouldStart(item.label));
 
   process.stdout.write(`${colors.dim}Cleaning stale dev ports: ${portsToClean.map((item) => item.port).join(", ")}${colors.reset}\n`);
 
@@ -360,27 +407,54 @@ function stopAll(exitCode = 0) {
 process.on("SIGINT", () => stopAll(0));
 process.on("SIGTERM", () => stopAll(0));
 
+if (args.has("--help") || args.has("-h")) {
+  process.stdout.write(`Usage: node scripts/dev-orchestrator.mjs [options]\n\n`);
+  process.stdout.write(`Default starts local postgres/server/web/proxy without a tunnel.\n\n`);
+  process.stdout.write(`Options:\n`);
+  process.stdout.write(`  --tunnel                 Start Cloudflare tunnel too\n`);
+  process.stdout.write(`  --no-tunnel              Force local-only mode\n`);
+  process.stdout.write(`  --only web               Restart/start only frontend\n`);
+  process.stdout.write(`  --only server            Restart/start backend plus postgres\n`);
+  process.stdout.write(`  --only proxy             Restart/start local proxy only\n`);
+  process.stdout.write(`  --only web,server        Start selected services\n`);
+  process.stdout.write(`  --web-only               Shortcut for --only web\n`);
+  process.stdout.write(`  --server-only            Shortcut for --only server\n`);
+  process.stdout.write(`  --backend-only           Shortcut for --only server\n`);
+  process.stdout.write(`  --no-kill-ports          Do not clear selected service ports first\n`);
+  process.stdout.write(`  --studio                 Start Prisma Studio\n`);
+  process.exit(0);
+}
+
 process.stdout.write(`${colors.green}Starting tabletop arena dev stack...${colors.reset}\n`);
+process.stdout.write(`${colors.dim}Mode: ${enableTunnel ? "with tunnel" : "local only"}${onlyServices.size > 0 ? `; selected: ${[...onlyServices].join(", ")}` : ""}${colors.reset}\n`);
 process.stdout.write(`${colors.dim}Logs: ${path.relative(rootDir, logsDir)}${colors.reset}\n`);
 
 cleanupDevPorts();
 
-maybeStartPostgres();
+if (shouldStart("postgres")) {
+  maybeStartPostgres();
+}
 
-const server = pnpmCommand(["--filter", "@tabletop/server", "dev"]);
-startService("server", server.command, server.args, { critical: true });
+if (shouldStart("server")) {
+  const server = pnpmCommand(["--filter", "@tabletop/server", "dev"]);
+  startService("server", server.command, server.args, { critical: true });
+}
 
-const web = pnpmCommand(["--filter", "@tabletop/web", "dev"]);
-startService("web", web.command, web.args, { critical: true });
+if (shouldStart("web")) {
+  const web = pnpmCommand(["--filter", "@tabletop/web", "dev"]);
+  startService("web", web.command, web.args, { critical: true });
+}
 
-const proxy = nodeCommand(path.join("scripts", "dev-proxy.mjs"));
-startService("proxy", proxy.command, proxy.args, { critical: true });
+if (shouldStart("proxy")) {
+  const proxy = nodeCommand(path.join("scripts", "dev-proxy.mjs"));
+  startService("proxy", proxy.command, proxy.args, { critical: true });
+}
 
-if (enableTunnel) {
+if (enableTunnel && shouldStart("tunnel")) {
   startService("tunnel", "cloudflared", ["tunnel", "--url", `http://localhost:${proxyPort}`], { critical: false });
 }
 
-if (enableStudio) {
+if (enableStudio && shouldStart("studio")) {
   const studio = pnpmCommand(["--filter", "@tabletop/db", "exec", "prisma", "studio", "--schema", "prisma/schema.prisma"]);
   startService("studio", studio.command, studio.args, { critical: false });
 }

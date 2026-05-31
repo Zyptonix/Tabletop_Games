@@ -41,7 +41,8 @@ export function PlayerSeat({
   compact = false,
   fanSide = "right",
   seatSide = "top",
-  stackHitAmount
+  stackHitAmount,
+  turnProgress
 }: {
   player: PublicSeatPlayer;
   roomPlayer?: RoomPlayerView | undefined;
@@ -50,7 +51,8 @@ export function PlayerSeat({
   compact?: boolean;
   fanSide?: "left" | "right";
   seatSide?: "top" | "left" | "right";
-  stackHitAmount?: number;
+  stackHitAmount?: number | undefined;
+  turnProgress?: number | undefined;
 }) {
   const connected = roomPlayer?.connected ?? false;
   const inactive = !connected || player.eliminated;
@@ -124,6 +126,9 @@ export function PlayerSeat({
               )}
             >
               {getInitials(player.displayName)}
+            {player.isCurrentTurn && typeof turnProgress === "number" ? (
+              <SeatTimerRing progress={turnProgress} compact={compact} />
+            ) : null}
             </div>
 
             <span
@@ -205,6 +210,50 @@ export function PlayerSeat({
         ) : null}
       </AnimatePresence>
     </div>
+  );
+}
+
+function SeatTimerRing({ progress, compact }: { progress: number; compact: boolean }) {
+  const size = compact ? 54 : 58;
+  const radius = (size - 6) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const clampedProgress = Math.max(0, Math.min(1, progress));
+  const dashOffset = circumference * (1 - clampedProgress);
+  const urgent = clampedProgress <= 0.18;
+
+  return (
+    <svg
+      className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 -rotate-90 overflow-visible"
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      aria-hidden="true"
+    >
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        fill="none"
+        stroke="rgba(255,255,255,0.14)"
+        strokeWidth="2"
+      />
+      <motion.circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        fill="none"
+        stroke={urgent ? "#f87171" : "#bef264"}
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeDasharray={circumference}
+        animate={{
+          strokeDashoffset: dashOffset,
+          opacity: urgent ? [0.65, 1, 0.65] : 1
+        }}
+        transition={urgent ? { duration: 0.62, repeat: Infinity, ease: "easeInOut" } : { duration: 0.25 }}
+        style={{ filter: urgent ? "drop-shadow(0 0 10px rgba(248,113,113,0.72))" : "drop-shadow(0 0 10px rgba(190,242,100,0.55))" }}
+      />
+    </svg>
   );
 }
 
