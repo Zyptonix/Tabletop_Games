@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   DEFAULT_NO_MERCY_SETTINGS,
   NO_MERCY_COLORS,
@@ -254,6 +254,107 @@ describe("uno no mercy", () => {
     expect(result.state.players.find((player) => player.userId === "p1")?.hand[0]?.id).toBe(p3Card.id);
     expect(result.state.players.find((player) => player.userId === "p2")?.hand).toHaveLength(0);
     expect(result.state.players.find((player) => player.userId === "p3")?.hand[0]?.id).toBe(p2Card.id);
+  });
+
+
+
+  it("lets any equal-or-higher draw card stack regardless of color", () => {
+    const greenDrawFour = card("green", "draw_four");
+    const state = stateWithPending(greenDrawFour, 2, 2);
+    state.currentColor = "red";
+
+    expectPlayable(state, { type: "play_card", cardId: greenDrawFour.id });
+  });
+
+  it("draws until a playable card is found on a normal draw", () => {
+    const drawPile = [card("blue", "1"), card("green", "2"), card("red", "9")];
+    const state = stateWithHands({ p1: [card("yellow", "3")], p2: [card("blue", "4")], p3: [card("green", "5")] }, "red", drawPile);
+
+    const result = applyNoMercyAction({
+      state,
+      settings: state.settings,
+      playerId: "p1",
+      action: { type: "draw_card" },
+      now: "2026-05-30T00:00:01.000Z"
+    });
+
+    const p1 = result.state.players.find((player) => player.userId === "p1");
+    expect(p1?.hand).toHaveLength(4);
+    expect(result.state.lastDrawnCardId).toBe(drawPile[2]?.id);
+    expect(result.state.currentPlayerId).toBe("p1");
+  });
+
+  it("keeps Discard All as the visible top discard after extra discards", () => {
+    const discardAll = card("red", "discard_all");
+    const extraRed = card("red", "5");
+    const blue = card("blue", "1");
+    const state = stateWithHands({ p1: [discardAll, extraRed, blue], p2: [card("green", "4")], p3: [card("yellow", "6")] }, "red");
+
+    const result = applyNoMercyAction({
+      state,
+      settings: state.settings,
+      playerId: "p1",
+      action: { type: "play_card", cardId: discardAll.id },
+      now: "2026-05-30T00:00:01.000Z"
+    });
+
+    expect(result.state.discardPile.at(-1)?.id).toBe(discardAll.id);
+    expect(result.state.players.find((player) => player.userId === "p1")?.hand.map((item) => item.id)).toEqual([blue.id]);
+  });
+
+  it("Wild Reverse Draw 4 targets the player who played it in a two-player game", () => {
+    const twoPlayers = players.slice(0, 2);
+    const wildReverse = card("wild", "wild_draw_four_reverse");
+    const initial = createInitialNoMercyState({
+      players: twoPlayers,
+      settings: DEFAULT_NO_MERCY_SETTINGS,
+      seed: "two-player-test",
+      now: "2026-05-30T00:00:00.000Z"
+    });
+    const state: NoMercyState = {
+      ...initial,
+      currentPlayerId: "p1",
+      currentColor: "red",
+      discardPile: [card("red", "5")],
+      players: initial.players.map((player) => ({
+        ...player,
+        hand: player.userId === "p1" ? [wildReverse] : [card("blue", "2")]
+      }))
+    };
+
+    const result = applyNoMercyAction({
+      state,
+      settings: state.settings,
+      playerId: "p1",
+      action: { type: "play_card", cardId: wildReverse.id, declaredColor: "blue" },
+      now: "2026-05-30T00:00:01.000Z"
+    });
+
+    expect(result.state.pendingPenalty?.amount).toBe(4);
+    expect(result.state.pendingPenalty?.targetPlayerId).toBe("p1");
+    expect(result.state.currentPlayerId).toBe("p1");
+  });
+
+  it("roulette ignores wild cards until the chosen color appears", () => {
+    const roulette = card("wild", "roulette");
+    const wildSix = card("wild", "wild_draw_six");
+    const blue = card("blue", "2");
+    const yellow = card("yellow", "3");
+    const state = stateWithHands(
+      { p1: [roulette], p2: [card("red", "1")], p3: [card("green", "1")] },
+      "red",
+      [wildSix, blue, yellow]
+    );
+
+    const result = applyNoMercyAction({
+      state,
+      settings: state.settings,
+      playerId: "p1",
+      action: { type: "play_card", cardId: roulette.id, declaredColor: "yellow" },
+      now: "2026-05-30T00:00:01.000Z"
+    });
+
+    expect(result.state.players.find((player) => player.userId === "p2")?.hand).toHaveLength(4);
   });
 
   it("filters private hands per viewer", () => {

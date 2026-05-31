@@ -1,7 +1,7 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { LayoutGroup, motion } from "framer-motion";
+import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import type { GameEvent, PublicClassicUnoState, PublicNoMercyState } from "@tabletop/game-core";
 import type { RoomPlayerView, RoomStateView, UserRole } from "@tabletop/shared";
 import { AlertTriangle, BookOpen, ChevronDown, Copy, LogOut, Settings, Trophy } from "lucide-react";
@@ -89,19 +89,45 @@ function getPendingPenalty(state: UnoTableState): { amount: number; targetPlayer
   return "pendingPenalty" in state ? state.pendingPenalty : null;
 }
 
-function StackPenaltyBadge({ amount, targetName }: { amount: number; targetName?: string | null }) {
+function StackPenaltyBadge({
+  amount,
+  targetName,
+  addedAmount
+}: {
+  amount: number;
+  targetName?: string | null;
+  addedAmount?: number | null;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 8, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 8, scale: 0.95 }}
-      className="absolute -top-5 right-5 z-30 min-w-28 rounded-2xl border border-amber-300/30 bg-black/72 px-3 py-2 text-center shadow-[0_0_34px_rgb(245_158_11_/_0.3),0_18px_45px_rgb(0_0_0_/_0.4)] backdrop-blur-xl"
+      className="pointer-events-none absolute left-[calc(100%+0.85rem)] top-1/2 z-40 min-w-[8.75rem] -translate-y-1/2 rounded-[1.15rem] border border-amber-300/30 bg-black/78 px-3.5 py-2.5 text-center shadow-[0_0_34px_rgb(245_158_11_/_0.26),0_18px_45px_rgb(0_0_0_/_0.46)] backdrop-blur-xl"
     >
       <p className="text-[0.62rem] font-black uppercase tracking-[0.22em] text-amber-200/80">Stack</p>
-      <p className="text-xl font-black leading-none text-amber-100">DRAW {amount}</p>
+
+      <div className="mt-0.5 flex items-center justify-center gap-2">
+        <AnimatePresence mode="popLayout">
+          {addedAmount && addedAmount > 0 ? (
+            <motion.span
+              key={addedAmount}
+              initial={{ opacity: 0, y: 5, scale: 0.75 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -5, scale: 0.85 }}
+              className="rounded-full border border-red-300/25 bg-red-500/18 px-2 py-0.5 text-sm font-black text-red-100"
+            >
+              +{addedAmount}
+            </motion.span>
+          ) : null}
+        </AnimatePresence>
+
+        <p className="text-xl font-black leading-none text-amber-100">DRAW {amount}</p>
+      </div>
+
       {targetName ? (
         <p className="mt-1 max-w-32 truncate text-[0.65rem] font-bold text-white/55">
-          {targetName} takes it
+          {targetName} pending
         </p>
       ) : null}
     </motion.div>
@@ -136,14 +162,46 @@ export function ClassicUnoTable({
   const handDockRef = useRef<HTMLDivElement | null>(null);
   const seatRefs = useRef<Map<string, HTMLElement>>(new Map());
   const lastCurrentPlayerIdRef = useRef<string | null>(state.currentPlayerId);
+  const lastPenaltyAmountRef = useRef<number | null>(null);
+  const lastResolvedPenaltyRef = useRef<{
+    amount: number;
+    targetPlayerId: string;
+  } | null>(null);
+
   const [previousPlayerId, setPreviousPlayerId] = useState<string | null>(null);
   const [rulebookOpen, setRulebookOpen] = useState(false);
   const [confirmEndOpen, setConfirmEndOpen] = useState(false);
+  const [stackAddedAmount, setStackAddedAmount] = useState<number | null>(null);
+  const [stackHitNotice, setStackHitNotice] = useState<{
+    playerId: string;
+    playerName: string;
+    amount: number;
+  } | null>(null);
 
   const me = state.players.find((player) => player.userId === currentUserId);
-  const others = state.players.filter((player) => player.userId !== currentUserId);
 
-  const sortedOpponents = useMemo(() => [...others].sort((a, b) => a.seat - b.seat), [others]);
+  const orderedPlayers = useMemo(() => [...state.players].sort((a, b) => a.seat - b.seat), [state.players]);
+
+  // Visual seats must follow the physical table perimeter, not just seat-number groups.
+  // With the local player anchored at the bottom, the clockwise path is:
+  // left side bottom->top, top left->right, right side top->bottom, then back to self.
+  // Keeping this order stable fixes the "jumping" turn highlight when play reverses.
+  const sortedOpponents = useMemo(() => {
+    if (!currentUserId) {
+      return orderedPlayers;
+    }
+
+    const selfIndex = orderedPlayers.findIndex((player) => player.userId === currentUserId);
+    if (selfIndex < 0) {
+      return orderedPlayers.filter((player) => player.userId !== currentUserId);
+    }
+
+    return [
+      ...orderedPlayers.slice(selfIndex + 1),
+      ...orderedPlayers.slice(0, selfIndex)
+    ].filter((player) => player.userId !== currentUserId);
+  }, [orderedPlayers, currentUserId]);
+
   const compactSeats = sortedOpponents.length >= 7;
   const showSelfSeat = sortedOpponents.length <= 2;
 
@@ -158,22 +216,36 @@ export function ClassicUnoTable({
     const count = sortedOpponents.length;
     if (count === 0) return [];
 
-    const topCount = Math.min(count, count >= 9 ? 5 : count >= 6 ? 4 : count >= 3 ? 3 : count);
-    const remaining = count - topCount;
+    let leftCount = 0;
+    let rightCount = 0;
 
-    const leftCount = Math.ceil(remaining / 2);
-    const rightCount = remaining - leftCount;
+    if (count >= 9) {
+      leftCount = 3;
+      rightCount = 3;
+    } else if (count >= 6) {
+      leftCount = 2;
+      rightCount = 2;
+    } else if (count >= 3) {
+      leftCount = 1;
+      rightCount = 1;
+    }
+
+    const topCount = Math.max(0, count - leftCount - rightCount);
 
     function spread(countToSpread: number, start: number, end: number) {
-      if (countToSpread <= 1) return [(start + end) / 2];
+      if (countToSpread <= 0) return [];
+      if (countToSpread === 1) return [(start + end) / 2];
       return Array.from(
         { length: countToSpread },
         (_, index) => start + ((end - start) * index) / (countToSpread - 1)
       );
     }
 
+    // Physical clockwise table path from the local player at bottom:
+    // left side bottom->top, top left->right, right side top->bottom.
+    const leftYs = spread(leftCount, 67, 24);
     const topXs = spread(topCount, topCount >= 5 ? 11 : 25, topCount >= 5 ? 89 : 75);
-    const sideYs = spread(Math.max(leftCount, rightCount), 24, 67);
+    const rightYs = spread(rightCount, 24, 67);
 
     const slots: Array<{
       player: (typeof sortedOpponents)[number];
@@ -183,6 +255,18 @@ export function ClassicUnoTable({
     }> = [];
 
     let cursor = 0;
+
+    for (let index = 0; index < leftCount; index += 1) {
+      const player = sortedOpponents[cursor++];
+      if (!player) continue;
+
+      slots.push({
+        player,
+        left: 8.5,
+        top: leftYs[index] ?? 48,
+        side: "left"
+      });
+    }
 
     for (let index = 0; index < topCount; index += 1) {
       const player = sortedOpponents[cursor++];
@@ -196,18 +280,6 @@ export function ClassicUnoTable({
       });
     }
 
-    for (let index = 0; index < leftCount; index += 1) {
-      const player = sortedOpponents[cursor++];
-      if (!player) continue;
-
-      slots.push({
-        player,
-        left: 8.5,
-        top: sideYs[index] ?? 48,
-        side: "left"
-      });
-    }
-
     for (let index = 0; index < rightCount; index += 1) {
       const player = sortedOpponents[cursor++];
       if (!player) continue;
@@ -215,7 +287,7 @@ export function ClassicUnoTable({
       slots.push({
         player,
         left: 91.5,
-        top: sideYs[index] ?? 48,
+        top: rightYs[index] ?? 48,
         side: "right"
       });
     }
@@ -261,6 +333,56 @@ export function ClassicUnoTable({
       lastCurrentPlayerIdRef.current = state.currentPlayerId;
     }
   }, [state.currentPlayerId]);
+
+  useEffect(() => {
+    const previousAmount = lastPenaltyAmountRef.current;
+
+    if (pendingPenalty) {
+      if (previousAmount !== null && pendingPenalty.amount > previousAmount) {
+        const delta = pendingPenalty.amount - previousAmount;
+        setStackAddedAmount(delta);
+
+        const timeout = window.setTimeout(() => {
+          setStackAddedAmount(null);
+        }, 1300);
+
+        lastPenaltyAmountRef.current = pendingPenalty.amount;
+        lastResolvedPenaltyRef.current = pendingPenalty;
+
+        return () => window.clearTimeout(timeout);
+      }
+
+      lastPenaltyAmountRef.current = pendingPenalty.amount;
+      lastResolvedPenaltyRef.current = pendingPenalty;
+      return;
+    }
+
+    if (lastResolvedPenaltyRef.current) {
+      const resolved = lastResolvedPenaltyRef.current;
+      const playerName =
+        room.players.find((roomPlayer) => roomPlayer.userId === resolved.targetPlayerId)?.displayName ??
+        state.players.find((player) => player.userId === resolved.targetPlayerId)?.displayName ??
+        "Player";
+
+      setStackHitNotice({
+        playerId: resolved.targetPlayerId,
+        playerName,
+        amount: resolved.amount
+      });
+
+      const timeout = window.setTimeout(() => {
+        setStackHitNotice(null);
+      }, 2000);
+
+      lastResolvedPenaltyRef.current = null;
+      lastPenaltyAmountRef.current = null;
+      setStackAddedAmount(null);
+
+      return () => window.clearTimeout(timeout);
+    }
+
+    lastPenaltyAmountRef.current = null;
+  }, [pendingPenalty, room.players, state.players]);
 
   function registerSeatRef(playerId: string) {
     return (element: HTMLDivElement | null) => {
@@ -400,17 +522,27 @@ export function ClassicUnoTable({
                       left: "25%",
                       borderColor: activeAccent.border,
                       background: `
-                        radial-gradient(
-                          ${activeAccent.strongGlow} 20%,
-                          ${activeAccent.glow} 60%,
-                          ${activeAccent.soft} 100%,
-                          transparent 72%
+                        linear-gradient(
+                          to bottom,
+                          ${activeAccent.soft} 0%,
+                          ${activeAccent.glow} 22%,
+                          ${activeAccent.strongGlow} 50%,
+                          ${activeAccent.glow} 78%,
+                          ${activeAccent.soft} 100%
+                        ),
+                        linear-gradient(
+                          to right,
+                          transparent 0%,
+                          ${activeAccent.soft} 18%,
+                          ${activeAccent.glow} 50%,
+                          ${activeAccent.soft} 82%,
+                          transparent 100%
                         )
                       `,
                       boxShadow: `
-                        inset 0 0 95px ${activeAccent.glow},
-                        inset 0 0 32px ${activeAccent.strongGlow},
-                        0 0 42px ${activeAccent.glow}
+                        inset 0 0 110px ${activeAccent.glow},
+                        inset 0 0 170px ${activeAccent.soft},
+                        0 0 52px ${activeAccent.glow}
                       `
                     }}
                   />
@@ -438,6 +570,8 @@ export function ClassicUnoTable({
                         theme={cardTheme}
                         compact={compactSeats}
                         fanSide={getFanSide(side, left)}
+                        seatSide={side}
+                        stackHitAmount={stackHitNotice?.playerId === player.userId ? stackHitNotice.amount : undefined}
                       />
                     </div>
                   ))}
@@ -452,11 +586,13 @@ export function ClassicUnoTable({
                         roomPlayer={roomPlayerById.get(me.userId)}
                         theme={cardTheme}
                         isSelf
+                        seatSide="left"
+                        stackHitAmount={stackHitNotice?.playerId === me.userId ? stackHitNotice.amount : undefined}
                       />
                     </div>
                   ) : null}
 
-                  <div className="relative z-10 grid h-full min-h-0 place-items-center ">
+                  <div className="relative z-10 grid h-full min-h-0 place-items-center">
                     <motion.div
                       layout
                       className="relative z-10 translate-y-8 flex items-center justify-center gap-10 rounded-[2.4rem] px-8 py-7 backdrop-blur-xl sm:gap-16 sm:px-12"
@@ -471,7 +607,15 @@ export function ClassicUnoTable({
                         `
                       }}
                     >
-                      {pendingPenalty ? <StackPenaltyBadge amount={pendingPenalty.amount} targetName={penaltyTargetName} /> : null}
+                      <AnimatePresence>
+                        {pendingPenalty ? (
+                          <StackPenaltyBadge
+                            amount={pendingPenalty.amount}
+                            targetName={penaltyTargetName}
+                            addedAmount={stackAddedAmount}
+                          />
+                        ) : null}
+                      </AnimatePresence>
 
                       <div ref={drawPileRef}>
                         <DrawPile

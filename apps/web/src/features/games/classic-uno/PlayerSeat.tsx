@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import type { RoomPlayerView } from "@tabletop/shared";
 import { Star } from "lucide-react";
 import { CardImage } from "@/components/cards/CardImage";
@@ -39,7 +39,9 @@ export function PlayerSeat({
   theme,
   isSelf = false,
   compact = false,
-  fanSide = "right"
+  fanSide = "right",
+  seatSide = "top",
+  stackHitAmount
 }: {
   player: PublicSeatPlayer;
   roomPlayer?: RoomPlayerView | undefined;
@@ -47,6 +49,8 @@ export function PlayerSeat({
   isSelf?: boolean;
   compact?: boolean;
   fanSide?: "left" | "right";
+  seatSide?: "top" | "left" | "right";
+  stackHitAmount?: number;
 }) {
   const connected = roomPlayer?.connected ?? false;
   const inactive = !connected || player.eliminated;
@@ -60,20 +64,27 @@ export function PlayerSeat({
         "shadow-[0_18px_44px_rgba(0,0,0,0.66),0_0_24px_rgba(34,197,94,0.07)]",
         inactive && "opacity-60 grayscale",
         player.isCurrentTurn &&
-          "border-lime-300/60 shadow-[0_24px_70px_rgba(0,0,0,0.66),0_0_46px_rgba(132,204,22,0.28)]",
+          "border-lime-300/70 bg-lime-400/14 shadow-[0_0_0_1px_rgba(190,242,100,0.35),0_0_38px_rgba(132,204,22,0.42),0_18px_55px_rgba(0,0,0,0.55)]",
         isSelf ? "p-4" : compact ? "p-3" : "p-3.5"
       )}
     >
       {player.isCurrentTurn ? (
         <>
           <motion.div
-            className="pointer-events-none absolute -inset-8 rounded-[2.1rem] bg-lime-400/20 blur-3xl"
-            animate={{ opacity: [0.22, 0.72, 0.22], scale: [0.96, 1.08, 0.96] }}
+            className="pointer-events-none absolute inset-0 rounded-[inherit] bg-[linear-gradient(135deg,rgba(190,242,100,0.22),rgba(132,204,22,0.14)_42%,rgba(0,0,0,0)_78%)]"
+            animate={{ opacity: [0.62, 1, 0.62] }}
             transition={{ duration: 2.1, repeat: Infinity, ease: "easeInOut" }}
           />
+
           <motion.div
-            className="pointer-events-none absolute -inset-2 rounded-[1.8rem] border border-lime-300/50"
-            animate={{ opacity: [0.35, 0.95, 0.35] }}
+            className="pointer-events-none absolute -inset-3 rounded-[2rem] bg-lime-400/18 blur-2xl"
+            animate={{ opacity: [0.35, 0.82, 0.35], scale: [0.98, 1.04, 0.98] }}
+            transition={{ duration: 2.1, repeat: Infinity, ease: "easeInOut" }}
+          />
+
+          <motion.div
+            className="pointer-events-none absolute inset-0 rounded-[inherit] border border-lime-200/45"
+            animate={{ opacity: [0.4, 0.95, 0.4] }}
             transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
           />
         </>
@@ -108,7 +119,7 @@ export function PlayerSeat({
                 "grid place-items-center rounded-full border text-sm font-black",
                 compact ? "h-11 w-11" : "h-12 w-12",
                 player.isCurrentTurn
-                  ? "border-lime-200/65 bg-lime-400/12 text-lime-50 shadow-[0_0_24px_rgba(132,204,22,0.26)]"
+                  ? "border-lime-200/70 bg-lime-300/20 text-lime-50 shadow-[0_0_24px_rgba(190,242,100,0.38)]"
                   : "border-emerald-200/14 bg-black/58 text-white"
               )}
             >
@@ -166,6 +177,33 @@ export function PlayerSeat({
         self={isSelf}
         side={fanSide}
       />
+
+      <AnimatePresence>
+        {stackHitAmount ? (
+          <motion.div
+            key={stackHitAmount}
+            initial={{ opacity: 0, scale: 0.9, y: 6 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.92, y: -4 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className={cn(
+              "pointer-events-none absolute z-50 rounded-[0.9rem] border border-red-200/25",
+              "bg-[linear-gradient(135deg,rgba(35,18,18,0.94),rgba(90,28,28,0.88))]",
+              "px-3 py-2 text-center shadow-[0_12px_28px_rgba(0,0,0,0.42),0_0_24px_rgba(239,68,68,0.25)] backdrop-blur-xl",
+              seatSide === "left" && "right-[-0.6rem] top-1/2 -translate-y-1/2 translate-x-full",
+              seatSide === "right" && "left-[-0.6rem] top-1/2 -translate-y-1/2 -translate-x-full",
+              seatSide === "top" && "left-1/2 top-full mt-2 -translate-x-1/2"
+            )}
+          >
+            <p className="text-[0.55rem] font-black uppercase tracking-[0.2em] text-red-200/65">
+              Stack hit
+            </p>
+            <p className="mt-0.5 text-base font-black leading-none text-red-50">
+              +{stackHitAmount} cards
+            </p>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }
@@ -180,10 +218,11 @@ function Badge({
   return (
     <span
       className={cn(
-        "rounded-full px-2 py-0.5 text-[0.62rem] font-black uppercase tracking-[0.12em]",
-        tone === "turn" && "bg-lime-300 text-zinc-950",
-        tone === "uno" && "bg-red-500 text-white",
-        tone === "out" && "bg-white/80 text-zinc-950"
+        "rounded-full border px-2.5 py-0.5 text-[0.62rem] font-black uppercase tracking-[0.12em]",
+        tone === "turn" &&
+          "border-lime-200/35 bg-lime-300 text-zinc-950 shadow-[0_0_18px_rgba(190,242,100,0.42)]",
+        tone === "uno" && "border-red-300/35 bg-red-500 text-white",
+        tone === "out" && "border-white/30 bg-white/80 text-zinc-950"
       )}
     >
       {children}

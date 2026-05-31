@@ -1,4 +1,4 @@
-﻿import { shuffleWithState } from "../../engine/rng";
+import { shuffleWithState } from "../../engine/rng";
 import type { NoMercyCard, NoMercyDeclaredColor, NoMercyPlayerState, NoMercyState } from "./types";
 
 export function getTopDiscard(state: NoMercyState): NoMercyCard {
@@ -57,10 +57,8 @@ export function canStackDrawCard(params: { card: NoMercyCard; state: NoMercyStat
     return false;
   }
 
-  if (isColoredDrawFour(card) && card.color !== state.currentColor) {
-    return false;
-  }
-
+  // No Mercy stacking cares about draw-card power, not color matching.
+  // A player may answer a +4 with +4/+6/+10, a +6 with +6/+10, etc.
   return getStackPower(card) >= state.pendingPenalty.requiredResponseMinPower;
 }
 

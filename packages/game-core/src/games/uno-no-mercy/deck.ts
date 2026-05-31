@@ -1,4 +1,4 @@
-﻿import type { GamePlayer } from "../../engine/GameTypes";
+import type { GamePlayer } from "../../engine/GameTypes";
 import { hashSeed, shuffleWithState } from "../../engine/rng";
 import { NO_MERCY_VERSION } from "./constants";
 import {
@@ -31,8 +31,7 @@ export const NO_MERCY_COUNTS = {
   }
 } as const;
 
-// The supplied card-count reference sums to 164 cards. The rule sheet may say 168,
-// but we intentionally keep the exact provided counts instead of inventing extras.
+// Official No Mercy contents are 168 cards. These counts sum to 144 colored cards + 24 wild cards.
 export const NO_MERCY_DECK_TOTAL =
   NO_MERCY_COLORS.length *
     (10 * NO_MERCY_COUNTS.perColor.numbersEach +
@@ -128,7 +127,7 @@ export function getNoMercyDeckCountSummary(deck: NoMercyCard[] = createNoMercyDe
   }, {});
 }
 
-function findStartingDiscard(drawPile: NoMercyCard[]): { card: NoMercyCard; remaining: NoMercyCard[] } {
+function findStartingDiscard(drawPile: NoMercyCard[]): { card: NoMercyCard; ignored: NoMercyCard[]; remaining: NoMercyCard[] } {
   const startIndex = drawPile.findIndex((card) => card.color !== "wild" && /^[0-9]$/.test(card.value));
   const index = startIndex >= 0 ? startIndex : 0;
   const card = drawPile[index];
@@ -136,9 +135,13 @@ function findStartingDiscard(drawPile: NoMercyCard[]): { card: NoMercyCard; rema
     throw new Error("No Mercy deck could not provide a starting discard.");
   }
 
+  // Setup rule: if the first flipped card is an Action Card, ignore it and flip
+  // the next card. Keep ignored flipped cards under the real starting discard so
+  // every one of the 168 cards remains in play, but no action effect fires.
   return {
     card,
-    remaining: drawPile.filter((_, cardIndex) => cardIndex !== index)
+    ignored: drawPile.slice(0, index),
+    remaining: drawPile.slice(index + 1)
   };
 }
 
@@ -182,7 +185,7 @@ export function createInitialNoMercyState(params: {
     direction: 1,
     currentColor,
     drawPile: startingDiscard.remaining,
-    discardPile: [startingDiscard.card],
+    discardPile: [...startingDiscard.ignored, startingDiscard.card],
     pendingPenalty: null,
     lastDrawnCardId: null,
     actionNumber: 0,

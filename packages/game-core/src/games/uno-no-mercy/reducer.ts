@@ -184,6 +184,7 @@ function discardAllMatchingColor(params: {
     return params.state;
   }
 
+  const playedDiscardAll = getTopDiscard(params.state);
   const players = params.state.players.map((player) => ({ ...player, hand: [...player.hand] }));
   const player = players.find((item) => item.userId === playerId);
   if (!player) {
@@ -203,10 +204,12 @@ function discardAllMatchingColor(params: {
     );
   }
 
+  // Rule sheet: place the extra cards under the Discard All card, so the Discard All
+  // card remains the visible top discard after the effect resolves.
   return {
     ...params.state,
     players,
-    discardPile: [...params.state.discardPile, ...discarded]
+    discardPile: [...params.state.discardPile.slice(0, -1), ...discarded, playedDiscardAll]
   };
 }
 
@@ -226,12 +229,42 @@ function drawUntilColor(params: {
     }
     state = drawn.state;
     count += 1;
+
+    // Wild cards do not count for Color Roulette. Only a real colored card stops it.
     if (card.color === params.color) {
       break;
     }
   }
 
   return { state, count };
+}
+
+function drawUntilPlayable(params: {
+  state: NoMercyState;
+  playerId: string;
+}): { state: NoMercyState; cards: NoMercyCard[]; playableCard: NoMercyCard | null } {
+  let state = params.state;
+  const cards: NoMercyCard[] = [];
+  let playableCard: NoMercyCard | null = null;
+
+  while (state.drawPile.length > 0 || state.discardPile.length > 1) {
+    const drawn = drawCards(state, params.playerId, 1);
+    const card = drawn.cards[0];
+    if (!card) {
+      break;
+    }
+
+    state = drawn.state;
+    cards.push(card);
+
+    const refreshedPlayer = findNoMercyPlayer(state, params.playerId);
+    if (refreshedPlayer && !refreshedPlayer.eliminated && isCardPlayable(state, card)) {
+      playableCard = card;
+      break;
+    }
+  }
+
+  return { state, cards, playableCard };
 }
 
 function applyDrawPenaltyCard(params: {
@@ -244,12 +277,18 @@ function applyDrawPenaltyCard(params: {
   const { playedCard, playerId, now, events } = params;
   let state = params.state;
 
+  const activeCount = getActivePlayers(state).length;
+
   if (playedCard.value === "wild_draw_four_reverse") {
     state = { ...state, direction: state.direction === 1 ? -1 : 1 };
     events.push(createGameEvent("uno-no-mercy:reverse", { message: "Wild Draw 4 Reverse changed direction." }));
   }
 
-  const targetPlayerId = nextActivePlayerId(state, 1, playerId);
+  // In a two-player game, Wild Reverse Draw 4 skips the other player and targets
+  // the player who played it, exactly as the No Mercy rule sheet says.
+  const targetPlayerId = playedCard.value === "wild_draw_four_reverse" && activeCount === 2
+    ? playerId
+    : nextActivePlayerId(state, 1, playerId);
   const amount = (state.pendingPenalty?.amount ?? 0) + getDrawPenaltyAmount(playedCard);
 
   events.push(
@@ -409,16 +448,14 @@ export function applyNoMercyAction(params: {
       return { state, events };
     }
 
-    const drawn = drawCards(state, playerId, 1);
+    const drawn = drawUntilPlayable({ state, playerId });
     state = drawn.state;
-    const card = drawn.cards[0] ?? null;
-    const refreshedPlayer = findNoMercyPlayer(state, playerId);
-    const canPlayDrawn = Boolean(card && refreshedPlayer && !refreshedPlayer.eliminated && isCardPlayable(state, card));
+    const card = drawn.playableCard;
 
     events.push(
       createGameEvent("uno-no-mercy:draw", {
-        message: `${player.displayName} drew a card.`,
-        payload: { playerId, count: drawn.cards.length }
+        message: `${player.displayName} drew ${drawn.cards.length} card${drawn.cards.length === 1 ? "" : "s"}.`,
+        payload: { playerId, count: drawn.cards.length, playableCardId: card?.id ?? null }
       })
     );
 
@@ -426,8 +463,8 @@ export function applyNoMercyAction(params: {
     state = finishIfResolved(state, null, now);
     if (state.phase !== "finished") {
       const stillActivePlayer = findNoMercyPlayer(state, playerId);
-      state = canPlayDrawn && stillActivePlayer && !stillActivePlayer.eliminated
-        ? { ...state, lastDrawnCardId: card?.id ?? null, updatedAt: now }
+      state = card && stillActivePlayer && !stillActivePlayer.eliminated
+        ? { ...state, lastDrawnCardId: card.id, updatedAt: now }
         : advanceTurn(state, { steps: 1, now, fromPlayerId: playerId });
     }
 
