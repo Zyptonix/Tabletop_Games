@@ -16,7 +16,10 @@ export function GameShell({
   onStart,
   onPause,
   onResume,
-  onChat
+  onEnd,
+  onAddBot,
+  onFillBots,
+  onRemoveBots
 }: {
   connected: boolean;
   room: RoomStateView;
@@ -27,7 +30,10 @@ export function GameShell({
   onStart: (roomId: string) => void;
   onPause: (roomId: string) => void;
   onResume: (roomId: string) => void;
-  onChat: (roomId: string, body: string) => void;
+  onEnd?: (roomId: string) => void;
+  onAddBot?: (roomId: string) => void;
+  onFillBots?: (roomId: string) => void;
+  onRemoveBots?: (roomId: string) => void;
 }) {
   const me = room.players.find((player) => player.userId === currentUserId);
   const inGame = room.status !== "lobby";
@@ -63,7 +69,17 @@ export function GameShell({
               {me.ready ? "Unready" : "Ready"}
             </button>
           ) : null}
-          <HostControls room={room} currentUserId={currentUserId} onStart={onStart} onPause={onPause} onResume={onResume} />
+          <HostControls
+            room={room}
+            currentUserId={currentUserId}
+            onStart={onStart}
+            onPause={onPause}
+            onResume={onResume}
+            onEnd={onEnd}
+            onAddBot={onAddBot}
+            onFillBots={onFillBots}
+            onRemoveBots={onRemoveBots}
+          />
         </div>
       </div>
       <TurnTimer timer={timer} />

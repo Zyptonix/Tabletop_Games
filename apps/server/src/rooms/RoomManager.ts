@@ -1,4 +1,4 @@
-﻿import { nanoid } from "nanoid";
+import { nanoid } from "nanoid";
 import { prisma, type Prisma } from "@tabletop/db";
 import {
   ERROR_CODES,
@@ -50,12 +50,21 @@ function roomActionKey(roomId: string, userId: string): string {
   return `${roomId}:${userId}`;
 }
 
+const REACTION_PREFIX = "__reaction:";
+const BOT_USER_PREFIX = "bot:";
+const BOT_TARGET_PLAYER_COUNT = 10;
+
+export function isBotUserId(userId: string): boolean {
+  return userId.startsWith(BOT_USER_PREFIX);
+}
+
 type AnyGameModule = GameModule<unknown, unknown, unknown>;
 
 export class RoomManager {
   private readonly roomsById = new Map<string, RoomRuntime>();
   private readonly roomIdByCode = new Map<string, string>();
   private readonly chatRateLimiter = new ChatRateLimiter(5, 5_000);
+  private readonly reactionRateLimiter = new ChatRateLimiter(2, 1_500);
 
   constructor(
     private readonly registry: GameRegistry = gameRegistry,
@@ -90,15 +99,18 @@ export class RoomManager {
     return roomId ? this.getRoom(roomId) : null;
   }
 
+  listRoomsForUser(userId: string): RoomRuntime[] {
+    return [...this.roomsById.values()]
+      .filter((room) =>
+        room.status !== "finished" &&
+        room.status !== "abandoned" &&
+        room.players.some((player) => player.userId === userId && !player.isBot)
+      )
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+  }
+
   getRoomForUser(userId: string): RoomRuntime | null {
-    return (
-      [...this.roomsById.values()].find(
-        (room) =>
-          room.status !== "finished" &&
-          room.status !== "abandoned" &&
-          room.players.some((player) => player.userId === userId)
-      ) ?? null
-    );
+    return this.listRoomsForUser(userId)[0] ?? null;
   }
 
   async createRoom(params: {
@@ -144,6 +156,7 @@ export class RoomManager {
           ready: true,
           connected: true,
           temporaryHost: false,
+          isBot: false,
           socketIds: new Set(params.socketId ? [params.socketId] : [])
         }
       ],
@@ -205,6 +218,7 @@ export class RoomManager {
       ready: false,
       connected: true,
       temporaryHost: false,
+      isBot: false,
       socketIds: new Set(params.socketId ? [params.socketId] : [])
     });
 
@@ -452,9 +466,9 @@ export class RoomManager {
 
       room.gameState = result.state;
       room.actionNumber = this.extractActionNumber(room.gameState, room.actionNumber + 1);
+      this.addGameEventLogMessages(room, result.events);
 
       void this.saveSnapshot(room);
-
       if (module.isGameOver(room.gameState) && room.matchId && room.matchStartedAt) {
         room.status = "finished";
         this.addSystemMessage(room, "Game ended.");
@@ -507,6 +521,114 @@ export class RoomManager {
     return result;
   }
 
+  addBot(roomId: string, userId: string): RoomRuntime {
+    const room = this.requireRoom(roomId);
+    this.requireHost(room, userId);
+    this.appendBotPlayer(room);
+    void this.saveSnapshot(room);
+    return room;
+  }
+
+  fillBots(roomId: string, userId: string, targetPlayerCount = BOT_TARGET_PLAYER_COUNT): RoomRuntime {
+    const room = this.requireRoom(roomId);
+    this.requireHost(room, userId);
+    if (room.status !== "lobby") {
+      throw new AppError(ERROR_CODES.GAME_ALREADY_STARTED, "Bots can only be changed before the game starts.");
+    }
+
+    const module = this.requireModule(room.gameId);
+    const target = Math.min(targetPlayerCount, module.maxPlayers);
+    const before = room.players.length;
+    while (room.players.length < target) {
+      this.appendBotPlayer(room, false);
+    }
+
+    const added = room.players.length - before;
+    if (added > 0) {
+      this.addSystemMessage(room, `Filled the table with ${added} bot${added === 1 ? "" : "s"}.`);
+      void this.saveSnapshot(room);
+    }
+    return room;
+  }
+
+  removeBots(roomId: string, userId: string): RoomRuntime {
+    const room = this.requireRoom(roomId);
+    this.requireHost(room, userId);
+    if (room.status !== "lobby") {
+      throw new AppError(ERROR_CODES.GAME_ALREADY_STARTED, "Bots can only be removed before the game starts.");
+    }
+
+    const removed = room.players.filter((player) => player.isBot).length;
+    if (removed === 0) {
+      return room;
+    }
+
+    room.players = room.players.filter((player) => !player.isBot);
+    this.addSystemMessage(room, `Removed ${removed} bot${removed === 1 ? "" : "s"} from the lobby.`);
+    void this.saveSnapshot(room);
+    return room;
+  }
+
+  getCurrentTurnPlayerId(room: RoomRuntime): string | null {
+    if (!room.gameState) {
+      return null;
+    }
+    return this.requireModule(room.gameId).getTurnInfo(room.gameState).currentPlayerId ?? null;
+  }
+
+  getLegalActionsFor(room: RoomRuntime, userId: string): unknown[] {
+    if (!room.gameState) {
+      return [];
+    }
+    return this.requireModule(room.gameId).getLegalActions({ state: room.gameState, playerId: userId });
+  }
+
+  isBotPlayer(room: RoomRuntime, userId: string | null | undefined): boolean {
+    if (!userId) {
+      return false;
+    }
+    return Boolean(room.players.find((player) => player.userId === userId)?.isBot);
+  }
+
+  private appendBotPlayer(room: RoomRuntime, announce = true): void {
+    if (room.status !== "lobby") {
+      throw new AppError(ERROR_CODES.GAME_ALREADY_STARTED, "Bots can only be changed before the game starts.");
+    }
+
+    const module = this.requireModule(room.gameId);
+    if (room.players.length >= module.maxPlayers) {
+      throw new AppError(ERROR_CODES.ROOM_FULL, "This room is full.");
+    }
+
+    const botNumber = room.players.filter((player) => player.isBot).length + 1;
+    const displayName = `Bot ${botNumber}`;
+    room.players.push({
+      userId: `${BOT_USER_PREFIX}${room.id}:${botNumber}:${nanoid(5)}`,
+      username: `bot_${botNumber}`,
+      displayName,
+      avatarUrl: null,
+      seat: this.nextOpenSeat(room),
+      ready: true,
+      connected: true,
+      temporaryHost: false,
+      isBot: true,
+      socketIds: new Set<string>()
+    });
+
+    if (announce) {
+      this.addSystemMessage(room, `${displayName} joined as a bot.`);
+    }
+  }
+
+  private nextOpenSeat(room: RoomRuntime): number {
+    const usedSeats = new Set(room.players.map((player) => player.seat));
+    let seat = 0;
+    while (usedSeats.has(seat)) {
+      seat += 1;
+    }
+    return seat;
+  }
+
   async forceSnapshot(roomId: string, userId: string, admin = false): Promise<void> {
     const room = this.requireRoom(roomId);
     if (!admin) {
@@ -518,10 +640,10 @@ export class RoomManager {
   addChatMessage(roomId: string, user: AuthUser, body: string): ChatMessageView {
     const room = this.requireRoom(roomId);
     this.requirePlayer(room, user.id);
-    if (!this.chatRateLimiter.allow(user.id)) {
+    const limiter = body.startsWith(REACTION_PREFIX) ? this.reactionRateLimiter : this.chatRateLimiter;
+    if (!limiter.allow(`${room.id}:${user.id}`)) {
       throw new AppError(ERROR_CODES.RATE_LIMITED, "Slow down a little.");
     }
-
     const message = this.pushChat(room, {
       id: nanoid(),
       roomId: room.id,
@@ -556,7 +678,8 @@ export class RoomManager {
           ready: player.ready,
           connected: player.connected,
           isHost: player.userId === room.hostUserId,
-          temporaryHost: player.userId === effectiveHostUserId && player.userId !== room.hostUserId
+          temporaryHost: player.userId === effectiveHostUserId && player.userId !== room.hostUserId,
+          isBot: Boolean(player.isBot)
         })),
       chat: room.chat.slice(-80),
       createdAt: room.createdAt,
@@ -643,8 +766,10 @@ export class RoomManager {
         settings: serializable.settings,
         players: serializable.players.map((player) => ({
           ...player,
-          connected: false,
+          connected: Boolean(player.isBot),
+          ready: player.isBot ? true : player.ready,
           temporaryHost: false,
+          isBot: Boolean(player.isBot),
           socketIds: new Set<string>()
         })),
         chat: serializable.chat,
@@ -716,9 +841,27 @@ export class RoomManager {
     return room.players
       .slice()
       .sort((left, right) => left.seat - right.seat)
-      .find((player) => player.connected)?.userId ?? null;
+      .find((player) => player.connected && !player.isBot)?.userId ?? null;
   }
 
+  private addGameEventLogMessages(room: RoomRuntime, events: unknown[]): void {
+    for (const event of events) {
+      if (!isObjectRecord(event) || typeof event.type !== "string") {
+        continue;
+      }
+
+      if (!event.type.endsWith(":draw") && !event.type.endsWith(":penalty-draw")) {
+        continue;
+      }
+
+      const payload = isObjectRecord(event.payload) ? event.payload : {};
+      const playerId = typeof payload.playerId === "string" ? payload.playerId : null;
+      const countValue = typeof payload.count === "number" ? payload.count : typeof payload.amount === "number" ? payload.amount : null;
+      const playerName = room.players.find((player) => player.userId === playerId)?.displayName ?? "A player";
+      const countLabel = countValue ?? "some";
+      this.addSystemMessage(room, `${playerName} drew ${countLabel} card${countValue === 1 ? "" : "s"}.`);
+    }
+  }
   private addSystemMessage(room: RoomRuntime, body: string): void {
     this.pushChat(room, {
       id: nanoid(),
@@ -740,13 +883,20 @@ export class RoomManager {
   }
 
   private async saveSnapshot(room: RoomRuntime): Promise<void> {
-    await this.snapshots.saveLatest({
-      roomId: room.id,
-      gameId: room.gameId,
-      stateJson: room.gameState ?? null,
-      roomStateJson: serializeRoomRuntime(room),
-      actionNumber: room.actionNumber
-    });
+    try {
+      await this.snapshots.saveLatest({
+        roomId: room.id,
+        gameId: room.gameId,
+        stateJson: room.gameState ?? null,
+        roomStateJson: serializeRoomRuntime(room),
+        actionNumber: room.actionNumber
+      });
+    } catch (error) {
+      // Extra guard around snapshot serialization/persistence. Realtime room state
+      // already committed in memory, so recovery persistence should never crash play.
+      const message = error instanceof Error ? error.message : "Unknown snapshot failure.";
+      console.warn(`[snapshot] unexpected failure room=${room.code} action=${room.actionNumber}: ${message.slice(0, 500)}`);
+    }
   }
 
   private extractActionNumber(state: unknown, fallback: number): number {

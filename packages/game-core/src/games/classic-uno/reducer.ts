@@ -149,8 +149,7 @@ export function applyClassicUnoAction(params: {
     events.push(
       createGameEvent("uno:draw", {
         message: `${player.displayName} drew a card.`,
-        payload: { playerId, count: drawn.cards.length },
-        targetUserIds: [playerId]
+        payload: { playerId, count: drawn.cards.length }
       })
     );
 

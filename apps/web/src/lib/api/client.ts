@@ -1,4 +1,4 @@
-import type { AuthUser } from "@tabletop/shared";
+import type { AuthUser, RoomStateView } from "@tabletop/shared";
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api";
 
@@ -51,16 +51,20 @@ export const api = {
     }),
   games: () => request<{ games: Array<{ id: string; displayName: string; minPlayers: number; maxPlayers: number }> }>("/games"),
   createRoom: (payload: { gameId: string; settings?: Record<string, unknown> }) =>
-    request<{ room: unknown }>("/rooms", {
+    request<{ room: RoomStateView }>("/rooms", {
       method: "POST",
       body: JSON.stringify({ ...payload, settings: payload.settings ?? {} })
     }),
   joinRoom: (payload: { code: string }) =>
-    request<{ room: unknown }>("/rooms/join", {
+    request<{ room: RoomStateView }>("/rooms/join", {
       method: "POST",
       body: JSON.stringify(payload)
     }),
-  myRoom: () => request<{ room: unknown | null }>("/rooms/me"),
+  myRoom: () => request<{ room: RoomStateView | null; rooms: RoomStateView[] }>("/rooms/me"),
+  endRoom: (roomId: string) => request<{ room: RoomStateView }>(`/rooms/${roomId}/end`, { method: "POST" }),
+  addBot: (roomId: string) => request<{ room: RoomStateView }>(`/rooms/${roomId}/bots`, { method: "POST" }),
+  fillBots: (roomId: string) => request<{ room: RoomStateView }>(`/rooms/${roomId}/bots/fill`, { method: "POST" }),
+  removeBots: (roomId: string) => request<{ room: RoomStateView }>(`/rooms/${roomId}/bots`, { method: "DELETE" }),
   profile: () => request<{ profile: unknown; stats: unknown[] }>("/profile/me"),
   xpLeaderboard: () => request<{ leaderboard: unknown[] }>("/leaderboards/xp"),
   gameWinsLeaderboard: (gameId: string) => request<{ leaderboard: unknown[] }>(`/leaderboards/${gameId}/wins`),

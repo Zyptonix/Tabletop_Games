@@ -40,85 +40,6 @@ textarea {
   background-size: 28px 28px, 28px 28px, auto;
 }
 
-.classic-uno-stage {
-  background:
-    radial-gradient(circle at 50% 42%, rgb(31 122 89 / 0.46), transparent 28rem),
-    radial-gradient(circle at 18% 20%, rgb(245 158 11 / 0.12), transparent 18rem),
-    radial-gradient(circle at 82% 22%, rgb(14 165 233 / 0.12), transparent 18rem),
-    linear-gradient(135deg, #06120b 0%, #092112 52%, #050807 100%);
-}
-
-.classic-uno-stage-light {
-  background:
-    linear-gradient(90deg, rgb(255 255 255 / 0.035) 1px, transparent 1px),
-    linear-gradient(0deg, rgb(255 255 255 / 0.028) 1px, transparent 1px),
-    radial-gradient(circle at 50% 74%, rgb(250 204 21 / 0.12), transparent 26rem);
-  background-size: 38px 38px, 38px 38px, auto;
-}
-
-.classic-uno-table {
-  position: relative;
-  background:
-    radial-gradient(ellipse at 50% 40%, rgb(45 140 255 / 0.13), transparent 26%),
-    radial-gradient(ellipse at 50% 62%, rgb(34 197 94 / 0.13), transparent 42%),
-    linear-gradient(90deg, rgb(255 255 255 / 0.04) 1px, transparent 1px),
-    linear-gradient(0deg, rgb(255 255 255 / 0.035) 1px, transparent 1px),
-    radial-gradient(ellipse at center, #0c442f 0%, #072719 56%, #030a07 100%);
-  background-size: auto, auto, 34px 34px, 34px 34px, auto;
-}
-
-.classic-uno-table::before {
-  content: "";
-  position: absolute;
-  inset: -28% -10% -42%;
-  pointer-events: none;
-  transform-origin: 50% 72%;
-  transform: perspective(900px) rotateX(58deg) scale(1.16);
-  background:
-    linear-gradient(90deg, rgb(255 255 255 / 0.05) 1px, transparent 1px),
-    linear-gradient(0deg, rgb(255 255 255 / 0.045) 1px, transparent 1px);
-  background-size: 46px 46px;
-  opacity: 0.58;
-  mask-image: linear-gradient(to bottom, transparent 0%, black 26%, black 76%, transparent 100%);
-}
-
-.classic-uno-table::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(ellipse at 50% 45%, rgb(255 255 255 / 0.06), transparent 24%),
-    radial-gradient(ellipse at 50% 105%, rgb(250 204 21 / 0.08), transparent 36%),
-    linear-gradient(to bottom, rgb(255 255 255 / 0.04), transparent 18%, transparent 76%, rgb(0 0 0 / 0.18));
-}
-
-
-.uno-fullscreen {
-  background:
-    radial-gradient(circle at 12% 38%, rgb(34 197 94 / 0.18), transparent 24rem),
-    radial-gradient(circle at 82% 20%, rgb(59 130 246 / 0.12), transparent 24rem),
-    radial-gradient(circle at 52% 82%, rgb(250 204 21 / 0.1), transparent 30rem),
-    linear-gradient(135deg, #020604 0%, #05140c 45%, #020403 100%);
-}
-
-.uno-fullscreen-grid {
-  background:
-    linear-gradient(90deg, rgb(255 255 255 / 0.035) 1px, transparent 1px),
-    linear-gradient(0deg, rgb(255 255 255 / 0.03) 1px, transparent 1px);
-  background-size: 38px 38px;
-  mask-image: radial-gradient(circle at center, black, transparent 88%);
-}
-
-.uno-fullscreen-glow {
-  background:
-    radial-gradient(circle at 0% 45%, rgb(34 197 94 / 0.18), transparent 18rem),
-    radial-gradient(circle at 100% 55%, rgb(14 165 233 / 0.15), transparent 20rem),
-    radial-gradient(circle at 50% 5%, rgb(255 255 255 / 0.05), transparent 18rem);
-}
-
-/* Active UNO game viewport lock.
-   This prevents the full-screen game surface from creating page-level scrollbars. */
 html:has(.uno-fullscreen),
 body:has(.uno-fullscreen) {
   width: 100%;
@@ -127,7 +48,6 @@ body:has(.uno-fullscreen) {
   background: #020604;
 }
 
-/* Fallback if :has is unsupported: the component itself still handles overflow. */
 .uno-fullscreen {
   width: 100vw;
   height: 100dvh;
@@ -135,72 +55,182 @@ body:has(.uno-fullscreen) {
   max-height: 100dvh;
   overflow: hidden;
   background:
-    radial-gradient(circle at 12% 38%, rgb(34 197 94 / 0.18), transparent 24rem),
-    radial-gradient(circle at 82% 20%, rgb(59 130 246 / 0.12), transparent 24rem),
-    radial-gradient(circle at 52% 82%, rgb(250 204 21 / 0.1), transparent 30rem),
-    linear-gradient(135deg, #020604 0%, #05140c 45%, #020403 100%);
+    radial-gradient(circle at 50% 42%, rgb(45 140 255 / 0.14), transparent 22rem),
+    radial-gradient(circle at 34% 48%, rgb(34 197 94 / 0.2), transparent 30rem),
+    radial-gradient(circle at 70% 56%, rgb(14 165 233 / 0.1), transparent 26rem),
+    radial-gradient(circle at 50% 105%, rgb(2 132 199 / 0.16), transparent 28rem),
+    linear-gradient(135deg, #000201 0%, #06130d 42%, #000201 100%);
+  box-shadow: inset 0 0 220px rgb(0 0 0 / 0.82);
 }
 
-/* Main flat grid layer. */
+.uno-fullscreen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at center, transparent 28%, rgb(0 0 0 / 0.34) 68%, rgb(0 0 0 / 0.72) 100%),
+    linear-gradient(to bottom, rgb(0 0 0 / 0.38), transparent 28%, transparent 68%, rgb(0 0 0 / 0.5));
+}
+
 .uno-fullscreen-grid {
   background:
-    linear-gradient(90deg, rgb(255 255 255 / 0.035) 1px, transparent 1px),
-    linear-gradient(0deg, rgb(255 255 255 / 0.03) 1px, transparent 1px);
-  background-size: 38px 38px;
-  mask-image: radial-gradient(circle at center, black, transparent 88%);
+    linear-gradient(90deg, rgb(255 255 255 / 0.028) 1px, transparent 1px),
+    linear-gradient(0deg, rgb(255 255 255 / 0.024) 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.55;
+  mask-image: radial-gradient(ellipse at 52% 58%, black 0%, black 62%, transparent 92%);
 }
 
-/* Perspective/depth grid layer. This gives the target-image 3D table feeling. */
 .uno-perspective-grid {
   position: absolute;
-  inset: -18% -8% -26%;
-  transform-origin: 50% 72%;
-  transform: perspective(900px) rotateX(58deg) scale(1.18);
+  inset: -18% -12% -42%;
+  transform-origin: 50% 76%;
+  transform: perspective(900px) rotateX(62deg) scale(1.26);
   background:
-    linear-gradient(90deg, rgb(255 255 255 / 0.045) 1px, transparent 1px),
-    linear-gradient(0deg, rgb(255 255 255 / 0.04) 1px, transparent 1px);
-  background-size: 46px 46px;
-  opacity: 0.7;
-  mask-image: linear-gradient(to bottom, transparent 0%, black 24%, black 72%, transparent 100%);
+    linear-gradient(90deg, rgb(34 197 94 / 0.055) 1px, transparent 1px),
+    linear-gradient(0deg, rgb(34 197 94 / 0.048) 1px, transparent 1px);
+  background-size: 48px 48px;
+  opacity: 0.82;
+  filter: drop-shadow(0 28px 42px rgb(34 197 94 / 0.09));
+  mask-image: linear-gradient(to bottom, transparent 0%, black 18%, black 68%, transparent 100%);
 }
 
 .uno-fullscreen-glow {
   background:
-    radial-gradient(circle at 0% 45%, rgb(34 197 94 / 0.18), transparent 18rem),
-    radial-gradient(circle at 100% 55%, rgb(14 165 233 / 0.15), transparent 20rem),
-    radial-gradient(circle at 50% 5%, rgb(255 255 255 / 0.05), transparent 18rem);
+    radial-gradient(circle at 0% 46%, rgb(34 197 94 / 0.18), transparent 18rem),
+    radial-gradient(circle at 92% 50%, rgb(14 165 233 / 0.18), transparent 23rem),
+    radial-gradient(circle at 50% 44%, rgb(45 140 255 / 0.2), transparent 18rem),
+    radial-gradient(circle at 50% 8%, rgb(255 255 255 / 0.04), transparent 18rem);
 }
 
-/* Main table: more depth, less flat 2D. */
-.classic-uno-table {
+.classic-uno-stage-light {
   background:
-    radial-gradient(ellipse at 50% 42%, rgb(45 140 255 / 0.16), transparent 32%),
-    radial-gradient(ellipse at 50% 78%, rgb(250 204 21 / 0.08), transparent 38%),
-    linear-gradient(90deg, rgb(255 255 255 / 0.035) 1px, transparent 1px),
-    linear-gradient(0deg, rgb(255 255 255 / 0.03) 1px, transparent 1px),
-    radial-gradient(ellipse at center, #104931 0%, #0b2f22 58%, #06140e 100%);
-  background-size: auto, auto, 34px 34px, 34px 34px, auto;
+    radial-gradient(circle at 50% 38%, rgb(45 140 255 / 0.1), transparent 24rem),
+    radial-gradient(circle at 34% 58%, rgb(34 197 94 / 0.12), transparent 28rem),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.025), transparent 14%, transparent 72%, rgb(0 0 0 / 0.36));
 }
 
-/* A soft oval surface under draw/discard piles. */
+.classic-uno-table {
+  position: relative;
+  background:
+    radial-gradient(ellipse at 50% 50%, rgb(45 140 255 / 0.2), transparent 30%),
+    radial-gradient(ellipse at 48% 60%, rgb(34 197 94 / 0.18), transparent 50%),
+    linear-gradient(90deg, rgb(255 255 255 / 0.026) 1px, transparent 1px),
+    linear-gradient(0deg, rgb(255 255 255 / 0.022) 1px, transparent 1px),
+    radial-gradient(ellipse at center, #0b3528 0%, #061b14 58%, #010302 100%);
+  background-size: auto, auto, 36px 36px, 36px 36px, auto;
+  box-shadow:
+    inset 0 0 120px rgb(0 0 0 / 0.58),
+    inset 0 1px 0 rgb(255 255 255 / 0.06),
+    0 36px 130px rgb(0 0 0 / 0.56),
+    0 0 70px rgb(45 140 255 / 0.08);
+}
+
+.classic-uno-table::before {
+  content: none;
+}
+
+.classic-uno-table::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom, rgb(255 255 255 / 0.012), transparent 18%, transparent 78%, rgb(0 0 0 / 0.22));
+}
+
 .uno-center-glass {
   background:
-    radial-gradient(ellipse at center, rgb(255 255 255 / 0.08), transparent 68%),
-    linear-gradient(135deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0.025));
+    radial-gradient(ellipse at center, rgb(45 140 255 / 0.16), transparent 70%),
+    linear-gradient(135deg, rgb(255 255 255 / 0.105), rgb(255 255 255 / 0.025));
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.08),
-    0 28px 90px rgb(0 0 0 / 0.34);
+    inset 0 1px 0 rgb(255 255 255 / 0.12),
+    inset 0 0 36px rgb(45 140 255 / 0.1),
+    0 0 70px rgb(45 140 255 / 0.24),
+    0 32px 100px rgb(0 0 0 / 0.48);
 }
 
-/* Keep the hand from forcing document scroll. */
 .uno-hand-zone {
   min-height: 0;
-  max-height: 190px;
+  max-height: 215px;
   overflow: visible;
+  filter: drop-shadow(0 -18px 42px rgb(45 140 255 / 0.08));
 }
 
 @media (max-height: 820px) {
   .uno-hand-zone {
-    max-height: 178px;
+    max-height: 194px;
   }
+
+  .classic-uno-table::before {
+    content: none;
+  }
+}
+
+
+/* Classic UNO full-scene polish: these overrides keep the table and chat in one shared environment. */
+.uno-fullscreen {
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 50% 42%, rgb(45 140 255 / 0.16), transparent 23rem),
+    radial-gradient(circle at 26% 52%, rgb(34 197 94 / 0.22), transparent 34rem),
+    radial-gradient(circle at 86% 46%, rgb(14 165 233 / 0.16), transparent 28rem),
+    radial-gradient(circle at 50% 108%, rgb(2 132 199 / 0.18), transparent 31rem),
+    linear-gradient(135deg, #000201 0%, #05110c 38%, #07150f 58%, #000201 100%);
+}
+
+.uno-fullscreen-grid {
+  opacity: 0.62;
+  mask-image: radial-gradient(ellipse at 52% 58%, black 0%, black 64%, transparent 92%);
+}
+
+.uno-perspective-grid {
+  inset: -16% -18% -46%;
+  transform-origin: 50% 78%;
+  transform: perspective(980px) rotateX(63deg) scale(1.32);
+  opacity: 0.88;
+  mask-image: linear-gradient(to bottom, transparent 0%, black 16%, black 72%, transparent 100%);
+}
+
+.uno-fullscreen-glow {
+  background:
+    radial-gradient(circle at 0% 46%, rgb(34 197 94 / 0.10), transparent 20rem),
+    radial-gradient(circle at 92% 50%, rgb(14 165 233 / 0.08), transparent 24rem),
+    radial-gradient(circle at 50% 44%, rgb(0 0 0 / 0.10), transparent 22rem),
+    radial-gradient(circle at 50% 8%, rgb(255 255 255 / 0.025), transparent 18rem);
+}
+
+.classic-uno-stage-light {
+  background:
+    radial-gradient(circle at 50% 38%, rgb(45 140 255 / 0.06), transparent 26rem),
+    radial-gradient(circle at 34% 58%, rgb(34 197 94 / 0.07), transparent 30rem),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.012), transparent 18%, transparent 74%, rgb(0 0 0 / 0.16));
+  opacity: 0.85;
+}
+
+.classic-uno-table {
+  position: relative;
+  background:
+    radial-gradient(ellipse at 50% 54%, rgb(0 0 0 / 0.18), transparent 48%),
+    linear-gradient(90deg, rgb(255 255 255 / 0.018) 1px, transparent 1px),
+    linear-gradient(0deg, rgb(255 255 255 / 0.016) 1px, transparent 1px);
+  background-size: auto, 36px 36px, 36px 36px;
+  box-shadow:
+    inset 0 0 90px rgb(0 0 0 / 0.24),
+    0 34px 110px rgb(0 0 0 / 0.28);
+}
+
+.classic-uno-table::before {
+  content: none;
+}
+
+.classic-uno-table::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom, rgb(255 255 255 / 0.012), transparent 18%, transparent 78%, rgb(0 0 0 / 0.22));
 }

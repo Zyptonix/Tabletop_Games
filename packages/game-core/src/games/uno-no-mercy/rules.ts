@@ -35,8 +35,16 @@ export function getDrawPenaltyAmount(card: NoMercyCard): number {
   return card.drawAmount ?? 0;
 }
 
+export function getDrawValue(card: NoMercyCard): number {
+  return getDrawPenaltyAmount(card);
+}
+
 export function getStackPower(card: NoMercyCard): number {
-  return card.stackPower ?? 0;
+  return card.stackPower ?? getDrawValue(card);
+}
+
+export function getPendingPenaltyTotal(state: NoMercyState): number {
+  return state.pendingPenalty?.amount ?? 0;
 }
 
 export function isColoredDrawFour(card: NoMercyCard): boolean {
@@ -51,10 +59,6 @@ export function canStackDrawCard(params: { card: NoMercyCard; state: NoMercyStat
 
   if (isColoredDrawFour(card) && card.color !== state.currentColor) {
     return false;
-  }
-
-  if (card.value === "draw_two") {
-    return state.pendingPenalty.requiredResponseMinPower <= 2;
   }
 
   return getStackPower(card) >= state.pendingPenalty.requiredResponseMinPower;
@@ -165,3 +169,4 @@ export function cardLabel(card: NoMercyCard): string {
   const value = card.value.replaceAll("_", " ");
   return card.color === "wild" ? value : `${card.color} ${value}`;
 }
+

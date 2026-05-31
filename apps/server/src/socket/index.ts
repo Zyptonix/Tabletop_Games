@@ -1,4 +1,4 @@
-﻿import type { Server as HttpServer } from "node:http";
+import type { Server as HttpServer } from "node:http";
 import { Server, type Socket } from "socket.io";
 import { prisma } from "@tabletop/db";
 import {
@@ -16,7 +16,7 @@ import {
 } from "@tabletop/shared";
 import { readSessionFromCookie } from "../auth/session";
 import { serializeUser } from "../auth/serializeUser";
-import { corsOrigins, env } from "../config/env";
+import { corsOriginDelegate, env } from "../config/env";
 import { RoomManager } from "../rooms/RoomManager";
 import { RoomTimers } from "../rooms/RoomTimers";
 import { AppError } from "../utils/AppError";
@@ -25,6 +25,7 @@ import type { SocketData } from "./events";
 
 type IOServer = Server<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData>;
 type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData>;
+type BotTimer = { userId: string; timeout: ReturnType<typeof setTimeout> };
 
 function socketError(error: unknown) {
   if (error instanceof AppError) {
@@ -35,6 +36,26 @@ function socketError(error: unknown) {
     code: ERROR_CODES.INVALID_ACTION,
     message: error instanceof Error ? error.message : "Something went wrong."
   };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function chooseBotAction(legalActions: unknown[]): { type: string; payload: Record<string, unknown> } | null {
+  const actions = legalActions.filter(isRecord);
+  const preferred =
+    actions.find((action) => action.type === "play_card") ??
+    actions.find((action) => action.type === "draw_card") ??
+    actions.find((action) => action.type === "pass_turn") ??
+    actions.find((action) => action.type === "call_uno");
+
+  if (!preferred || typeof preferred.type !== "string") {
+    return null;
+  }
+
+  const { type, ...payload } = preferred;
+  return { type, payload };
 }
 
 async function authenticateSocket(socket: AppSocket, next: (error?: Error) => void) {
@@ -66,12 +87,16 @@ async function authenticateSocket(socket: AppSocket, next: (error?: Error) => vo
 export function createSocketServer(httpServer: HttpServer, manager: RoomManager): IOServer {
   const io: IOServer = new Server(httpServer, {
     path: env.SOCKET_PATH,
+    pingInterval: 25_000,
+    pingTimeout: 60_000,
+    connectTimeout: 45_000,
     cors: {
-      origin: corsOrigins,
+      origin: corsOriginDelegate,
       credentials: true
     }
   });
   let timers: RoomTimers;
+  const botTimers = new Map<string, BotTimer>();
 
   io.use((socket, next) => {
     void authenticateSocket(socket, next).catch((error) => {
@@ -79,6 +104,61 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
       next(new Error("UNAUTHORIZED"));
     });
   });
+
+  function clearBotTurn(roomId: string): void {
+    const active = botTimers.get(roomId);
+    if (active) {
+      clearTimeout(active.timeout);
+      botTimers.delete(roomId);
+    }
+  }
+
+  function scheduleBotTurn(room: RoomRuntime): void {
+    const currentPlayerId = manager.getCurrentTurnPlayerId(room);
+    if (room.status !== "in_game" || !currentPlayerId || !manager.isBotPlayer(room, currentPlayerId)) {
+      clearBotTurn(room.id);
+      return;
+    }
+
+    const active = botTimers.get(room.id);
+    if (active?.userId === currentPlayerId) {
+      return;
+    }
+    clearBotTurn(room.id);
+
+    const timeout = setTimeout(() => {
+      botTimers.delete(room.id);
+      void (async () => {
+        const latestRoom = manager.getRoom(room.id);
+        if (!latestRoom || latestRoom.status !== "in_game" || manager.getCurrentTurnPlayerId(latestRoom) !== currentPlayerId) {
+          return;
+        }
+
+        const botAction = chooseBotAction(manager.getLegalActionsFor(latestRoom, currentPlayerId));
+        if (!botAction) {
+          return;
+        }
+
+        try {
+          const result = await manager.handleGameAction({
+            userId: currentPlayerId,
+            envelope: {
+              actionId: `bot:${currentPlayerId}:${latestRoom.actionNumber + 1}:${Date.now()}`,
+              roomId: latestRoom.id,
+              type: botAction.type,
+              payload: botAction.payload,
+              clientCreatedAt: new Date().toISOString()
+            }
+          });
+          emitRoom(result.room, result.events);
+        } catch (error) {
+          console.warn(`[bot] failed room=${latestRoom.code} user=${currentPlayerId}: ${socketError(error).message}`);
+        }
+      })();
+    }, 700 + Math.floor(Math.random() * 800));
+
+    botTimers.set(room.id, { userId: currentPlayerId, timeout });
+  }
 
   function emitRoom(room: RoomRuntime, events: unknown[] = []): void {
     io.to(room.id).emit("room:state", manager.getRoomStateView(room));
@@ -116,8 +196,10 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
 
     if (room.status === "in_game") {
       timers.start(room.id);
+      scheduleBotTurn(room);
     } else {
       timers.stop(room.id);
+      clearBotTurn(room.id);
     }
   }
 
@@ -127,24 +209,16 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
     socket.emit(channel, socketError(error));
   }
 
+  function emitRoomControlResult(room: RoomRuntime): void {
+    emitRoom(room);
+  }
+
   io.on("connection", (socket) => {
     const user = socket.data.user;
     socket.emit("auth:ok", { user });
 
-    const activeRoom = manager.attachSocket(user, socket.id);
-    if (activeRoom) {
-      socket.join(activeRoom.id);
-      socket.to(activeRoom.id).emit("player:reconnected", { roomId: activeRoom.id, userId: user.id });
-      emitRoom(activeRoom);
-    }
-
     socket.on("auth:resume", () => {
       socket.emit("auth:ok", { user });
-      const room = manager.attachSocket(user, socket.id);
-      if (room) {
-        socket.join(room.id);
-        emitRoom(room);
-      }
     });
 
     socket.on("room:create", async (payload) => {
@@ -282,6 +356,45 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
       }
     });
 
+    socket.on("room:add-bot", (payload) => {
+      const parsed = roomIdSchema.safeParse(payload);
+      if (!parsed.success) {
+        emitError(socket, "room:error", new AppError(ERROR_CODES.INVALID_PAYLOAD, "Invalid bot payload.", parsed.error.flatten()));
+        return;
+      }
+      try {
+        emitRoomControlResult(manager.addBot(parsed.data.roomId, user.id));
+      } catch (error) {
+        emitError(socket, "room:error", error);
+      }
+    });
+
+    socket.on("room:fill-bots", (payload) => {
+      const parsed = roomIdSchema.safeParse(payload);
+      if (!parsed.success) {
+        emitError(socket, "room:error", new AppError(ERROR_CODES.INVALID_PAYLOAD, "Invalid bot payload.", parsed.error.flatten()));
+        return;
+      }
+      try {
+        emitRoomControlResult(manager.fillBots(parsed.data.roomId, user.id));
+      } catch (error) {
+        emitError(socket, "room:error", error);
+      }
+    });
+
+    socket.on("room:remove-bots", (payload) => {
+      const parsed = roomIdSchema.safeParse(payload);
+      if (!parsed.success) {
+        emitError(socket, "room:error", new AppError(ERROR_CODES.INVALID_PAYLOAD, "Invalid bot payload.", parsed.error.flatten()));
+        return;
+      }
+      try {
+        emitRoomControlResult(manager.removeBots(parsed.data.roomId, user.id));
+      } catch (error) {
+        emitError(socket, "room:error", error);
+      }
+    });
+
     socket.on("game:action", async (payload) => {
       const parsed = gameActionEnvelopeSchema.safeParse(payload);
       if (!parsed.success) {
@@ -336,19 +449,22 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
 
     socket.on("admin:end-room", async (payload) => {
       const parsed = roomIdSchema.safeParse(payload);
-      if (!parsed.success || user.role !== "ADMIN") {
-        emitError(socket, "server:error", new AppError(ERROR_CODES.ADMIN_ONLY, "Admin action rejected."));
+      if (!parsed.success) {
+        emitError(socket, "server:error", new AppError(ERROR_CODES.INVALID_PAYLOAD, "Invalid end-room payload."));
         return;
       }
 
       try {
-        emitRoom(await manager.endRoom(parsed.data.roomId, user.id, true));
+        emitRoom(await manager.endRoom(parsed.data.roomId, user.id, user.role === "ADMIN"));
       } catch (error) {
         emitError(socket, "server:error", error);
       }
     });
 
-    socket.on("disconnect", () => {
+    socket.on("disconnect", (reason) => {
+      if (env.NODE_ENV === "development") {
+        console.info(`[socket] disconnected user=${user.id} reason=${reason}`);
+      }
       const changedRooms = manager.detachSocket(user.id, socket.id);
       for (const room of changedRooms) {
         socket.to(room.id).emit("player:disconnected", { roomId: room.id, userId: user.id });
@@ -359,4 +475,3 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
 
   return io;
 }
-

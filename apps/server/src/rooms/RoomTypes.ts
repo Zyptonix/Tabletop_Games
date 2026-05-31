@@ -10,6 +10,7 @@ export interface RoomPlayerRuntime {
   ready: boolean;
   connected: boolean;
   temporaryHost: boolean;
+  isBot?: boolean;
   socketIds: Set<string>;
 }
 

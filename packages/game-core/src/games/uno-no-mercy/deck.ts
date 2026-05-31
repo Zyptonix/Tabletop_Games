@@ -1,4 +1,4 @@
-import type { GamePlayer } from "../../engine/GameTypes";
+﻿import type { GamePlayer } from "../../engine/GameTypes";
 import { hashSeed, shuffleWithState } from "../../engine/rng";
 import { NO_MERCY_VERSION } from "./constants";
 import {
@@ -7,10 +7,45 @@ import {
   type NoMercyCard,
   type NoMercyCardValue,
   type NoMercyColor,
+  type NoMercyNumberValue,
   type NoMercySettings,
   type NoMercyState,
   type NoMercyWildValue
 } from "./types";
+
+export const NO_MERCY_COUNTS = {
+  perColor: {
+    numbersEach: 2,
+    skip: 3,
+    skipEveryone: 2,
+    reverse: 3,
+    drawTwo: 3,
+    drawFour: 2,
+    discardAll: 3
+  },
+  wild: {
+    reverseDrawFour: 8,
+    drawSix: 4,
+    drawTen: 4,
+    colorRoulette: 8
+  }
+} as const;
+
+// The supplied card-count reference sums to 164 cards. The rule sheet may say 168,
+// but we intentionally keep the exact provided counts instead of inventing extras.
+export const NO_MERCY_DECK_TOTAL =
+  NO_MERCY_COLORS.length *
+    (10 * NO_MERCY_COUNTS.perColor.numbersEach +
+      NO_MERCY_COUNTS.perColor.skip +
+      NO_MERCY_COUNTS.perColor.skipEveryone +
+      NO_MERCY_COUNTS.perColor.reverse +
+      NO_MERCY_COUNTS.perColor.drawTwo +
+      NO_MERCY_COUNTS.perColor.drawFour +
+      NO_MERCY_COUNTS.perColor.discardAll) +
+  NO_MERCY_COUNTS.wild.reverseDrawFour +
+  NO_MERCY_COUNTS.wild.drawSix +
+  NO_MERCY_COUNTS.wild.drawTen +
+  NO_MERCY_COUNTS.wild.colorRoulette;
 
 function numberCardPoints(value: string): number {
   return Number.parseInt(value, 10);
@@ -38,68 +73,59 @@ function makeCard(params: {
   };
 }
 
+function pushCopies(deck: NoMercyCard[], params: Omit<Parameters<typeof makeCard>[0], "copy"> & { copies: number }): void {
+  for (let copy = 0; copy < params.copies; copy += 1) {
+    deck.push(makeCard({ ...params, copy }));
+  }
+}
+
 export function createNoMercyDeck(): NoMercyCard[] {
   const deck: NoMercyCard[] = [];
 
   for (const color of NO_MERCY_COLORS) {
-    deck.push(makeCard({ color, value: "0", copy: 0, points: 0 }));
-
-    for (let value = 1; value <= 9; value += 1) {
-      for (let copy = 0; copy < 2; copy += 1) {
-        deck.push(makeCard({ color, value: `${value}` as NoMercyCardValue, copy, points: numberCardPoints(`${value}`) }));
-      }
+    for (let value = 0; value <= 9; value += 1) {
+      pushCopies(deck, {
+        color,
+        value: `${value}` as NoMercyNumberValue,
+        points: numberCardPoints(`${value}`),
+        copies: NO_MERCY_COUNTS.perColor.numbersEach
+      });
     }
 
     const actionCards: Array<{ value: NoMercyActionValue; points: number; drawAmount?: number | undefined; stackPower?: number | undefined; copies: number }> = [
-      { value: "skip", points: 20, copies: 2 },
-      { value: "reverse", points: 20, copies: 2 },
-      { value: "draw_two", points: 20, drawAmount: 2, stackPower: 2, copies: 2 },
-      { value: "draw_four", points: 40, drawAmount: 4, stackPower: 4, copies: 2 },
-      { value: "comeback", points: 30, copies: 1 },
-      { value: "discard_all", points: 30, copies: 1 }
+      { value: "skip", points: 20, copies: NO_MERCY_COUNTS.perColor.skip },
+      { value: "comeback", points: 30, copies: NO_MERCY_COUNTS.perColor.skipEveryone },
+      { value: "reverse", points: 20, copies: NO_MERCY_COUNTS.perColor.reverse },
+      { value: "draw_two", points: 20, drawAmount: 2, stackPower: 2, copies: NO_MERCY_COUNTS.perColor.drawTwo },
+      { value: "draw_four", points: 40, drawAmount: 4, stackPower: 4, copies: NO_MERCY_COUNTS.perColor.drawFour },
+      { value: "discard_all", points: 30, copies: NO_MERCY_COUNTS.perColor.discardAll }
     ];
 
     for (const definition of actionCards) {
-      for (let copy = 0; copy < definition.copies; copy += 1) {
-        deck.push(
-          makeCard({
-            color,
-            value: definition.value,
-            copy,
-            points: definition.points,
-            drawAmount: definition.drawAmount,
-            stackPower: definition.stackPower
-          })
-        );
-      }
+      pushCopies(deck, { color, ...definition });
     }
   }
 
   const wildCards: Array<{ value: NoMercyWildValue; points: number; drawAmount?: number | undefined; stackPower?: number | undefined; copies: number }> = [
-    { value: "wild", points: 50, copies: 4 },
-    { value: "wild_draw_four", points: 50, drawAmount: 4, stackPower: 4, copies: 4 },
-    { value: "wild_draw_four_reverse", points: 60, drawAmount: 4, stackPower: 4, copies: 4 },
-    { value: "wild_draw_six", points: 60, drawAmount: 6, stackPower: 6, copies: 4 },
-    { value: "wild_draw_ten", points: 80, drawAmount: 10, stackPower: 10, copies: 2 },
-    { value: "roulette", points: 50, copies: 4 }
+    { value: "wild_draw_four_reverse", points: 60, drawAmount: 4, stackPower: 4, copies: NO_MERCY_COUNTS.wild.reverseDrawFour },
+    { value: "wild_draw_six", points: 60, drawAmount: 6, stackPower: 6, copies: NO_MERCY_COUNTS.wild.drawSix },
+    { value: "wild_draw_ten", points: 80, drawAmount: 10, stackPower: 10, copies: NO_MERCY_COUNTS.wild.drawTen },
+    { value: "roulette", points: 50, copies: NO_MERCY_COUNTS.wild.colorRoulette }
   ];
 
   for (const definition of wildCards) {
-    for (let copy = 0; copy < definition.copies; copy += 1) {
-      deck.push(
-        makeCard({
-          color: "wild",
-          value: definition.value,
-          copy,
-          points: definition.points,
-          drawAmount: definition.drawAmount,
-          stackPower: definition.stackPower
-        })
-      );
-    }
+    pushCopies(deck, { color: "wild", ...definition });
   }
 
   return deck;
+}
+
+export function getNoMercyDeckCountSummary(deck: NoMercyCard[] = createNoMercyDeck()): Record<string, number> {
+  return deck.reduce<Record<string, number>>((summary, card) => {
+    const key = `${card.color}:${card.value}`;
+    summary[key] = (summary[key] ?? 0) + 1;
+    return summary;
+  }, {});
 }
 
 function findStartingDiscard(drawPile: NoMercyCard[]): { card: NoMercyCard; remaining: NoMercyCard[] } {

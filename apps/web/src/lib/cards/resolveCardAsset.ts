@@ -1,10 +1,11 @@
-import type { CardAsset, CardTheme, RenderableCard } from "./cardTypes";
+﻿import type { CardAsset, CardTheme, RenderableCard } from "./cardTypes";
 import { CARD_COLOR_ACCENTS } from "./cardThemeConfig";
 
 const CLASSIC_ROOT = "/assets/uno/cards/classic";
 const NO_MERCY_ROOT = "/assets/uno/cards/no_mercy";
 const MINIMAL_ROOT = "/assets/uno/cards/minimal";
-const FALLBACK_CARD = `${CLASSIC_ROOT}/back_cover.png`;
+const CLASSIC_FALLBACK_CARD = `${CLASSIC_ROOT}/back_cover.png`;
+const NO_MERCY_FALLBACK_CARD = `${NO_MERCY_ROOT}/back_cover.png`;
 
 function normalizeValue(value: string): string {
   return value.replaceAll("-", "_");
@@ -51,11 +52,11 @@ function noMercyColoredLabel(card: RenderableCard): string {
 function noMercyWildLabel(card: RenderableCard): string {
   const value = normalizeValue(card.value);
   if (value === "wild_draw_four_reverse") return "wild_reverse_plus4";
-  if (value === "wild_draw_four") return "wild_reverse_plus4";
+  if (value === "wild_draw_four") return "wild_plus4";
   if (value === "wild_draw_six") return "wild_plus6";
   if (value === "wild_draw_ten") return "wild_plus10";
-  if (value === "roulette") return "wild_skip_all";
-  return "wild_skip_all";
+  if (value === "roulette") return "wild_roulette";
+  return "wild";
 }
 
 function noMercySrc(card: RenderableCard | undefined, faceDown = false): { key: string; src: string } {
@@ -97,7 +98,7 @@ export function resolveCardAsset(params: {
   return {
     key: resolved.key,
     src: resolved.src,
-    fallbackSrc: FALLBACK_CARD,
+    fallbackSrc: params.theme === "no_mercy" ? NO_MERCY_FALLBACK_CARD : CLASSIC_FALLBACK_CARD,
     accent
   };
 }

@@ -418,8 +418,7 @@ export function applyNoMercyAction(params: {
     events.push(
       createGameEvent("uno-no-mercy:draw", {
         message: `${player.displayName} drew a card.`,
-        payload: { playerId, count: drawn.cards.length },
-        targetUserIds: [playerId]
+        payload: { playerId, count: drawn.cards.length }
       })
     );
 

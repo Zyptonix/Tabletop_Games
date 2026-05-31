@@ -7,7 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { REACTION_PREFIX } from "@/features/games/classic-uno/ReactionOverlay";
 
-const QUICK_REACTIONS = ["😂", "💀", "🔥", "👏", "😎", "❤️"];
+const QUICK_REACTIONS = [
+  { emoji: "\u{1F602}", label: "Laugh" },
+  { emoji: "\u{1F480}", label: "Skull" },
+  { emoji: "\u{1F525}", label: "Fire" },
+  { emoji: "\u{1F44F}", label: "Clap" },
+  { emoji: "\u{1F642}", label: "Smile" },
+  { emoji: "\u{1F60E}", label: "Cool" },
+  { emoji: "\u{2764}\u{FE0F}", label: "Heart" }
+];
 
 function isReactionMessage(message: ChatMessageView) {
   return typeof message.body === "string" && message.body.startsWith(REACTION_PREFIX);
@@ -59,7 +67,6 @@ export function RoomChat({
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
     const trimmed = body.trim();
     if (!trimmed) return;
 
@@ -72,12 +79,12 @@ export function RoomChat({
   }
 
   return (
-    <aside className="flex h-full min-h-0 flex-col overflow-hidden rounded-[1.75rem] border border-white/10 bg-black/58 text-white shadow-[0_30px_100px_rgb(0_0_0_/_0.45)] backdrop-blur-xl">
-      <header className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-4">
+    <aside className="flex h-full min-h-0 flex-col overflow-hidden rounded-[1.55rem] border border-white/10 bg-black/62 text-white shadow-[0_30px_100px_rgb(0_0_0_/_0.45)] backdrop-blur-xl">
+      <header className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3">
         <div>
           <div className="flex items-center gap-2">
             <span className="h-3 w-3 rounded-full bg-emerald-400 shadow-[0_0_14px_rgb(52_211_153_/_0.9)]" />
-            <h2 className="text-[1.35rem] font-black leading-none tracking-wide text-white">Chat</h2>
+            <h2 className="text-lg font-black leading-none tracking-wide text-white">Chat</h2>
           </div>
           <p className="mt-1 text-xs font-semibold text-white/45">
             {typeof onlineCount === "number" ? `${onlineCount} online` : "Room feed"}
@@ -86,20 +93,20 @@ export function RoomChat({
 
         <button
           type="button"
-          className="grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white"
+          className="grid h-10 w-10 place-items-center rounded-2xl border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white"
           aria-label="Collapse chat"
         >
           <ChevronUp className="h-4 w-4" />
         </button>
       </header>
 
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4 [scrollbar-width:thin] [scrollbar-color:#22c55e_#020604]">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3 [scrollbar-width:thin] [scrollbar-color:#22c55e_#020604]">
         {visibleChat.length === 0 ? (
-          <div className="grid h-full min-h-40 place-items-center text-center">
+          <div className="grid h-full min-h-24 place-items-center text-center">
             <div>
-              <Smile className="mx-auto h-8 w-8 text-white/25" />
+              <Smile className="mx-auto h-7 w-7 text-white/25" />
               <p className="mt-2 text-sm font-bold text-white/45">No messages yet</p>
-              <p className="mt-1 text-xs text-white/30">Talk trash respectfully.</p>
+              <p className="mt-1 text-xs text-white/30">Start the table talk.</p>
             </div>
           </div>
         ) : (
@@ -114,23 +121,23 @@ export function RoomChat({
                 </div>
                 <time className="shrink-0 text-[0.65rem] font-semibold text-white/30">{formatTime(message.createdAt)}</time>
               </div>
-              <p className="ml-9 mt-1 break-words text-sm leading-relaxed text-white/76">{message.body}</p>
+              <p className="ml-9 mt-1 break-words text-sm leading-relaxed text-white/76">{message.body || ""}</p>
             </article>
           ))
         )}
       </div>
 
       <div className="shrink-0 border-t border-white/10 p-3">
-        <div className="mb-3 flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-2">
-          {QUICK_REACTIONS.map((emoji) => (
+        <div className="mb-2 flex items-center gap-1.5 rounded-2xl border border-white/10 bg-white/[0.03] p-2">
+          {QUICK_REACTIONS.map((reaction) => (
             <button
-              key={emoji}
+              key={reaction.label}
               type="button"
-              className="grid h-8 w-8 place-items-center rounded-xl text-lg transition hover:bg-white/10 hover:scale-110"
-              onClick={() => sendReaction(emoji)}
-              aria-label={`React ${emoji}`}
+              className="grid h-7 w-7 place-items-center rounded-xl text-base transition hover:scale-110 hover:bg-white/10"
+              onClick={() => sendReaction(reaction.emoji)}
+              aria-label={`React ${reaction.label}`}
             >
-              {emoji}
+              {reaction.emoji}
             </button>
           ))}
         </div>
@@ -140,12 +147,12 @@ export function RoomChat({
             value={body}
             onChange={(event) => setBody(event.target.value)}
             placeholder="Type a message..."
-            className="h-11 rounded-2xl border-white/10 bg-white/[0.06] text-white placeholder:text-white/35"
+            className="h-10 rounded-2xl border-white/10 bg-white/[0.06] text-white placeholder:text-white/35"
           />
           <Button
             type="submit"
             size="icon"
-            className="h-11 w-11 shrink-0 rounded-2xl bg-white/10 text-white hover:bg-emerald-400 hover:text-zinc-950"
+            className="h-10 w-10 shrink-0 rounded-2xl bg-white/10 text-white hover:bg-emerald-400 hover:text-zinc-950"
             aria-label="Send message"
           >
             <Send className="h-4 w-4" />
@@ -156,7 +163,7 @@ export function RoomChat({
       <section className="shrink-0 border-t border-white/10 bg-white/[0.025]">
         <button
           type="button"
-          className="flex w-full items-center justify-between px-4 py-3 text-left"
+          className="flex w-full items-center justify-between px-4 py-2.5 text-left"
           onClick={() => setLogOpen((current) => !current)}
         >
           <span className="flex items-center gap-2 text-sm font-black text-white/80">
@@ -173,7 +180,7 @@ export function RoomChat({
             ) : (
               gameLog.slice(-30).map((message) => (
                 <p key={message.id} className="text-xs leading-relaxed text-white/42">
-                  {message.body}
+                  {message.body || "System event"}
                 </p>
               ))
             )}

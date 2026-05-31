@@ -11,6 +11,7 @@ export interface RoomPlayerView {
   connected: boolean;
   isHost: boolean;
   temporaryHost: boolean;
+  isBot?: boolean;
   score?: number;
 }
 

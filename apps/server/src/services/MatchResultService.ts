@@ -2,6 +2,10 @@ import { prisma } from "@tabletop/db";
 import type { GameResults } from "@tabletop/game-core";
 import { levelFromXp } from "../utils/http";
 
+function isBotUserId(userId: string): boolean {
+  return userId.startsWith("bot:");
+}
+
 function xpForPlacement(params: { placement: number; playerCount: number; result: "WIN" | "LOSS" | "DRAW" }): number {
   let xp = 50;
   if (params.result === "WIN") {
@@ -50,22 +54,24 @@ export class MatchResultService {
     endedAt: Date;
   }): Promise<void> {
     const durationSeconds = Math.max(0, Math.floor((params.endedAt.getTime() - params.startedAt.getTime()) / 1000));
-    const playerCount = params.results.placements.length;
+    const humanPlacements = params.results.placements.filter((placement) => !isBotUserId(placement.userId));
+    const humanPlayerCount = Math.max(1, humanPlacements.length);
+    const winnerUserId = params.results.winnerUserId && !isBotUserId(params.results.winnerUserId) ? params.results.winnerUserId : null;
 
     await prisma.$transaction(async (transaction) => {
       await transaction.match.update({
         where: { id: params.matchId },
         data: {
           endedAt: params.endedAt,
-          winnerUserId: params.results.winnerUserId,
+          winnerUserId,
           durationSeconds
         }
       });
 
-      for (const placement of params.results.placements) {
+      for (const placement of humanPlacements) {
         const xpEarned = xpForPlacement({
           placement: placement.placement,
-          playerCount,
+          playerCount: humanPlayerCount,
           result: placement.result
         });
 

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createRoomSchema, ERROR_CODES, joinRoomSchema, roomCodeSchema } from "@tabletop/shared";
+import { createRoomSchema, ERROR_CODES, joinRoomSchema, roomCodeSchema, roomIdSchema } from "@tabletop/shared";
 import { authMiddleware } from "../middleware/authMiddleware";
 import { RoomManager } from "./RoomManager";
 import { sendError } from "../utils/http";
@@ -23,8 +23,8 @@ export function createRoomsRouter(manager: RoomManager) {
   });
 
   router.get("/rooms/me", (request, response) => {
-    const room = request.user ? manager.getRoomForUser(request.user.id) : null;
-    response.json({ room: room ? manager.getRoomStateView(room) : null });
+    const rooms = request.user ? manager.listRoomsForUser(request.user.id).map((room) => manager.getRoomStateView(room)) : [];
+    response.json({ room: rooms[0] ?? null, rooms });
   });
 
   router.get("/rooms/code/:code", (request, response) => {
@@ -82,6 +82,82 @@ export function createRoomsRouter(manager: RoomManager) {
         user: request.user,
         code: parsed.data.code
       });
+      response.json({ room: manager.getRoomStateView(room) });
+    } catch (error) {
+      routeError(response, error);
+    }
+  });
+
+  router.post("/rooms/:roomId/end", async (request, response) => {
+    if (!request.user) {
+      sendError(response, 401, ERROR_CODES.UNAUTHORIZED, "Login required.");
+      return;
+    }
+    const parsed = roomIdSchema.safeParse({ roomId: request.params.roomId });
+    if (!parsed.success) {
+      sendError(response, 400, ERROR_CODES.INVALID_PAYLOAD, "Invalid room id.");
+      return;
+    }
+
+    try {
+      const room = await manager.endRoom(parsed.data.roomId, request.user.id, request.user.role === "ADMIN");
+      response.json({ room: manager.getRoomStateView(room) });
+    } catch (error) {
+      routeError(response, error);
+    }
+  });
+
+  router.post("/rooms/:roomId/bots", (request, response) => {
+    if (!request.user) {
+      sendError(response, 401, ERROR_CODES.UNAUTHORIZED, "Login required.");
+      return;
+    }
+    const parsed = roomIdSchema.safeParse({ roomId: request.params.roomId });
+    if (!parsed.success) {
+      sendError(response, 400, ERROR_CODES.INVALID_PAYLOAD, "Invalid room id.");
+      return;
+    }
+
+    try {
+      const room = manager.addBot(parsed.data.roomId, request.user.id);
+      response.json({ room: manager.getRoomStateView(room) });
+    } catch (error) {
+      routeError(response, error);
+    }
+  });
+
+  router.post("/rooms/:roomId/bots/fill", (request, response) => {
+    if (!request.user) {
+      sendError(response, 401, ERROR_CODES.UNAUTHORIZED, "Login required.");
+      return;
+    }
+    const parsed = roomIdSchema.safeParse({ roomId: request.params.roomId });
+    if (!parsed.success) {
+      sendError(response, 400, ERROR_CODES.INVALID_PAYLOAD, "Invalid room id.");
+      return;
+    }
+
+    try {
+      const room = manager.fillBots(parsed.data.roomId, request.user.id);
+      response.json({ room: manager.getRoomStateView(room) });
+    } catch (error) {
+      routeError(response, error);
+    }
+  });
+
+  router.delete("/rooms/:roomId/bots", (request, response) => {
+    if (!request.user) {
+      sendError(response, 401, ERROR_CODES.UNAUTHORIZED, "Login required.");
+      return;
+    }
+    const parsed = roomIdSchema.safeParse({ roomId: request.params.roomId });
+    if (!parsed.success) {
+      sendError(response, 400, ERROR_CODES.INVALID_PAYLOAD, "Invalid room id.");
+      return;
+    }
+
+    try {
+      const room = manager.removeBots(parsed.data.roomId, request.user.id);
       response.json({ room: manager.getRoomStateView(room) });
     } catch (error) {
       routeError(response, error);

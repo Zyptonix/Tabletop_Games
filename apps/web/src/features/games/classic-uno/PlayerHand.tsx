@@ -167,15 +167,15 @@ export function PlayerHand({
   }, [hand]);
 
   return (
-    <div className="relative mx-auto w-full max-w-[74rem] overflow-visible">
-      <div className="mb-2 flex items-center justify-between px-2 text-xs font-black uppercase tracking-wide text-amber-200">
+    <div className="relative mx-auto w-full max-w-[59rem] overflow-visible xl:max-w-[65rem] 2xl:max-w-[72rem]">
+      <div className="mb-2 flex items-center justify-between px-2 text-xs font-black uppercase tracking-wide text-amber-200/90">
         <span>Your hand</span>
         <span>{hand.length} cards</span>
       </div>
 
       <div
         ref={handFrameRef}
-        className="relative min-h-[10.75rem] overflow-hidden rounded-[1.25rem] border border-amber-300/15 bg-black/28 px-4 pb-4 pt-6 shadow-[inset_0_18px_60px_rgb(0_0_0_/_0.32)]"
+        className="relative min-h-[10.6rem] overflow-visible rounded-[2rem]  bg-[linear-gradient(to_bottom,rgb(255_255_255_/_0.035),rgb(0_0_0_/_0.08)_38%,rgb(0_0_0_/_0.28))] px-4 pb-4 pt-6 shadow-[inset_0_1px_0_rgb(255_255_255_/_0.06),0_-22px_70px_rgb(45_140_255_/_0.12),0_24px_90px_rgb(0_0_0_/_0.45)] backdrop-blur-sm"
       >
         <div className="relative flex h-full items-end justify-center overflow-visible">
           <AnimatePresence initial={false}>

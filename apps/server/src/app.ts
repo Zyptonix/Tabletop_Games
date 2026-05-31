@@ -3,7 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { authRouter } from "./auth/routes";
-import { corsOrigins } from "./config/env";
+import { corsOriginDelegate } from "./config/env";
 import { createAdminRouter } from "./admin/routes";
 import { createRoomsRouter } from "./rooms/routes";
 import type { RoomManager } from "./rooms/RoomManager";
@@ -20,7 +20,7 @@ export function createApp(manager: RoomManager) {
   );
   app.use(
     cors({
-      origin: corsOrigins,
+      origin: corsOriginDelegate,
       credentials: true
     })
   );

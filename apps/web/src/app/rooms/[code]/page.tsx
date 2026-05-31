@@ -52,7 +52,10 @@ export default function RoomPage() {
         onStart={socketState.startRoom}
         onPause={socketState.pauseRoom}
         onResume={socketState.resumeRoom}
-        onChat={socketState.sendChat}
+        onEnd={socketState.endRoom}
+        onAddBot={socketState.addBot}
+        onFillBots={socketState.fillBots}
+        onRemoveBots={socketState.removeBots}
       >
         {room.status === "lobby" ? (
           <Card>
@@ -79,10 +82,13 @@ export default function RoomPage() {
             room={room}
             state={unoState}
             legalActions={socketState.legalActions}
+            gameEvents={socketState.gameEvents}
             currentUserId={user?.id ?? null}
+            currentUserRole={user?.role ?? null}
             onAction={(type, payload) => socketState.sendAction(room.id, type, payload)}
             onReaction={(emoji) => socketState.sendChat(room.id, `${REACTION_PREFIX}${emoji}`)}
             onChat={socketState.sendChat}
+            onEndMatch={socketState.endRoom}
           />
         ) : (
           <Card>
