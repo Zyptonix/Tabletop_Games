@@ -39,9 +39,12 @@ export interface GameTurnInfo {
   turnSeconds: number | null;
 }
 
+export type TimeoutReason = "turn_timer" | "offline_grace";
+
 export interface TimeoutAction<Action> {
   playerId: string;
   action: Action;
+  reason?: TimeoutReason | undefined;
 }
 
 export type GameSettingsRecord = Record<string, unknown>;

@@ -21,7 +21,8 @@ import {
   type ClassicUnoState,
   type GameModule,
   type GamePlayer,
-  type NoMercyState
+  type NoMercyState,
+  type TimeoutReason
 } from "@tabletop/game-core";
 import { ChatRateLimiter } from "../chat/ChatRateLimiter";
 import { gameRegistry, type GameRegistry } from "../games/GameRegistry";
@@ -529,13 +530,60 @@ export class RoomManager {
     });
   }
 
-  async applyTimeout(roomId: string): Promise<{ room: RoomRuntime; events: unknown[] } | null> {
+  async applyTimeout(roomId: string, reason: TimeoutReason = "turn_timer"): Promise<{ room: RoomRuntime; events: unknown[] } | null> {
     const room = this.getRoom(roomId);
     if (!room || room.status !== "in_game" || !room.gameState) {
       return null;
     }
 
     const module = this.requireModule(room.gameId);
+
+    const applyModuleTimeout = module.applyTimeout;
+    if (applyModuleTimeout) {
+      return room.queue.enqueue(async () => {
+        if (room.status !== "in_game" || !room.gameState) {
+          return null;
+        }
+
+        const turnInfo = module.getTurnInfo(room.gameState);
+        if (!turnInfo.currentPlayerId) {
+          return null;
+        }
+
+        const now = new Date().toISOString();
+        const result = applyModuleTimeout({
+          state: room.gameState,
+          playerId: turnInfo.currentPlayerId,
+          reason,
+          now
+        });
+
+        if (!result) {
+          return null;
+        }
+
+        room.gameState = result.state;
+        room.actionNumber = this.extractActionNumber(room.gameState, room.actionNumber + 1);
+        this.addGameEventLogMessages(room, result.events);
+
+        void this.saveSnapshot(room);
+        if (module.isGameOver(room.gameState) && room.matchId && room.matchStartedAt) {
+          room.status = "finished";
+          this.addSystemMessage(room, "Game ended.");
+          void this.matchResults.finalizeMatch({
+            matchId: room.matchId,
+            roomId: room.id,
+            gameId: room.gameId,
+            results: module.getResults(room.gameState),
+            startedAt: new Date(room.matchStartedAt),
+            endedAt: new Date()
+          });
+        }
+
+        return { room, events: result.events };
+      });
+    }
+
     const turnInfo = module.getTurnInfo(room.gameState);
     if (!turnInfo.currentPlayerId) {
       return null;
@@ -543,7 +591,8 @@ export class RoomManager {
 
     const timeoutAction = module.getTimeoutAction({
       state: room.gameState,
-      playerId: turnInfo.currentPlayerId
+      playerId: turnInfo.currentPlayerId,
+      reason
     });
 
     if (!timeoutAction) {
@@ -553,7 +602,7 @@ export class RoomManager {
     const result = await this.handleGameAction({
       userId: timeoutAction.playerId,
       envelope: {
-        actionId: `timeout:${room.actionNumber + 1}`,
+        actionId: `timeout:${reason}:${room.actionNumber + 1}`,
         roomId,
         type: (timeoutAction.action as { type: string }).type,
         payload: timeoutAction.action,
@@ -665,6 +714,28 @@ export class RoomManager {
       return null;
     }
     return this.requireModule(room.gameId).getTurnInfo(room.gameState).currentPlayerId ?? null;
+  }
+
+  getCurrentTurnPresence(roomId: string): { userId: string; displayName: string; connected: boolean; isBot: boolean } | null {
+    const room = this.getRoom(roomId);
+    if (!room || !room.gameState) {
+      return null;
+    }
+
+    const currentPlayerId = this.getCurrentTurnPlayerId(room);
+    if (!currentPlayerId) {
+      return null;
+    }
+
+    const player = room.players.find((item) => item.userId === currentPlayerId);
+    return player
+      ? {
+          userId: player.userId,
+          displayName: player.displayName,
+          connected: player.connected,
+          isBot: Boolean(player.isBot)
+        }
+      : null;
   }
 
   getLegalActionsFor(room: RoomRuntime, userId: string): unknown[] {

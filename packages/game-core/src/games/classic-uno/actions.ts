@@ -3,7 +3,7 @@ import { UNO_COLORS } from "./types";
 
 export const classicUnoSettingsSchema = z.object({
   cardsPerPlayer: z.number().int().min(5).max(12).default(7),
-  turnSeconds: z.number().int().min(20).max(600).nullable().default(90),
+  turnSeconds: z.number().int().min(20).max(600).nullable().default(60),
   allowDrawingWhenPlayable: z.boolean().default(true),
   timeoutBehavior: z.enum(["draw_then_pass", "skip"]).default("draw_then_pass"),
   mustCallUno: z.boolean().default(true)

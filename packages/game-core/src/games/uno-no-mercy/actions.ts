@@ -3,7 +3,7 @@ import { NO_MERCY_COLORS } from "./types";
 
 export const noMercySettingsSchema = z.object({
   cardsPerPlayer: z.number().int().min(5).max(20).default(7),
-  turnSeconds: z.number().int().min(20).max(600).nullable().default(90),
+  turnSeconds: z.number().int().min(20).max(600).nullable().default(60),
   eliminationHandSize: z.number().int().min(15).max(60).default(25),
   allowDrawingWhenPlayable: z.boolean().default(true),
   mustCallUno: z.boolean().default(true)

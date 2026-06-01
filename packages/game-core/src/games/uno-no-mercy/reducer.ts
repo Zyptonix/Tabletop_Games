@@ -1,5 +1,5 @@
 import { createGameEvent } from "../../engine/GameEvents";
-import type { GameEvent } from "../../engine/GameTypes";
+import type { GameEvent, TimeoutReason } from "../../engine/GameTypes";
 import type { NoMercyAction, NoMercyCard, NoMercySettings, NoMercyState } from "./types";
 import {
   advanceTurn,
@@ -391,6 +391,139 @@ function resolvePendingPenalty(params: {
     return state;
   }
   return advanceTurn(state, { steps: 1, now, fromPlayerId: playerId });
+}
+
+
+function resolveOfflineRoulette(params: {
+  state: NoMercyState;
+  settings: NoMercySettings;
+  playerId: string;
+  now: string;
+  events: GameEvent[];
+}): NoMercyState {
+  const { playerId, events, settings, now } = params;
+  const pendingRoulette = params.state.pendingRoulette;
+  if (!pendingRoulette || pendingRoulette.targetPlayerId !== playerId) {
+    return params.state;
+  }
+
+  const player = findNoMercyPlayer(params.state, playerId);
+  const chosenColor = pendingRoulette.chosenColor ?? params.state.currentColor;
+  let state: NoMercyState = {
+    ...params.state,
+    currentColor: chosenColor,
+    pendingRoulette: null,
+    lastDrawnCardId: null
+  };
+  const revealedCards: NoMercyCard[] = [];
+  let matchedCardId: string | undefined;
+
+  while (!matchedCardId) {
+    const drawn = drawCards(state, playerId, 1);
+    state = drawn.state;
+    const card = drawn.cards[0];
+    if (!card) {
+      break;
+    }
+    revealedCards.push(card);
+    if (card.color === chosenColor) {
+      matchedCardId = card.id;
+    }
+  }
+
+  events.push(
+    createGameEvent("uno-no-mercy:roulette", {
+      message: `Offline roulette made ${player?.displayName ?? "a player"} draw ${revealedCards.length} card${revealedCards.length === 1 ? "" : "s"}.`,
+      payload: {
+        playerId: pendingRoulette.playedByPlayerId,
+        targetPlayerId: playerId,
+        chosenColor,
+        count: revealedCards.length,
+        revealedCards,
+        matchedCardId,
+        source: "offline_roulette",
+        actuallyDrawn: revealedCards.length
+      }
+    })
+  );
+
+  if (revealedCards.length > 0) {
+    events.push(
+      createGameEvent("uno-no-mercy:cards_drawn", {
+        message: `${player?.displayName ?? "A player"} drew ${revealedCards.length} roulette card${revealedCards.length === 1 ? "" : "s"}.`,
+        payload: {
+          playerId,
+          count: revealedCards.length,
+          actuallyDrawn: revealedCards.length,
+          source: "roulette",
+          revealedCards,
+          chosenColor,
+          matchedCardId
+        }
+      })
+    );
+  }
+
+  state = eliminateOverLimit({ state, settings, events });
+  state = finishIfResolved(state, null, now);
+  if (state.phase !== "finished") {
+    state = advanceTurn(state, { steps: 1, now, fromPlayerId: playerId });
+  }
+
+  return state;
+}
+
+export function applyNoMercyTimeout(params: {
+  state: NoMercyState;
+  playerId: string;
+  reason: TimeoutReason;
+  now: string;
+}): { state: NoMercyState; events: GameEvent[] } | null {
+  const { playerId, reason, now } = params;
+
+  if (params.state.phase !== "playing" || params.state.currentPlayerId !== playerId) {
+    return null;
+  }
+
+  if (reason === "turn_timer") {
+    const action: NoMercyAction = params.state.pendingRoulette?.targetPlayerId === playerId
+      ? { type: "resolve_roulette", chosenColor: params.state.currentColor }
+      : params.state.lastDrawnCardId === null
+        ? { type: "draw_card" }
+        : { type: "pass_turn" };
+    return applyNoMercyAction({ state: params.state, settings: params.state.settings, playerId, action, now });
+  }
+
+  const player = findNoMercyPlayer(params.state, playerId);
+  if (!player) {
+    return null;
+  }
+
+  let state = cloneState(params.state);
+  const events: GameEvent[] = [
+    createGameEvent("uno-no-mercy:offline_skip", {
+      message: `${player.displayName} was skipped while offline.`,
+      payload: {
+        playerId,
+        skippedPlayerId: playerId,
+        playerName: player.displayName,
+        source: "offline_grace"
+      }
+    })
+  ];
+
+  if (state.pendingRoulette?.targetPlayerId === playerId) {
+    state = resolveOfflineRoulette({ state, settings: state.settings, playerId, now, events });
+  } else if (state.pendingPenalty?.targetPlayerId === playerId) {
+    state = resolvePendingPenalty({ state, settings: state.settings, playerId, now, events });
+  } else {
+    state = advanceTurn(state, { steps: 1, now, fromPlayerId: playerId });
+  }
+
+  state = finishIfResolved(state, null, now);
+  state = withActionMeta(state, params.state, now);
+  pushGameOverEvent(state, events);
+  return { state, events };
 }
 
 export function applyNoMercyAction(params: {

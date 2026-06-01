@@ -11,4 +11,4 @@ export const ROOM_STATUSES = [
 
 export type RoomStatus = (typeof ROOM_STATUSES)[number];
 
-export const DEFAULT_TURN_SECONDS = 90;
+export const DEFAULT_TURN_SECONDS = 60;

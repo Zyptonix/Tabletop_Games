@@ -1,5 +1,5 @@
 import { createGameEvent } from "../../engine/GameEvents";
-import type { GameEvent } from "../../engine/GameTypes";
+import type { GameEvent, TimeoutReason } from "../../engine/GameTypes";
 import type { ClassicUnoSettings, ClassicUnoState, UnoAction, UnoCard } from "./types";
 import {
   advanceTurn,
@@ -215,6 +215,59 @@ function applyCardEffect(params: {
   }
 
   return advanceTurn(state, { steps: 1, now });
+}
+
+
+export function applyClassicUnoTimeout(params: {
+  state: ClassicUnoState;
+  playerId: string;
+  reason: TimeoutReason;
+  now: string;
+}): { state: ClassicUnoState; events: GameEvent[] } | null {
+  const { playerId, reason, now } = params;
+
+  if (params.state.phase !== "playing" || params.state.currentPlayerId !== playerId) {
+    return null;
+  }
+
+  if (reason === "turn_timer") {
+    const action: UnoAction = params.state.lastDrawnCardId === null ? { type: "draw_card" } : { type: "pass_turn" };
+    return applyClassicUnoAction({ state: params.state, settings: params.state.settings, playerId, action, now });
+  }
+
+  const player = findUnoPlayer(params.state, playerId);
+  if (!player) {
+    return null;
+  }
+
+  let state = clonePlayers(params.state);
+  const events: GameEvent[] = [
+    createGameEvent("uno:offline_skip", {
+      message: `${player.displayName} was skipped while offline.`,
+      payload: {
+        playerId,
+        skippedPlayerId: playerId,
+        playerName: player.displayName,
+        source: "offline_grace"
+      }
+    })
+  ];
+
+  if (state.pendingPenalty?.targetPlayerId === playerId) {
+    state = resolvePendingPenalty({ state, playerId, now, events });
+  } else {
+    state = advanceTurn(state, { steps: 1, now });
+  }
+
+  state = finishIfAnyWinner(state, now);
+  state = {
+    ...state,
+    updatedAt: now,
+    actionNumber: params.state.actionNumber + 1
+  };
+
+  pushGameOverEvent(state, events);
+  return { state, events };
 }
 
 export function applyClassicUnoAction(params: {

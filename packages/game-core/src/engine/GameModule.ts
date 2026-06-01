@@ -6,6 +6,7 @@ import type {
   GameResults,
   GameTurnInfo,
   TimeoutAction,
+  TimeoutReason,
   ValidationResult
 } from "./GameTypes";
 
@@ -56,7 +57,18 @@ export interface GameModule<State, Action, Settings> {
   getTimeoutAction(params: {
     state: State;
     playerId: string;
+    reason?: TimeoutReason | undefined;
   }): TimeoutAction<Action> | null;
+
+  applyTimeout?(params: {
+    state: State;
+    playerId: string;
+    reason: TimeoutReason;
+    now: string;
+  }): {
+    state: State;
+    events: GameEvent[];
+  } | null;
 
   isGameOver(state: State): boolean;
 

@@ -6,7 +6,7 @@ import { createInitialClassicUnoState } from "./setup";
 import { getPublicClassicUnoState } from "./public-state";
 import { getLegalClassicUnoActions } from "./selectors";
 import { validateClassicUnoAction } from "./validation";
-import { applyClassicUnoAction } from "./reducer";
+import { applyClassicUnoAction, applyClassicUnoTimeout } from "./reducer";
 import { getClassicUnoResults } from "./scoring";
 import type { ClassicUnoSettings, ClassicUnoState, UnoAction } from "./types";
 
@@ -50,6 +50,7 @@ export const classicUnoModule: GameModule<ClassicUnoState, UnoAction, ClassicUno
     applyClassicUnoAction({ state, settings: state.settings, playerId, action, now }),
   getTurnInfo,
   getTimeoutAction,
+  applyTimeout: applyClassicUnoTimeout,
   isGameOver: (state) => state.phase === "finished",
   getResults: getClassicUnoResults
 };

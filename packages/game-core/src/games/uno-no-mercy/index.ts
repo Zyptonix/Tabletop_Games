@@ -6,7 +6,7 @@ import { createInitialNoMercyState } from "./deck";
 import { getPublicNoMercyState } from "./public-state";
 import { getLegalNoMercyActions } from "./selectors";
 import { validateNoMercyAction } from "./validation";
-import { applyNoMercyAction } from "./reducer";
+import { applyNoMercyAction, applyNoMercyTimeout } from "./reducer";
 import { getNoMercyResults } from "./scoring";
 import type { NoMercyAction, NoMercySettings, NoMercyState } from "./types";
 
@@ -57,6 +57,7 @@ export const noMercyModule: GameModule<NoMercyState, NoMercyAction, NoMercySetti
     applyNoMercyAction({ state, settings: state.settings, playerId, action, now }),
   getTurnInfo,
   getTimeoutAction,
+  applyTimeout: applyNoMercyTimeout,
   isGameOver: (state) => state.phase === "finished",
   getResults: getNoMercyResults
 };
