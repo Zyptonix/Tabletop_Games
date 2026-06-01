@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
+import { ProfileEditor } from "@/components/profile/ProfileEditor";
 import { ProfileSummary, type ProfileData } from "@/components/profile/ProfileSummary";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/lib/auth/useAuth";
@@ -22,6 +23,7 @@ export default function ProfilePage() {
   return (
     <AppShell>
       <div className="space-y-4">
+        <ProfileEditor profile={profile} onSaved={setProfile} />
         <ProfileSummary profile={profile} />
         <Card>
           <CardHeader>

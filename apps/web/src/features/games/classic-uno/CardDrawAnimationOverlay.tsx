@@ -165,7 +165,7 @@ export function CardDrawAnimationOverlay({
 
             <motion.div
               className="absolute rounded-2xl border border-white/12 bg-black/70 px-3 py-2 text-center text-xs font-black text-white shadow-[0_0_28px_rgb(0_0_0_/_0.45)] backdrop-blur-xl"
-              style={{ left: animation.to.x - 64, top: animation.to.y - 96 }}
+              style={{ left: Math.max(8, animation.to.x - 64), top: animation.to.y < 140 ? animation.to.y + 42 : Math.max(8, animation.to.y - 96) }}
               initial={{ opacity: 0, y: 10, scale: 0.92 }}
               animate={{ opacity: [0, 1, 1, 0], y: [10, -4, -8], scale: [0.92, 1, 1] }}
               exit={{ opacity: 0 }}
@@ -224,8 +224,6 @@ function isDrawEventType(type: string): boolean {
     "uno:draw_two",
     "uno:wild_draw_four",
     "uno:cards_drawn",
-    "uno-no-mercy:draw",
-    "uno-no-mercy:penalty_resolved",
     "uno-no-mercy:cards_drawn",
     "uno-no-mercy:color_roulette_resolved"
   ].includes(type);

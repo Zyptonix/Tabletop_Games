@@ -22,6 +22,10 @@ export function createRoomsRouter(manager: RoomManager) {
     response.json({ games: manager.listGames() });
   });
 
+
+  router.get("/rooms/joinable", (_request, response) => {
+    response.json({ rooms: manager.listJoinableRooms() });
+  });
   router.get("/rooms/me", (request, response) => {
     const rooms = request.user ? manager.listRoomsForUser(request.user.id).map((room) => manager.getRoomStateView(room)) : [];
     response.json({ room: rooms[0] ?? null, rooms });

@@ -40,6 +40,7 @@ export function getPublicClassicUnoState(params: {
     topDiscard: getTopDiscard(state),
     drawPileCount: state.drawPile.length,
     discardPileCount: state.discardPile.length,
+    pendingPenalty: state.pendingPenalty,
     lastDrawnCardId: state.lastDrawnCardId,
     actionNumber: state.actionNumber,
     winnerUserId: state.winnerUserId,

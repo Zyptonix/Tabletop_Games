@@ -27,6 +27,13 @@ export interface UnoPlayerState {
   unoCalled: boolean;
 }
 
+export interface ClassicUnoPendingPenalty {
+  amount: number;
+  source: "draw_two" | "wild_draw_four";
+  requiredResponseMinPower: number;
+  targetPlayerId: string;
+}
+
 export interface ClassicUnoSettings {
   cardsPerPlayer: number;
   turnSeconds: number | null;
@@ -47,6 +54,7 @@ export interface ClassicUnoState {
   currentColor: UnoDeclaredColor;
   drawPile: UnoCard[];
   discardPile: UnoCard[];
+  pendingPenalty: ClassicUnoPendingPenalty | null;
   lastDrawnCardId: string | null;
   actionNumber: number;
   rngState: RngState;
@@ -93,6 +101,7 @@ export interface PublicClassicUnoState {
   topDiscard: UnoCard;
   drawPileCount: number;
   discardPileCount: number;
+  pendingPenalty: ClassicUnoPendingPenalty | null;
   lastDrawnCardId: string | null;
   actionNumber: number;
   winnerUserId: string | null;

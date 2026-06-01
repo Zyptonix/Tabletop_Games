@@ -1,4 +1,4 @@
-﻿import type { GameModule } from "../../engine/GameModule";
+import type { GameModule } from "../../engine/GameModule";
 import type { GameTurnInfo, TimeoutAction } from "../../engine/GameTypes";
 import { DEFAULT_CLASSIC_UNO_SETTINGS, UNO_MAX_PLAYERS, UNO_MIN_PLAYERS } from "./constants";
 import { classicUnoSettingsSchema, unoActionSchema } from "./actions";
@@ -56,6 +56,7 @@ export const classicUnoModule: GameModule<ClassicUnoState, UnoAction, ClassicUno
 
 export * from "./actions";
 export * from "./constants";
+export * from "./debug";
 export * from "./public-state";
 export * from "./reducer";
 export * from "./rules";

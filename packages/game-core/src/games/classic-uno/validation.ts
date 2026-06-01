@@ -37,6 +37,13 @@ export function validateClassicUnoAction(params: {
   }
 
   if (action.type === "draw_card") {
+    if (state.pendingPenalty) {
+      if (state.pendingPenalty.targetPlayerId !== playerId) {
+        return { ok: false, code: "ILLEGAL_ACTION", message: "Only the penalty target can draw the stack." };
+      }
+      return { ok: true };
+    }
+
     if (!settings.allowDrawingWhenPlayable && hasPlayableCard(state, player)) {
       return { ok: false, code: "ILLEGAL_ACTION", message: "You have a playable card." };
     }
@@ -47,6 +54,9 @@ export function validateClassicUnoAction(params: {
   }
 
   if (action.type === "pass_turn") {
+    if (state.pendingPenalty) {
+      return { ok: false, code: "ILLEGAL_ACTION", message: "Draw or stack the pending penalty." };
+    }
     if (state.lastDrawnCardId === null) {
       return { ok: false, code: "ILLEGAL_ACTION", message: "You can pass only after drawing a card." };
     }

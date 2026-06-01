@@ -1,4 +1,4 @@
-import type { AuthUser, RoomStateView } from "@tabletop/shared";
+import type { AuthUser, JoinableRoomSummary, RoomStateView } from "@tabletop/shared";
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api";
 
@@ -61,11 +61,17 @@ export const api = {
       body: JSON.stringify(payload)
     }),
   myRoom: () => request<{ room: RoomStateView | null; rooms: RoomStateView[] }>("/rooms/me"),
+  joinableRooms: () => request<{ rooms: JoinableRoomSummary[] }>("/rooms/joinable"),
   endRoom: (roomId: string) => request<{ room: RoomStateView }>(`/rooms/${roomId}/end`, { method: "POST" }),
   addBot: (roomId: string) => request<{ room: RoomStateView }>(`/rooms/${roomId}/bots`, { method: "POST" }),
   fillBots: (roomId: string) => request<{ room: RoomStateView }>(`/rooms/${roomId}/bots/fill`, { method: "POST" }),
   removeBots: (roomId: string) => request<{ room: RoomStateView }>(`/rooms/${roomId}/bots`, { method: "DELETE" }),
   profile: () => request<{ profile: unknown; stats: unknown[] }>("/profile/me"),
+  updateProfile: (payload: { displayName?: string; avatarUrl?: string | null }) =>
+    request<{ profile: unknown; user: AuthUser }>("/profile/me", {
+      method: "PATCH",
+      body: JSON.stringify(payload)
+    }),
   xpLeaderboard: () => request<{ leaderboard: unknown[] }>("/leaderboards/xp"),
   gameWinsLeaderboard: (gameId: string) => request<{ leaderboard: unknown[] }>(`/leaderboards/${gameId}/wins`),
   activeRooms: () => request<{ rooms: unknown[] }>("/admin/rooms")

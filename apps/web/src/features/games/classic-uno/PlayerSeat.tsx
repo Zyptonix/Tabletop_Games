@@ -12,6 +12,7 @@ import type { CardThemeId } from "./cardThemes";
 interface PublicSeatPlayer {
   userId: string;
   displayName: string;
+  avatarUrl?: string | null;
   seat: number;
   handCount: number;
   unoCalled: boolean;
@@ -55,6 +56,7 @@ export function PlayerSeat({
   turnProgress?: number | undefined;
 }) {
   const connected = roomPlayer?.connected ?? false;
+  const avatarUrl = player.avatarUrl ?? roomPlayer?.avatarUrl ?? null;
   const inactive = !connected || player.eliminated;
 
   return (
@@ -125,10 +127,14 @@ export function PlayerSeat({
                   : "border-emerald-200/14 bg-black/58 text-white"
               )}
             >
-              {getInitials(player.displayName)}
-            {player.isCurrentTurn && typeof turnProgress === "number" ? (
-              <SeatTimerRing progress={turnProgress} compact={compact} />
-            ) : null}
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={player.displayName} className="h-full w-full rounded-full object-cover" />
+              ) : (
+                <span>{getInitials(player.displayName)}</span>
+              )}
+              {player.isCurrentTurn && typeof turnProgress === "number" ? (
+                <SeatTimerRing progress={turnProgress} compact={compact} />
+              ) : null}
             </div>
 
             <span

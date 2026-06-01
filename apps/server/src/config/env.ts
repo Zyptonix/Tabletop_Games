@@ -18,7 +18,8 @@ const envSchema = z.object({
   PUBLIC_APP_URL: z.string().url(),
   SOCKET_PATH: z.string().default("/socket.io"),
   NODE_ENV: nodeEnvSchema.default("development"),
-  SERVER_PORT: z.coerce.number().int().positive().default(4000)
+  SERVER_PORT: z.coerce.number().int().positive().default(4000),
+  ENABLE_UNO_DEBUG_PANEL: z.enum(["true", "false"]).optional()
 });
 
 export const env = envSchema.parse({
@@ -28,7 +29,8 @@ export const env = envSchema.parse({
   PUBLIC_APP_URL: resolvePublicAppUrl(nodeEnv),
   SOCKET_PATH: cleanEnvValue(process.env.SOCKET_PATH),
   NODE_ENV: nodeEnv,
-  SERVER_PORT: cleanEnvValue(process.env.SERVER_PORT)
+  SERVER_PORT: cleanEnvValue(process.env.SERVER_PORT),
+  ENABLE_UNO_DEBUG_PANEL: cleanEnvValue(process.env.ENABLE_UNO_DEBUG_PANEL ?? process.env.NEXT_PUBLIC_ENABLE_UNO_DEBUG_PANEL)
 });
 
 export const corsOrigins = [
@@ -88,3 +90,5 @@ function resolvePublicAppUrl(currentEnv: "development" | "test" | "production"):
   console.warn(`[env] ${message} Falling back to ${fallback} for local development.`);
   return fallback;
 }
+
+export const unoDebugScenariosEnabled = env.NODE_ENV !== "production" || env.ENABLE_UNO_DEBUG_PANEL === "true";

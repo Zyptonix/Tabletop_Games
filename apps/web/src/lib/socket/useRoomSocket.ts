@@ -29,6 +29,7 @@ export interface RoomSocketState {
   fillBots: (roomId: string) => void;
   removeBots: (roomId: string) => void;
   sendChat: (roomId: string, body: string) => void;
+  sendDebugScenario: (roomId: string, scenario: string, targetPlayerId?: string) => void;
 }
 
 function isGameEvent(value: unknown): value is GameEvent {
@@ -131,6 +132,9 @@ export function useRoomSocket(roomCode?: string): RoomSocketState {
       addBot: (roomId: string) => socket?.emit("room:add-bot", { roomId }),
       fillBots: (roomId: string) => socket?.emit("room:fill-bots", { roomId }),
       removeBots: (roomId: string) => socket?.emit("room:remove-bots", { roomId }),
+      sendDebugScenario: (roomId: string, scenario: string, targetPlayerId?: string) => {
+        socket?.emit("debug:uno-scenario", { roomId, scenario, targetPlayerId });
+      },
       sendChat: (roomId: string, body: string) => {
         if (body.startsWith(REACTION_PREFIX)) {
           const now = Date.now();

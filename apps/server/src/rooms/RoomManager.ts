@@ -6,6 +6,7 @@ import {
   ROOM_CODE_ALPHABET,
   ROOM_CODE_LENGTH,
   type ActiveRoomSummary,
+  type JoinableRoomSummary,
   type AuthUser,
   type ChatMessageView,
   type GameActionEnvelope,
@@ -13,7 +14,15 @@ import {
   type RoomStateView,
   type TimerView
 } from "@tabletop/shared";
-import { ActionQueue, type GameModule, type GamePlayer } from "@tabletop/game-core";
+import {
+  ActionQueue,
+  applyClassicUnoDebugScenario,
+  applyNoMercyDebugScenario,
+  type ClassicUnoState,
+  type GameModule,
+  type GamePlayer,
+  type NoMercyState
+} from "@tabletop/game-core";
 import { ChatRateLimiter } from "../chat/ChatRateLimiter";
 import { gameRegistry, type GameRegistry } from "../games/GameRegistry";
 import { MatchResultService } from "../services/MatchResultService";
@@ -90,6 +99,29 @@ export class RoomManager {
     }));
   }
 
+  listJoinableRooms(): JoinableRoomSummary[] {
+    return [...this.roomsById.values()]
+      .filter((room) => {
+        if (room.status !== "lobby") return false;
+        const module = this.registry.get(room.gameId);
+        return Boolean(module && room.players.length < module.maxPlayers);
+      })
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+      .map((room) => {
+        const module = this.requireModule(room.gameId);
+        return {
+          id: room.id,
+          code: room.code,
+          gameId: room.gameId,
+          gameName: module.displayName,
+          status: room.status,
+          playerCount: room.players.length,
+          maxPlayers: module.maxPlayers,
+          hostDisplayName: room.players.find((player) => player.userId === room.hostUserId)?.displayName,
+          createdAt: room.createdAt
+        };
+      });
+  }
   getRoom(roomId: string): RoomRuntime | null {
     return this.roomsById.get(roomId) ?? null;
   }
@@ -109,6 +141,17 @@ export class RoomManager {
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
   }
 
+  updateUserProfileInRooms(params: { userId: string; displayName: string; avatarUrl: string | null }): RoomRuntime[] {
+    const changedRooms: RoomRuntime[] = [];
+    for (const room of this.roomsById.values()) {
+      const player = room.players.find((item) => item.userId === params.userId && !item.isBot);
+      if (!player) continue;
+      player.displayName = params.displayName;
+      player.avatarUrl = params.avatarUrl;
+      changedRooms.push(room);
+    }
+    return changedRooms;
+  }
   getRoomForUser(userId: string): RoomRuntime | null {
     return this.listRoomsForUser(userId)[0] ?? null;
   }
@@ -521,6 +564,54 @@ export class RoomManager {
     return result;
   }
 
+  async applyUnoDebugScenario(params: {
+    roomId: string;
+    user: AuthUser;
+    scenario: string;
+    targetPlayerId?: string | undefined;
+  }): Promise<{ room: RoomRuntime; events: unknown[] }> {
+    const room = this.requireRoom(params.roomId);
+    if (params.user.role !== "ADMIN") {
+      this.requireHost(room, params.user.id);
+    }
+    if (room.status !== "in_game" && room.status !== "paused") {
+      throw new AppError(ERROR_CODES.INVALID_ACTION, "Debug scenarios need an active or paused game.");
+    }
+    if (!room.gameState) {
+      throw new AppError(ERROR_CODES.INVALID_ACTION, "Game state is not ready.");
+    }
+
+    return room.queue.enqueue(async () => {
+      const now = new Date().toISOString();
+      const result = room.gameId === "classic-uno"
+        ? applyClassicUnoDebugScenario({
+            state: room.gameState as ClassicUnoState,
+            scenario: params.scenario,
+            requesterId: params.user.id,
+            targetPlayerId: params.targetPlayerId,
+            now
+          })
+        : room.gameId === "uno-no-mercy"
+          ? applyNoMercyDebugScenario({
+              state: room.gameState as NoMercyState,
+              scenario: params.scenario,
+              requesterId: params.user.id,
+              targetPlayerId: params.targetPlayerId,
+              now
+            })
+          : null;
+
+      if (!result) {
+        throw new AppError(ERROR_CODES.INVALID_ACTION, "Debug scenarios are only available for UNO games.");
+      }
+
+      room.gameState = result.state;
+      room.actionNumber = this.extractActionNumber(room.gameState, room.actionNumber + 1);
+      this.addSystemMessage(room, `Debug scenario applied: ${params.scenario}.`);
+      void this.saveSnapshot(room);
+      return { room, events: result.events };
+    });
+  }
   addBot(roomId: string, userId: string): RoomRuntime {
     const room = this.requireRoom(roomId);
     this.requireHost(room, userId);

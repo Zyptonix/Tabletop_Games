@@ -46,4 +46,5 @@ export interface ClientToServerEvents {
   "chat:send": (payload: unknown) => void;
   "admin:force-snapshot": (payload: unknown) => void;
   "admin:end-room": (payload: unknown) => void;
+  "debug:uno-scenario": (payload: unknown) => void;
 }

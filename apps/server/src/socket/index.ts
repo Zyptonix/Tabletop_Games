@@ -4,6 +4,7 @@ import { prisma } from "@tabletop/db";
 import {
   chatSendSchema,
   createRoomSchema,
+  debugUnoScenarioSchema,
   ERROR_CODES,
   gameActionEnvelopeSchema,
   joinRoomSchema,
@@ -16,7 +17,7 @@ import {
 } from "@tabletop/shared";
 import { readSessionFromCookie } from "../auth/session";
 import { serializeUser } from "../auth/serializeUser";
-import { corsOriginDelegate, env } from "../config/env";
+import { corsOriginDelegate, env, unoDebugScenariosEnabled } from "../config/env";
 import { RoomManager } from "../rooms/RoomManager";
 import { RoomTimers } from "../rooms/RoomTimers";
 import { AppError } from "../utils/AppError";
@@ -462,6 +463,30 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
       }
     });
 
+
+    socket.on("debug:uno-scenario", async (payload) => {
+      const parsed = debugUnoScenarioSchema.safeParse(payload);
+      if (!parsed.success) {
+        emitError(socket, "server:error", new AppError(ERROR_CODES.INVALID_PAYLOAD, "Invalid debug payload.", parsed.error.flatten()));
+        return;
+      }
+      if (!unoDebugScenariosEnabled) {
+        emitError(socket, "server:error", new AppError(ERROR_CODES.ADMIN_ONLY, "UNO debug scenarios are disabled."));
+        return;
+      }
+
+      try {
+        const result = await manager.applyUnoDebugScenario({
+          roomId: parsed.data.roomId,
+          user,
+          scenario: parsed.data.scenario,
+          targetPlayerId: parsed.data.targetPlayerId
+        });
+        emitRoom(result.room, result.events);
+      } catch (error) {
+        emitError(socket, "server:error", error);
+      }
+    });
     socket.on("disconnect", (reason) => {
       if (env.NODE_ENV === "development") {
         console.info(`[socket] disconnected user=${user.id} reason=${reason}`);

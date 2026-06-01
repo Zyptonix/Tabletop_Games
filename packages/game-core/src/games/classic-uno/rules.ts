@@ -17,7 +17,34 @@ export function isWild(card: UnoCard): boolean {
   return card.color === "wild";
 }
 
+export function isDrawPenaltyCard(card: UnoCard): boolean {
+  return card.value === "draw_two" || card.value === "wild_draw_four";
+}
+
+export function getDrawPenaltyAmount(card: UnoCard): number {
+  if (card.value === "draw_two") return 2;
+  if (card.value === "wild_draw_four") return 4;
+  return 0;
+}
+
+export function getStackPower(card: UnoCard): number {
+  return getDrawPenaltyAmount(card);
+}
+
+export function canStackDrawCard(params: { state: ClassicUnoState; card: UnoCard }): boolean {
+  const { state, card } = params;
+  if (!state.pendingPenalty || !isDrawPenaltyCard(card)) {
+    return false;
+  }
+
+  return getStackPower(card) >= state.pendingPenalty.requiredResponseMinPower;
+}
+
 export function isCardPlayable(state: ClassicUnoState, card: UnoCard): boolean {
+  if (state.pendingPenalty) {
+    return canStackDrawCard({ state, card });
+  }
+
   const topDiscard = getTopDiscard(state);
   return isWild(card) || card.color === state.currentColor || card.value === topDiscard.value;
 }

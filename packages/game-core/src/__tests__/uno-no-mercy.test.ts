@@ -14,6 +14,7 @@ import {
   type NoMercyState
 } from "../games/uno-no-mercy";
 import type { GamePlayer } from "../engine/GameTypes";
+import { refillDrawPileIfNeeded } from "../games/uno-no-mercy/rules";
 
 const players: GamePlayer[] = [
   { userId: "p1", username: "p1", displayName: "P1", seat: 0 },
@@ -301,11 +302,11 @@ describe("uno no mercy", () => {
     expectPlayable(state, { type: "play_card", cardId: greenDrawFour.id });
   });
 
-  it("draws until a playable card is found on a normal draw", () => {
+  it("draws one normal card at a time until a playable card appears", () => {
     const drawPile = [card("blue", "1"), card("green", "2"), card("red", "9")];
     const state = stateWithHands({ p1: [card("yellow", "3")], p2: [card("blue", "4")], p3: [card("green", "5")] }, "red", drawPile);
 
-    const result = applyNoMercyAction({
+    const first = applyNoMercyAction({
       state,
       settings: state.settings,
       playerId: "p1",
@@ -313,10 +314,34 @@ describe("uno no mercy", () => {
       now: "2026-05-30T00:00:01.000Z"
     });
 
-    const p1 = result.state.players.find((player) => player.userId === "p1");
-    expect(p1?.hand).toHaveLength(4);
-    expect(result.state.lastDrawnCardId).toBe(drawPile[2]?.id);
-    expect(result.state.currentPlayerId).toBe("p1");
+    expect(first.state.players.find((player) => player.userId === "p1")?.hand).toHaveLength(2);
+    expect(first.state.lastDrawnCardId).toBeNull();
+    expect(first.state.currentPlayerId).toBe("p1");
+    expect(validateNoMercyAction({ state: first.state, settings: first.state.settings, playerId: "p1", action: { type: "draw_card" } }).ok).toBe(true);
+
+    const second = applyNoMercyAction({
+      state: first.state,
+      settings: first.state.settings,
+      playerId: "p1",
+      action: { type: "draw_card" },
+      now: "2026-05-30T00:00:02.000Z"
+    });
+
+    expect(second.state.players.find((player) => player.userId === "p1")?.hand).toHaveLength(3);
+    expect(second.state.lastDrawnCardId).toBeNull();
+    expect(second.state.currentPlayerId).toBe("p1");
+
+    const third = applyNoMercyAction({
+      state: second.state,
+      settings: second.state.settings,
+      playerId: "p1",
+      action: { type: "draw_card" },
+      now: "2026-05-30T00:00:03.000Z"
+    });
+
+    expect(third.state.players.find((player) => player.userId === "p1")?.hand).toHaveLength(4);
+    expect(third.state.lastDrawnCardId).toBe(drawPile[2]?.id);
+    expect(third.state.currentPlayerId).toBe("p1");
   });
 
   it("keeps Discard All as the visible top discard after extra discards", () => {
@@ -462,6 +487,26 @@ describe("uno no mercy", () => {
     expect(payload.actuallyDrawn).toBe(3);
   });
 
+  it("refills from discard and mercy piles without duplicating cards", () => {
+    const state = stateWithHands({ p1: [card("red", "1")], p2: [], p3: [] });
+    const discardA = card("blue", "2");
+    const discardB = card("green", "3");
+    const topDiscard = card("red", "5");
+    const mercyA = card("yellow", "4");
+    const mercyB = card("blue", "6");
+    const refilled = refillDrawPileIfNeeded({
+      ...state,
+      drawPile: [],
+      discardPile: [discardA, discardB, topDiscard],
+      mercyPile: [mercyA, mercyB]
+    });
+
+    expect(refilled.discardPile.map((item) => item.id)).toEqual([topDiscard.id]);
+    expect(refilled.mercyPile).toHaveLength(0);
+    expect(refilled.drawPile).toHaveLength(4);
+    expect(new Set(refilled.drawPile.map((item) => item.id)).size).toBe(4);
+    expect(refilled.drawPile.map((item) => item.id).sort()).toEqual([discardA.id, discardB.id, mercyA.id, mercyB.id].sort());
+  });
   it("sets eliminated hands aside and refills from mercy pile for full stack penalties", () => {
     const filler = card("blue", "1");
     let state = stateWithHands(

@@ -235,62 +235,6 @@ function discardAllMatchingColor(params: {
   };
 }
 
-function drawUntilColor(params: {
-  state: NoMercyState;
-  playerId: string;
-  color: NoMercyCard["color"];
-}): { state: NoMercyState; count: number; revealedCards: NoMercyCard[] } {
-  let state = params.state;
-  let count = 0;
-  const revealedCards: NoMercyCard[] = [];
-
-  while (state.drawPile.length > 0 || state.discardPile.length > 1 || (state.mercyPile?.length ?? 0) > 0) {
-    const drawn = drawCards(state, params.playerId, 1);
-    const card = drawn.cards[0];
-    if (!card) {
-      break;
-    }
-    state = drawn.state;
-    count += 1;
-    revealedCards.push(card);
-
-    // Wild cards do not count for Color Roulette. Only a real colored card stops it.
-    if (card.color === params.color) {
-      break;
-    }
-  }
-
-  return { state, count, revealedCards };
-}
-
-function drawUntilPlayable(params: {
-  state: NoMercyState;
-  playerId: string;
-}): { state: NoMercyState; cards: NoMercyCard[]; playableCard: NoMercyCard | null } {
-  let state = params.state;
-  const cards: NoMercyCard[] = [];
-  let playableCard: NoMercyCard | null = null;
-
-  while (state.drawPile.length > 0 || state.discardPile.length > 1 || (state.mercyPile?.length ?? 0) > 0) {
-    const drawn = drawCards(state, params.playerId, 1);
-    const card = drawn.cards[0];
-    if (!card) {
-      break;
-    }
-
-    state = drawn.state;
-    cards.push(card);
-
-    const refreshedPlayer = findNoMercyPlayer(state, params.playerId);
-    if (refreshedPlayer && !refreshedPlayer.eliminated && isCardPlayable(state, card)) {
-      playableCard = card;
-      break;
-    }
-  }
-
-  return { state, cards, playableCard };
-}
-
 function applyDrawPenaltyCard(params: {
   state: NoMercyState;
   playedCard: NoMercyCard;
@@ -473,7 +417,8 @@ export function applyNoMercyAction(params: {
   }
 
   if (action.type === "resolve_roulette") {
-    if (!state.pendingRoulette || state.pendingRoulette.targetPlayerId !== playerId) {
+    const pendingRoulette = state.pendingRoulette;
+    if (!pendingRoulette || pendingRoulette.targetPlayerId !== playerId) {
       return { state: params.state, events };
     }
 
@@ -481,9 +426,9 @@ export function applyNoMercyAction(params: {
       ...state,
       currentColor: action.chosenColor,
       pendingRoulette: {
-        ...state.pendingRoulette,
+        ...pendingRoulette,
         chosenColor: action.chosenColor,
-        revealedCards: [...state.pendingRoulette.revealedCards]
+        revealedCards: [...pendingRoulette.revealedCards]
       },
       lastDrawnCardId: null
     };
@@ -492,7 +437,7 @@ export function applyNoMercyAction(params: {
       createGameEvent("uno-no-mercy:roulette_color_chosen", {
         message: `${player.displayName} chose ${action.chosenColor} for Color Roulette.`,
         payload: {
-          playerId: state.pendingRoulette.playedByPlayerId,
+          playerId: pendingRoulette.playedByPlayerId,
           targetPlayerId: playerId,
           chosenColor: action.chosenColor,
           source: "roulette_color_chosen"
@@ -506,19 +451,20 @@ export function applyNoMercyAction(params: {
 
   if (action.type === "draw_card") {
     if (state.pendingRoulette) {
-      if (state.pendingRoulette.targetPlayerId !== playerId || !state.pendingRoulette.chosenColor) {
+      const pendingRoulette = state.pendingRoulette;
+      const chosenColor = pendingRoulette.chosenColor;
+      if (pendingRoulette.targetPlayerId !== playerId || !chosenColor) {
         return { state: params.state, events };
       }
 
-      const pendingRoulette = state.pendingRoulette;
       const drawn = drawCards(state, playerId, 1);
       const revealedCard = drawn.cards[0] ?? null;
       const revealedCards = revealedCard ? [...pendingRoulette.revealedCards, revealedCard] : [...pendingRoulette.revealedCards];
-      const matched = Boolean(revealedCard && revealedCard.color === pendingRoulette.chosenColor);
+      const matched = Boolean(revealedCard && revealedCard.color === chosenColor);
 
       state = {
         ...drawn.state,
-        currentColor: pendingRoulette.chosenColor,
+        currentColor: chosenColor,
         pendingRoulette: matched || !revealedCard
           ? null
           : { ...pendingRoulette, revealedCards },
@@ -533,7 +479,7 @@ export function applyNoMercyAction(params: {
           payload: {
             playerId: pendingRoulette.playedByPlayerId,
             targetPlayerId: playerId,
-            chosenColor: pendingRoulette.chosenColor,
+            chosenColor: chosenColor,
             card: revealedCard,
             revealedCard,
             revealedCards,
@@ -552,7 +498,7 @@ export function applyNoMercyAction(params: {
             count: revealedCard ? 1 : 0,
             source: "roulette",
             revealedCards: revealedCard ? [revealedCard] : [],
-            chosenColor: pendingRoulette.chosenColor,
+            chosenColor: chosenColor,
             matchedCardId: matched && revealedCard ? revealedCard.id : undefined,
             actuallyDrawn: revealedCard ? 1 : 0
           }
@@ -560,14 +506,14 @@ export function applyNoMercyAction(params: {
       );
 
       if (matched || !revealedCard) {
-        const matchedCard = revealedCards.find((card) => card.color === pendingRoulette.chosenColor);
+        const matchedCard = revealedCards.find((card) => card.color === chosenColor);
         events.push(
           createGameEvent("uno-no-mercy:roulette", {
             message: `Roulette made ${player.displayName} draw ${revealedCards.length} card${revealedCards.length === 1 ? "" : "s"}.`,
             payload: {
               playerId: pendingRoulette.playedByPlayerId,
               targetPlayerId: playerId,
-              chosenColor: pendingRoulette.chosenColor,
+              chosenColor: chosenColor,
               count: revealedCards.length,
               revealedCards,
               matchedCardId: matchedCard?.id,
@@ -596,21 +542,23 @@ export function applyNoMercyAction(params: {
       return { state, events };
     }
 
-    const drawn = drawUntilPlayable({ state, playerId });
+    const drawn = drawCards(state, playerId, 1);
     state = drawn.state;
-    const card = drawn.playableCard;
+    const card = drawn.cards[0] ?? null;
+    const canPlayDrawn = card ? isCardPlayable(state, card) : false;
+    const playableCardId = canPlayDrawn && card ? card.id : null;
 
     events.push(
       createGameEvent("uno-no-mercy:draw", {
         message: `${player.displayName} drew ${drawn.cards.length} card${drawn.cards.length === 1 ? "" : "s"}.`,
-        payload: { playerId, count: drawn.cards.length, actuallyDrawn: drawn.cards.length, source: "draw_until_playable", playableCardId: card?.id ?? null }
+        payload: { playerId, count: drawn.cards.length, actuallyDrawn: drawn.cards.length, source: "normal_draw", playableCardId }
       })
     );
 
     events.push(
       createGameEvent("uno-no-mercy:cards_drawn", {
         message: `${player.displayName} drew ${drawn.cards.length} card${drawn.cards.length === 1 ? "" : "s"}.`,
-        payload: { playerId, count: drawn.cards.length, actuallyDrawn: drawn.cards.length, source: "draw_until_playable", playableCardId: card?.id ?? null }
+        payload: { playerId, count: drawn.cards.length, actuallyDrawn: drawn.cards.length, source: "normal_draw", playableCardId }
       })
     );
 
@@ -618,9 +566,15 @@ export function applyNoMercyAction(params: {
     state = finishIfResolved(state, null, now);
     if (state.phase !== "finished") {
       const stillActivePlayer = findNoMercyPlayer(state, playerId);
-      state = card && stillActivePlayer && !stillActivePlayer.eliminated
-        ? { ...state, lastDrawnCardId: card.id, updatedAt: now }
-        : advanceTurn(state, { steps: 1, now, fromPlayerId: playerId });
+      if (canPlayDrawn && card && stillActivePlayer && !stillActivePlayer.eliminated) {
+        state = { ...state, lastDrawnCardId: card.id, updatedAt: now };
+      } else if (drawn.cards.length === 0 || !stillActivePlayer || stillActivePlayer.eliminated) {
+        state = advanceTurn(state, { steps: 1, now, fromPlayerId: playerId });
+      } else {
+        // Keep the turn after an unplayable normal draw so the player can draw
+        // again one card at a time, just like manual Color Roulette reveals.
+        state = { ...state, lastDrawnCardId: null, updatedAt: now };
+      }
     }
 
     state = withActionMeta(state, params.state, now);

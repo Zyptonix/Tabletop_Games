@@ -5,6 +5,8 @@ import {
   createClassicUnoDeck,
   createInitialClassicUnoState,
   getPublicClassicUnoState,
+  getLegalClassicUnoActions,
+  refillDrawPileIfNeeded,
   validateClassicUnoAction,
   type ClassicUnoState,
   type UnoCard
@@ -112,16 +114,21 @@ describe("classic UNO", () => {
     expect(result.state.currentPlayerId).toBe("u3");
   });
 
-  it("draw two gives cards to the target and skips them", () => {
+  it("starts and resolves a Classic draw stack", () => {
     const state = baseState();
     state.currentPlayerId = "u1";
     state.currentColor = "red";
     state.discardPile = [card("red-4", "red", "4", 4)];
-    state.drawPile = [card("draw-a", "green", "1", 1), card("draw-b", "yellow", "2", 2)];
+    state.drawPile = [
+      card("draw-a", "green", "1", 1),
+      card("draw-b", "yellow", "2", 2),
+      card("draw-c", "blue", "3", 3),
+      card("draw-d", "red", "6", 6)
+    ];
     state.players[0]!.hand = [card("red-draw-two", "red", "draw_two", 20), card("blue-1", "blue", "1", 1)];
-    const before = state.players[1]!.hand.length;
+    state.players[1]!.hand = [card("blue-5", "blue", "5", 5)];
 
-    const result = applyClassicUnoAction({
+    const stacked = applyClassicUnoAction({
       state,
       settings: state.settings,
       playerId: "u1",
@@ -129,11 +136,105 @@ describe("classic UNO", () => {
       now: "2026-01-01T00:00:10.000Z"
     });
 
-    expect(result.state.players[1]!.hand).toHaveLength(before + 2);
-    expect(result.state.currentPlayerId).toBe("u3");
+    expect(stacked.state.pendingPenalty).toEqual({
+      amount: 2,
+      source: "draw_two",
+      requiredResponseMinPower: 2,
+      targetPlayerId: "u2"
+    });
+    expect(stacked.state.currentPlayerId).toBe("u2");
+
+    const before = stacked.state.players[1]!.hand.length;
+    const resolved = applyClassicUnoAction({
+      state: stacked.state,
+      settings: stacked.state.settings,
+      playerId: "u2",
+      action: { type: "draw_card" },
+      now: "2026-01-01T00:00:11.000Z"
+    });
+
+    expect(resolved.state.pendingPenalty).toBeNull();
+    expect(resolved.state.players[1]!.hand).toHaveLength(before + 2);
+    expect(resolved.state.currentPlayerId).toBe("u3");
   });
 
+  it("allows +2 and +4 Classic stacking by same-or-higher draw power", () => {
+    const state = baseState();
+    state.currentPlayerId = "u1";
+    state.currentColor = "red";
+    state.discardPile = [card("red-4", "red", "4", 4)];
+    state.players[0]!.hand = [card("red-draw-two", "red", "draw_two", 20), card("blue-1", "blue", "1", 1)];
+    state.players[1]!.hand = [card("wild-plus-four", "wild", "wild_draw_four", 50), card("red-2", "red", "2", 2)];
+    state.players[2]!.hand = [card("red-draw-two-next", "red", "draw_two", 20)];
+
+    const first = applyClassicUnoAction({
+      state,
+      settings: state.settings,
+      playerId: "u1",
+      action: { type: "play_card", cardId: "red-draw-two" },
+      now: "2026-01-01T00:00:10.000Z"
+    });
+
+    const second = applyClassicUnoAction({
+      state: first.state,
+      settings: first.state.settings,
+      playerId: "u2",
+      action: { type: "play_card", cardId: "wild-plus-four", declaredColor: "blue" },
+      now: "2026-01-01T00:00:11.000Z"
+    });
+
+    expect(second.state.pendingPenalty?.amount).toBe(6);
+    expect(second.state.pendingPenalty?.requiredResponseMinPower).toBe(4);
+    expect(second.state.pendingPenalty?.targetPlayerId).toBe("u3");
+    expect(
+      validateClassicUnoAction({
+        state: second.state,
+        settings: second.state.settings,
+        playerId: "u3",
+        action: { type: "play_card", cardId: "red-draw-two-next" }
+      }).ok
+    ).toBe(false);
+    expect(getLegalClassicUnoActions({ state: second.state, playerId: "u3" }).some((action) => action.type === "draw_card")).toBe(true);
+  });
+
+
+  it("draws one card at a time until a playable card appears", () => {
+    const state = baseState();
+    state.currentPlayerId = "u1";
+    state.currentColor = "red";
+    state.discardPile = [card("red-4", "red", "4", 4)];
+    state.drawPile = [card("blue-9", "blue", "9", 9), card("red-2", "red", "2", 2)];
+    state.players[0]!.hand = [card("yellow-3", "yellow", "3", 3)];
+
+    const first = applyClassicUnoAction({
+      state,
+      settings: state.settings,
+      playerId: "u1",
+      action: { type: "draw_card" },
+      now: "2026-01-01T00:00:10.000Z"
+    });
+
+    expect(first.state.players[0]!.hand).toHaveLength(2);
+    expect(first.state.lastDrawnCardId).toBeNull();
+    expect(first.state.currentPlayerId).toBe("u1");
+    expect(
+      validateClassicUnoAction({ state: first.state, settings: first.state.settings, playerId: "u1", action: { type: "draw_card" } }).ok
+    ).toBe(true);
+
+    const second = applyClassicUnoAction({
+      state: first.state,
+      settings: first.state.settings,
+      playerId: "u1",
+      action: { type: "draw_card" },
+      now: "2026-01-01T00:00:11.000Z"
+    });
+
+    expect(second.state.players[0]!.hand).toHaveLength(3);
+    expect(second.state.lastDrawnCardId).toBe("red-2");
+    expect(second.state.currentPlayerId).toBe("u1");
+  });
   it("wild cards require and set declared color", () => {
+
     const state = baseState();
     state.currentPlayerId = "u1";
     state.currentColor = "red";
@@ -171,6 +272,21 @@ describe("classic UNO", () => {
     expect(result.state.results?.placements[0]?.userId).toBe("u1");
   });
 
+  it("refills the Classic draw pile by preserving the top discard and shuffling the rest", () => {
+    const state = baseState();
+    state.drawPile = [];
+    state.discardPile = [
+      card("old-red-1", "red", "1", 1),
+      card("old-blue-2", "blue", "2", 2),
+      card("top-green-3", "green", "3", 3)
+    ];
+    const refilled = refillDrawPileIfNeeded(state);
+
+    expect(refilled.discardPile.map((item) => item.id)).toEqual(["top-green-3"]);
+    expect(refilled.drawPile).toHaveLength(2);
+    expect(new Set(refilled.drawPile.map((item) => item.id)).size).toBe(2);
+    expect(refilled.drawPile.map((item) => item.id).sort()).toEqual(["old-blue-2", "old-red-1"]);
+  });
   it("hides other players' hands in public state", () => {
     const state = baseState();
     const publicState = getPublicClassicUnoState({ state, viewerId: "u1" });

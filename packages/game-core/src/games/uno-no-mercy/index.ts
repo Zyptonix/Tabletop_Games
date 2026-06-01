@@ -1,4 +1,4 @@
-﻿import type { GameModule } from "../../engine/GameModule";
+import type { GameModule } from "../../engine/GameModule";
 import type { GameTurnInfo, TimeoutAction } from "../../engine/GameTypes";
 import { NO_MERCY_MAX_PLAYERS, NO_MERCY_MIN_PLAYERS, DEFAULT_NO_MERCY_SETTINGS, NO_MERCY_VERSION } from "./constants";
 import { noMercyActionSchema, noMercySettingsSchema } from "./actions";
@@ -63,6 +63,7 @@ export const noMercyModule: GameModule<NoMercyState, NoMercyAction, NoMercySetti
 
 export * from "./actions";
 export * from "./constants";
+export * from "./debug";
 export * from "./deck";
 export * from "./public-state";
 export * from "./reducer";

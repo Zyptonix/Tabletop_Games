@@ -40,7 +40,7 @@ export function createApp(manager: RoomManager) {
 
   app.use(authRouter);
   app.use(createRoomsRouter(manager));
-  app.use(createServicesRouter());
+  app.use(createServicesRouter(undefined, manager));
   app.use(createAdminRouter(manager));
 
   return app;

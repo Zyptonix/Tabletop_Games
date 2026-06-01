@@ -50,3 +50,15 @@ export interface ActiveRoomSummary {
   actionNumber: number;
   createdAt: string;
 }
+
+export interface JoinableRoomSummary {
+  id: string;
+  code: string;
+  gameId: GameId;
+  gameName: string;
+  status: RoomStatus;
+  playerCount: number;
+  maxPlayers: number;
+  hostDisplayName?: string | undefined;
+  createdAt: string;
+}

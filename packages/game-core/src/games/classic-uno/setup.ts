@@ -96,6 +96,7 @@ export function createInitialClassicUnoState(params: {
     currentColor,
     drawPile: startingDiscard.remaining,
     discardPile: [startingDiscard.card],
+    pendingPenalty: null,
     lastDrawnCardId: null,
     actionNumber: 0,
     rngState: shuffled.rngState,

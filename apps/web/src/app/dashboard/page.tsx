@@ -7,6 +7,7 @@ import type { RoomStateView } from "@tabletop/shared";
 import { AppShell } from "@/components/layout/AppShell";
 import { CreateRoomPanel } from "@/components/room/CreateRoomPanel";
 import { JoinRoomPanel } from "@/components/room/JoinRoomPanel";
+import { JoinableRoomsList } from "@/components/room/JoinableRoomsList";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth/useAuth";
@@ -109,6 +110,9 @@ export default function DashboardPage() {
         <aside className="grid gap-4">
           <CreateRoomPanel />
           <JoinRoomPanel />
+          <div className="hidden lg:block">
+            <JoinableRoomsList />
+          </div>
         </aside>
       </div>
     </AppShell>

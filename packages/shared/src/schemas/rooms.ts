@@ -35,3 +35,30 @@ export const transferHostSchema = kickPlayerSchema;
 
 export type CreateRoomInput = z.infer<typeof createRoomSchema>;
 export type JoinRoomInput = z.infer<typeof joinRoomSchema>;
+
+export const UNO_DEBUG_SCENARIOS = [
+  "give_me_playable",
+  "give_me_no_playable",
+  "force_draw_until_playable",
+  "classic_plus2_stack",
+  "classic_plus4_stack",
+  "no_mercy_plus10_stack",
+  "no_mercy_plus20_stack",
+  "roulette_against_me",
+  "zero_pass",
+  "seven_swap",
+  "reverse",
+  "skip_everyone",
+  "low_draw_pile_refill",
+  "mercy_elimination",
+  "reset_match"
+] as const;
+
+export const debugUnoScenarioSchema = z.object({
+  roomId: z.string().min(1),
+  scenario: z.enum(UNO_DEBUG_SCENARIOS),
+  targetPlayerId: z.string().min(1).optional()
+});
+
+export type UnoDebugScenario = (typeof UNO_DEBUG_SCENARIOS)[number];
+export type DebugUnoScenarioInput = z.infer<typeof debugUnoScenarioSchema>;

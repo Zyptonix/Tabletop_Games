@@ -21,6 +21,7 @@ import { ReactionOverlay, REACTION_PREFIX } from "./ReactionOverlay";
 import { TurnTimerCircle } from "./TurnTimerCircle";
 import { TurnTransitionOverlay } from "./TurnTransitionOverlay";
 import { UnoActionBar } from "./UnoActionBar";
+import { UnoDebugPanel } from "./UnoDebugPanel";
 import { UnoGameStatus } from "./UnoGameStatus";
 import { UnoRuleBookModal } from "./UnoRuleBookModal";
 import type { CardThemeId } from "./cardThemes";
@@ -145,7 +146,8 @@ export function ClassicUnoTable({
   currentUserRole,
   onAction,
   onChat,
-  onEndMatch
+  onEndMatch,
+  onDebugScenario
 }: {
   room: RoomStateView;
   state: UnoTableState;
@@ -157,6 +159,7 @@ export function ClassicUnoTable({
   onReaction?: ((emoji: string) => void) | undefined;
   onChat?: ((roomId: string, body: string) => void) | undefined;
   onEndMatch?: ((roomId: string) => void) | undefined;
+  onDebugScenario?: ((scenario: string, targetPlayerId?: string) => void) | undefined;
 }) {
   const cardTheme: CardThemeId = state.gameId === "uno-no-mercy" ? "no_mercy" : "classic";
   const tableRootRef = useRef<HTMLElement | null>(null);
@@ -760,6 +763,16 @@ export function ClassicUnoTable({
                   </button>
                 </div>
               </div>
+
+              <UnoDebugPanel
+                gameId={state.gameId}
+                roomPlayers={room.players}
+                currentUserId={currentUserId}
+                currentUserRole={currentUserRole}
+                effectiveHostUserId={room.effectiveHostUserId}
+                onScenario={onDebugScenario}
+              />
+
 
               <div className="min-h-0 flex-1">
                 {onChat ? <RoomChat roomId={room.id} messages={room.chat} onSend={onChat} onlineCount={onlineCount} /> : null}

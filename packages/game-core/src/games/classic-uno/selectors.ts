@@ -33,7 +33,11 @@ export function getLegalClassicUnoActions(params: {
     }
   }
 
-  if (state.lastDrawnCardId !== null) {
+  if (state.pendingPenalty) {
+    if (state.pendingPenalty.targetPlayerId === playerId) {
+      actions.push({ type: "draw_card" });
+    }
+  } else if (state.lastDrawnCardId !== null) {
     actions.push({ type: "pass_turn" });
   } else if (playableActionCount === 0 || state.settings.allowDrawingWhenPlayable) {
     actions.push({ type: "draw_card" });

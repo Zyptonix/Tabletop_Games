@@ -6,8 +6,12 @@ import {
   cardLabel,
   drawCards,
   findUnoPlayer,
+  getDrawPenaltyAmount,
+  getStackPower,
   getTopDiscard,
   isCardPlayable,
+  isDrawPenaltyCard,
+  nextPlayerId,
   resolveDeclaredColor
 } from "./rules";
 import { getClassicUnoResults } from "./scoring";
@@ -20,21 +24,18 @@ function clonePlayers(state: ClassicUnoState): ClassicUnoState {
       hand: [...player.hand]
     })),
     drawPile: [...state.drawPile],
-    discardPile: [...state.discardPile]
+    discardPile: [...state.discardPile],
+    pendingPenalty: state.pendingPenalty ? { ...state.pendingPenalty } : null
   };
 }
 
-function finishIfWinner(state: ClassicUnoState, playerId: string, now: string): ClassicUnoState {
-  const player = findUnoPlayer(state, playerId);
-  if (!player || player.hand.length > 0) {
-    return state;
-  }
-
+function finishGame(state: ClassicUnoState, winnerUserId: string, now: string): ClassicUnoState {
   const finished: ClassicUnoState = {
     ...state,
     phase: "finished",
     currentPlayerId: null,
-    winnerUserId: playerId,
+    pendingPenalty: null,
+    winnerUserId,
     updatedAt: now
   };
 
@@ -42,6 +43,141 @@ function finishIfWinner(state: ClassicUnoState, playerId: string, now: string): 
     ...finished,
     results: getClassicUnoResults(finished)
   };
+}
+
+function finishIfWinner(state: ClassicUnoState, playerId: string, now: string): ClassicUnoState {
+  if (state.pendingPenalty) {
+    return state;
+  }
+
+  const player = findUnoPlayer(state, playerId);
+  if (!player || player.hand.length > 0) {
+    return state;
+  }
+
+  return finishGame(state, playerId, now);
+}
+
+function finishIfAnyWinner(state: ClassicUnoState, now: string): ClassicUnoState {
+  if (state.pendingPenalty) {
+    return state;
+  }
+
+  const winner = state.players.find((player) => player.hand.length === 0);
+  return winner ? finishGame(state, winner.userId, now) : state;
+}
+
+function pushGameOverEvent(state: ClassicUnoState, events: GameEvent[]): void {
+  if (state.phase !== "finished") {
+    return;
+  }
+
+  const winner = state.winnerUserId ? state.players.find((player) => player.userId === state.winnerUserId) : null;
+  events.push(
+    createGameEvent("uno:game_over", {
+      message: winner ? `${winner.displayName} won the game.` : "Classic UNO ended.",
+      payload: { winnerUserId: state.winnerUserId, results: state.results }
+    })
+  );
+}
+
+function applyDrawPenaltyCard(params: {
+  state: ClassicUnoState;
+  playedCard: UnoCard;
+  playerId: string;
+  now: string;
+  events: GameEvent[];
+}): ClassicUnoState {
+  const { state, playedCard, playerId, now, events } = params;
+  const targetPlayerId = nextPlayerId(state, 1);
+  const addedAmount = getDrawPenaltyAmount(playedCard);
+  const amount = (state.pendingPenalty?.amount ?? 0) + addedAmount;
+  const requiredResponseMinPower = getStackPower(playedCard);
+
+  events.push(
+    createGameEvent("uno:penalty_stack", {
+      message: `${cardLabel(playedCard)} added ${addedAmount} to the draw stack.`,
+      payload: {
+        playerId,
+        targetPlayerId,
+        amount,
+        pendingAmount: amount,
+        addedAmount,
+        source: playedCard.value
+      }
+    })
+  );
+
+  return {
+    ...state,
+    pendingPenalty: targetPlayerId
+      ? {
+          amount,
+          source: playedCard.value === "wild_draw_four" ? "wild_draw_four" : "draw_two",
+          requiredResponseMinPower,
+          targetPlayerId
+        }
+      : null,
+    currentPlayerId: targetPlayerId,
+    lastDrawnCardId: null,
+    turnStartedAt: now
+  };
+}
+
+function resolvePendingPenalty(params: {
+  state: ClassicUnoState;
+  playerId: string;
+  now: string;
+  events: GameEvent[];
+}): ClassicUnoState {
+  const { state: inputState, playerId, now, events } = params;
+  const pending = inputState.pendingPenalty;
+  if (!pending) {
+    return inputState;
+  }
+
+  const drawn = drawCards(inputState, playerId, pending.amount);
+  let state: ClassicUnoState = {
+    ...drawn.state,
+    pendingPenalty: null,
+    lastDrawnCardId: null,
+    updatedAt: now
+  };
+
+  events.push(
+    createGameEvent("uno:penalty_resolved", {
+      message: `A player drew ${drawn.cards.length} stacked penalty card${drawn.cards.length === 1 ? "" : "s"}.`,
+      payload: {
+        playerId,
+        count: drawn.cards.length,
+        amount: pending.amount,
+        pendingAmount: pending.amount,
+        actuallyDrawn: drawn.cards.length,
+        source: "stack"
+      }
+    })
+  );
+
+  events.push(
+    createGameEvent("uno:cards_drawn", {
+      message: `A player drew ${drawn.cards.length} stacked penalty card${drawn.cards.length === 1 ? "" : "s"}.`,
+      payload: {
+        playerId,
+        count: drawn.cards.length,
+        amount: pending.amount,
+        pendingAmount: pending.amount,
+        actuallyDrawn: drawn.cards.length,
+        source: "stack_penalty"
+      }
+    })
+  );
+
+  state = finishIfAnyWinner(state, now);
+  if (state.phase === "finished") {
+    return state;
+  }
+
+  return advanceTurn(state, { steps: 1, now });
 }
 
 function applyCardEffect(params: {
@@ -55,6 +191,10 @@ function applyCardEffect(params: {
   const { playedCard, playerId, now, events } = params;
   let state = params.state;
   const playerCount = state.turnOrder.length;
+
+  if (isDrawPenaltyCard(playedCard)) {
+    return applyDrawPenaltyCard({ state, playedCard, playerId, now, events });
+  }
 
   if (playedCard.value === "reverse") {
     state = { ...state, direction: state.direction === 1 ? -1 : 1 };
@@ -71,36 +211,6 @@ function applyCardEffect(params: {
         payload: { skippedPlayerId }
       })
     );
-    return advanceTurn(state, { steps: 2, now });
-  }
-
-  if (playedCard.value === "draw_two") {
-    const targetPlayerId = advanceTurn(state, { steps: 1, now }).currentPlayerId;
-    if (targetPlayerId) {
-      const drawn = drawCards(state, targetPlayerId, 2);
-      state = drawn.state;
-      events.push(
-        createGameEvent("uno:draw_two", {
-          message: "Draw two applied.",
-          payload: { playerId: targetPlayerId, targetPlayerId, count: drawn.cards.length, actuallyDrawn: drawn.cards.length, pendingAmount: 2, source: "penalty" }
-        })
-      );
-    }
-    return advanceTurn(state, { steps: 2, now });
-  }
-
-  if (playedCard.value === "wild_draw_four") {
-    const targetPlayerId = advanceTurn(state, { steps: 1, now }).currentPlayerId;
-    if (targetPlayerId) {
-      const drawn = drawCards(state, targetPlayerId, 4);
-      state = drawn.state;
-      events.push(
-        createGameEvent("uno:wild_draw_four", {
-          message: "Wild draw four applied.",
-          payload: { playerId: targetPlayerId, targetPlayerId, count: drawn.cards.length, actuallyDrawn: drawn.cards.length, pendingAmount: 4, source: "penalty" }
-        })
-      );
-    }
     return advanceTurn(state, { steps: 2, now });
   }
 
@@ -136,6 +246,17 @@ export function applyClassicUnoAction(params: {
   }
 
   if (action.type === "draw_card") {
+    if (state.pendingPenalty) {
+      state = resolvePendingPenalty({ state, playerId, now, events });
+      state = {
+        ...state,
+        updatedAt: now,
+        actionNumber: params.state.actionNumber + 1
+      };
+      pushGameOverEvent(state, events);
+      return { state, events };
+    }
+
     const drawn = drawCards(state, playerId, 1);
     state = drawn.state;
     const card = drawn.cards[0] ?? null;
@@ -153,7 +274,9 @@ export function applyClassicUnoAction(params: {
       })
     );
 
-    if (!canPlayDrawn) {
+    // Normal draws are intentionally one card at a time. If the drawn card is not playable,
+    // the player keeps the turn and may draw again, matching the one-by-one roulette flow.
+    if (!canPlayDrawn && drawn.cards.length === 0) {
       state = advanceTurn(state, { steps: 1, now });
     }
 
@@ -207,22 +330,13 @@ export function applyClassicUnoAction(params: {
     );
   }
 
-  state = finishIfWinner(state, playerId, now);
-  if (state.phase === "finished") {
-    events.push(
-      createGameEvent("uno:game_over", {
-        message: `${player.displayName} won the game.`,
-        payload: { winnerUserId: playerId, results: state.results }
-      })
-    );
-    return { state, events };
-  }
-
   state = applyCardEffect({ state, settings, playedCard, playerId, now, events });
+  state = finishIfWinner(state, playerId, now);
   state = {
     ...state,
     updatedAt: now
   };
 
+  pushGameOverEvent(state, events);
   return { state, events };
 }

@@ -3,6 +3,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export interface ProfileData {
+  displayName?: string;
+  avatarUrl?: string | null;
   xp?: number;
   level?: number;
   coins?: number;

@@ -89,6 +89,7 @@ export default function RoomPage() {
             onReaction={(emoji) => socketState.sendChat(room.id, `${REACTION_PREFIX}${emoji}`)}
             onChat={socketState.sendChat}
             onEndMatch={socketState.endRoom}
+            onDebugScenario={(scenario, targetPlayerId) => socketState.sendDebugScenario(room.id, scenario, targetPlayerId)}
           />
         ) : (
           <Card>
