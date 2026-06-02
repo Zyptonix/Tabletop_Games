@@ -49,6 +49,51 @@ const ROLE_ORDER: WerewolfRoleId[] = [
   "witch"
 ];
 
+
+function latestSeerVision(state: PublicWerewolfState) {
+  if (state.myRole !== "seer" || state.seerResults.length === 0) return null;
+  const result = state.seerResults[state.seerResults.length - 1];
+  if (!result) return null;
+  const target = state.players.find((player) => player.userId === result.targetPlayerId);
+  const role = result.targetRole ?? target?.role;
+  const theme = getWerewolfRoleTheme(role ?? (result.result === "werewolf" ? "werewolf" : "villager"));
+  return { result, target, role, theme };
+}
+
+function SeerVisionPopup({ state }: { state: PublicWerewolfState }) {
+  const vision = latestSeerVision(state);
+  if (!vision || state.phase !== "night_result") return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 18, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 18, scale: 0.96 }}
+      transition={{ type: "spring", stiffness: 360, damping: 32 }}
+      className="mt-3 overflow-hidden rounded-[1.55rem] border p-4 text-left shadow-[0_22px_80px_rgba(0,0,0,0.58)] backdrop-blur-2xl"
+      style={{
+        borderColor: `${vision.theme.accent}66`,
+        background: `radial-gradient(circle at 18% 30%, ${vision.theme.glow}, transparent 42%), linear-gradient(135deg, rgba(3,7,18,0.92), rgba(0,0,0,0.86))`,
+        boxShadow: `0 22px 80px rgba(0,0,0,0.58), 0 0 46px ${vision.theme.glow}`
+      }}
+    >
+      <p className="text-[0.62rem] font-black uppercase tracking-[0.28em] text-blue-100/62">Seer vision</p>
+      <div className="mt-2 flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p className="truncate text-xl font-black text-white">{vision.target?.displayName ?? "A player"}</p>
+          <p className="mt-1 text-sm font-bold text-white/58">Your vision revealed their true role.</p>
+        </div>
+        <span
+          className="shrink-0 rounded-full border px-4 py-2 text-sm font-black uppercase tracking-[0.16em]"
+          style={{ borderColor: `${vision.theme.accent}88`, color: vision.theme.accent, background: vision.theme.glow }}
+        >
+          {vision.theme.label}
+        </span>
+      </div>
+    </motion.div>
+  );
+}
+
 function RoleCompositionStrip({ state }: { state: PublicWerewolfState }) {
   const entries = ROLE_ORDER.map((role) => ({ role, count: state.roleCountsInPlay[role] ?? 0 })).filter((entry) => entry.count > 0);
   if (entries.length === 0) return null;
@@ -705,11 +750,7 @@ export function MafiaWerewolfTable({
             <div className="absolute left-1/2 top-[43%] z-10 w-[min(46rem,54vw)] -translate-x-1/2 -translate-y-1/2">
               <WerewolfPhaseBanner state={state} moderatorLine={moderatorLine} now={now} />
               <AnimatePresence mode="popLayout">
-                {state.seerResults.length > 0 && state.myRole === "seer" ? (
-                  <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 12 }} className="mt-3 rounded-2xl border border-blue-300/20 bg-blue-500/10 p-3 text-sm font-bold text-blue-100 backdrop-blur-xl">
-                    Latest vision: {state.players.find((player) => player.userId === state.seerResults.at(-1)?.targetPlayerId)?.displayName ?? "A player"} is {state.seerResults.at(-1)?.result === "werewolf" ? "a Werewolf" : "not a Werewolf"}.
-                  </motion.div>
-                ) : null}
+                <SeerVisionPopup state={state} />
               </AnimatePresence>
             </div>
 

@@ -6,7 +6,7 @@ export const noMercySettingsSchema = z.object({
   turnSeconds: z.number().int().min(20).max(600).nullable().default(60),
   eliminationHandSize: z.number().int().min(15).max(60).default(25),
   allowDrawingWhenPlayable: z.boolean().default(true),
-  mustCallUno: z.boolean().default(true)
+  mustCallUno: z.boolean().default(false)
 });
 
 export const noMercyActionSchema = z.discriminatedUnion("type", [
@@ -17,8 +17,6 @@ export const noMercyActionSchema = z.discriminatedUnion("type", [
     targetPlayerId: z.string().min(1).optional()
   }),
   z.object({ type: z.literal("draw_card") }),
-  z.object({ type: z.literal("pass_turn") }),
-  z.object({ type: z.literal("call_uno") }),
   z.object({
     type: z.literal("resolve_roulette"),
     chosenColor: z.enum(NO_MERCY_COLORS)

@@ -83,6 +83,8 @@ export interface WerewolfSeerResult {
   seerId: string;
   targetPlayerId: string;
   result: "werewolf" | "not_werewolf";
+  targetRole: WerewolfRoleId;
+  targetTeam: WerewolfTeam;
   round: number;
 }
 

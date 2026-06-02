@@ -29,12 +29,6 @@ export function validateNoMercyAction(params: {
     return { ok: false, code: "GAME_FINISHED", message: "This game has already finished." };
   }
 
-  if (action.type === "call_uno") {
-    if (player.hand.length > 2) {
-      return { ok: false, code: "INVALID_ACTION", message: "UNO can only be called near one card." };
-    }
-    return { ok: true };
-  }
 
   if (state.currentPlayerId !== playerId) {
     return { ok: false, code: "NOT_YOUR_TURN", message: "It is not your turn." };
@@ -74,20 +68,11 @@ export function validateNoMercyAction(params: {
       return { ok: false, code: "ILLEGAL_ACTION", message: "You have a playable card." };
     }
     if (state.lastDrawnCardId !== null) {
-      return { ok: false, code: "ILLEGAL_ACTION", message: "Play or pass after drawing." };
+      return { ok: false, code: "ILLEGAL_ACTION", message: "Play the drawn card before drawing again." };
     }
     return { ok: true };
   }
 
-  if (action.type === "pass_turn") {
-    if (state.pendingPenalty) {
-      return { ok: false, code: "ILLEGAL_ACTION", message: "Resolve the draw penalty first." };
-    }
-    if (state.lastDrawnCardId === null) {
-      return { ok: false, code: "ILLEGAL_ACTION", message: "You can pass only after drawing a card." };
-    }
-    return { ok: true };
-  }
 
   const card = player.hand.find((item) => item.id === action.cardId);
   if (!card) {
@@ -95,7 +80,7 @@ export function validateNoMercyAction(params: {
   }
 
   if (state.lastDrawnCardId !== null && card.id !== state.lastDrawnCardId) {
-    return { ok: false, code: "ILLEGAL_ACTION", message: "After drawing, play the drawn card or pass." };
+    return { ok: false, code: "ILLEGAL_ACTION", message: "After drawing, play the drawn card." };
   }
 
   if (!isCardPlayable(state, card)) {

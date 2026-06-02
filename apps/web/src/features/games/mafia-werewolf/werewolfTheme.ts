@@ -1,7 +1,7 @@
 import type { WerewolfRoleId, WerewolfPhase } from "@tabletop/game-core";
 
 export const WEREWOLF_ROLE_THEME: Record<WerewolfRoleId, { accent: string; glow: string; label: string }> = {
-  villager: { accent: "rgb(234 179 8)", glow: "rgba(234,179,8,0.24)", label: "Village" },
+  villager: { accent: "rgb(234 179 8)", glow: "rgba(234,179,8,0.24)", label: "Villager" },
   werewolf: { accent: "rgb(248 113 113)", glow: "rgba(239,68,68,0.34)", label: "Werewolf" },
   seer: { accent: "rgb(96 165 250)", glow: "rgba(96,165,250,0.30)", label: "Seer" },
   doctor: { accent: "rgb(74 222 128)", glow: "rgba(34,197,94,0.26)", label: "Doctor" },

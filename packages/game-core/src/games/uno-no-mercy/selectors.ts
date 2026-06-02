@@ -19,10 +19,6 @@ export function getLegalNoMercyActions(params: { state: NoMercyState; playerId: 
 
   const actions: NoMercyAction[] = [];
 
-  if (player.hand.length <= 2) {
-    actions.push({ type: "call_uno" });
-  }
-
   if (state.currentPlayerId !== playerId) {
     return actions;
   }
@@ -48,8 +44,6 @@ export function getLegalNoMercyActions(params: { state: NoMercyState; playerId: 
     if (state.settings.allowDrawingWhenPlayable || !hasPlayableCard(state, player)) {
       actions.push({ type: "draw_card" });
     }
-  } else {
-    actions.push({ type: "pass_turn" });
   }
 
   const activeTargets = getActivePlayers(state).filter((target) => target.userId !== playerId);

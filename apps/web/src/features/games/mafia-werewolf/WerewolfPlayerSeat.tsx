@@ -30,6 +30,7 @@ export function WerewolfPlayerSeat({
   onClick?: (() => void) | undefined;
 }) {
   const roleTheme = player.role ? WEREWOLF_ROLE_THEME[player.role] : null;
+  const revealedToViewer = Boolean(player.role && player.knownToViewer);
   const connected = roomPlayer?.connected ?? false;
   const voteCount = player.voteCount ?? 0;
   const isKnownWerewolf = Boolean(player.isWerewolfTeammate && player.role === "werewolf");
@@ -60,16 +61,22 @@ export function WerewolfPlayerSeat({
         "group relative w-full overflow-visible rounded-[1.45rem] border px-3.5 py-3 text-left text-white backdrop-blur-xl transition",
         isKnownWerewolf
           ? "border-red-300/70 bg-[linear-gradient(135deg,rgba(92,12,22,0.94),rgba(42,6,12,0.90)_55%,rgba(8,0,0,0.82))]"
-          : "border-white/10 bg-[linear-gradient(135deg,rgba(8,11,18,0.88),rgba(3,6,12,0.78)_55%,rgba(0,0,0,0.70))]",
+          : revealedToViewer
+            ? "border-white/20 bg-[linear-gradient(135deg,rgba(18,22,28,0.94),rgba(4,8,14,0.88)_55%,rgba(0,0,0,0.78))]"
+            : "border-white/10 bg-[linear-gradient(135deg,rgba(8,11,18,0.88),rgba(3,6,12,0.78)_55%,rgba(0,0,0,0.70))]",
         isKnownWerewolf
           ? "shadow-[0_18px_54px_rgba(0,0,0,0.68),0_0_36px_rgba(239,68,68,0.34),inset_0_1px_0_rgba(255,255,255,0.07)]"
-          : "shadow-[0_18px_44px_rgba(0,0,0,0.62),inset_0_1px_0_rgba(255,255,255,0.05)]",
+          : revealedToViewer
+            ? "shadow-[0_18px_54px_rgba(0,0,0,0.68),inset_0_1px_0_rgba(255,255,255,0.08)]"
+            : "shadow-[0_18px_44px_rgba(0,0,0,0.62),inset_0_1px_0_rgba(255,255,255,0.05)]",
         !player.alive && "opacity-55 grayscale",
         onClick && "hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/[0.08]",
         selected && actionClass
       )}
-      whileHover={onClick ? { scale: 1.015 } : undefined}
-      whileTap={onClick ? { scale: 0.985 } : undefined}
+      {...(onClick ? { whileHover: { scale: 1.015 }, whileTap: { scale: 0.985 } } : {})}
+      {...(revealedToViewer && roleTheme
+        ? { style: { borderColor: `${roleTheme.accent}99`, boxShadow: `0 18px 54px rgba(0,0,0,0.68), 0 0 42px ${roleTheme.glow}, inset 0 1px 0 rgba(255,255,255,0.08)` } }
+        : {})}
     >
       <div
         className="pointer-events-none absolute inset-0 rounded-[inherit] opacity-80"

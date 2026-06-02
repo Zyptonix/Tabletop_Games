@@ -33,9 +33,13 @@ function getTimeoutAction(params: {
     };
   }
 
+  if (params.state.lastDrawnCardId !== null) {
+    return null;
+  }
+
   return {
     playerId: params.playerId,
-    action: params.state.lastDrawnCardId === null ? { type: "draw_card" } : { type: "pass_turn" }
+    action: { type: "draw_card" }
   };
 }
 

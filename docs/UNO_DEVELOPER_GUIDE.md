@@ -347,14 +347,15 @@ Add No Mercy state fields here first.
 Defines:
 
 - `noMercySettingsSchema`
-  Cards per player, timer, elimination hand size, draw behavior, UNO call behavior.
+  Cards per player, timer, elimination hand size, and draw behavior. No Mercy keeps the legacy `mustCallUno` setting field for compatibility, but the rules ignore UNO calls.
 
 - `noMercyActionSchema`
   Current actions:
   - `play_card` with `cardId`, optional `declaredColor`, optional `targetPlayerId`.
   - `draw_card`.
-  - `pass_turn`.
-  - `call_uno`.
+  - `resolve_roulette` with `chosenColor`.
+
+  No Mercy intentionally does not expose `pass_turn` or `call_uno`. Players draw one card at a time until a playable card appears; once a playable card is drawn, they must play that drawn card or let the server timer skip them.
 
 No Mercy uses `targetPlayerId` for 7 swap. If the UI forgets it, validation rejects the action.
 
@@ -459,7 +460,7 @@ This is the backend gatekeeper. It checks:
 - Wild cards have a valid `declaredColor`.
 - 7 swap has a valid active `targetPlayerId`.
 - Pending penalty targets only respond or draw as allowed.
-- Pass is only legal when the state allows it.
+- Normal draws are one-card-at-a-time: draw again if the card is not playable; play the drawn card if it is playable.
 
 If No Mercy says `ILLEGAL_ACTION`, inspect this file first, then `rules.ts`.
 
@@ -472,7 +473,7 @@ This creates the UI-friendly legal action list:
 - Normal playable card actions.
 - Wild actions expanded once per declared color.
 - 7 swap actions expanded once per legal target player.
-- Draw/pass/call UNO when allowed.
+- Draw actions when allowed. No Mercy never emits Pass or UNO Call actions.
 
 If playable highlights are wrong but backend validation is right, fix this file.
 
@@ -533,7 +534,7 @@ This is where No Mercy actually changes the state.
   Makes the target player draw the stacked amount if they cannot or do not stack.
 
 - `applyNoMercyAction(params)`
-  Main reducer entry. It handles `play_card`, `draw_card`, `pass_turn`, and `call_uno`.
+  Main reducer entry. It handles `play_card`, `draw_card`, and `resolve_roulette`. No Mercy has no Pass or UNO Call actions.
 
 If a No Mercy card is accepted but the effect is wrong, edit `applyCardEffect()` or the helper it calls.
 

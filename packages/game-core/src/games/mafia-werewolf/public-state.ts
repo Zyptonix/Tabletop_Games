@@ -51,17 +51,21 @@ function roleCountsInPlay(state: WerewolfState) {
   }, {});
 }
 
+function cleanNightTarget(value: string | null | undefined): string | null {
+  return value && value !== PASS_VOTE_TARGET ? value : null;
+}
+
 function selectedNightTargetForViewer(state: WerewolfState, viewerId: string): string | null {
   const viewer = state.players.find((player) => player.userId === viewerId);
   if (!viewer) return null;
 
-  if (viewer.role === "werewolf") return state.nightActions.werewolfTargets[viewerId] ?? null;
-  if (viewer.role === "doctor") return state.nightActions.doctorTarget ?? null;
-  if (viewer.role === "seer") return state.nightActions.seerTarget ?? null;
-  if (viewer.role === "bodyguard") return state.nightActions.bodyguardTarget ?? null;
-  if (viewer.role === "vigilante") return state.nightActions.vigilanteTarget ?? null;
-  if (viewer.role === "serial_killer") return state.nightActions.serialKillerTarget ?? null;
-  if (viewer.role === "witch") return state.nightActions.witchHealTarget ?? state.nightActions.witchPoisonTarget ?? null;
+  if (viewer.role === "werewolf") return cleanNightTarget(state.nightActions.werewolfTargets[viewerId]);
+  if (viewer.role === "doctor") return cleanNightTarget(state.nightActions.doctorTarget);
+  if (viewer.role === "seer") return cleanNightTarget(state.nightActions.seerTarget);
+  if (viewer.role === "bodyguard") return cleanNightTarget(state.nightActions.bodyguardTarget);
+  if (viewer.role === "vigilante") return cleanNightTarget(state.nightActions.vigilanteTarget);
+  if (viewer.role === "serial_killer") return cleanNightTarget(state.nightActions.serialKillerTarget);
+  if (viewer.role === "witch") return cleanNightTarget(state.nightActions.witchHealTarget) ?? cleanNightTarget(state.nightActions.witchPoisonTarget);
   return null;
 }
 
@@ -73,6 +77,11 @@ export function getPublicWerewolfState(params: { state: WerewolfState; viewerId:
   const werewolfTeamIds = viewerIsWerewolf
     ? state.players.filter((player) => player.team === "werewolf").map((player) => player.userId)
     : [];
+  const seerKnownByTargetId = new Map(
+    viewer?.role === "seer"
+      ? state.seerResults.filter((result) => result.seerId === viewerId).map((result) => [result.targetPlayerId, result])
+      : []
+  );
 
   const players: PublicWerewolfPlayer[] = state.players
     .slice()
@@ -80,7 +89,10 @@ export function getPublicWerewolfState(params: { state: WerewolfState; viewerId:
     .map((player) => {
       const isViewer = player.userId === viewerId;
       const isWerewolfTeammate = Boolean(viewerIsWerewolf && player.team === "werewolf");
-      const roleVisible = state.phase === "finished" || isViewer || isWerewolfTeammate || Boolean(player.revealedRole);
+      const seerKnown = seerKnownByTargetId.get(player.userId);
+      const roleVisible = state.phase === "finished" || isViewer || isWerewolfTeammate || Boolean(player.revealedRole) || Boolean(seerKnown);
+      const visibleRole = seerKnown?.targetRole ?? player.role;
+      const visibleTeam = seerKnown?.targetTeam ?? player.team;
 
       return {
         userId: player.userId,
@@ -88,8 +100,8 @@ export function getPublicWerewolfState(params: { state: WerewolfState; viewerId:
         seat: player.seat,
         alive: player.alive,
         revealedRole: state.phase === "finished" ? player.role : player.revealedRole,
-        role: roleVisible ? player.role : undefined,
-        team: roleVisible ? player.team : undefined,
+        role: roleVisible ? visibleRole : undefined,
+        team: roleVisible ? visibleTeam : undefined,
         knownToViewer: roleVisible,
         isViewer,
         isWerewolfTeammate,

@@ -87,8 +87,6 @@ export interface NoMercyState {
 export type NoMercyAction =
   | { type: "play_card"; cardId: string; declaredColor?: NoMercyDeclaredColor | undefined; targetPlayerId?: string | undefined }
   | { type: "draw_card" }
-  | { type: "pass_turn" }
-  | { type: "call_uno" }
   | { type: "resolve_roulette"; chosenColor: NoMercyDeclaredColor };
 
 export interface PublicNoMercyPlayer {

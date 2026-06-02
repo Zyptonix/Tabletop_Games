@@ -77,8 +77,33 @@ describe("mafia/werewolf", () => {
     const result = applyWerewolfAction({ state, playerId: "p2", action: { type: "night_seer_check", targetPlayerId: "p1" }, now: "2026-01-01T00:00:13.000Z" });
     const resolved = advanceWerewolfPhase({ state: result.state, now: "2026-01-01T00:00:58.000Z" });
     expect(resolved.state.seerResults.at(-1)?.result).toBe("werewolf");
-    expect(getPublicWerewolfState({ state: resolved.state, viewerId: "p2" }).seerResults).toHaveLength(1);
-    expect(getPublicWerewolfState({ state: resolved.state, viewerId: "p4" }).seerResults).toHaveLength(0);
+    expect(resolved.state.seerResults.at(-1)?.targetRole).toBe("werewolf");
+
+    const seerView = getPublicWerewolfState({ state: resolved.state, viewerId: "p2" });
+    expect(seerView.seerResults).toHaveLength(1);
+    expect(seerView.players.find((player) => player.userId === "p1")?.role).toBe("werewolf");
+    expect(seerView.players.find((player) => player.userId === "p1")?.knownToViewer).toBe(true);
+
+    const villagerView = getPublicWerewolfState({ state: resolved.state, viewerId: "p4" });
+    expect(villagerView.seerResults).toHaveLength(0);
+    expect(villagerView.players.find((player) => player.userId === "p1")?.role).toBeUndefined();
+  });
+
+  it("ends night immediately once every active night role has chosen", () => {
+    let state = forceRoles(baseState());
+    state = advanceWerewolfPhase({ state, now: "2026-01-01T00:00:12.000Z" }).state;
+
+    state = applyWerewolfAction({ state, playerId: "p1", action: { type: "night_werewolf_target", targetPlayerId: "p4" }, now: "2026-01-01T00:00:13.000Z" }).state;
+    expect(state.phase).toBe("night");
+
+    state = applyWerewolfAction({ state, playerId: "p3", action: { type: "night_doctor_save", targetPlayerId: "p5" }, now: "2026-01-01T00:00:14.000Z" }).state;
+    expect(state.phase).toBe("night");
+
+    const result = applyWerewolfAction({ state, playerId: "p2", action: { type: "night_seer_check", targetPlayerId: "p1" }, now: "2026-01-01T00:00:15.000Z" });
+    expect(result.state.phase).toBe("night_result");
+    expect(result.state.lastNightDeathPlayerIds).toEqual(["p4"]);
+    expect(result.state.seerResults.at(-1)?.targetRole).toBe("werewolf");
+    expect(result.events.some((event) => event.type === "mafia-werewolf:night_resolved")).toBe(true);
   });
 
   it("voting eliminates highest target and dead players cannot act", () => {

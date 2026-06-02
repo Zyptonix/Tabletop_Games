@@ -14,12 +14,14 @@ const ROULETTE_COLOR_CLASS: Record<string, string> = {
 
 export function UnoActionBar({
   legalActions,
+  mode = "classic-uno",
   onDraw,
   onPass,
   onUno,
   onResolveRoulette
 }: {
   legalActions: unknown[];
+  mode?: "classic-uno" | "uno-no-mercy";
   onDraw: () => void;
   onPass: () => void;
   onUno: () => void;
@@ -51,6 +53,18 @@ export function UnoActionBar({
               </Button>
             ))}
           </div>
+        </div>
+      ) : mode === "uno-no-mercy" ? (
+        <div className="mx-auto grid max-w-xs grid-cols-1 gap-2">
+          <Button
+            type="button"
+            className="min-h-9 rounded-full bg-sky-500/85 px-4 text-xs font-black text-white hover:bg-sky-400"
+            disabled={!hasLegalAction(legalActions, "draw_card")}
+            onClick={onDraw}
+          >
+            <Hand className="h-4 w-4" />
+            Draw
+          </Button>
         </div>
       ) : (
         <div className="mx-auto grid max-w-lg grid-cols-3 gap-2">

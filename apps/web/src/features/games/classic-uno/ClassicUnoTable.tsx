@@ -742,6 +742,7 @@ export function ClassicUnoTable({
                     <div className="hidden md:block">
                       <UnoActionBar
                         legalActions={legalActions}
+                        mode={state.gameId}
                         onDraw={() => onAction("draw_card")}
                         onPass={() => onAction("pass_turn")}
                         onUno={() => onAction("call_uno")}
@@ -816,6 +817,7 @@ export function ClassicUnoTable({
         <div className="md:hidden">
           <UnoActionBar
             legalActions={legalActions}
+            mode={state.gameId}
             onDraw={() => onAction("draw_card")}
             onPass={() => onAction("pass_turn")}
             onUno={() => onAction("call_uno")}

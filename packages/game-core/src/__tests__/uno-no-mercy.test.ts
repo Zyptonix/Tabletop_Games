@@ -7,8 +7,10 @@ import {
   applyNoMercyAction,
   createInitialNoMercyState,
   createNoMercyDeck,
+  getLegalNoMercyActions,
   getNoMercyDeckCountSummary,
   getPublicNoMercyState,
+  noMercyActionSchema,
   validateNoMercyAction,
   type NoMercyCard,
   type NoMercyState
@@ -94,6 +96,10 @@ function getEventPayload<T extends Record<string, unknown>>(
   const event = events.find((item) => item.type === type);
   expect(event).toBeDefined();
   return event?.payload as T;
+}
+
+function hasActionType(actions: Array<{ type: string }>, type: string): boolean {
+  return actions.some((action) => action.type === type);
 }
 
 describe("uno no mercy", () => {
@@ -307,9 +313,14 @@ describe("uno no mercy", () => {
     expectPlayable(state, { type: "play_card", cardId: greenDrawFour.id });
   });
 
-  it("draws one normal card at a time until a playable card appears", () => {
-    const drawPile = [card("blue", "1"), card("green", "2"), card("red", "9")];
+  it("does not expose pass or UNO call in No Mercy", () => {
+    const drawPile = [card("blue", "1"), card("red", "9")];
     const state = stateWithHands({ p1: [card("yellow", "3")], p2: [card("blue", "4")], p3: [card("green", "5")] }, "red", drawPile);
+
+    expect(noMercyActionSchema.safeParse({ type: "call_uno" }).success).toBe(false);
+    expect(noMercyActionSchema.safeParse({ type: "pass_turn" }).success).toBe(false);
+    expect(hasActionType(getLegalNoMercyActions({ state, playerId: "p1" }), "call_uno")).toBe(false);
+    expect(hasActionType(getLegalNoMercyActions({ state, playerId: "p1" }), "pass_turn")).toBe(false);
 
     const first = applyNoMercyAction({
       state,
@@ -322,31 +333,21 @@ describe("uno no mercy", () => {
     expect(first.state.players.find((player) => player.userId === "p1")?.hand).toHaveLength(2);
     expect(first.state.lastDrawnCardId).toBeNull();
     expect(first.state.currentPlayerId).toBe("p1");
-    expect(validateNoMercyAction({ state: first.state, settings: first.state.settings, playerId: "p1", action: { type: "draw_card" } }).ok).toBe(true);
+    expect(hasActionType(getLegalNoMercyActions({ state: first.state, playerId: "p1" }), "pass_turn")).toBe(false);
+    expect(hasActionType(getLegalNoMercyActions({ state: first.state, playerId: "p1" }), "draw_card")).toBe(true);
 
     const second = applyNoMercyAction({
       state: first.state,
       settings: first.state.settings,
       playerId: "p1",
       action: { type: "draw_card" },
-      now: "2026-05-30T00:00:02.000Z"
+      now: "2026-05-30T00:00:11.000Z"
     });
 
     expect(second.state.players.find((player) => player.userId === "p1")?.hand).toHaveLength(3);
-    expect(second.state.lastDrawnCardId).toBeNull();
-    expect(second.state.currentPlayerId).toBe("p1");
-
-    const third = applyNoMercyAction({
-      state: second.state,
-      settings: second.state.settings,
-      playerId: "p1",
-      action: { type: "draw_card" },
-      now: "2026-05-30T00:00:03.000Z"
-    });
-
-    expect(third.state.players.find((player) => player.userId === "p1")?.hand).toHaveLength(4);
-    expect(third.state.lastDrawnCardId).toBe(drawPile[2]?.id);
-    expect(third.state.currentPlayerId).toBe("p1");
+    expect(second.state.lastDrawnCardId).toBe(drawPile[1]?.id);
+    expect(hasActionType(getLegalNoMercyActions({ state: second.state, playerId: "p1" }), "pass_turn")).toBe(false);
+    expect(hasActionType(getLegalNoMercyActions({ state: second.state, playerId: "p1" }), "call_uno")).toBe(false);
   });
 
   it("keeps Discard All as the visible top discard after extra discards", () => {

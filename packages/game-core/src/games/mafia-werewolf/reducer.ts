@@ -86,6 +86,41 @@ function markUsed(state: WerewolfState, playerId: string, field: "usedVigilanteS
   };
 }
 
+function realNightTarget(value: string | null | undefined): string | null {
+  return value && value !== PASS_VOTE_TARGET ? value : null;
+}
+
+function hasSubmittedNightAction(state: WerewolfState, player: WerewolfPlayerState): boolean {
+  if (!player.alive) return true;
+
+  if (player.role === "werewolf") return state.nightActions.werewolfTargets[player.userId] !== undefined;
+  if (player.role === "doctor") return realNightTarget(state.nightActions.doctorTarget) !== null;
+  if (player.role === "seer") return realNightTarget(state.nightActions.seerTarget) !== null;
+  if (player.role === "bodyguard") return realNightTarget(state.nightActions.bodyguardTarget) !== null;
+  if (player.role === "serial_killer") return realNightTarget(state.nightActions.serialKillerTarget) !== null;
+  if (player.role === "vigilante") return player.usedVigilanteShot || state.nightActions.vigilanteTarget !== null;
+  if (player.role === "witch") {
+    if (player.usedWitchHeal && player.usedWitchPoison) return true;
+    return state.nightActions.witchHealTarget !== null || state.nightActions.witchPoisonTarget !== null;
+  }
+
+  return true;
+}
+
+function allNightActionsSubmitted(state: WerewolfState): boolean {
+  return state.players.every((player) => hasSubmittedNightAction(state, player));
+}
+
+function afterNightAction(state: WerewolfState, events: GameEvent[], now: string): { state: WerewolfState; events: GameEvent[] } {
+  const withBots = withBotNightActions(state);
+  if (!allNightActionsSubmitted(withBots)) {
+    return { state: withBots, events };
+  }
+
+  const resolved = resolveNight(withBots, now);
+  return { state: resolved.state, events: [...events, ...resolved.events] };
+}
+
 function finishIfWon(state: WerewolfState, now: string): { state: WerewolfState; event: GameEvent | null } {
   const soloWinnerId = soloHasWon(state);
   const winningTeam = getWinningTeam(state);
@@ -180,12 +215,12 @@ function resolveNight(input: WerewolfState, now: string): { state: WerewolfState
   const events: GameEvent[] = [];
   let next = withBotNightActions(input);
 
-  const werewolfTarget = majorityTarget(next.nightActions.werewolfTargets);
-  const doctorTarget = next.nightActions.doctorTarget;
-  const bodyguardTarget = next.nightActions.bodyguardTarget;
-  const witchHealTarget = next.nightActions.witchHealTarget;
+  const werewolfTarget = realNightTarget(majorityTarget(next.nightActions.werewolfTargets));
+  const doctorTarget = realNightTarget(next.nightActions.doctorTarget);
+  const bodyguardTarget = realNightTarget(next.nightActions.bodyguardTarget);
+  const witchHealTarget = realNightTarget(next.nightActions.witchHealTarget);
   const seer = next.players.find((player) => player.role === "seer" && player.alive);
-  const seerTarget = next.nightActions.seerTarget;
+  const seerTarget = realNightTarget(next.nightActions.seerTarget);
 
   if (seer && seerTarget) {
     const target = findPlayer(next, seerTarget);
@@ -193,17 +228,20 @@ function resolveNight(input: WerewolfState, now: string): { state: WerewolfState
       const result = target.team === "werewolf" ? "werewolf" : "not_werewolf";
       next = {
         ...next,
-        seerResults: [...next.seerResults, { seerId: seer.userId, targetPlayerId: target.userId, result, round: next.round }]
+        seerResults: [...next.seerResults, { seerId: seer.userId, targetPlayerId: target.userId, result, targetRole: target.role, targetTeam: target.team, round: next.round }]
       };
-      events.push(event("mafia-werewolf:seer_result", now, "The Seer learned the truth.", { seerId: seer.userId, targetPlayerId: target.userId, result, round: next.round }, [seer.userId]));
+      events.push(event("mafia-werewolf:seer_result", now, "The Seer learned the truth.", { seerId: seer.userId, targetPlayerId: target.userId, result, targetRole: target.role, targetTeam: target.team, round: next.round }, [seer.userId]));
     }
   }
 
   const attacked = new Set<string>();
   if (werewolfTarget) attacked.add(werewolfTarget);
-  if (next.nightActions.serialKillerTarget) attacked.add(next.nightActions.serialKillerTarget);
-  if (next.nightActions.vigilanteTarget) attacked.add(next.nightActions.vigilanteTarget);
-  if (next.nightActions.witchPoisonTarget) attacked.add(next.nightActions.witchPoisonTarget);
+  const serialKillerTarget = realNightTarget(next.nightActions.serialKillerTarget);
+  const vigilanteTarget = realNightTarget(next.nightActions.vigilanteTarget);
+  const witchPoisonTarget = realNightTarget(next.nightActions.witchPoisonTarget);
+  if (serialKillerTarget) attacked.add(serialKillerTarget);
+  if (vigilanteTarget) attacked.add(vigilanteTarget);
+  if (witchPoisonTarget) attacked.add(witchPoisonTarget);
 
   const protectedTargets = new Set<string>();
   if (doctorTarget) protectedTargets.add(doctorTarget);
@@ -230,7 +268,7 @@ function resolveNight(input: WerewolfState, now: string): { state: WerewolfState
   }
 
   const vigilante = next.players.find((player) => player.role === "vigilante");
-  if (vigilante && next.nightActions.vigilanteTarget) next = markUsed(next, vigilante.userId, "usedVigilanteShot");
+  if (vigilante && realNightTarget(next.nightActions.vigilanteTarget)) next = markUsed(next, vigilante.userId, "usedVigilanteShot");
   const witch = next.players.find((player) => player.role === "witch");
   if (witch && next.nightActions.witchHealTarget) next = markUsed(next, witch.userId, "usedWitchHeal");
   if (witch && next.nightActions.witchPoisonTarget) next = markUsed(next, witch.userId, "usedWitchPoison");
@@ -348,34 +386,44 @@ export function applyWerewolfAction(params: { state: WerewolfState; playerId: st
   if (action.type === "advance_phase") return advanceWerewolfPhase({ state, now });
 
   if (action.type === "night_werewolf_target") {
-    return { state: { ...state, nightActions: { ...state.nightActions, werewolfTargets: { ...state.nightActions.werewolfTargets, [playerId]: action.targetPlayerId } }, updatedAt: now, actionNumber: state.actionNumber + 1 }, events: [event("mafia-werewolf:night_action_submitted", now, "A Werewolf has chosen a victim.", { playerId, actionKind: "werewolf" })] };
+    const next = { ...state, nightActions: { ...state.nightActions, werewolfTargets: { ...state.nightActions.werewolfTargets, [playerId]: action.targetPlayerId } }, updatedAt: now, actionNumber: state.actionNumber + 1 };
+    return afterNightAction(next, [event("mafia-werewolf:night_action_submitted", now, "A Werewolf has chosen a victim.", { playerId, actionKind: "werewolf" })], now);
   }
   if (action.type === "night_doctor_save") {
-    return { state: { ...state, nightActions: { ...state.nightActions, doctorTarget: action.targetPlayerId }, updatedAt: now, actionNumber: state.actionNumber + 1 }, events: [event("mafia-werewolf:night_action_submitted", now, "The Doctor has chosen someone to protect.", { playerId, actionKind: "doctor" }, [playerId])] };
+    const next = { ...state, nightActions: { ...state.nightActions, doctorTarget: action.targetPlayerId }, updatedAt: now, actionNumber: state.actionNumber + 1 };
+    return afterNightAction(next, [event("mafia-werewolf:night_action_submitted", now, "The Doctor has chosen someone to protect.", { playerId, actionKind: "doctor" }, [playerId])], now);
   }
   if (action.type === "night_seer_check") {
-    return { state: { ...state, nightActions: { ...state.nightActions, seerTarget: action.targetPlayerId }, updatedAt: now, actionNumber: state.actionNumber + 1 }, events: [event("mafia-werewolf:night_action_submitted", now, "The Seer has chosen someone to inspect.", { playerId, actionKind: "seer" }, [playerId])] };
+    const next = { ...state, nightActions: { ...state.nightActions, seerTarget: action.targetPlayerId }, updatedAt: now, actionNumber: state.actionNumber + 1 };
+    return afterNightAction(next, [event("mafia-werewolf:night_action_submitted", now, "The Seer has chosen someone to inspect.", { playerId, actionKind: "seer" }, [playerId])], now);
   }
   if (action.type === "night_bodyguard_protect") {
-    return { state: { ...state, nightActions: { ...state.nightActions, bodyguardTarget: action.targetPlayerId }, updatedAt: now, actionNumber: state.actionNumber + 1 }, events: [event("mafia-werewolf:night_action_submitted", now, "The Bodyguard is standing watch.", { playerId, actionKind: "bodyguard" }, [playerId])] };
+    const next = { ...state, nightActions: { ...state.nightActions, bodyguardTarget: action.targetPlayerId }, updatedAt: now, actionNumber: state.actionNumber + 1 };
+    return afterNightAction(next, [event("mafia-werewolf:night_action_submitted", now, "The Bodyguard is standing watch.", { playerId, actionKind: "bodyguard" }, [playerId])], now);
   }
   if (action.type === "night_vigilante_shoot") {
-    return { state: { ...state, nightActions: { ...state.nightActions, vigilanteTarget: action.targetPlayerId }, updatedAt: now, actionNumber: state.actionNumber + 1 }, events: [event("mafia-werewolf:night_action_submitted", now, "The Vigilante has loaded a shot.", { playerId, actionKind: "vigilante" }, [playerId])] };
+    const next = { ...state, nightActions: { ...state.nightActions, vigilanteTarget: action.targetPlayerId }, updatedAt: now, actionNumber: state.actionNumber + 1 };
+    return afterNightAction(next, [event("mafia-werewolf:night_action_submitted", now, "The Vigilante has loaded a shot.", { playerId, actionKind: "vigilante" }, [playerId])], now);
   }
   if (action.type === "night_vigilante_skip") {
-    return { state: { ...state, nightActions: { ...state.nightActions, vigilanteTarget: null }, updatedAt: now, actionNumber: state.actionNumber + 1 }, events: [event("mafia-werewolf:night_action_submitted", now, "The Vigilante holds fire.", { playerId, actionKind: "vigilante_skip" }, [playerId])] };
+    const next = { ...state, nightActions: { ...state.nightActions, vigilanteTarget: PASS_VOTE_TARGET }, updatedAt: now, actionNumber: state.actionNumber + 1 };
+    return afterNightAction(next, [event("mafia-werewolf:night_action_submitted", now, "The Vigilante holds fire.", { playerId, actionKind: "vigilante_skip" }, [playerId])], now);
   }
   if (action.type === "night_serial_killer_target") {
-    return { state: { ...state, nightActions: { ...state.nightActions, serialKillerTarget: action.targetPlayerId }, updatedAt: now, actionNumber: state.actionNumber + 1 }, events: [event("mafia-werewolf:night_action_submitted", now, "A lone killer has chosen a victim.", { playerId, actionKind: "serial_killer" }, [playerId])] };
+    const next = { ...state, nightActions: { ...state.nightActions, serialKillerTarget: action.targetPlayerId }, updatedAt: now, actionNumber: state.actionNumber + 1 };
+    return afterNightAction(next, [event("mafia-werewolf:night_action_submitted", now, "A lone killer has chosen a victim.", { playerId, actionKind: "serial_killer" }, [playerId])], now);
   }
   if (action.type === "night_witch_heal") {
-    return { state: { ...state, nightActions: { ...state.nightActions, witchHealTarget: action.targetPlayerId }, updatedAt: now, actionNumber: state.actionNumber + 1 }, events: [event("mafia-werewolf:night_action_submitted", now, "The Witch prepared a healing potion.", { playerId, actionKind: "witch_heal" }, [playerId])] };
+    const next = { ...state, nightActions: { ...state.nightActions, witchHealTarget: action.targetPlayerId }, updatedAt: now, actionNumber: state.actionNumber + 1 };
+    return afterNightAction(next, [event("mafia-werewolf:night_action_submitted", now, "The Witch prepared a healing potion.", { playerId, actionKind: "witch_heal" }, [playerId])], now);
   }
   if (action.type === "night_witch_poison") {
-    return { state: { ...state, nightActions: { ...state.nightActions, witchPoisonTarget: action.targetPlayerId }, updatedAt: now, actionNumber: state.actionNumber + 1 }, events: [event("mafia-werewolf:night_action_submitted", now, "The Witch prepared a poison potion.", { playerId, actionKind: "witch_poison" }, [playerId])] };
+    const next = { ...state, nightActions: { ...state.nightActions, witchPoisonTarget: action.targetPlayerId }, updatedAt: now, actionNumber: state.actionNumber + 1 };
+    return afterNightAction(next, [event("mafia-werewolf:night_action_submitted", now, "The Witch prepared a poison potion.", { playerId, actionKind: "witch_poison" }, [playerId])], now);
   }
   if (action.type === "night_witch_skip") {
-    return { state: { ...state, updatedAt: now, actionNumber: state.actionNumber + 1 }, events: [event("mafia-werewolf:night_action_submitted", now, "The Witch saves the potions.", { playerId, actionKind: "witch_skip" }, [playerId])] };
+    const next = { ...state, nightActions: { ...state.nightActions, witchHealTarget: PASS_VOTE_TARGET, witchPoisonTarget: PASS_VOTE_TARGET }, updatedAt: now, actionNumber: state.actionNumber + 1 };
+    return afterNightAction(next, [event("mafia-werewolf:night_action_submitted", now, "The Witch saves the potions.", { playerId, actionKind: "witch_skip" }, [playerId])], now);
   }
 
   if (action.type === "cast_vote") {

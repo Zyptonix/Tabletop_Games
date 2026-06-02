@@ -493,12 +493,31 @@ export function applyNoMercyTimeout(params: {
   }
 
   if (reason === "turn_timer") {
-    const action: NoMercyAction = params.state.pendingRoulette?.targetPlayerId === playerId
-      ? { type: "resolve_roulette", chosenColor: params.state.currentColor }
-      : params.state.lastDrawnCardId === null
-        ? { type: "draw_card" }
-        : { type: "pass_turn" };
-    return applyNoMercyAction({ state: params.state, settings: params.state.settings, playerId, action, now });
+    if (params.state.pendingRoulette?.targetPlayerId === playerId) {
+      return applyNoMercyAction({
+        state: params.state,
+        settings: params.state.settings,
+        playerId,
+        action: { type: "resolve_roulette", chosenColor: params.state.currentColor },
+        now
+      });
+    }
+
+    if (params.state.lastDrawnCardId === null) {
+      return applyNoMercyAction({ state: params.state, settings: params.state.settings, playerId, action: { type: "draw_card" }, now });
+    }
+
+    const player = findNoMercyPlayer(params.state, playerId);
+    let state = advanceTurn(cloneState(params.state), { steps: 1, now, fromPlayerId: playerId });
+    const events: GameEvent[] = [
+      createGameEvent("uno-no-mercy:timeout_skip", {
+        message: `${player?.displayName ?? "A player"} timed out with a drawn card.`,
+        payload: { playerId, source: "turn_timer" }
+      })
+    ];
+    state = withActionMeta(state, params.state, now);
+    pushGameOverEvent(state, events);
+    return { state, events };
   }
 
   const player = findNoMercyPlayer(params.state, playerId);
@@ -547,13 +566,6 @@ export function applyNoMercyAction(params: {
 
   if (!player) {
     return { state: params.state, events };
-  }
-
-  if (action.type === "call_uno") {
-    player.unoCalled = true;
-    state = withActionMeta({ ...state, players: state.players }, params.state, now);
-    events.push(createGameEvent("uno-no-mercy:called", { message: `${player.displayName} called UNO.`, payload: { playerId } }));
-    return { state, events };
   }
 
   if (action.type === "resolve_roulette") {
@@ -711,25 +723,18 @@ export function applyNoMercyAction(params: {
     if (state.phase !== "finished") {
       const stillActivePlayer = findNoMercyPlayer(state, playerId);
       if (canPlayDrawn && card && stillActivePlayer && !stillActivePlayer.eliminated) {
+        // No Mercy has no pass button: draw until a playable card appears, then
+        // play that drawn card or wait for the server timer to skip the turn.
         state = { ...state, lastDrawnCardId: card.id, updatedAt: now };
       } else if (drawn.cards.length === 0 || !stillActivePlayer || stillActivePlayer.eliminated) {
         state = advanceTurn(state, { steps: 1, now, fromPlayerId: playerId });
       } else {
-        // Keep the turn after an unplayable normal draw so the player can draw
-        // again one card at a time, just like manual Color Roulette reveals.
         state = { ...state, lastDrawnCardId: null, updatedAt: now };
       }
     }
 
     state = withActionMeta(state, params.state, now);
     pushGameOverEvent(state, events);
-    return { state, events };
-  }
-
-  if (action.type === "pass_turn") {
-    state = advanceTurn(state, { steps: 1, now });
-    state = withActionMeta(state, params.state, now);
-    events.push(createGameEvent("uno-no-mercy:pass", { message: `${player.displayName} passed.` }));
     return { state, events };
   }
 
@@ -740,7 +745,7 @@ export function applyNoMercyAction(params: {
   }
 
   player.hand.splice(cardIndex, 1);
-  player.unoCalled = settings.mustCallUno && player.hand.length === 1 ? player.unoCalled : false;
+  player.unoCalled = false;
 
   const previousColor = state.currentColor;
   const currentColor = playedCard.value === "roulette" ? previousColor : resolveDeclaredColor(playedCard, action.declaredColor);
@@ -770,17 +775,6 @@ export function applyNoMercyAction(params: {
 
   if (playedCard.value === "discard_all") {
     state = discardAllMatchingColor({ state, playerId, color: playedCard.color, events });
-  }
-
-  const postEffectPlayer = findNoMercyPlayer(state, playerId);
-  if (settings.mustCallUno && postEffectPlayer && postEffectPlayer.hand.length === 1 && !postEffectPlayer.unoCalled) {
-    events.push(
-      createGameEvent("uno-no-mercy:needs_call", {
-        message: `${postEffectPlayer.displayName} has one card left.`,
-        payload: { playerId },
-        targetUserIds: [playerId]
-      })
-    );
   }
 
   if (state.phase !== "finished") {
