@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { Copy, Loader2 } from "lucide-react";
-import type { PublicClassicUnoState, PublicNoMercyState } from "@tabletop/game-core";
+import type { PublicClassicUnoState, PublicNoMercyState, PublicWerewolfState } from "@tabletop/game-core";
 import { AppShell } from "@/components/layout/AppShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth/useAuth";
 import { useRoomSocket } from "@/lib/socket/useRoomSocket";
 import { GameShell } from "@/features/game-shell/GameShell";
 import { ClassicUnoTable } from "@/features/games/classic-uno/ClassicUnoTable";
+import { MafiaWerewolfTable } from "@/features/games/mafia-werewolf/MafiaWerewolfTable";
 import { REACTION_PREFIX } from "@/features/games/classic-uno/ReactionOverlay";
 
 export default function RoomPage() {
@@ -36,6 +37,10 @@ export default function RoomPage() {
   const unoState =
     room.gameId === "classic-uno" || room.gameId === "uno-no-mercy"
       ? (socketState.gameState as PublicClassicUnoState | PublicNoMercyState | null)
+      : null;
+  const werewolfState =
+    room.gameId === "mafia-werewolf"
+      ? (socketState.gameState as PublicWerewolfState | null)
       : null;
 
   return (
@@ -77,6 +82,18 @@ export default function RoomPage() {
               </div>
             </CardContent>
           </Card>
+        ) : werewolfState ? (
+          <MafiaWerewolfTable
+            room={room}
+            state={werewolfState}
+            legalActions={socketState.legalActions}
+            gameEvents={socketState.gameEvents}
+            currentUserId={user?.id ?? null}
+            currentUserRole={user?.role ?? null}
+            onAction={(type, payload) => socketState.sendAction(room.id, type, payload)}
+            onChat={socketState.sendChat}
+            onEndMatch={socketState.endRoom}
+          />
         ) : unoState ? (
           <ClassicUnoTable
             room={room}
@@ -89,7 +106,6 @@ export default function RoomPage() {
             onReaction={(emoji) => socketState.sendChat(room.id, `${REACTION_PREFIX}${emoji}`)}
             onChat={socketState.sendChat}
             onEndMatch={socketState.endRoom}
-            onDebugScenario={(scenario, targetPlayerId) => socketState.sendDebugScenario(room.id, scenario, targetPlayerId)}
           />
         ) : (
           <Card>

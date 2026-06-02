@@ -1,0 +1,914 @@
+[
+  {
+    "line": 1,
+    "file": "01-role-reveal.mp3",
+    "text": "The village gathers beneath a cold moon. Look at your role, and keep it secret.",
+    "start_seconds": 1.771,
+    "end_seconds": 6.328,
+    "duration_seconds": 4.558,
+    "content_chunks": [
+      1,
+      2
+    ]
+  },
+  {
+    "line": 2,
+    "file": "02-night-falls.mp3",
+    "text": "Night falls. Everyone, close your eyes.",
+    "start_seconds": 8.649,
+    "end_seconds": 11.431,
+    "duration_seconds": 2.781,
+    "content_chunks": [
+      4,
+      5
+    ]
+  },
+  {
+    "line": 3,
+    "file": "03-morning-comes.mp3",
+    "text": "Morning comes. The village wakes.",
+    "start_seconds": 13.532,
+    "end_seconds": 15.852,
+    "duration_seconds": 2.319,
+    "content_chunks": [
+      7,
+      8
+    ]
+  },
+  {
+    "line": 4,
+    "file": "04-day-discussion.mp3",
+    "text": "The village begins discussion. Speak carefully. The wolves are listening.",
+    "start_seconds": 18.074,
+    "end_seconds": 19.615,
+    "duration_seconds": 1.541,
+    "content_chunks": [
+      10,
+      10
+    ]
+  },
+  {
+    "line": 5,
+    "file": "05-voting-begins.mp3",
+    "text": "The time for talk is over. Cast your votes.",
+    "start_seconds": 21.453,
+    "end_seconds": 24.265,
+    "duration_seconds": 2.812,
+    "content_chunks": [
+      12,
+      13
+    ]
+  },
+  {
+    "line": 6,
+    "file": "06-vote-result.mp3",
+    "text": "The village has made its decision.",
+    "start_seconds": 26.864,
+    "end_seconds": 29.218,
+    "duration_seconds": 2.354,
+    "content_chunks": [
+      15,
+      15
+    ]
+  },
+  {
+    "line": 7,
+    "file": "07-game-over.mp3",
+    "text": "The game is over. The truth has finally come to light.",
+    "start_seconds": 31.62,
+    "end_seconds": 36.581,
+    "duration_seconds": 4.961,
+    "content_chunks": [
+      17,
+      19
+    ]
+  },
+  {
+    "line": 8,
+    "file": "08-time-running-out.mp3",
+    "text": "Time is running out.",
+    "start_seconds": 38.226,
+    "end_seconds": 39.336,
+    "duration_seconds": 1.109,
+    "content_chunks": [
+      21,
+      21
+    ]
+  },
+  {
+    "line": 9,
+    "file": "09-phase-ending.mp3",
+    "text": "The phase is ending.",
+    "start_seconds": 40.897,
+    "end_seconds": 42.042,
+    "duration_seconds": 1.145,
+    "content_chunks": [
+      23,
+      23
+    ]
+  },
+  {
+    "line": 10,
+    "file": "10-werewolves-awaken.mp3",
+    "text": "Werewolves, open your eyes. Choose your victim.",
+    "start_seconds": 43.867,
+    "end_seconds": 46.823,
+    "duration_seconds": 2.956,
+    "content_chunks": [
+      25,
+      25
+    ]
+  },
+  {
+    "line": 11,
+    "file": "11-werewolves-sleep.mp3",
+    "text": "Werewolves, close your eyes.",
+    "start_seconds": 48.328,
+    "end_seconds": 50.115,
+    "duration_seconds": 1.787,
+    "content_chunks": [
+      27,
+      27
+    ]
+  },
+  {
+    "line": 12,
+    "file": "12-werewolf-target-locked.mp3",
+    "text": "The pack has chosen its prey.",
+    "start_seconds": 51.714,
+    "end_seconds": 53.36,
+    "duration_seconds": 1.646,
+    "content_chunks": [
+      29,
+      29
+    ]
+  },
+  {
+    "line": 13,
+    "file": "13-doctor-awaken.mp3",
+    "text": "Doctor, wake up. Choose someone to protect.",
+    "start_seconds": 55.404,
+    "end_seconds": 58.222,
+    "duration_seconds": 2.818,
+    "content_chunks": [
+      31,
+      32
+    ]
+  },
+  {
+    "line": 14,
+    "file": "14-doctor-sleep.mp3",
+    "text": "Doctor, close your eyes.",
+    "start_seconds": 60.141,
+    "end_seconds": 62.871,
+    "duration_seconds": 2.73,
+    "content_chunks": [
+      34,
+      34
+    ]
+  },
+  {
+    "line": 15,
+    "file": "15-doctor-target-locked.mp3",
+    "text": "The Doctor has made their choice.",
+    "start_seconds": 65.657,
+    "end_seconds": 67.999,
+    "duration_seconds": 2.342,
+    "content_chunks": [
+      36,
+      36
+    ]
+  },
+  {
+    "line": 16,
+    "file": "16-seer-awaken.mp3",
+    "text": "Seer, wake up. Choose someone to inspect.",
+    "start_seconds": 70.544,
+    "end_seconds": 73.266,
+    "duration_seconds": 2.722,
+    "content_chunks": [
+      38,
+      39
+    ]
+  },
+  {
+    "line": 17,
+    "file": "17-seer-sleep.mp3",
+    "text": "Seer, close your eyes.",
+    "start_seconds": 74.761,
+    "end_seconds": 76.467,
+    "duration_seconds": 1.706,
+    "content_chunks": [
+      41,
+      41
+    ]
+  },
+  {
+    "line": 18,
+    "file": "18-seer-target-locked.mp3",
+    "text": "The Seer has received a vision.",
+    "start_seconds": 78.245,
+    "end_seconds": 81.024,
+    "duration_seconds": 2.779,
+    "content_chunks": [
+      43,
+      43
+    ]
+  },
+  {
+    "line": 19,
+    "file": "19-bodyguard-awaken.mp3",
+    "text": "Bodyguard, wake up. Choose someone to guard.",
+    "start_seconds": 82.473,
+    "end_seconds": 85.464,
+    "duration_seconds": 2.991,
+    "content_chunks": [
+      45,
+      45
+    ]
+  },
+  {
+    "line": 20,
+    "file": "20-bodyguard-sleep.mp3",
+    "text": "Bodyguard, close your eyes.",
+    "start_seconds": 87.714,
+    "end_seconds": 88.74,
+    "duration_seconds": 1.026,
+    "content_chunks": [
+      47,
+      47
+    ]
+  },
+  {
+    "line": 21,
+    "file": "21-bodyguard-target-locked.mp3",
+    "text": "The Bodyguard stands watch.",
+    "start_seconds": 90.784,
+    "end_seconds": 93.044,
+    "duration_seconds": 2.259,
+    "content_chunks": [
+      49,
+      49
+    ]
+  },
+  {
+    "line": 22,
+    "file": "22-vigilante-awaken.mp3",
+    "text": "Vigilante, wake up. You may take your shot, or hold your fire.",
+    "start_seconds": 95.333,
+    "end_seconds": 97.551,
+    "duration_seconds": 2.218,
+    "content_chunks": [
+      51,
+      51
+    ]
+  },
+  {
+    "line": 23,
+    "file": "23-vigilante-shot-locked.mp3",
+    "text": "The Vigilante has made a deadly choice.",
+    "start_seconds": 99.509,
+    "end_seconds": 102.858,
+    "duration_seconds": 3.349,
+    "content_chunks": [
+      53,
+      54
+    ]
+  },
+  {
+    "line": 24,
+    "file": "24-vigilante-skipped.mp3",
+    "text": "The Vigilante holds their fire.",
+    "start_seconds": 104.918,
+    "end_seconds": 106.665,
+    "duration_seconds": 1.747,
+    "content_chunks": [
+      56,
+      56
+    ]
+  },
+  {
+    "line": 25,
+    "file": "25-witch-awaken.mp3",
+    "text": "Witch, wake up. Choose whether to use your potion.",
+    "start_seconds": 108.548,
+    "end_seconds": 110.369,
+    "duration_seconds": 1.821,
+    "content_chunks": [
+      58,
+      58
+    ]
+  },
+  {
+    "line": 26,
+    "file": "26-witch-heal-used.mp3",
+    "text": "The healing potion has been used.",
+    "start_seconds": 112.412,
+    "end_seconds": 113.976,
+    "duration_seconds": 1.563,
+    "content_chunks": [
+      60,
+      60
+    ]
+  },
+  {
+    "line": 27,
+    "file": "27-witch-poison-used.mp3",
+    "text": "The poison has been poured.",
+    "start_seconds": 116.101,
+    "end_seconds": 118.531,
+    "duration_seconds": 2.43,
+    "content_chunks": [
+      62,
+      62
+    ]
+  },
+  {
+    "line": 28,
+    "file": "28-witch-skipped.mp3",
+    "text": "The Witch saves her potions for another night.",
+    "start_seconds": 120.629,
+    "end_seconds": 123.365,
+    "duration_seconds": 2.736,
+    "content_chunks": [
+      64,
+      64
+    ]
+  },
+  {
+    "line": 29,
+    "file": "29-serial-killer-awaken.mp3",
+    "text": "Serial Killer, wake up. Choose your victim.",
+    "start_seconds": 124.78,
+    "end_seconds": 127.722,
+    "duration_seconds": 2.942,
+    "content_chunks": [
+      66,
+      66
+    ]
+  },
+  {
+    "line": 30,
+    "file": "30-serial-killer-sleep.mp3",
+    "text": "Serial Killer, close your eyes.",
+    "start_seconds": 130.371,
+    "end_seconds": 133.464,
+    "duration_seconds": 3.093,
+    "content_chunks": [
+      68,
+      68
+    ]
+  },
+  {
+    "line": 31,
+    "file": "31-serial-killer-target-locked.mp3",
+    "text": "The killer has marked someone for death.",
+    "start_seconds": 137.012,
+    "end_seconds": 138.072,
+    "duration_seconds": 1.06,
+    "content_chunks": [
+      70,
+      70
+    ]
+  },
+  {
+    "line": 32,
+    "file": "32-someone-died.mp3",
+    "text": "Someone did not survive the night.",
+    "start_seconds": 139.894,
+    "end_seconds": 141.809,
+    "duration_seconds": 1.914,
+    "content_chunks": [
+      72,
+      72
+    ]
+  },
+  {
+    "line": 33,
+    "file": "33-no-one-died.mp3",
+    "text": "No one died last night.",
+    "start_seconds": 143.978,
+    "end_seconds": 145.683,
+    "duration_seconds": 1.706,
+    "content_chunks": [
+      74,
+      74
+    ]
+  },
+  {
+    "line": 34,
+    "file": "34-multiple-deaths.mp3",
+    "text": "The night was cruel. More than one soul was lost.",
+    "start_seconds": 147.966,
+    "end_seconds": 150.899,
+    "duration_seconds": 2.933,
+    "content_chunks": [
+      76,
+      76
+    ]
+  },
+  {
+    "line": 35,
+    "file": "35-someone-was-saved.mp3",
+    "text": "Someone was saved from death.",
+    "start_seconds": 153.252,
+    "end_seconds": 154.979,
+    "duration_seconds": 1.727,
+    "content_chunks": [
+      78,
+      78
+    ]
+  },
+  {
+    "line": 36,
+    "file": "36-bodyguard-sacrifice.mp3",
+    "text": "A Bodyguard gave their life to protect another.",
+    "start_seconds": 156.877,
+    "end_seconds": 161.438,
+    "duration_seconds": 4.561,
+    "content_chunks": [
+      80,
+      81
+    ]
+  },
+  {
+    "line": 37,
+    "file": "37-village-wakes-to-death.mp3",
+    "text": "The village wakes to tragedy.",
+    "start_seconds": 163.822,
+    "end_seconds": 165.761,
+    "duration_seconds": 1.939,
+    "content_chunks": [
+      83,
+      83
+    ]
+  },
+  {
+    "line": 38,
+    "file": "38-village-wakes-safely.mp3",
+    "text": "The village wakes, uneasy, but alive.",
+    "start_seconds": 167.358,
+    "end_seconds": 170.059,
+    "duration_seconds": 2.701,
+    "content_chunks": [
+      85,
+      85
+    ]
+  },
+  {
+    "line": 39,
+    "file": "39-voting-reminder.mp3",
+    "text": "Vote carefully. A mistake may doom the village.",
+    "start_seconds": 172.012,
+    "end_seconds": 174.899,
+    "duration_seconds": 2.886,
+    "content_chunks": [
+      87,
+      88
+    ]
+  },
+  {
+    "line": 40,
+    "file": "40-vote-pass.mp3",
+    "text": "The village chooses to spare everyone for now.",
+    "start_seconds": 176.938,
+    "end_seconds": 179.066,
+    "duration_seconds": 2.128,
+    "content_chunks": [
+      90,
+      90
+    ]
+  },
+  {
+    "line": 41,
+    "file": "41-vote-tie.mp3",
+    "text": "The vote is tied. No one is eliminated.",
+    "start_seconds": 181.271,
+    "end_seconds": 184.513,
+    "duration_seconds": 3.242,
+    "content_chunks": [
+      92,
+      93
+    ]
+  },
+  {
+    "line": 42,
+    "file": "42-player-condemned.mp3",
+    "text": "The village has condemned one of its own.",
+    "start_seconds": 186.478,
+    "end_seconds": 189.739,
+    "duration_seconds": 3.261,
+    "content_chunks": [
+      95,
+      96
+    ]
+  },
+  {
+    "line": 43,
+    "file": "43-majority-reached.mp3",
+    "text": "A majority has spoken. The judgment is final.",
+    "start_seconds": 192.303,
+    "end_seconds": 196.098,
+    "duration_seconds": 3.795,
+    "content_chunks": [
+      98,
+      99
+    ]
+  },
+  {
+    "line": 44,
+    "file": "44-no-majority.mp3",
+    "text": "No clear judgment was reached.",
+    "start_seconds": 198.096,
+    "end_seconds": 200.049,
+    "duration_seconds": 1.953,
+    "content_chunks": [
+      101,
+      101
+    ]
+  },
+  {
+    "line": 45,
+    "file": "45-discussion-skip.mp3",
+    "text": "The host ends the discussion. The village must now decide.",
+    "start_seconds": 202.416,
+    "end_seconds": 203.857,
+    "duration_seconds": 1.44,
+    "content_chunks": [
+      103,
+      103
+    ]
+  },
+  {
+    "line": 46,
+    "file": "46-villagers-win.mp3",
+    "text": "The Werewolves are gone. The village survives another night.",
+    "start_seconds": 206.266,
+    "end_seconds": 209.574,
+    "duration_seconds": 3.307,
+    "content_chunks": [
+      105,
+      106
+    ]
+  },
+  {
+    "line": 47,
+    "file": "47-villagers-win-grand.mp3",
+    "text": "The Village has won. The shadows have been driven out, and the truth has survived.",
+    "start_seconds": 212.28,
+    "end_seconds": 215.844,
+    "duration_seconds": 3.564,
+    "content_chunks": [
+      108,
+      109
+    ]
+  },
+  {
+    "line": 48,
+    "file": "48-werewolves-win.mp3",
+    "text": "The Werewolves have won. The village belongs to the night.",
+    "start_seconds": 218.952,
+    "end_seconds": 222.664,
+    "duration_seconds": 3.712,
+    "content_chunks": [
+      111,
+      112
+    ]
+  },
+  {
+    "line": 49,
+    "file": "49-werewolves-win-grand.mp3",
+    "text": "The Werewolves have taken control. The village falls silent beneath the moon.",
+    "start_seconds": 225.029,
+    "end_seconds": 227.769,
+    "duration_seconds": 2.74,
+    "content_chunks": [
+      114,
+      114
+    ]
+  },
+  {
+    "line": 50,
+    "file": "50-jester-wins.mp3",
+    "text": "The Jester has won. The village was fooled, and madness takes the crown.",
+    "start_seconds": 230.184,
+    "end_seconds": 234.822,
+    "duration_seconds": 4.639,
+    "content_chunks": [
+      116,
+      117
+    ]
+  },
+  {
+    "line": 51,
+    "file": "51-serial-killer-wins.mp3",
+    "text": "The Serial Killer stands alone. Everyone else was merely part of the story.",
+    "start_seconds": 237.167,
+    "end_seconds": 239.329,
+    "duration_seconds": 2.162,
+    "content_chunks": [
+      119,
+      119
+    ]
+  },
+  {
+    "line": 52,
+    "file": "52-solo-wins.mp3",
+    "text": "A lone player has claimed victory. The village never saw it coming.",
+    "start_seconds": 242.245,
+    "end_seconds": 243.472,
+    "duration_seconds": 1.227,
+    "content_chunks": [
+      121,
+      121
+    ]
+  },
+  {
+    "line": 53,
+    "file": "53-role-villager.mp3",
+    "text": "You are a Villager. You have no night power, but your vote matters. Watch for lies, trust carefully, and help eliminate every Werewolf.",
+    "start_seconds": 245.9,
+    "end_seconds": 253.678,
+    "duration_seconds": 7.778,
+    "content_chunks": [
+      123,
+      124
+    ]
+  },
+  {
+    "line": 54,
+    "file": "54-role-werewolf.mp3",
+    "text": "You are a Werewolf. Each night, choose someone to kill with your pack. During the day, blend in, lie well, and avoid suspicion.",
+    "start_seconds": 256.058,
+    "end_seconds": 264.247,
+    "duration_seconds": 8.189,
+    "content_chunks": [
+      126,
+      128
+    ]
+  },
+  {
+    "line": 55,
+    "file": "55-role-seer.mp3",
+    "text": "You are the Seer. Each night, inspect one player and learn whether they are a Werewolf. Use your knowledge carefully.",
+    "start_seconds": 266.813,
+    "end_seconds": 274.427,
+    "duration_seconds": 7.614,
+    "content_chunks": [
+      130,
+      132
+    ]
+  },
+  {
+    "line": 56,
+    "file": "56-role-doctor.mp3",
+    "text": "You are the Doctor. Each night, protect one player from death. You may save the village, if you choose wisely.",
+    "start_seconds": 277.643,
+    "end_seconds": 284.817,
+    "duration_seconds": 7.173,
+    "content_chunks": [
+      134,
+      136
+    ]
+  },
+  {
+    "line": 57,
+    "file": "57-role-jester.mp3",
+    "text": "You are the Jester. Your goal is to be voted out during the day. Act suspicious, confuse the village, and trick them into condemning you.",
+    "start_seconds": 287.753,
+    "end_seconds": 297.242,
+    "duration_seconds": 9.489,
+    "content_chunks": [
+      138,
+      140
+    ]
+  },
+  {
+    "line": 58,
+    "file": "58-role-vigilante.mp3",
+    "text": "You are the Vigilante. Once per game, you may shoot one player at night. A good shot can save the village. A bad shot can destroy it.",
+    "start_seconds": 299.724,
+    "end_seconds": 304.646,
+    "duration_seconds": 4.922,
+    "content_chunks": [
+      142,
+      143
+    ]
+  },
+  {
+    "line": 59,
+    "file": "59-role-bodyguard.mp3",
+    "text": "You are the Bodyguard. Each night, guard one player. If they are attacked, you die in their place.",
+    "start_seconds": 307.737,
+    "end_seconds": 312.733,
+    "duration_seconds": 4.997,
+    "content_chunks": [
+      145,
+      147
+    ]
+  },
+  {
+    "line": 60,
+    "file": "60-role-mayor.mp3",
+    "text": "You are the Mayor. Your vote carries extra weight. Lead the village carefully, because power makes you a target.",
+    "start_seconds": 315.432,
+    "end_seconds": 321.087,
+    "duration_seconds": 5.655,
+    "content_chunks": [
+      149,
+      151
+    ]
+  },
+  {
+    "line": 61,
+    "file": "61-role-witch.mp3",
+    "text": "You are the Witch. You have a healing potion and a poison potion. Each can only be used once. Timing is everything.",
+    "start_seconds": 323.958,
+    "end_seconds": 328.748,
+    "duration_seconds": 4.79,
+    "content_chunks": [
+      153,
+      154
+    ]
+  },
+  {
+    "line": 62,
+    "file": "62-role-serial-killer.mp3",
+    "text": "You are the Serial Killer. You work alone. Kill quietly, survive the chaos, and become the last threat standing.",
+    "start_seconds": 330.806,
+    "end_seconds": 335.817,
+    "duration_seconds": 5.011,
+    "content_chunks": [
+      156,
+      157
+    ]
+  },
+  {
+    "line": 63,
+    "file": "63-action-submitted.mp3",
+    "text": "Your choice has been recorded.",
+    "start_seconds": 338.533,
+    "end_seconds": 341.848,
+    "duration_seconds": 3.314,
+    "content_chunks": [
+      159,
+      160
+    ]
+  },
+  {
+    "line": 64,
+    "file": "64-wait-for-others.mp3",
+    "text": "Your choice is locked. Wait for the others.",
+    "start_seconds": 343.983,
+    "end_seconds": 346.225,
+    "duration_seconds": 2.241,
+    "content_chunks": [
+      162,
+      162
+    ]
+  },
+  {
+    "line": 65,
+    "file": "65-hurry-vote.mp3",
+    "text": "Cast your vote before it is too late.",
+    "start_seconds": 348.943,
+    "end_seconds": 351.945,
+    "duration_seconds": 3.002,
+    "content_chunks": [
+      164,
+      165
+    ]
+  },
+  {
+    "line": 66,
+    "file": "66-host-advanced-phase.mp3",
+    "text": "The host has moved the village forward.",
+    "start_seconds": 353.731,
+    "end_seconds": 356.479,
+    "duration_seconds": 2.748,
+    "content_chunks": [
+      167,
+      168
+    ]
+  },
+  {
+    "line": 67,
+    "file": "67-roles-revealed.mp3",
+    "text": "The masks fall. Every role is now revealed.",
+    "start_seconds": 358.253,
+    "end_seconds": 360.101,
+    "duration_seconds": 1.848,
+    "content_chunks": [
+      170,
+      170
+    ]
+  },
+  {
+    "line": 68,
+    "file": "68-final-judgment.mp3",
+    "text": "The final judgment is here.",
+    "start_seconds": 362.044,
+    "end_seconds": 364.116,
+    "duration_seconds": 2.073,
+    "content_chunks": [
+      172,
+      172
+    ]
+  },
+  {
+    "line": 69,
+    "file": "69-night-one-intro.mp3",
+    "text": "The first night begins. Trust no one.",
+    "start_seconds": 365.88,
+    "end_seconds": 367.04,
+    "duration_seconds": 1.161,
+    "content_chunks": [
+      174,
+      174
+    ]
+  },
+  {
+    "line": 70,
+    "file": "70-night-repeat-intro.mp3",
+    "text": "Night returns. The village holds its breath.",
+    "start_seconds": 369.346,
+    "end_seconds": 378.013,
+    "duration_seconds": 8.667,
+    "content_chunks": [
+      176,
+      176
+    ]
+  },
+  {
+    "line": 71,
+    "file": "71-day-one-intro.mp3",
+    "text": "The first day begins. Introduce yourselves, but guard your secrets.",
+    "start_seconds": 380.373,
+    "end_seconds": 387.268,
+    "duration_seconds": 6.895,
+    "content_chunks": [
+      178,
+      178
+    ]
+  },
+  {
+    "line": 72,
+    "file": "72-day-repeat-intro.mp3",
+    "text": "Another day begins. The survivors must speak.",
+    "start_seconds": 389.339,
+    "end_seconds": 390.863,
+    "duration_seconds": 1.524,
+    "content_chunks": [
+      180,
+      180
+    ]
+  },
+  {
+    "line": 73,
+    "file": "73-voting-warning.mp3",
+    "text": "Once the vote is cast, there may be no turning back.",
+    "start_seconds": 392.914,
+    "end_seconds": 396.395,
+    "duration_seconds": 3.48,
+    "content_chunks": [
+      182,
+      182
+    ]
+  },
+  {
+    "line": 74,
+    "file": "74-dead-spectator.mp3",
+    "text": "You are dead. Watch the village from the shadows.",
+    "start_seconds": 398.668,
+    "end_seconds": 401.848,
+    "duration_seconds": 3.18,
+    "content_chunks": [
+      184,
+      185
+    ]
+  },
+  {
+    "line": 75,
+    "file": "75-game-start.mp3",
+    "text": "The game begins. Secrets have been dealt, and the village is no longer safe.",
+    "start_seconds": 404.009,
+    "end_seconds": 409.407,
+    "duration_seconds": 5.398,
+    "content_chunks": [
+      187,
+      189
+    ]
+  },
+  {
+    "line": 76,
+    "file": "76-game-restarting.mp3",
+    "text": "The village resets. A new nightmare begins.",
+    "start_seconds": 412.042,
+    "end_seconds": 416.0,
+    "duration_seconds": 3.958,
+    "content_chunks": [
+      191,
+      192
+    ]
+  }
+]

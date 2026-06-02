@@ -1,12 +1,16 @@
 import {
   classicUnoModule,
   noMercyModule,
+  werewolfModule,
   type ClassicUnoSettings,
   type ClassicUnoState,
   type NoMercyAction,
   type NoMercySettings,
   type NoMercyState,
-  type UnoAction
+  type UnoAction,
+  type WerewolfAction,
+  type WerewolfSettings,
+  type WerewolfState
 } from "@tabletop/game-core";
 import type { GameId } from "@tabletop/shared";
 import type { GameModule, RegisteredGameSummary } from "@tabletop/game-core";
@@ -21,6 +25,10 @@ const modules = new Map<GameId, AnyGameModule>([
   [
     "uno-no-mercy",
     noMercyModule as GameModule<NoMercyState, NoMercyAction, NoMercySettings> as AnyGameModule
+  ],
+  [
+    "mafia-werewolf",
+    werewolfModule as GameModule<WerewolfState, WerewolfAction, WerewolfSettings> as AnyGameModule
   ]
 ]);
 

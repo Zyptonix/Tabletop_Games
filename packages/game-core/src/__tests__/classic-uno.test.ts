@@ -32,6 +32,11 @@ function baseState(): ClassicUnoState {
 }
 
 describe("classic UNO", () => {
+  it("defaults new Classic UNO rooms to a 60 second turn timer", () => {
+    expect(DEFAULT_CLASSIC_UNO_SETTINGS.turnSeconds).toBe(60);
+    expect(baseState().settings.turnSeconds).toBe(60);
+  });
+
   it("creates a standard 108-card deck", () => {
     const deck = createClassicUnoDeck();
     expect(deck).toHaveLength(108);

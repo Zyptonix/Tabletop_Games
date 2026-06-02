@@ -4,4 +4,4 @@ export * from "./engine/GameTypes";
 export * from "./engine/actionQueue";
 export * from "./engine/rng";
 export * from "./games/classic-uno";
-export * from "./games/uno-no-mercy";
+export * from "./games/uno-no-mercy";export * from "./games/mafia-werewolf";

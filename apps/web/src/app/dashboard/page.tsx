@@ -19,7 +19,7 @@ export default function DashboardPage() {
 
   const loadActiveRooms = async () => {
     const result = await api.myRoom();
-    setActiveRooms(result.rooms ?? []);
+    setActiveRooms((result.rooms ?? []).filter((room) => room.status !== "finished" && room.status !== "abandoned"));
   };
 
   useEffect(() => {

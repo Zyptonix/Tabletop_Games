@@ -1,0 +1,63 @@
+line,filename,marker_start,marker_end,cut_start,cut_end,duration,transcript
+15,15-doctor-target-locked.mp3,61.93,62.71,63.409,65.49,2.081,The doctor has made their choice.
+16,16-seer-awaken.mp3,65.73,66.45,66.85,70.23,3.38,"Seer, wake up. Choose someone to inspect."
+17,17-seer-sleep.mp3,70.59,71.33,71.89,73.51,1.62,"Seer, close your eyes."
+18,18-seer-target-locked.mp3,73.69,74.33,74.69,76.61,1.92,The seer has received a vision.
+19,19-bodyguard-awaken.mp3,76.97,77.75,78.21,80.81,2.6,"Bodyguard, wake up. Choose someone to guard."
+20,20-bodyguard-sleep.mp3,80.93,81.99,82.39,84.37,1.98,"Bodyguard, close your eyes."
+21,21-bodyguard-target-locked.mp3,84.49,85.15,85.71,87.55,1.84,The bodyguard stands watch.
+22,22-vigilante-awaken.mp3,87.77,88.55,89.07,93.17,4.1,"Vigilante, wake up. You may take your shot or hold your fire."
+23,23-vigilante-shot-locked.mp3,93.85,94.77,95.21,97.67,2.46,The vigilante has made a deadly choice.
+24,24-vigilante-skipped.mp3,98.03,98.79,99.39,101.49,2.1,The vigilante holds their fire.
+25,25-witch-awaken.mp3,101.83,102.53,103.21,106.81,3.6,"Witch, wake up. Choose whether to use your potion."
+26,26-witch-heal-used.mp3,107.09,108.11,108.41,110.13,1.72,The healing potion has been used.
+27,27-witch-poison-used.mp3,110.25,111.73,111.99,114.11,2.12,The poison has been poured.
+28,28-witch-skipped.mp3,114.23,115.31,115.95,118.71,2.76,The witch saves her potions for another night.
+29,29-serial-killer-awaken.mp3,119.21,120.13,120.67,123.51,2.84,"Serial killer, wake up. Choose your victim."
+30,30-serial-killer-sleep.mp3,123.79,124.41,124.77,126.59,1.82,"Serial killer, close your eyes."
+31,31-serial-killer-target-locked.mp3,126.71,127.55,127.95,130.169,2.219,The killer has marked someone for death.
+32,32-someone-died.mp3,130.47,131.25,131.45,133.61,2.16,Someone did not survive the night.
+33,33-no-one-died.mp3,133.87,134.67,134.93,136.35,1.42,No one died last night.
+34,34-multiple-deaths.mp3,136.47,137.77,138.27,142.01,3.74,The night was cruel. More than one soul was lost.
+35,35-someone-was-saved.mp3,142.37,143.21,143.87,145.97,2.1,Someone was saved from death.
+36,36-bodyguard-sacrifice.mp3,146.33,147.29,147.83,151.03,3.2,A bodyguard gave their life to protect another.
+37,37-village-wakes-to-death.mp3,151.59,152.59,152.99,155.13,2.14,The village wakes to tragedy.
+38,38-village-wakes-safely.mp3,155.49,156.27,156.71,159.75,3.04,"The village wakes, uneasy but alive."
+39,39-voting-reminder.mp3,160.17,161.11,161.73,165.49,3.76,Vote carefully. A mistake may doom the village.
+40,40-vote-pass.mp3,165.61,166.89,167.23,170.25,3.02,The village chooses to spare everyone for now.
+41,41-vote-tie.mp3,170.49,171.29,171.83,174.95,3.12,The vote is tied. No one is eliminated.
+42,42-player-condemned.mp3,175.31,176.11,176.73,179.25,2.52,The village has condemned one of its own.
+43,43-majority-reached.mp3,179.73,180.53,181.07,184.67,3.6,A majority has spoken. The judgment is final.
+44,44-no-majority.mp3,184.95,185.81,186.37,188.35,1.98,No clear judgment was reached.
+45,45-discussion-skip.mp3,188.61,189.37,189.95,194.35,4.4,The host ends the discussion. The village must now decide.
+46,46-villagers-win.mp3,194.71,195.67,196.25,200.29,4.04,The werewolves are gone. The village survives another night.
+47,47-villagers-win-grand.mp3,200.71,201.79,202.29,208.03,5.74,The village has won. The shadows have been driven out and the truth has survived.
+48,48-werewolves-win.mp3,208.51,209.43,209.89,214.23,4.34,The werewolves have won. The village belongs to the night.
+49,49-werewolves-win-grand.mp3,214.69,215.45,216.27,221.37,5.1,The werewolves have taken control. The village falls silent beneath the moon.
+50,50-jester-wins.mp3,221.73,222.51,222.99,227.91,4.92,The jester has won. The village was fooled and madness takes the crown.
+51,51-serial-killer-wins.mp3,228.39,229.35,230.07,235.03,4.96,The serial killer stands alone. Everyone else was merely part of the story.
+52,52-solo-wins.mp3,235.33,236.23,237.05,241.59,4.54,A lone player has claimed victory. The village never saw it coming.
+53,53-role-villager.mp3,242.29,243.21,243.85,254.27,10.42,"You are a villager. You have no night power, but your vote matters. Watch for lies, trust carefully, and help eliminate every werewolf."
+54,54-role-werewolf.mp3,254.43,255.05,256.03,264.33,8.3,"You are a werewolf. Each night, choose someone to kill with your pack. During the day, blend in, lie well, and avoid suspicion."
+55,55-role-seer.mp3,264.87,265.75,266.73,274.57,7.84,"You are the seer. Each night, inspect one player and learn whether they are a werewolf. Use your knowledge carefully."
+56,56-role-doctor.mp3,275.55,276.87,277.55,284.91,7.36,"You are the doctor. Each night, protect one player from death. You may save the village if you choose wisely."
+57,57-role-jester.mp3,285.77,286.93,287.63,297.53,9.9,"You are the jester. Your goal is to be voted out during the day. Act suspicious, confuse the village, and trick them into condemning you."
+58,58-role-vigilante.mp3,297.97,298.89,299.61,309.71,10.1,"You are the vigilante. Once per game, you may shoot one player at night. A good shot can save the village. A bad shot can destroy it."
+59,59-role-bodyguard.mp3,310.01,310.53,311.39,317.89,6.5,"You are the bodyguard. Each night, guard one player. If they are attacked, you die in their place."
+60,60-role-mayor.mp3,318.57,319.35,319.91,327.23,7.32,You are the mayor. Your vote carries extra weight. Lead the village carefully because power makes you a target.
+61,61-role-witch.mp3,327.61,328.45,329.17,337.61,8.44,You are the witch. You have a healing potion and a poison potion. Each can only be used once. Timing is everything.
+62,62-role-serial-killer.mp3,338.61,339.33,339.95,348.77,8.82,"You are the serial killer. You work alone. Kill quietly, survive the chaos, and become the last threat standing."
+63,63-action-submitted.mp3,349.03,349.89,350.37,352.01,1.64,Your choice has been recorded.
+64,64-wait-for-others.mp3,352.35,353.05,353.61,356.59,2.98,Your choice is locked. Wait for the others.
+65,65-hurry-vote.mp3,356.87,357.61,358.21,360.05,1.84,Cast your vote before it is too late.
+66,66-host-advanced-phase.mp3,360.17,361.31,361.69,364.25,2.56,The host has moved the village forward.
+67,67-roles-revealed.mp3,364.47,365.37,365.75,369.15,3.4,The masks fall. Every role is now revealed.
+68,68-final-judgment.mp3,369.43,370.21,370.27,371.93,1.66,The final judgment is here.
+69,69-night-one-intro.mp3,372.05,372.85,373.27,375.95,2.68,The first night begins. Trust no one.
+70,70-night-repeat-intro.mp3,376.09,376.75,376.95,380.15,3.2,Night returns. The village holds its breath.
+71,71-day-one-intro.mp3,380.45,381.23,381.75,385.99,4.24,"The first day begins. Introduce yourselves, but guard your secrets."
+72,72-day-repeat-intro.mp3,386.17,386.97,387.63,391.07,3.44,Another day begins. The survivors must speak.
+73,73-voting-warning.mp3,391.47,392.31,392.79,396.57,3.78,"Once the vote is cast, there may be no turning back."
+74,74-dead-spectator.mp3,396.87,397.73,398.17,401.95,3.78,You are dead. Watch the village from the shadows.
+75,75-game-start.mp3,402.21,403.05,403.85,409.71,5.86,"The game begins. Secrets have been dealt, and the village is no longer safe."
+76,76-game-restarting.mp3,410.17,411.27,411.85,415.92,4.07,The village resets. A new nightmare begins.

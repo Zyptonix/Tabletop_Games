@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./classic-uno": "./src/games/classic-uno/index.ts",
-    "./uno-no-mercy": "./src/games/uno-no-mercy/index.ts"
+    "./uno-no-mercy": "./src/games/uno-no-mercy/index.ts",
+    "./mafia-werewolf": "./src/games/mafia-werewolf/index.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json --noEmit",

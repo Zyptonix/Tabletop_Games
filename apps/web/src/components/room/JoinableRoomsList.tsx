@@ -20,7 +20,7 @@ export function JoinableRoomsList() {
     setError(null);
     try {
       const result = await api.joinableRooms();
-      setRooms(result.rooms);
+      setRooms(result.rooms.filter((room) => room.status === "lobby"));
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Could not load rooms.");
     } finally {

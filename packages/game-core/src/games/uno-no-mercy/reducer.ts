@@ -400,8 +400,10 @@ function resolveOfflineRoulette(params: {
   playerId: string;
   now: string;
   events: GameEvent[];
+  source?: "roulette" | "offline_roulette" | undefined;
 }): NoMercyState {
   const { playerId, events, settings, now } = params;
+  const source = params.source ?? "offline_roulette";
   const pendingRoulette = params.state.pendingRoulette;
   if (!pendingRoulette || pendingRoulette.targetPlayerId !== playerId) {
     return params.state;
@@ -429,11 +431,16 @@ function resolveOfflineRoulette(params: {
     if (card.color === chosenColor) {
       matchedCardId = card.id;
     }
+
+    const target = state.players.find((item) => item.userId === playerId);
+    if (target && !target.eliminated && target.hand.length >= settings.eliminationHandSize) {
+      break;
+    }
   }
 
   events.push(
     createGameEvent("uno-no-mercy:roulette", {
-      message: `Offline roulette made ${player?.displayName ?? "a player"} draw ${revealedCards.length} card${revealedCards.length === 1 ? "" : "s"}.`,
+      message: `${source === "offline_roulette" ? "Offline roulette" : "Roulette"} made ${player?.displayName ?? "a player"} draw ${revealedCards.length} card${revealedCards.length === 1 ? "" : "s"}.`,
       payload: {
         playerId: pendingRoulette.playedByPlayerId,
         targetPlayerId: playerId,
@@ -441,7 +448,7 @@ function resolveOfflineRoulette(params: {
         count: revealedCards.length,
         revealedCards,
         matchedCardId,
-        source: "offline_roulette",
+        source,
         actuallyDrawn: revealedCards.length
       }
     })
@@ -578,7 +585,11 @@ export function applyNoMercyAction(params: {
       })
     );
 
+    // No Mercy roulette resolves as one server-side burst after the target picks
+    // a color. The loop stops early if the target hits the 25-card mercy limit.
+    state = resolveOfflineRoulette({ state, settings, playerId, now, events, source: "roulette" });
     state = withActionMeta(state, params.state, now);
+    pushGameOverEvent(state, events);
     return { state, events };
   }
 

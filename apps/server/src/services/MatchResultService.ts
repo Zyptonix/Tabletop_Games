@@ -6,24 +6,55 @@ function isBotUserId(userId: string): boolean {
   return userId.startsWith("bot:");
 }
 
-function xpForPlacement(params: { placement: number; playerCount: number; result: "WIN" | "LOSS" | "DRAW" }): number {
-  let xp = 50;
+function rewardsForPlacement(params: {
+  placement: number;
+  playerCount: number;
+  result: "WIN" | "LOSS" | "DRAW";
+  score: number;
+  gameId: string;
+}): { xp: number; coins: number; ratingDelta: number } {
+  let xp = 75;
+  let coins = 12;
+  let ratingDelta = -8;
+
   if (params.result === "WIN") {
-    xp += 100;
+    xp += 175;
+    coins += 35;
+    ratingDelta = 28;
+  } else if (params.result === "DRAW") {
+    xp += 40;
+    coins += 8;
+    ratingDelta = 0;
   }
+
   if (params.placement === 2) {
-    xp += 60;
+    xp += 85;
+    coins += 18;
+    ratingDelta = Math.max(ratingDelta, 12);
   }
   if (params.placement === 3) {
-    xp += 30;
+    xp += 45;
+    coins += 10;
+    ratingDelta = Math.max(ratingDelta, 4);
   }
   if (params.playerCount >= 4) {
-    xp += 25;
+    xp += 35;
+    coins += 8;
   }
   if (params.playerCount >= 8) {
-    xp += 50;
+    xp += 70;
+    coins += 18;
   }
-  return xp;
+  if (params.gameId === "uno-no-mercy") {
+    xp += 25;
+    coins += 5;
+  }
+
+  const scoreBonus = Math.min(75, Math.floor(Math.max(0, params.score) / 10));
+  xp += scoreBonus;
+  coins += Math.floor(scoreBonus / 5);
+
+  return { xp, coins, ratingDelta };
 }
 
 export class MatchResultService {
@@ -69,11 +100,14 @@ export class MatchResultService {
       });
 
       for (const placement of humanPlacements) {
-        const xpEarned = xpForPlacement({
+        const rewards = rewardsForPlacement({
           placement: placement.placement,
           playerCount: humanPlayerCount,
-          result: placement.result
+          result: placement.result,
+          score: placement.score,
+          gameId: params.gameId
         });
+        const xpEarned = rewards.xp;
 
         await transaction.matchPlayer.upsert({
           where: {
@@ -111,7 +145,7 @@ export class MatchResultService {
         const profileUpdate = {
           xp: { increment: xpEarned },
           level: levelFromXp(nextXp),
-          coins: { increment: Math.floor(xpEarned / 10) },
+          coins: { increment: rewards.coins },
           totalGamesPlayed: { increment: 1 },
           ...(placement.result === "WIN" ? { totalWins: { increment: 1 } } : {})
         };
@@ -135,7 +169,8 @@ export class MatchResultService {
           ...(placement.result === "WIN" ? { wins: { increment: 1 } } : {}),
           ...(placement.result === "LOSS" ? { losses: { increment: 1 } } : {}),
           totalScore: { increment: placement.score },
-          bestScore: Math.max(existingStats?.bestScore ?? 0, placement.score)
+          bestScore: Math.max(existingStats?.bestScore ?? 0, placement.score),
+          rating: { increment: rewards.ratingDelta }
         };
 
         await transaction.playerGameStats.upsert({
@@ -153,7 +188,8 @@ export class MatchResultService {
             wins: placement.result === "WIN" ? 1 : 0,
             losses: placement.result === "LOSS" ? 1 : 0,
             totalScore: placement.score,
-            bestScore: placement.score
+            bestScore: placement.score,
+            rating: 1000 + rewards.ratingDelta
           }
         });
       }

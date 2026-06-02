@@ -5,7 +5,7 @@ import { Bug, Zap } from "lucide-react";
 import type { RoomPlayerView, UserRole } from "@tabletop/shared";
 import { Button } from "@/components/ui/button";
 
-const debugEnabled = process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_ENABLE_UNO_DEBUG_PANEL === "true";
+const debugEnabled = process.env.NEXT_PUBLIC_ENABLE_UNO_DEBUG_PANEL === "true";
 
 const sharedScenarios = [
   ["give_me_playable", "Playable"],

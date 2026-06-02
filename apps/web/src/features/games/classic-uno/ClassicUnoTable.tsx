@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import type { GameEvent, PublicClassicUnoState, PublicNoMercyState } from "@tabletop/game-core";
 import type { RoomPlayerView, RoomStateView, UserRole } from "@tabletop/shared";
-import { AlertTriangle, BookOpen, ChevronDown, Copy, LogOut, Settings, Trophy } from "lucide-react";
+import { AlertTriangle, BookOpen, ChevronDown, Copy, LogOut, PanelRightClose, PanelRightOpen, Settings, Trophy } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { RoomChat } from "@/features/game-shell/RoomChat";
@@ -17,11 +17,11 @@ import { DrawPile } from "./DrawPile";
 import { HandTransferAnimationOverlay } from "./HandTransferAnimationOverlay";
 import { PlayerHand } from "./PlayerHand";
 import { PlayerSeat } from "./PlayerSeat";
+import { PowerEventOverlay, type PowerSeatEffect } from "./PowerEventOverlay";
 import { ReactionOverlay, REACTION_PREFIX } from "./ReactionOverlay";
 import { TurnTimerCircle } from "./TurnTimerCircle";
 import { TurnTransitionOverlay } from "./TurnTransitionOverlay";
 import { UnoActionBar } from "./UnoActionBar";
-import { UnoDebugPanel } from "./UnoDebugPanel";
 import { UnoGameStatus } from "./UnoGameStatus";
 import { UnoRuleBookModal } from "./UnoRuleBookModal";
 import type { CardThemeId } from "./cardThemes";
@@ -146,8 +146,7 @@ export function ClassicUnoTable({
   currentUserRole,
   onAction,
   onChat,
-  onEndMatch,
-  onDebugScenario
+  onEndMatch
 }: {
   room: RoomStateView;
   state: UnoTableState;
@@ -159,7 +158,6 @@ export function ClassicUnoTable({
   onReaction?: ((emoji: string) => void) | undefined;
   onChat?: ((roomId: string, body: string) => void) | undefined;
   onEndMatch?: ((roomId: string) => void) | undefined;
-  onDebugScenario?: ((scenario: string, targetPlayerId?: string) => void) | undefined;
 }) {
   const cardTheme: CardThemeId = state.gameId === "uno-no-mercy" ? "no_mercy" : "classic";
   const tableRootRef = useRef<HTMLElement | null>(null);
@@ -176,12 +174,16 @@ export function ClassicUnoTable({
   const [previousPlayerId, setPreviousPlayerId] = useState<string | null>(null);
   const [rulebookOpen, setRulebookOpen] = useState(false);
   const [confirmEndOpen, setConfirmEndOpen] = useState(false);
+  const [sidePanelOpen, setSidePanelOpen] = useState(() =>
+    typeof window === "undefined" ? true : localStorage.getItem("tabletop.sidePanelHidden") !== "true"
+  );
   const [stackAddedAmount, setStackAddedAmount] = useState<number | null>(null);
   const [stackHitNotice, setStackHitNotice] = useState<{
     playerId: string;
     playerName: string;
     amount: number;
   } | null>(null);
+  const [seatPowerEffects, setSeatPowerEffects] = useState<Record<string, PowerSeatEffect>>({});
   const [now, setNow] = useState(() => Date.now());
 
   const me = state.players.find((player) => player.userId === currentUserId);
@@ -402,6 +404,26 @@ export function ClassicUnoTable({
     lastPenaltyAmountRef.current = null;
   }, [pendingPenalty, room.players, state.players]);
 
+
+  const triggerSeatPowerEffect = useCallback((playerId: string, effect: PowerSeatEffect) => {
+    setSeatPowerEffects((current) => ({ ...current, [playerId]: effect }));
+    window.setTimeout(() => {
+      setSeatPowerEffects((current) => {
+        if (current[playerId]?.id !== effect.id) {
+          return current;
+        }
+        const next = { ...current };
+        delete next[playerId];
+        return next;
+      });
+    }, effect.kind === "draw" ? 2100 : 1800);
+  }, []);
+
+  function setPanelOpen(next: boolean) {
+    setSidePanelOpen(next);
+    localStorage.setItem("tabletop.sidePanelHidden", next ? "false" : "true");
+  }
+
   function registerSeatRef(playerId: string) {
     return (element: HTMLDivElement | null) => {
       if (element) {
@@ -502,10 +524,20 @@ export function ClassicUnoTable({
                 <BookOpen className="h-4 w-4" />
                 Rules
               </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-10 rounded-full border-white/12 bg-black/35 px-3 text-white hover:bg-white/10"
+                onClick={() => setPanelOpen(!sidePanelOpen)}
+              >
+                {sidePanelOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
+                {sidePanelOpen ? "Hide panel" : "Show panel"}
+              </Button>
             </div>
           </header>
 
-          <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_330px]">
+          <div className={cn("grid min-h-0 flex-1 grid-cols-1 gap-3", sidePanelOpen && "xl:grid-cols-[minmax(0,1fr)_330px]")}>
             <main ref={tableRootRef} className="relative h-full min-h-0 overflow-hidden">
               <div className="pointer-events-none absolute inset-0 classic-uno-stage-light" />
 
@@ -537,6 +569,13 @@ export function ClassicUnoTable({
                 containerRef={tableRootRef}
                 seatRefs={seatRefs}
                 handDockRef={handDockRef}
+              />
+
+              <PowerEventOverlay
+                events={gameEvents}
+                players={state.players}
+                currentUserId={currentUserId}
+                onSeatEffect={triggerSeatPowerEffect}
               />
 
               <section className="relative z-10 grid h-full min-h-0 grid-rows-[minmax(0,1fr)_13.25rem] gap-2 px-3 pb-3">
@@ -600,7 +639,7 @@ export function ClassicUnoTable({
                         fanSide={getFanSide(side, left)}
                         seatSide={side}
                         stackHitAmount={stackHitNotice?.playerId === player.userId ? stackHitNotice.amount : undefined}
-
+                        powerEffect={seatPowerEffects[player.userId]}
                         turnProgress={player.isCurrentTurn ? turnProgress : undefined}
                       />
                     </div>
@@ -618,7 +657,7 @@ export function ClassicUnoTable({
                         isSelf
                         seatSide="left"
                         stackHitAmount={stackHitNotice?.playerId === me.userId ? stackHitNotice.amount : undefined}
-
+                        powerEffect={seatPowerEffects[me.userId]}
                         turnProgress={me.isCurrentTurn ? turnProgress : undefined}
                       />
                     </div>
@@ -724,7 +763,8 @@ export function ClassicUnoTable({
               </section>
             </main>
 
-            <aside className="relative z-20 hidden min-h-0 overflow-visible xl:flex xl:flex-col xl:gap-3">
+            {sidePanelOpen ? (
+              <aside className="relative z-20 hidden min-h-0 overflow-visible xl:flex xl:flex-col xl:gap-3">
               <div className="rounded-2xl border border-white/10 bg-black/30 p-3 shadow-[0_18px_60px_rgba(0,0,0,0.35)] backdrop-blur-xl">
                 <div className="flex items-center justify-between gap-2">
                   <button
@@ -764,20 +804,12 @@ export function ClassicUnoTable({
                 </div>
               </div>
 
-              <UnoDebugPanel
-                gameId={state.gameId}
-                roomPlayers={room.players}
-                currentUserId={currentUserId}
-                currentUserRole={currentUserRole}
-                effectiveHostUserId={room.effectiveHostUserId}
-                onScenario={onDebugScenario}
-              />
-
 
               <div className="min-h-0 flex-1">
                 {onChat ? <RoomChat roomId={room.id} messages={room.chat} onSend={onChat} onlineCount={onlineCount} /> : null}
               </div>
-            </aside>
+              </aside>
+            ) : null}
           </div>
         </div>
 

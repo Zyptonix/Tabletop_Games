@@ -3,11 +3,12 @@
 import type { ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { RoomPlayerView } from "@tabletop/shared";
-import { Star } from "lucide-react";
+import { Ban, Skull, Star, WifiOff } from "lucide-react";
 import { CardImage } from "@/components/cards/CardImage";
 import { resolveCardAsset } from "@/lib/cards";
 import { cn } from "@/lib/utils/cn";
 import type { CardThemeId } from "./cardThemes";
+import type { PowerSeatEffect } from "./PowerEventOverlay";
 
 interface PublicSeatPlayer {
   userId: string;
@@ -43,6 +44,7 @@ export function PlayerSeat({
   fanSide = "right",
   seatSide = "top",
   stackHitAmount,
+  powerEffect,
   turnProgress
 }: {
   player: PublicSeatPlayer;
@@ -53,6 +55,7 @@ export function PlayerSeat({
   fanSide?: "left" | "right";
   seatSide?: "top" | "left" | "right";
   stackHitAmount?: number | undefined;
+  powerEffect?: PowerSeatEffect | undefined;
   turnProgress?: number | undefined;
 }) {
   const connected = roomPlayer?.connected ?? false;
@@ -188,6 +191,40 @@ export function PlayerSeat({
         self={isSelf}
         side={fanSide}
       />
+
+
+      <AnimatePresence>
+        {powerEffect ? (
+          <motion.div
+            key={powerEffect.id}
+            initial={{ opacity: 0, scale: 0.74, rotate: -4 }}
+            animate={{ opacity: 1, scale: 1, rotate: 0 }}
+            exit={{ opacity: 0, scale: 0.88, y: -10 }}
+            transition={{ duration: 0.24, ease: "easeOut" }}
+            className={cn(
+              "pointer-events-none absolute inset-[-0.35rem] z-[65] grid place-items-center overflow-hidden rounded-[1.8rem] border text-center backdrop-blur-[2px]",
+              powerEffect.kind === "skip" && "border-red-300/55 bg-red-950/60 shadow-[0_0_48px_rgba(239,68,68,0.42)]",
+              powerEffect.kind === "offline" && "border-orange-300/55 bg-orange-950/62 shadow-[0_0_48px_rgba(249,115,22,0.42)]",
+              powerEffect.kind === "draw" && "border-amber-300/55 bg-amber-950/58 shadow-[0_0_48px_rgba(245,158,11,0.40)]",
+              powerEffect.kind === "roulette" && "border-fuchsia-300/55 bg-fuchsia-950/60 shadow-[0_0_48px_rgba(168,85,247,0.40)]"
+            )}
+          >
+            <motion.div
+              animate={{ scale: [1, 1.08, 1] }}
+              transition={{ duration: 0.7, repeat: 1, ease: "easeInOut" }}
+              className="grid justify-items-center gap-1"
+            >
+              {powerEffect.kind === "offline" ? <WifiOff className="h-9 w-9 text-orange-100" /> : null}
+              {powerEffect.kind === "skip" ? <Ban className="h-10 w-10 text-red-100" /> : null}
+              {powerEffect.kind === "roulette" ? <Skull className="h-9 w-9 text-fuchsia-100" /> : null}
+              <p className="text-3xl font-black uppercase leading-none tracking-wide text-white drop-shadow-[0_0_18px_rgba(255,255,255,0.4)]">
+                {powerEffect.label}
+              </p>
+              {powerEffect.detail ? <p className="text-[0.65rem] font-black uppercase tracking-[0.22em] text-white/70">{powerEffect.detail}</p> : null}
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       <AnimatePresence>
         {stackHitAmount ? (

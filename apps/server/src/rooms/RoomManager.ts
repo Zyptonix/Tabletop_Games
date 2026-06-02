@@ -228,6 +228,11 @@ export class RoomManager {
     }
 
     const module = this.requireModule(room.gameId);
+
+    if (room.status === "finished" || room.status === "abandoned") {
+      throw new AppError(ERROR_CODES.GAME_ALREADY_STARTED, "This room has already ended.");
+    }
+
     const existing = room.players.find((player) => player.userId === params.user.id);
 
     if (existing) {
@@ -343,6 +348,20 @@ export class RoomManager {
     }
 
     const now = new Date();
+    const randomizedPlayers = room.players.slice();
+    for (let index = randomizedPlayers.length - 1; index > 0; index -= 1) {
+      const swapIndex = Math.floor(Math.random() * (index + 1));
+      const current = randomizedPlayers[index];
+      const swap = randomizedPlayers[swapIndex];
+      if (current && swap) {
+        randomizedPlayers[index] = swap;
+        randomizedPlayers[swapIndex] = current;
+      }
+    }
+    randomizedPlayers.forEach((player, seat) => {
+      player.seat = seat;
+    });
+
     const gamePlayers: GamePlayer[] = room.players
       .slice()
       .sort((left, right) => left.seat - right.seat)
@@ -359,6 +378,19 @@ export class RoomManager {
       seed: `${room.id}:${now.toISOString()}`,
       now: now.toISOString()
     });
+
+    if (room.gameId === "mafia-werewolf" && room.gameState && typeof room.gameState === "object") {
+      const effectiveHostUserId = this.getEffectiveHostUserId(room);
+      const werewolfState = room.gameState as {
+        moderatorPlayerId?: string | null;
+        players?: Array<{ userId: string }>;
+      };
+
+      if (effectiveHostUserId && werewolfState.players?.some((player) => player.userId === effectiveHostUserId)) {
+        werewolfState.moderatorPlayerId = effectiveHostUserId;
+      }
+    }
+
     room.status = "in_game";
     room.actionNumber = 0;
 
@@ -491,9 +523,23 @@ export class RoomManager {
         throw new AppError(ERROR_CODES.INVALID_PAYLOAD, "Invalid game action payload.", parsedAction.error.flatten());
       }
 
+      const isWerewolfHostAdvance =
+        room.gameId === "mafia-werewolf" &&
+        typeof parsedAction.data === "object" &&
+        parsedAction.data !== null &&
+        (parsedAction.data as { type?: unknown }).type === "advance_phase" &&
+        this.getEffectiveHostUserId(room) === params.userId;
+
+      const werewolfModeratorPlayerId =
+        isWerewolfHostAdvance && room.gameState && typeof room.gameState === "object"
+          ? (room.gameState as { moderatorPlayerId?: string | null }).moderatorPlayerId
+          : null;
+
+      const actionPlayerId = isWerewolfHostAdvance ? werewolfModeratorPlayerId ?? params.userId : params.userId;
+
       const validation = module.validateAction({
         state: room.gameState,
-        playerId: params.userId,
+        playerId: actionPlayerId,
         action: parsedAction.data
       });
       if (!validation.ok) {
@@ -503,7 +549,7 @@ export class RoomManager {
       const now = new Date().toISOString();
       const result = module.applyAction({
         state: room.gameState,
-        playerId: params.userId,
+        playerId: actionPlayerId,
         action: parsedAction.data,
         now
       });
@@ -742,7 +788,21 @@ export class RoomManager {
     if (!room.gameState) {
       return [];
     }
-    return this.requireModule(room.gameId).getLegalActions({ state: room.gameState, playerId: userId });
+
+    const actions = this.requireModule(room.gameId).getLegalActions({ state: room.gameState, playerId: userId });
+
+    if (
+      room.gameId === "mafia-werewolf" &&
+      this.getEffectiveHostUserId(room) === userId &&
+      room.gameState &&
+      typeof room.gameState === "object" &&
+      (room.gameState as { phase?: string }).phase !== "finished" &&
+      !actions.some((action) => typeof action === "object" && action !== null && (action as { type?: unknown }).type === "advance_phase")
+    ) {
+      return [...actions, { type: "advance_phase" }];
+    }
+
+    return actions;
   }
 
   isBotPlayer(room: RoomRuntime, userId: string | null | undefined): boolean {
