@@ -16,9 +16,22 @@ import { REACTION_PREFIX } from "@/features/games/classic-uno/ReactionOverlay";
 
 export default function RoomPage() {
   const params = useParams<{ code: string }>();
-  const { user } = useAuth({ required: true });
+  const { user, loading } = useAuth({ required: true });
   const roomCode = params.code?.toUpperCase();
-  const socketState = useRoomSocket(roomCode);
+  const socketState = useRoomSocket(loading || !user ? undefined : roomCode);
+
+  if (loading || !user) {
+    return (
+      <AppShell>
+        <div className="grid min-h-[50vh] place-items-center">
+          <div className="flex items-center gap-3 rounded-lg bg-white p-4 shadow">
+            <Loader2 className="h-5 w-5 animate-spin text-emerald-700" />
+            <span className="font-semibold">Loading your account...</span>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
 
   if (!socketState.room) {
     return (
@@ -51,7 +64,7 @@ export default function RoomPage() {
       <GameShell
         connected={socketState.connected}
         room={room}
-        currentUserId={user?.id ?? null}
+        currentUserId={user.id}
         timer={socketState.timer}
         onReady={socketState.sendReady}
         onStart={socketState.startRoom}
@@ -88,8 +101,8 @@ export default function RoomPage() {
             state={werewolfState}
             legalActions={socketState.legalActions}
             gameEvents={socketState.gameEvents}
-            currentUserId={user?.id ?? null}
-            currentUserRole={user?.role ?? null}
+            currentUserId={user.id}
+            currentUserRole={user.role}
             onAction={(type, payload) => socketState.sendAction(room.id, type, payload)}
             onChat={socketState.sendChat}
             onEndMatch={socketState.endRoom}
@@ -100,8 +113,8 @@ export default function RoomPage() {
             state={unoState}
             legalActions={socketState.legalActions}
             gameEvents={socketState.gameEvents}
-            currentUserId={user?.id ?? null}
-            currentUserRole={user?.role ?? null}
+            currentUserId={user.id}
+            currentUserRole={user.role}
             onAction={(type, payload) => socketState.sendAction(room.id, type, payload)}
             onReaction={(emoji) => socketState.sendChat(room.id, `${REACTION_PREFIX}${emoji}`)}
             onChat={socketState.sendChat}

@@ -630,7 +630,7 @@ export function MafiaWerewolfTable({
   const { voiceEnabled, setVoiceEnabled, speak } = useModeratorVoice();
 
   useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 250);
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(id);
   }, []);
 

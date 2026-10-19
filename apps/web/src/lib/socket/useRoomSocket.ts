@@ -44,6 +44,8 @@ function isGameEvent(value: unknown): value is GameEvent {
 export function useRoomSocket(roomCode?: string): RoomSocketState {
   const setUser = useAuthStore((state) => state.setUser);
   const lastReactionAtRef = useRef(0);
+  const roomCodeRef = useRef<string | null>(roomCode?.toUpperCase() ?? null);
+  const joinedRoomCodeRef = useRef<string | null>(null);
   const [socket, setSocket] = useState<ArenaSocket | null>(null);
   const [connected, setConnected] = useState(false);
   const [room, setRoom] = useState<RoomStateView | null>(null);
@@ -54,7 +56,15 @@ export function useRoomSocket(roomCode?: string): RoomSocketState {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    roomCodeRef.current = roomCode?.toUpperCase() ?? null;
+    joinedRoomCodeRef.current = null;
+    setRoom(null);
+    setGameState(null);
+    setLegalActions([]);
     setGameEvents([]);
+  }, [roomCode]);
+
+  useEffect(() => {
     const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || undefined;
     const nextSocket: ArenaSocket = io(socketUrl, {
       path: process.env.NEXT_PUBLIC_SOCKET_PATH ?? "/socket.io",
@@ -69,21 +79,41 @@ export function useRoomSocket(roomCode?: string): RoomSocketState {
 
     setSocket(nextSocket);
 
+    const joinIfNeeded = () => {
+      const currentRoomCode = roomCodeRef.current;
+      if (!currentRoomCode || joinedRoomCodeRef.current === currentRoomCode) {
+        return;
+      }
+
+      joinedRoomCodeRef.current = currentRoomCode;
+      nextSocket.emit("room:join", { code: currentRoomCode });
+    };
+
     nextSocket.on("connect", () => {
       setConnected(true);
       setError(null);
       nextSocket.emit("auth:resume");
-      if (roomCode) {
-        nextSocket.emit("room:join", { code: roomCode });
-      }
+      joinIfNeeded();
     });
     nextSocket.on("disconnect", () => setConnected(false));
     nextSocket.on("connect_error", (connectError) => {
       setConnected(false);
       setError(connectError.message || "Could not connect to the realtime server.");
     });
-    nextSocket.on("auth:ok", ({ user }) => setUser(user));
-    nextSocket.on("room:state", (payload) => setRoom(payload));
+    nextSocket.on("auth:ok", ({ user }) => {
+      setUser(user);
+      if (roomCodeRef.current) {
+        joinIfNeeded();
+      }
+    });
+    nextSocket.on("room:state", (payload) => {
+      setRoom(payload);
+      const normalizedCode = payload.code?.toUpperCase();
+      if (normalizedCode && roomCodeRef.current && normalizedCode === roomCodeRef.current) {
+        joinedRoomCodeRef.current = normalizedCode;
+      }
+    });
+    
     nextSocket.on("game:state", (payload) => {
       setGameState(payload.state);
       setLegalActions(payload.legalActions);
@@ -101,6 +131,7 @@ export function useRoomSocket(roomCode?: string): RoomSocketState {
     nextSocket.on("server:error", (payload) => setError(payload.message));
 
     return () => {
+      joinedRoomCodeRef.current = null;
       nextSocket.disconnect();
     };
   }, [roomCode, setUser]);

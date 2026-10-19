@@ -41,20 +41,24 @@ export function readSessionFromCookie(cookieHeader: string | undefined): Session
 }
 
 export function setSessionCookie(response: Response, token: string): void {
+  const isSecureOrigin = env.PUBLIC_APP_URL.startsWith("https://");
+
   response.cookie(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
-    sameSite: "lax",
-    secure: env.NODE_ENV === "production",
+    sameSite: isSecureOrigin ? "none" : "lax",
+    secure: isSecureOrigin,
     path: "/",
     maxAge: SESSION_DAYS * 24 * 60 * 60 * 1000
   });
 }
 
 export function clearSessionCookie(response: Response): void {
+  const isSecureOrigin = env.PUBLIC_APP_URL.startsWith("https://");
+
   response.clearCookie(SESSION_COOKIE_NAME, {
     httpOnly: true,
-    sameSite: "lax",
-    secure: env.NODE_ENV === "production",
+    sameSite: isSecureOrigin ? "none" : "lax",
+    secure: isSecureOrigin,
     path: "/"
   });
 }

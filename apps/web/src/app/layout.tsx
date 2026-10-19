@@ -1,15 +1,24 @@
 import type { Metadata } from "next";
+import { MotionConfig } from "framer-motion";
 import "../styles/globals.css";
 
 export const metadata: Metadata = {
   title: "Tabletop Arena",
-  description: "Private realtime tabletop games for friends."
+  description: "Private realtime tabletop games for friends.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className="low-power-mode">
+        <MotionConfig reducedMotion="always">
+          {children}
+        </MotionConfig>
+      </body>
     </html>
   );
 }
