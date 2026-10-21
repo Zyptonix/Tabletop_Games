@@ -1,0 +1,44 @@
+--- a/apps/web/src/lib/socket/useRoomSocket.ts
++++ b/apps/web/src/lib/socket/useRoomSocket.ts
+@@ -9,6 +9,32 @@
+ type ArenaSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
+ 
+ const REACTION_PREFIX = "__reaction:";
++
++/**
++ * crypto.randomUUID() is restricted to secure contexts in browsers.
++ * Local LAN URLs served over plain HTTP are not secure contexts, so fall back
++ * to getRandomValues(), which is available in insecure contexts.
++ */
++function createActionId(): string {
++  const cryptoApi = globalThis.crypto;
++
++  if (typeof cryptoApi?.randomUUID === "function") {
++    return cryptoApi.randomUUID();
++  }
++
++  if (typeof cryptoApi?.getRandomValues === "function") {
++    const bytes = cryptoApi.getRandomValues(new Uint8Array(16));
++    // Set UUID v4 version and variant bits.
++    bytes[6] = (bytes[6] & 0x0f) | 0x40;
++    bytes[8] = (bytes[8] & 0x3f) | 0x80;
++
++    const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
++    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
++  }
++
++  // Action IDs are deduplication identifiers, not authentication secrets.
++  return `action-${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
++}
+ 
+ export interface RoomSocketState {
+   socket: ArenaSocket | null;
+@@ -148,7 +174,7 @@
+       error,
+       sendAction: (roomId: string, type: string, payload: Record<string, unknown> = {}) => {
+         socket?.emit("game:action", {
+-          actionId: crypto.randomUUID(),
++          actionId: createActionId(),
+           roomId,
+           type,
+           payload,

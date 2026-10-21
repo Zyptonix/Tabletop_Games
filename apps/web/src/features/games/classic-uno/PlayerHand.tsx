@@ -150,6 +150,26 @@ export function PlayerHand({
     () => new Set(hand.filter((card) => isPlayableCard(legalActions, card)).map((card) => card.id)),
     [hand, legalActions]
   );
+    useEffect(() => {
+    console.info("[UNO hand diagnostic]", {
+      handCount: hand.length,
+      playableCardIds: [...playableIds],
+      legalActions: legalActions.map((action) => {
+        if (typeof action !== "object" || action === null) {
+          return { type: "unknown" };
+        }
+
+        const item = action as Record<string, unknown>;
+
+        return {
+          type: item.type,
+          cardId: item.cardId,
+          hasDeclaredColor: Boolean(item.declaredColor),
+          hasTarget: Boolean(item.targetPlayerId),
+        };
+      }),
+    });
+  }, [hand, legalActions, playableIds]);
 
   const density = getHandDensity(sortedHand.length, handFrameWidth || 1100);
 
