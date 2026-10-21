@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import type { UnoDeclaredColor } from "@tabletop/game-core";
 import { Button } from "@/components/ui/button";
 import type { RenderableCard } from "@/lib/cards";
+import { cn } from "@/lib/utils/cn";
 import { UnoCard } from "./UnoCard";
 import { UnoColorPicker } from "./UnoColorPicker";
 import { getPlayCardActions, isPlayableCard } from "./unoActionUtils";
@@ -85,11 +86,6 @@ function getHandDensity(cardCount: number, availableWidth: number) {
   const veryCrowded = cardCount >= 32;
   const compact = cardCount >= 28;
 
-  /**
-   * UnoCard normal width is about 96px on desktop.
-   * UnoCard compact width is 64px.
-   * We use compact for huge hands so 50+ cards can still fit.
-   */
   const cardWidth = compact ? 64 : 96;
 
   const safeWidth = Math.max(availableWidth - 40, 320);
@@ -101,10 +97,6 @@ function getHandDensity(cardCount: number, availableWidth: number) {
     overlap = Math.floor((safeWidth - neededWithoutOverlap) / (cardCount - 1));
   }
 
-  /**
-   * Clamp overlap so the hand never becomes unreadably stacked.
-   * Compact cards allow a less aggressive overlap.
-   */
   const minOverlap = compact ? -52 : -78;
   const maxOverlap = cardCount >= 16 ? -18 : -10;
   overlap = Math.max(minOverlap, Math.min(maxOverlap, overlap));
@@ -124,13 +116,15 @@ export function PlayerHand({
   legalActions,
   theme,
   targetPlayers = [],
-  onPlay
+  onPlay,
+  isMyTurn = false
 }: {
   hand: RenderableCard[];
   legalActions: unknown[];
   theme: CardThemeId;
   targetPlayers?: TargetPlayer[];
   onPlay: (payload: { cardId: string; declaredColor?: UnoDeclaredColor; targetPlayerId?: string }) => void;
+  isMyTurn?: boolean;
 }) {
   const [colorCardId, setColorCardId] = useState<string | null>(null);
   const [targetCardId, setTargetCardId] = useState<string | null>(null);
@@ -150,26 +144,6 @@ export function PlayerHand({
     () => new Set(hand.filter((card) => isPlayableCard(legalActions, card)).map((card) => card.id)),
     [hand, legalActions]
   );
-    useEffect(() => {
-    console.info("[UNO hand diagnostic]", {
-      handCount: hand.length,
-      playableCardIds: [...playableIds],
-      legalActions: legalActions.map((action) => {
-        if (typeof action !== "object" || action === null) {
-          return { type: "unknown" };
-        }
-
-        const item = action as Record<string, unknown>;
-
-        return {
-          type: item.type,
-          cardId: item.cardId,
-          hasDeclaredColor: Boolean(item.declaredColor),
-          hasTarget: Boolean(item.targetPlayerId),
-        };
-      }),
-    });
-  }, [hand, legalActions, playableIds]);
 
   const density = getHandDensity(sortedHand.length, handFrameWidth || 1100);
 
@@ -194,7 +168,21 @@ export function PlayerHand({
 
       <div
         ref={handFrameRef}
-        className="relative min-h-[10.6rem] overflow-visible rounded-[2rem]  bg-[linear-gradient(to_bottom,rgb(255_255_255_/_0.035),rgb(0_0_0_/_0.08)_38%,rgb(0_0_0_/_0.28))] px-4 pb-4 pt-6 shadow-[inset_0_1px_0_rgb(255_255_255_/_0.06),0_-22px_70px_rgb(45_140_255_/_0.12),0_24px_90px_rgb(0_0_0_/_0.45)] backdrop-blur-sm"
+        className={cn(
+          "relative min-h-[10.6rem] overflow-visible rounded-[2rem] px-4 pb-4 pt-6 shadow-[inset_0_1px_0_rgb(255_255_255_/_0.06),0_-22px_70px_rgb(45_140_255_/_0.12),0_24px_90px_rgb(0_0_0_/_0.45)] backdrop-blur-sm",
+          isMyTurn
+            ? "bg-[linear-gradient(to_bottom,rgba(59,130,246,0.18),rgba(8,18,34,0.52)_34%,rgba(0,0,0,0.36))] ring-1 ring-sky-400/40"
+            : "bg-[linear-gradient(to_bottom,rgb(255_255_255_/_0.035),rgb(0_0_0_/_0.08)_38%,rgb(0_0_0_/_0.28))]"
+        )}
+        style={
+          isMyTurn
+            ? {
+                boxShadow:
+                  "inset 0 1px 0 rgba(255,255,255,0.08), 0 0 0 1px rgba(96,165,250,0.28), 0 0 34px rgba(59,130,246,0.35), 0 24px 90px rgba(0,0,0,0.45)",
+                transform: "rotate(-0.3deg)"
+              }
+            : undefined
+        }
       >
         <div className="relative flex h-full items-end justify-center overflow-visible">
           <AnimatePresence initial={false}>
@@ -208,10 +196,6 @@ export function PlayerHand({
 
               const distance = hoveredIndex === null ? 999 : Math.abs(index - hoveredIndex);
 
-              /**
-               * When the hand is crowded, hovering one card opens only the nearby area.
-               * This keeps the whole hand inside the frame but still makes hovered cards readable.
-               */
               let localOffset = 0;
               if (hoveredIndex !== null && sortedHand.length >= 20) {
                 if (distance === 1) localOffset = index < hoveredIndex ? -density.localExpand : density.localExpand;
@@ -219,8 +203,8 @@ export function PlayerHand({
               }
 
               const marginLeft = index === 0 ? 0 : density.overlap + localOffset;
-              const baseLift = playable ? -14 : 0;
-              const hoverLift = playable ? -34 : -18;
+              const baseLift = playable ? -18 : 0;
+              const hoverLift = playable ? -44 : -22;
 
               return (
                 <motion.div
@@ -234,7 +218,7 @@ export function PlayerHand({
                     opacity: 1,
                     x: 0,
                     y: baseLift,
-                    scale: density.scale,
+                    scale: playable ? 1.05 : density.scale,
                     rotate: 0
                   }}
                   exit={{
@@ -245,11 +229,11 @@ export function PlayerHand({
                   }}
                   whileHover={{
                     y: hoverLift,
-                    scale: density.compact ? 1.12 : 1.07,
-                    rotate: 0,
+                    scale: playable ? (density.compact ? 1.22 : 1.18) : density.compact ? 1.12 : 1.08,
+                    rotate: playable ? -2 : 0,
                     zIndex: 300
                   }}
-                  transition={{ type: "spring", stiffness: 430, damping: 34, mass: 0.82 }}
+                  transition={{ type: "spring", stiffness: 430, damping: 28, mass: 0.75 }}
                   className="relative"
                   style={{
                     marginLeft,

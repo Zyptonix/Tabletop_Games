@@ -4,15 +4,18 @@ import { AppShell } from "@/components/layout/AppShell";
 import { AdminCreateUserForm } from "@/components/admin/AdminCreateUserForm";
 import { AdminRoomList } from "@/components/admin/AdminRoomList";
 import { useAuth } from "@/lib/auth/useAuth";
-
+import { AdminUsersPanel } from "@/components/admin/AdminUsersPanel";
 export default function AdminPage() {
   useAuth({ required: true });
 
   return (
     <AppShell>
-      <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
-        <AdminCreateUserForm />
-        <AdminRoomList />
+      <div className="space-y-4">
+        <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
+          <AdminCreateUserForm />
+          <AdminRoomList />
+        </div>
+        <AdminUsersPanel />
       </div>
     </AppShell>
   );

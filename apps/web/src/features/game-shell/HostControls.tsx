@@ -37,8 +37,8 @@ export function HostControls({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2">
-      <span className="inline-flex items-center gap-2 px-2 text-xs font-black uppercase text-amber-900">
+    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/25 bg-[#16120a] p-2 shadow-[0_0_28px_rgba(245,158,11,0.08)]">
+      <span className="inline-flex items-center gap-2 px-2 text-xs font-black uppercase text-amber-100">
         <Crown className="h-4 w-4" />
         Host
       </span>

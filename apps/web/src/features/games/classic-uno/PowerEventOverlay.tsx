@@ -84,26 +84,26 @@ export function PowerEventOverlay({
             <motion.div
               key={notice.id}
               layout
-              initial={{ opacity: 0, y: 24, scale: 0.82, rotateX: reduceMotion ? 0 : -16 }}
-              animate={{ opacity: 1, y: 0, scale: 1, rotateX: 0 }}
-              exit={{ opacity: 0, y: -18, scale: 0.9 }}
-              transition={{ duration: reduceMotion ? 0.18 : 0.34, ease: [0.18, 0.9, 0.22, 1] }}
-              className="relative min-w-[min(82vw,28rem)] overflow-hidden rounded-[1.75rem] border px-7 py-5 text-center shadow-[0_28px_90px_rgba(0,0,0,0.68)] backdrop-blur-2xl"
+              initial={{ opacity: 0, y: 12, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.97 }}
+              transition={{ duration: reduceMotion ? 0.12 : 0.26, ease: [0.18, 0.9, 0.22, 1] }}
+              className="relative min-w-[min(82vw,28rem)] overflow-hidden rounded-[1.75rem] border px-7 py-5 text-center shadow-[0_18px_50px_rgba(0,0,0,0.5)] backdrop-blur-xl"
               style={noticeStyle(notice.tone)}
             >
               <motion.div
-                className="absolute inset-0 opacity-70"
+                className="absolute inset-0 opacity-60"
                 {...(reduceMotion
                   ? {}
                   : {
-                      animate: { opacity: [0.35, 0.72, 0.35], scale: [0.98, 1.04, 0.98] },
-                      transition: { duration: 1.05, repeat: Infinity, ease: "easeInOut" as const }
+                      animate: { opacity: [0.25, 0.52, 0.25] },
+                      transition: { duration: 1.4, repeat: Infinity, ease: "easeInOut" as const }
                     })}
                 style={noticeGlowStyle(notice.tone)}
               />
               <div className="relative z-10">
                 <p className="text-[0.68rem] font-black uppercase tracking-[0.32em] text-white/55">Table event</p>
-                <p className="mt-1 text-3xl font-black uppercase leading-none tracking-wide text-white drop-shadow-[0_0_18px_rgba(255,255,255,0.35)] sm:text-5xl">
+                <p className="mt-1 text-3xl font-black uppercase leading-none tracking-wide text-white drop-shadow-[0_0_16px_rgba(255,255,255,0.28)] sm:text-5xl">
                   {notice.title}
                 </p>
                 {notice.subtitle ? <p className="mt-2 text-sm font-bold text-white/70 sm:text-base">{notice.subtitle}</p> : null}

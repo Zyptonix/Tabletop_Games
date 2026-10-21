@@ -12,7 +12,6 @@ interface Point {
 
 interface TurnAnimation {
   id: number;
-  from: Point | null;
   to: Point;
   color: string;
 }
@@ -53,13 +52,10 @@ export function TurnTransitionOverlay({
     }
 
     const nextPoint = getElementCenter(nextSeat, container);
-    const previousSeat = previousPlayerId ? seatRefs.current.get(previousPlayerId) : null;
-    const previousPoint = previousSeat ? getElementCenter(previousSeat, container) : null;
 
     sequenceRef.current += 1;
     setAnimation({
       id: sequenceRef.current,
-      from: reduceMotion ? null : previousPoint,
       to: nextPoint,
       color: colorTokens[currentColor] ?? "#38bdf8"
     });
@@ -67,41 +63,27 @@ export function TurnTransitionOverlay({
 
   return (
     <div className="pointer-events-none absolute inset-0 z-[45] overflow-hidden">
-      <AnimatePresence mode="popLayout">
+      <AnimatePresence mode="wait">
         {animation ? (
-          <motion.div key={`pulse-${animation.id}`} className="absolute" style={{ x: animation.to.x - 32, y: animation.to.y - 32 }}>
-            <motion.div
-              className="h-16 w-16 rounded-full border-2"
-              style={{ borderColor: animation.color, boxShadow: `0 0 30px ${animation.color}, inset 0 0 22px ${animation.color}` }}
-              initial={{ opacity: 0.8, scale: 0.25 }}
-              animate={{ opacity: [0.75, 0.45, 0], scale: [0.35, 1.35, 1.9] }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.75, ease: "easeOut", delay: animation.from ? 0.42 : 0 }}
-            />
-          </motion.div>
-        ) : null}
-
-        {animation?.from ? (
           <motion.div
-            key={`orb-${animation.id}`}
-            className="absolute h-5 w-5 rounded-full"
-            style={{
-              backgroundColor: animation.color,
-              boxShadow: `0 0 16px ${animation.color}, 0 0 42px ${animation.color}, 0 0 80px ${animation.color}`
-            }}
-            initial={{ x: animation.from.x - 10, y: animation.from.y - 10, opacity: 0, scale: 0.65 }}
-            animate={{
-              x: [animation.from.x - 10, (animation.from.x + animation.to.x) / 2 - 10, animation.to.x - 10],
-              y: [animation.from.y - 10, Math.min(animation.from.y, animation.to.y) - 82, animation.to.y - 10],
-              opacity: [0, 1, 1, 0],
-              scale: [0.65, 1.12, 0.92]
-            }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.72, ease: [0.2, 0.82, 0.2, 1] }}
+            key={`pulse-${animation.id}`}
+            className="absolute"
+            style={{ x: animation.to.x - 30, y: animation.to.y - 30 }}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: reduceMotion ? 0.12 : 0.24, ease: "easeOut" }}
           >
-            <span
-              className="absolute -inset-8 rounded-full blur-xl"
-              style={{ backgroundColor: animation.color, opacity: 0.32 }}
+            <motion.div
+              className="h-16 w-16 rounded-full border"
+              style={{
+                borderColor: animation.color,
+                boxShadow: `0 0 16px ${animation.color}, inset 0 0 12px ${animation.color}`
+              }}
+              initial={{ opacity: 0.7, scale: 0.85 }}
+              animate={{ opacity: [0.8, 0.45, 0], scale: [0.9, 1.12, 1.25] }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: reduceMotion ? 0.14 : 0.42, ease: "easeOut" }}
             />
           </motion.div>
         ) : null}

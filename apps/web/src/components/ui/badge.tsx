@@ -9,12 +9,12 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex min-h-7 items-center rounded-full px-3 text-xs font-semibold",
-        tone === "neutral" && "bg-zinc-100 text-zinc-700",
-        tone === "green" && "bg-emerald-100 text-emerald-800",
-        tone === "red" && "bg-red-100 text-red-800",
-        tone === "gold" && "bg-amber-100 text-amber-800",
-        tone === "blue" && "bg-sky-100 text-sky-800",
+        "inline-flex min-h-7 items-center rounded-full border px-3 text-[0.68rem] font-bold uppercase tracking-[0.14em]",
+        tone === "neutral" && "border-zinc-700/80 bg-zinc-900/80 text-zinc-200",
+        tone === "green" && "border-emerald-500/30 bg-emerald-500/12 text-emerald-200 shadow-[0_0_18px_rgba(16,185,129,0.18)]",
+        tone === "red" && "border-red-500/30 bg-red-500/12 text-red-200",
+        tone === "gold" && "border-amber-500/30 bg-amber-500/12 text-amber-100",
+        tone === "blue" && "border-sky-500/30 bg-sky-500/12 text-sky-100",
         className
       )}
       {...props}

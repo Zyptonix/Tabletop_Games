@@ -184,6 +184,7 @@ export function ClassicUnoTable({
     amount: number;
   } | null>(null);
   const [seatPowerEffects, setSeatPowerEffects] = useState<Record<string, PowerSeatEffect>>({});
+  const [turnNotice, setTurnNotice] = useState<{ id: string; text: string; tone: "self" | "other" } | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
   const me = state.players.find((player) => player.userId === currentUserId);
@@ -404,6 +405,26 @@ export function ClassicUnoTable({
     lastPenaltyAmountRef.current = null;
   }, [pendingPenalty, room.players, state.players]);
 
+  useEffect(() => {
+    if (!state.currentPlayerId) {
+      return;
+    }
+
+    const currentPlayer = state.players.find((player) => player.userId === state.currentPlayerId);
+    const nextMessage =
+      state.currentPlayerId === currentUserId
+        ? "Your turn!"
+        : `${currentPlayer?.displayName ?? "Player"}'s turn`;
+
+    setTurnNotice({
+      id: `${state.currentPlayerId}-${Date.now()}`,
+      text: nextMessage,
+      tone: state.currentPlayerId === currentUserId ? "self" : "other"
+    });
+
+    const timeout = window.setTimeout(() => setTurnNotice(null), 1750);
+    return () => window.clearTimeout(timeout);
+  }, [currentUserId, state.currentPlayerId, state.players]);
 
   const triggerSeatPowerEffect = useCallback((playerId: string, effect: PowerSeatEffect) => {
     setSeatPowerEffects((current) => ({ ...current, [playerId]: effect }));
@@ -481,6 +502,31 @@ export function ClassicUnoTable({
         <div className="pointer-events-none absolute inset-0 uno-perspective-grid" />
         <div className="pointer-events-none absolute inset-0 uno-fullscreen-glow" />
         <ReactionOverlay messages={reactionMessages} />
+
+        <AnimatePresence>
+          {turnNotice ? (
+            <motion.div
+              key={turnNotice.id}
+              initial={{ opacity: 0, y: -10, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -14, scale: 0.98 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="pointer-events-none absolute inset-x-0 top-4 z-[60] flex justify-center"
+            >
+              <div
+                className={cn(
+                  "inline-flex items-center gap-2.5 rounded-full border px-4 py-2.5 text-[0.72rem] font-black uppercase tracking-[0.22em] shadow-[0_18px_40px_rgba(0,0,0,0.38)]",
+                  turnNotice.tone === "self"
+                    ? "border-lime-200/75 bg-[linear-gradient(135deg,rgba(34,197,94,0.34),rgba(16,185,129,0.22))] text-lime-50"
+                    : "border-cyan-300/65 bg-[linear-gradient(135deg,rgba(14,165,233,0.24),rgba(59,130,246,0.16))] text-sky-50"
+                )}
+              >
+                <span className="h-2.5 w-2.5 rounded-full bg-current shadow-[0_0_18px_rgba(190,242,100,0.8)]" />
+                {turnNotice.text}
+              </div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
 
         <div className="relative z-10 flex h-full min-h-0 w-full flex-col p-3">
           <header className="relative z-30 flex h-[4.6rem] shrink-0 items-start justify-between gap-3">
@@ -717,12 +763,13 @@ export function ClassicUnoTable({
 
                       {me?.isCurrentTurn ? (
                         <motion.div
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="inline-flex min-h-9 items-center gap-2 rounded-full px-4 text-xs font-black uppercase tracking-[0.22em]"
+                          initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -10, scale: 0.96 }}
+                          className="inline-flex min-h-9 items-center gap-2 rounded-full border px-4 text-[0.7rem] font-black uppercase tracking-[0.26em]"
                           style={{
-                            border: `1px solid ${activeAccent.border}`,
-                            background: activeAccent.bg,
+                            borderColor: activeAccent.border,
+                            background: "linear-gradient(135deg, rgba(34,197,94,0.3), rgba(14,165,233,0.18))",
                             color: activeAccent.text,
                             boxShadow: `0 0 30px ${activeAccent.glow}`
                           }}
@@ -734,7 +781,7 @@ export function ClassicUnoTable({
                               boxShadow: `0 0 18px ${activeAccent.strongGlow}`
                             }}
                           />
-                          Your turn
+                          It is your turn
                         </motion.div>
                       ) : null}
                     </div>
@@ -758,6 +805,7 @@ export function ClassicUnoTable({
                       theme={cardTheme}
                       targetPlayers={state.players.filter((player) => player.userId !== currentUserId)}
                       onPlay={playCard}
+                      isMyTurn={Boolean(me?.isCurrentTurn)}
                     />
                   ) : null}
                 </div>

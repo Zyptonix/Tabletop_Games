@@ -47,11 +47,11 @@ export function JoinableRoomsList() {
   }, []);
 
   return (
-    <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
+    <section className="rounded-lg border border-emerald-500/30 bg-[#0b1417] p-5 shadow-[0_0_0_1px_rgba(16,185,129,0.08),0_18px_32px_rgba(2,6,23,0.45)]">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-bold uppercase tracking-wide text-emerald-700">Join a table</p>
-          <h2 className="text-xl font-black text-zinc-950">Open lobbies</h2>
+          <p className="text-sm font-bold uppercase tracking-wide text-emerald-400">Join a table</p>
+          <h2 className="text-xl font-black text-emerald-50">Open lobbies</h2>
         </div>
         <Button type="button" variant="outline" size="sm" onClick={() => void loadRooms()} disabled={loading}>
           <RefreshCw className="h-4 w-4" />
@@ -59,24 +59,24 @@ export function JoinableRoomsList() {
         </Button>
       </div>
 
-      {error ? <p className="mt-3 rounded-md bg-red-50 p-3 text-sm font-semibold text-red-800">{error}</p> : null}
+      {error ? <p className="mt-3 rounded-md border border-red-500/30 bg-red-950/40 p-3 text-sm font-semibold text-red-200">{error}</p> : null}
 
       <div className="mt-4 grid gap-3">
         {rooms.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-zinc-300 bg-zinc-50 p-4 text-sm font-semibold text-zinc-600">
+          <div className="rounded-lg border border-dashed border-emerald-500/30 bg-[#0d1719] p-4 text-sm font-semibold text-emerald-100/80">
             No joinable games right now. Create one or keep the code box handy.
           </div>
         ) : null}
 
         {rooms.map((room) => (
-          <Card key={room.id} className="border-sky-200 bg-sky-50">
+          <Card key={room.id} className="border-emerald-400/25 bg-[#11211d]">
             <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
-                <p className="font-black text-zinc-950">{room.gameName}</p>
-                <p className="text-sm font-semibold text-sky-900">
+                <p className="font-black text-emerald-50">{room.gameName}</p>
+                <p className="text-sm font-semibold text-emerald-300">
                   Room {room.code} / {room.status} / host {room.hostDisplayName ?? "Unknown"}
                 </p>
-                <p className="mt-1 inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-zinc-500">
+                <p className="mt-1 inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-emerald-100/75">
                   <Users className="h-3.5 w-3.5" />
                   {room.playerCount}/{room.maxPlayers} seats
                 </p>

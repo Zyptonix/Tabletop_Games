@@ -51,13 +51,6 @@ export function DirectionIndicator({ direction, currentColor }: { direction: 1 |
         className="relative h-[35rem] w-[70rem] -translate-y-4"
         style={{ color: palette.color }}
       >
-        <motion.div
-          className="absolute left-1/2 top-1/2 h-[18rem] w-[38rem] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
-          style={{ backgroundColor: palette.halo }}
-          animate={{ opacity: [0.52, 0.78, 0.52], scale: [0.95, 1.06, 0.95] }}
-          transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}
-        />
-
         <motion.svg
           viewBox="0 0 620 360"
           className="absolute inset-0 h-full w-full overflow-visible"
@@ -86,7 +79,6 @@ export function DirectionIndicator({ direction, currentColor }: { direction: 1 |
               <path d="M 0 0 L 38 19 L 0 38 z" fill="currentColor" />
             </marker>
           </defs>
-
 
           <circle cx="310" cy="180" r="160" fill="none" stroke="currentColor" strokeWidth="7" opacity="0.08" />
           <circle cx="310" cy="180" r="143" fill="none" stroke="currentColor" strokeWidth="3" opacity="0.22" />

@@ -36,6 +36,16 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload)
     }),
+  register: (payload: {
+    username: string;
+    email?: string | null;
+    displayName: string;
+    password: string;
+  }) =>
+    request<{ user: AuthUser }>("/auth/register", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }),
   logout: () => request<{ ok: true }>("/auth/logout", { method: "POST" }),
   me: () => request<{ user: AuthUser }>("/auth/me"),
   createUser: (payload: {
@@ -48,6 +58,29 @@ export const api = {
     request<{ user: AuthUser }>("/auth/users", {
       method: "POST",
       body: JSON.stringify(payload)
+    }),
+  adminUsers: () =>
+    request<{
+      users: Array<{
+        id: string;
+        username: string;
+        email: string | null;
+        role: "USER" | "ADMIN";
+        displayName: string;
+        createdAt: string;
+        inActiveRoom: boolean;
+      }>;
+    }>("/admin/users"),
+
+  adminSetPassword: (userId: string, password: string) =>
+    request<{ ok: true }>(`/admin/users/${userId}/password`, {
+      method: "PATCH",
+      body: JSON.stringify({ password })
+    }),
+
+  adminDeleteUser: (userId: string) =>
+    request<{ ok: true }>(`/admin/users/${userId}`, {
+      method: "DELETE"
     }),
   games: () => request<{ games: Array<{ id: string; displayName: string; minPlayers: number; maxPlayers: number }> }>("/games"),
   createRoom: (payload: { gameId: string; settings?: Record<string, unknown> }) =>

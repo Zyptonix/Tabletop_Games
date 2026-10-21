@@ -65,16 +65,16 @@ export function PlayerSeat({
   return (
     <div
       className={cn(
-        "relative isolate overflow-visible rounded-[1.55rem] border text-white backdrop-blur-xl",
+        "relative isolate overflow-visible rounded-[1.55rem] border text-white backdrop-blur-xl transition-all duration-200",
         compact ? "min-h-[5.25rem]" : "min-h-[6.05rem]",
         player.isCurrentTurn
-          ? "border-lime-200/85 bg-[linear-gradient(135deg,rgba(18,83,38,0.96),rgba(21,128,61,0.86)_48%,rgba(4,18,10,0.82)_100%)]"
+          ? "border-lime-200/90 bg-[linear-gradient(135deg,rgba(18,255,118,0.95),rgba(34,197,94,0.96)_30%,rgba(8,31,18,0.98)_100%)] scale-[1.015]"
           : "border-emerald-300/12 bg-[linear-gradient(135deg,rgba(7,22,14,0.88),rgba(5,15,12,0.76)_42%,rgba(0,0,0,0.66)_100%)]",
         player.isCurrentTurn
-          ? "shadow-[0_0_0_1px_rgba(190,242,100,0.45),0_0_52px_rgba(34,197,94,0.55),0_18px_62px_rgba(0,0,0,0.58)]"
+          ? "shadow-[0_0_0_1px_rgba(190,242,100,0.7),0_0_58px_rgba(74,222,128,0.9),0_18px_68px_rgba(0,0,0,0.7)]"
           : "shadow-[0_18px_44px_rgba(0,0,0,0.66),0_0_24px_rgba(34,197,94,0.07)]",
         inactive && "opacity-60 grayscale",
-        player.isCurrentTurn && "ring-1 ring-lime-200/45",
+        player.isCurrentTurn && "ring-2 ring-lime-200/80",
         isSelf ? "p-4" : compact ? "p-3" : "p-3.5"
       )}
     >

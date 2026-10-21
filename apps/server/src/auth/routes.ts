@@ -46,6 +46,61 @@ authRouter.get("/auth/me", authMiddleware, (request, response) => {
   response.json({ user: request.user });
 });
 
+authRouter.post("/auth/register", async (request, response) => {
+  const parsed = createUserSchema.safeParse({
+    ...request.body,
+    role: "USER"
+  });
+
+  if (!parsed.success) {
+    sendError(
+      response,
+      400,
+      ERROR_CODES.INVALID_PAYLOAD,
+      "Invalid registration details.",
+      parsed.error.flatten()
+    );
+    return;
+  }
+
+  const existing = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { username: parsed.data.username },
+        ...(parsed.data.email ? [{ email: parsed.data.email }] : [])
+      ]
+    }
+  });
+
+  if (existing) {
+    sendError(
+      response,
+      409,
+      ERROR_CODES.USERNAME_TAKEN,
+      "Username or email is already in use."
+    );
+    return;
+  }
+
+  const user = await prisma.user.create({
+    data: {
+      username: parsed.data.username,
+      email: parsed.data.email ?? null,
+      role: "USER",
+      passwordHash: await hashPassword(parsed.data.password),
+      profile: {
+        create: {
+          displayName: parsed.data.displayName
+        }
+      }
+    },
+    include: { profile: true }
+  });
+
+  response.status(201).json({ user: serializeUser(user) });
+});
+
+
 authRouter.post("/auth/users", authMiddleware, adminMiddleware, async (request, response) => {
   const parsed = createUserSchema.safeParse(request.body);
   if (!parsed.success) {

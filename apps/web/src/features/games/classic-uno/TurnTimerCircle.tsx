@@ -21,12 +21,23 @@ export function TurnTimerCircle({
   const circumference = radius * 2 * Math.PI;
   const offset = circumference * (1 - Math.max(0, Math.min(1, progress)));
 
-  // Color based on time remaining
   const ringColor = secondsLeft <= 5 ? "#ef4444" : secondsLeft <= 10 ? "#f97316" : color || "#22c55e";
   const textColor = secondsLeft <= 5 ? "#fca5a5" : secondsLeft <= 10 ? "#fed7aa" : "#bbf7d0";
 
   return (
-    <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
+    <motion.div
+      className="relative inline-flex items-center justify-center"
+      style={{ width: size, height: size }}
+      animate={
+        active
+          ? {
+              rotate: [0, 2, -2, 0],
+              scale: [1, 1.02, 1]
+            }
+          : { rotate: 0, scale: 1 }
+      }
+      transition={{ duration: 2.8, ease: "easeInOut", repeat: active ? Infinity : 0 }}
+    >
       <svg width={size} height={size} className="absolute left-0 top-0 -rotate-90" viewBox={`0 0 ${size} ${size}`}>
         {/* Background circle */}
         <circle
@@ -77,6 +88,6 @@ export function TurnTimerCircle({
           {secondsLeft}s
         </span>
       </motion.div>
-    </div>
+    </motion.div>
   );
 }
