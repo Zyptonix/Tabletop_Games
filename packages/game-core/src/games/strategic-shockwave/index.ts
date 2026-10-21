@@ -306,21 +306,47 @@ function thinkForBots(state: StrategicShockwaveState, nowMs: number, events: Gam
   return changed;
 }
 
+function applyPowerUp(player: StrategicShockwavePlayer, kind: ShockwavePowerUpKind): void {
+  if (kind === "bomb") {
+    player.bombsCapacity = Math.min(5, player.bombsCapacity + 1);
+    return;
+  }
+  if (kind === "flame") {
+    player.blastRange = Math.min(7, player.blastRange + 1);
+    return;
+  }
+  player.speed = Math.min(5.5, Number((player.speed + 0.35).toFixed(2)));
+}
+
 function collectPowerUps(state: StrategicShockwaveState, nowMs: number, events: GameEvent[]): boolean {
   let changed = false;
   for (const player of state.players) {
     if (!player.alive) continue;
-    const playerX = Math.floor(player.x); const playerY = Math.floor(player.y);
+    const playerX = Math.floor(player.x);
+    const playerY = Math.floor(player.y);
     const item = state.powerUps.find((powerUp) => powerUp.x === playerX && powerUp.y === playerY);
     if (!item) continue;
     state.powerUps = state.powerUps.filter((powerUp) => powerUp.id !== item.id);
-    if (item.kind === "bomb") player.bombsCapacity = Math.min(4, player.bombsCapacity + 1);
-    if (item.kind === "flame") player.blastRange = Math.min(6, player.blastRange + 1);
-    if (item.kind === "speed") player.speed = Math.min(5.5, Number((player.speed + 0.35).toFixed(2)));
+    applyPowerUp(player, item.kind);
     events.push(event(state, "powerup_collected", `${player.displayName} collected a ${item.kind} upgrade.`, nowMs, { userId: player.userId, kind: item.kind }));
     changed = true;
   }
   return changed;
+}
+
+function blastCellsForBomb(state: StrategicShockwaveState, bomb: StrategicShockwaveBomb): ShockwaveCell[] {
+  const cells: ShockwaveCell[] = [{ x: bomb.x, y: bomb.y }];
+  for (const direction of DIRECTIONS) {
+    for (let distance = 1; distance <= bomb.blastRange; distance += 1) {
+      const x = bomb.x + direction.x * distance;
+      const y = bomb.y + direction.y * distance;
+      const tile = tileAt(state, x, y);
+      if (tile === null || tile === "wall") break;
+      cells.push({ x, y });
+      if (tile === "block") break;
+    }
+  }
+  return cells;
 }
 
 function resolveExplosions(state: StrategicShockwaveState, nowMs: number, events: GameEvent[]): boolean {
@@ -335,8 +361,8 @@ function resolveExplosions(state: StrategicShockwaveState, nowMs: number, events
     const bomb = queue.shift();
     if (!bomb || !state.bombs.some((candidate) => candidate.id === bomb.id)) continue;
     state.bombs = state.bombs.filter((candidate) => candidate.id !== bomb.id);
-    const cells: ShockwaveCell[] = [{ x: bomb.x, y: bomb.y }];
-    blastOwners.set(`${bomb.x},${bomb.y}`, bomb.ownerId);
+    const cells = blastCellsForBomb(state, bomb);
+    cells.forEach((cell) => blastOwners.set(`${cell.x},${cell.y}`, bomb.ownerId));
 
     for (const direction of DIRECTIONS) {
       for (let distance = 1; distance <= bomb.blastRange; distance += 1) {
@@ -344,12 +370,12 @@ function resolveExplosions(state: StrategicShockwaveState, nowMs: number, events
         const y = bomb.y + direction.y * distance;
         const tile = tileAt(state, x, y);
         if (tile === null || tile === "wall") break;
-        const key = `${x},${y}`;
-        if (!blastOwners.has(key)) blastOwners.set(key, bomb.ownerId);
-        cells.push({ x, y });
 
         const chainBomb = state.bombs.find((candidate) => candidate.x === x && candidate.y === y);
-        if (chainBomb && !queuedIds.has(chainBomb.id)) { queue.push(chainBomb); queuedIds.add(chainBomb.id); }
+        if (chainBomb && !queuedIds.has(chainBomb.id)) {
+          queue.push(chainBomb);
+          queuedIds.add(chainBomb.id);
+        }
 
         if (tile === "block") {
           const row = state.board[y];
@@ -372,7 +398,8 @@ function resolveExplosions(state: StrategicShockwaveState, nowMs: number, events
 
   for (const player of state.players) {
     if (!player.alive || player.invulnerableUntil > nowMs) continue;
-    const x = Math.floor(player.x); const y = Math.floor(player.y);
+    const x = Math.floor(player.x);
+    const y = Math.floor(player.y);
     const hit = blastOwners.get(`${x},${y}`);
     if (!hit) continue;
     player.alive = false;
@@ -434,13 +461,25 @@ function tickState(params: { state: StrategicShockwaveState; now: string }): { s
         continue;
       }
       if (player.inputX === 0 && player.inputY === 0) continue;
-      const length = Math.hypot(player.inputX, player.inputY) || 1;
-      const dx = (player.inputX / length) * player.speed * dt;
-      const dy = (player.inputY / length) * player.speed * dt;
+      const dx = Math.sign(player.inputX);
+      const dy = Math.sign(player.inputY);
       const nextX = player.x + dx;
       const nextY = player.y + dy;
-      if (Math.abs(dx) > 0 && canOccupy(state, player.userId, nextX, player.y)) { player.x = nextX; changed = true; }
-      if (Math.abs(dy) > 0 && canOccupy(state, player.userId, player.x, nextY)) { player.y = nextY; changed = true; }
+      const movedX = dx !== 0 && canOccupy(state, player.userId, nextX, player.y);
+      const movedY = dy !== 0 && canOccupy(state, player.userId, player.x, nextY);
+      if (movedX) {
+        player.x = nextX;
+        changed = true;
+      }
+      if (movedY) {
+        player.y = nextY;
+        changed = true;
+      }
+      if (movedX || movedY) {
+        player.inputX = 0;
+        player.inputY = 0;
+        player.inputUpdatedAt = nowMs;
+      }
     }
   }
   state.lastTickAt = nowMs;
@@ -713,7 +752,7 @@ export const strategicShockwaveModule: GameModule<StrategicShockwaveState, Strat
   shouldPersistAction: (action: StrategicShockwaveAction) => boolean;
 } = {
   id: "strategic-shockwave",
-  displayName: "Strategic Shockwave",
+  displayName: "Bomber Tag",
   version: STRATEGIC_SHOCKWAVE_VERSION,
   minPlayers: SHOCKWAVE_MIN_PLAYERS,
   maxPlayers: SHOCKWAVE_MAX_PLAYERS,
@@ -729,8 +768,6 @@ export const strategicShockwaveModule: GameModule<StrategicShockwaveState, Strat
   getTimeoutAction: () => null,
   tick: tickState,
   shouldPersistAction: (action) => action.type !== "set_input",
-  onPause: pauseState,
-  onResume: resumeState,
   isGameOver: (state) => state.phase === "finished",
   getResults
 };

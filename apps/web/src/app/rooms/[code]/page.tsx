@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { Copy, Loader2 } from "lucide-react";
-import type { PublicClassicUnoState, PublicNoMercyState, PublicWerewolfState } from "@tabletop/game-core";
+import type { PublicClassicUnoState, PublicNoMercyState, PublicStrategicShockwaveState, PublicWerewolfState } from "@tabletop/game-core";
 import { AppShell } from "@/components/layout/AppShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth/useAuth";
 import { useRoomSocket } from "@/lib/socket/useRoomSocket";
 import { GameShell } from "@/features/game-shell/GameShell";
 import { ClassicUnoTable } from "@/features/games/classic-uno/ClassicUnoTable";
+import { StrategicShockwaveTable } from "@/features/games/strategic-shockwave/StrategicShockwaveTable";
 import { MafiaWerewolfTable } from "@/features/games/mafia-werewolf/MafiaWerewolfTable";
 import { REACTION_PREFIX } from "@/features/games/classic-uno/ReactionOverlay";
 
@@ -54,6 +55,10 @@ export default function RoomPage() {
   const werewolfState =
     room.gameId === "mafia-werewolf"
       ? (socketState.gameState as PublicWerewolfState | null)
+      : null;
+  const shockwaveState =
+    room.gameId === "strategic-shockwave"
+      ? (socketState.gameState as PublicStrategicShockwaveState | null)
       : null;
 
   return (
@@ -105,6 +110,18 @@ export default function RoomPage() {
             currentUserRole={user.role}
             onAction={(type, payload) => socketState.sendAction(room.id, type, payload)}
             onChat={socketState.sendChat}
+            onEndMatch={socketState.endRoom}
+          />
+        ) : shockwaveState ? (
+          <StrategicShockwaveTable
+            room={room}
+            state={shockwaveState}
+            currentUserId={user.id}
+            gameEvents={socketState.gameEvents}
+            onAction={(type, payload) => socketState.sendAction(room.id, type, payload)}
+            onChat={socketState.sendChat}
+            onPause={socketState.pauseRoom}
+            onResume={socketState.resumeRoom}
             onEndMatch={socketState.endRoom}
           />
         ) : unoState ? (

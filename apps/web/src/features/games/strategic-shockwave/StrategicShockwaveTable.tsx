@@ -127,6 +127,43 @@ function drawGame(ctx: CanvasRenderingContext2D, state: PublicStrategicShockwave
     ctx.arc(cx + 6, cy - 12, 3 + (blink ? 2 : 0), 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
+
+    const threatCells = new Set<string>();
+    for (const direction of [
+      { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }
+    ]) {
+      for (let distance = 1; distance <= bomb.blastRange; distance += 1) {
+        const x = bomb.x + direction.x * distance;
+        const y = bomb.y + direction.y * distance;
+        const tile = state.board[y]?.[x];
+        if (tile === undefined || tile === "wall") break;
+        threatCells.add(`${x},${y}`);
+        if (tile === "block") break;
+      }
+    }
+    threatCells.add(`${bomb.x},${bomb.y}`);
+    for (const key of threatCells) {
+      const parts = key.split(",");
+      const cellX = Number(parts[0]);
+      const cellY = Number(parts[1]);
+      if (!Number.isFinite(cellX) || !Number.isFinite(cellY)) continue;
+      const px = cellX * TILE + TILE / 2;
+      const py = cellY * TILE + TILE / 2;
+      const warningAlpha = Math.max(0.18, Math.min(0.95, (bomb.explodeAt - now) / 1900));
+      if (warningAlpha <= 0) continue;
+      ctx.save();
+      ctx.globalAlpha = warningAlpha;
+      ctx.fillStyle = "#7f1d1d";
+      ctx.beginPath();
+      ctx.arc(px, py, 9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#f87171";
+      ctx.font = "bold 12px ui-sans-serif, system-ui";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("☠", px, py + 1);
+      ctx.restore();
+    }
   }
 
   for (const player of state.players) {
@@ -311,8 +348,8 @@ export function StrategicShockwaveTable({
         <header className="flex flex-col gap-3 rounded-2xl border border-emerald-900/80 bg-[#10231c] p-4 shadow-xl sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-[11px] font-black uppercase tracking-[0.28em] text-emerald-300">Tabletop Arena / Room {room.code}</p>
-            <h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">STRATEGIC <span className="text-amber-400">SHOCKWAVE</span></h1>
-            <p className="mt-1 text-sm text-emerald-100/70">Break walls. Chain bombs. Be the last one standing.</p>
+            <h1 className="mt-1 text-2xl font-black tracking-tight sm:text-3xl">BOMBER <span className="text-amber-400">TAG</span></h1>
+            <p className="mt-1 text-sm text-emerald-100/70">Run, dodge, plant, and survive the blast radius.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-2 text-center">

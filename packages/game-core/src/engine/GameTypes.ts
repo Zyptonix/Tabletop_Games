@@ -5,6 +5,7 @@ export interface GamePlayer {
   username: string;
   displayName: string;
   seat: number;
+  isBot?: boolean;
 }
 
 export type ValidationResult =

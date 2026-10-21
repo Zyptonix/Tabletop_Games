@@ -27,7 +27,7 @@ export class RoomTimers {
     this.stop(roomId);
     const interval = setInterval(() => {
       void this.tick(roomId);
-    }, 1000);
+    }, 100);
     this.intervals.set(roomId, interval);
   }
 
@@ -42,6 +42,17 @@ export class RoomTimers {
 
   private async tick(roomId: string): Promise<void> {
     try {
+      const room = this.manager.getRoom(roomId);
+      if (!room || room.status !== "in_game") {
+        this.stop(roomId);
+        return;
+      }
+
+      const tickResult = await this.manager.tickRoom(roomId);
+      if (tickResult) {
+        this.onTimeoutApplied(tickResult.room, tickResult.events);
+      }
+
       const timer = await this.manager.getTimerView(roomId);
       if (!timer) {
         this.stop(roomId);

@@ -1128,6 +1128,44 @@ export class RoomManager {
     }
     return fallback;
   }
+
+  async tickRoom(roomId: string): Promise<{ room: RoomRuntime; events: unknown[] } | null> {
+    const room = this.getRoom(roomId);
+    if (!room || room.status !== "in_game" || !room.gameState) {
+      return null;
+    }
+
+    const module = this.requireModule(room.gameId);
+    const tick = (module as { tick?: (params: { state: unknown; now: string }) => { state: unknown; events: unknown[] } | null }).tick;
+    if (typeof tick !== "function") {
+      return null;
+    }
+
+    const result = tick({ state: room.gameState, now: new Date().toISOString() });
+    if (!result) {
+      return null;
+    }
+
+    room.gameState = result.state;
+    room.actionNumber = this.extractActionNumber(room.gameState, room.actionNumber + 1);
+    this.addGameEventLogMessages(room, result.events);
+
+    void this.saveSnapshot(room);
+    if (module.isGameOver(room.gameState) && room.matchId && room.matchStartedAt) {
+      room.status = "finished";
+      this.addSystemMessage(room, "Game ended.");
+      void this.matchResults.finalizeMatch({
+        matchId: room.matchId,
+        roomId: room.id,
+        gameId: room.gameId,
+        results: module.getResults(room.gameState),
+        startedAt: new Date(room.matchStartedAt),
+        endedAt: new Date()
+      });
+    }
+
+    return { room, events: result.events };
+  }
 }
 
 
