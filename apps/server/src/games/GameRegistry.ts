@@ -2,6 +2,7 @@ import {
   classicUnoModule,
   noMercyModule,
   werewolfModule,
+  strategicShockwaveModule,
   type ClassicUnoSettings,
   type ClassicUnoState,
   type NoMercyAction,
@@ -10,7 +11,10 @@ import {
   type UnoAction,
   type WerewolfAction,
   type WerewolfSettings,
-  type WerewolfState
+  type WerewolfState,
+  type StrategicShockwaveAction,
+  type StrategicShockwaveSettings,
+  type StrategicShockwaveState
 } from "@tabletop/game-core";
 import type { GameId } from "@tabletop/shared";
 import type { GameModule, RegisteredGameSummary } from "@tabletop/game-core";
@@ -29,6 +33,10 @@ const modules = new Map<GameId, AnyGameModule>([
   [
     "mafia-werewolf",
     werewolfModule as GameModule<WerewolfState, WerewolfAction, WerewolfSettings> as AnyGameModule
+  ],
+  [
+    "strategic-shockwave",
+    strategicShockwaveModule as GameModule<StrategicShockwaveState, StrategicShockwaveAction, StrategicShockwaveSettings> as AnyGameModule
   ]
 ]);
 

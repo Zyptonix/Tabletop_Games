@@ -5,6 +5,8 @@ export interface GamePlayer {
   username: string;
   displayName: string;
   seat: number;
+  /** Bot hint for game modules that implement their own real-time bot behavior. */
+  isBot?: boolean;
 }
 
 export type ValidationResult =

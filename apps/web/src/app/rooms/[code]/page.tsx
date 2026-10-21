@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { Copy, Loader2 } from "lucide-react";
-import type { PublicClassicUnoState, PublicNoMercyState, PublicWerewolfState } from "@tabletop/game-core";
+import type { PublicClassicUnoState, PublicNoMercyState, PublicWerewolfState, PublicStrategicShockwaveState } from "@tabletop/game-core";
 import { AppShell } from "@/components/layout/AppShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { useRoomSocket } from "@/lib/socket/useRoomSocket";
 import { GameShell } from "@/features/game-shell/GameShell";
 import { ClassicUnoTable } from "@/features/games/classic-uno/ClassicUnoTable";
 import { MafiaWerewolfTable } from "@/features/games/mafia-werewolf/MafiaWerewolfTable";
+import { StrategicShockwaveTable } from "@/features/games/strategic-shockwave/StrategicShockwaveTable";
 import { REACTION_PREFIX } from "@/features/games/classic-uno/ReactionOverlay";
 
 export default function RoomPage() {
@@ -55,6 +56,10 @@ export default function RoomPage() {
     room.gameId === "mafia-werewolf"
       ? (socketState.gameState as PublicWerewolfState | null)
       : null;
+  const shockwaveState =
+    room.gameId === "strategic-shockwave"
+      ? (socketState.gameState as PublicStrategicShockwaveState | null)
+      : null;
 
   return (
     <AppShell wide={room.status !== "lobby"}>
@@ -95,6 +100,18 @@ export default function RoomPage() {
               </div>
             </CardContent>
           </Card>
+        ) : shockwaveState ? (
+          <StrategicShockwaveTable
+            room={room}
+            state={shockwaveState}
+            gameEvents={socketState.gameEvents}
+            currentUserId={user.id}
+            onAction={(type, payload) => socketState.sendAction(room.id, type, payload)}
+            onChat={socketState.sendChat}
+            onPause={socketState.pauseRoom}
+            onResume={socketState.resumeRoom}
+            onEndMatch={socketState.endRoom}
+          />
         ) : werewolfState ? (
           <MafiaWerewolfTable
             room={room}
