@@ -212,11 +212,13 @@ function createService(name, command, commandArgs, options = {}) {
 function startService(name, command, commandArgs, options = {}) {
   const service = createService(name, command, commandArgs, options);
   writeLine(name, `starting: ${command} ${commandArgs.join(" ")}`);
+  const isWindows = process.platform === "win32";
   const child = spawn(command, commandArgs, {
     cwd: rootDir,
     env: { ...process.env, FORCE_COLOR: "1" },
-    shell: true,
-    windowsHide: true
+    shell: isWindows ? "cmd.exe" : false,
+    windowsHide: true,
+    windowsVerbatimArguments: false
   });
   service.child = child;
 

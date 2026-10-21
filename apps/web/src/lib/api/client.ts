@@ -36,6 +36,8 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload)
     }),
+  register: (payload: { username: string; password: string; displayName?: string }) =>
+    request<{ user: AuthUser }>("/auth/register", { method: "POST", body: JSON.stringify(payload) }),
   logout: () => request<{ ok: true }>("/auth/logout", { method: "POST" }),
   me: () => request<{ user: AuthUser }>("/auth/me"),
   createUser: (payload: {

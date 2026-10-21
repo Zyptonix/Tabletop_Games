@@ -1,4 +1,4 @@
-﻿@tailwind base;
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -35,12 +35,10 @@ textarea {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   filter: none !important;
-  box-shadow: none !important;
 }
 
 .low-power-mode body,
 .low-power-mode html {
-  background-image: none !important;
 }
 
 .table-felt {
@@ -148,4 +146,48 @@ body:has(.uno-fullscreen) {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Tabletop Arena local-first dark theme. Avoid backdrop blur and large animated filters to keep old PCs smooth. */
+.dark-ui {
+  color-scheme: dark;
+  background: #080d11;
+  color: #edf4f2;
+}
+.dark-ui body {
+  background: radial-gradient(ellipse at 14% 0%, rgba(16, 185, 129, .10), transparent 38rem), #080d11;
+  color: #edf4f2;
+}
+.dark-ui header {
+  background: rgba(10, 16, 21, .96) !important;
+  border-color: rgba(255,255,255,.09) !important;
+}
+.dark-ui [class~="bg-white"], .dark-ui [class~="bg-zinc-50"], .dark-ui [class~="bg-gray-50"] {
+  background-color: #111920 !important;
+}
+.dark-ui [class~="bg-white/90"] { background-color: rgba(10,16,21,.96) !important; }
+.dark-ui [class~="bg-zinc-100"], .dark-ui [class~="bg-gray-100"] { background-color: #1b252d !important; }
+.dark-ui [class~="bg-emerald-50"] { background-color: #102821 !important; }
+.dark-ui [class~="bg-sky-50"] { background-color: #10242d !important; }
+.dark-ui [class~="bg-amber-50"] { background-color: #2a2413 !important; }
+.dark-ui [class~="text-zinc-950"], .dark-ui [class~="text-zinc-900"], .dark-ui [class~="text-gray-900"] { color: #f1f5f4 !important; }
+.dark-ui [class~="text-zinc-800"], .dark-ui [class~="text-zinc-700"], .dark-ui [class~="text-gray-800"], .dark-ui [class~="text-gray-700"] { color: #d5dfdc !important; }
+.dark-ui [class~="text-zinc-600"], .dark-ui [class~="text-zinc-500"], .dark-ui [class~="text-gray-600"], .dark-ui [class~="text-gray-500"] { color: #95a5a2 !important; }
+.dark-ui [class~="text-emerald-800"], .dark-ui [class~="text-emerald-900"] { color: #a7f3d0 !important; }
+.dark-ui [class~="text-sky-900"] { color: #bae6fd !important; }
+.dark-ui [class~="text-amber-800"] { color: #fde68a !important; }
+.dark-ui [class~="text-red-800"] { color: #fecaca !important; }
+.dark-ui [class~="border-zinc-200"], .dark-ui [class~="border-zinc-300"], .dark-ui [class~="border-gray-200"], .dark-ui [class~="border-gray-300"] { border-color: rgba(255,255,255,.11) !important; }
+.dark-ui input:not([type="checkbox"]), .dark-ui select, .dark-ui textarea {
+  color-scheme: dark;
+}
+.dark-ui .table-felt { background: #11624a; }
+.dark-ui .uno-fullscreen { background: #050907; }
+.dark-ui .classic-uno-table { box-shadow: none; }
+.dark-ui .uno-center-glass { box-shadow: none; backdrop-filter: none; }
+.dark-ui a, .dark-ui button { -webkit-tap-highlight-color: transparent; }
+.dark-ui :focus-visible { outline-color: #6ee7b7; outline-offset: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dark-ui *, .dark-ui *::before, .dark-ui *::after { animation: none !important; transition-duration: .01ms !important; }
 }

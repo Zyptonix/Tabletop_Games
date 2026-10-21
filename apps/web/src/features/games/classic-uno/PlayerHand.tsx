@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { UnoDeclaredColor } from "@tabletop/game-core";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils/cn";
 import type { RenderableCard } from "@/lib/cards";
 import { UnoCard } from "./UnoCard";
 import { UnoColorPicker } from "./UnoColorPicker";
@@ -134,17 +135,9 @@ export function PlayerHand({
 }) {
   const [colorCardId, setColorCardId] = useState<string | null>(null);
   const [targetCardId, setTargetCardId] = useState<string | null>(null);
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   const { ref: handFrameRef, width: handFrameWidth } = useElementWidth<HTMLDivElement>();
-  const knownCardIdsRef = useRef<Set<string>>(new Set(hand.map((card) => card.id)));
-
   const sortedHand = useMemo(() => sortHand(hand), [hand]);
-
-  const newCardIds = useMemo(
-    () => new Set(hand.filter((card) => !knownCardIdsRef.current.has(card.id)).map((card) => card.id)),
-    [hand]
-  );
 
   const playableIds = useMemo(
     () => new Set(hand.filter((card) => isPlayableCard(legalActions, card)).map((card) => card.id)),
@@ -161,9 +154,6 @@ export function PlayerHand({
     currentTargetActions.some((action) => action.targetPlayerId === target.userId)
   );
 
-  useEffect(() => {
-    knownCardIdsRef.current = new Set(hand.map((card) => card.id));
-  }, [hand]);
 
   return (
     <div className="relative mx-auto w-full max-w-[59rem] overflow-visible xl:max-w-[65rem] 2xl:max-w-[72rem]">
@@ -177,67 +167,21 @@ export function PlayerHand({
         className="relative min-h-[10.6rem] overflow-visible rounded-[2rem]  bg-[linear-gradient(to_bottom,rgb(255_255_255_/_0.035),rgb(0_0_0_/_0.08)_38%,rgb(0_0_0_/_0.28))] px-4 pb-4 pt-6 shadow-[inset_0_1px_0_rgb(255_255_255_/_0.06),0_-22px_70px_rgb(45_140_255_/_0.12),0_24px_90px_rgb(0_0_0_/_0.45)] backdrop-blur-sm"
       >
         <div className="relative flex h-full items-end justify-center overflow-visible">
-          <AnimatePresence initial={false}>
+          <>
             {sortedHand.map((card, index) => {
               const playable = playableIds.has(card.id);
-              const isNewCard = newCardIds.has(card.id);
 
               const playActions = getPlayCardActions(legalActions, card.id);
               const needsColor = playActions.some((action) => action.declaredColor);
               const needsTarget = playActions.some((action) => action.targetPlayerId);
 
-              const distance = hoveredIndex === null ? 999 : Math.abs(index - hoveredIndex);
-
-              /**
-               * When the hand is crowded, hovering one card opens only the nearby area.
-               * This keeps the whole hand inside the frame but still makes hovered cards readable.
-               */
-              let localOffset = 0;
-              if (hoveredIndex !== null && sortedHand.length >= 20) {
-                if (distance === 1) localOffset = index < hoveredIndex ? -density.localExpand : density.localExpand;
-                if (distance === 2) localOffset = index < hoveredIndex ? -density.localExpand * 0.55 : density.localExpand * 0.55;
-              }
-
-              const marginLeft = index === 0 ? 0 : density.overlap + localOffset;
-              const baseLift = playable ? -14 : 0;
-              const hoverLift = playable ? -34 : -18;
+              const marginLeft = index === 0 ? 0 : density.overlap;
 
               return (
-                <motion.div
+                <div
                   key={card.id}
-                  initial={
-                    isNewCard
-                      ? { opacity: 0, x: -110, y: -160, scale: 0.72, rotate: -6 }
-                      : { opacity: 0, y: 14, scale: 0.96, rotate: 0 }
-                  }
-                  animate={{
-                    opacity: 1,
-                    x: 0,
-                    y: baseLift,
-                    scale: density.scale,
-                    rotate: 0
-                  }}
-                  exit={{
-                    opacity: 0,
-                    y: -80,
-                    scale: 0.78,
-                    rotate: 0
-                  }}
-                  whileHover={{
-                    y: hoverLift,
-                    scale: density.compact ? 1.12 : 1.07,
-                    rotate: 0,
-                    zIndex: 300
-                  }}
-                  transition={{ type: "spring", stiffness: 430, damping: 34, mass: 0.82 }}
-                  className="relative"
-                  style={{
-                    marginLeft,
-                    transformOrigin: "50% 100%",
-                    zIndex: hoveredIndex === index ? 300 : playable ? 80 + index : index
-                  }}
-                  onHoverStart={() => setHoveredIndex(index)}
-                  onHoverEnd={() => setHoveredIndex((current) => (current === index ? null : current))}
+                  className={cn("relative transition-transform duration-100 hover:-translate-y-2", playable && "-translate-y-1")}
+                  style={{ marginLeft, transformOrigin: "50% 100%", zIndex: playable ? 80 + index : index }}
                 >
                   <UnoCard
                     card={card}
@@ -259,10 +203,10 @@ export function PlayerHand({
                         : undefined
                     }
                   />
-                </motion.div>
+                </div>
               );
             })}
-          </AnimatePresence>
+          </>
         </div>
       </div>
 

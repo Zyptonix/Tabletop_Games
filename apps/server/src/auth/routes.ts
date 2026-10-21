@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { prisma } from "@tabletop/db";
-import { createUserSchema, ERROR_CODES, loginSchema } from "@tabletop/shared";
+import { createUserSchema, ERROR_CODES, loginSchema, registerSchema } from "@tabletop/shared";
 import { hashPassword, verifyPassword } from "./password";
 import { clearSessionCookie, setSessionCookie, signSession } from "./session";
 import { serializeUser } from "./serializeUser";
@@ -35,6 +35,35 @@ authRouter.post("/auth/login", async (request, response) => {
 
   setSessionCookie(response, token);
   response.json({ user: authUser });
+});
+
+authRouter.post("/auth/register", async (request, response) => {
+  const parsed = registerSchema.safeParse(request.body);
+  if (!parsed.success) {
+    sendError(response, 400, ERROR_CODES.INVALID_PAYLOAD, "Enter a username and password.", parsed.error.flatten());
+    return;
+  }
+
+  const existing = await prisma.user.findUnique({ where: { username: parsed.data.username } });
+  if (existing) {
+    sendError(response, 409, ERROR_CODES.USERNAME_TAKEN, "That username is already taken.");
+    return;
+  }
+
+  const user = await prisma.user.create({
+    data: {
+      username: parsed.data.username,
+      passwordHash: await hashPassword(parsed.data.password),
+      role: "USER",
+      profile: { create: { displayName: parsed.data.displayName?.trim() || parsed.data.username } }
+    },
+    include: { profile: true }
+  });
+
+  const authUser = serializeUser(user);
+  const token = signSession({ sub: user.id, username: user.username, role: user.role });
+  setSessionCookie(response, token);
+  response.status(201).json({ user: authUser });
 });
 
 authRouter.post("/auth/logout", (_request, response) => {

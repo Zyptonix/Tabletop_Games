@@ -369,7 +369,8 @@ export class RoomManager {
         userId: player.userId,
         username: player.username,
         displayName: player.displayName,
-        seat: player.seat
+        seat: player.seat,
+        isBot: Boolean(player.isBot)
       }));
 
     room.gameState = module.createInitialState({
@@ -422,9 +423,14 @@ export class RoomManager {
     if (room.status !== "in_game") {
       throw new AppError(ERROR_CODES.INVALID_ACTION, "Only active games can be paused.");
     }
+    const pauseModule = this.requireModule(room.gameId);
+    if (room.gameState && pauseModule.onPause) {
+      room.gameState = pauseModule.onPause({ state: room.gameState, now: new Date().toISOString() });
+    }
     room.status = "paused";
     this.addSystemMessage(room, "Host paused the game.");
     void prisma.room.update({ where: { id: room.id }, data: { status: "paused" } });
+    void this.saveSnapshot(room);
     return room;
   }
 
@@ -436,9 +442,14 @@ export class RoomManager {
     if (room.status !== "paused") {
       throw new AppError(ERROR_CODES.INVALID_ACTION, "Room is not paused.");
     }
+    const resumeModule = this.requireModule(room.gameId);
+    if (room.gameState && resumeModule.onResume) {
+      room.gameState = resumeModule.onResume({ state: room.gameState, now: new Date().toISOString() });
+    }
     room.status = "in_game";
     this.addSystemMessage(room, "Host resumed the game.");
     void prisma.room.update({ where: { id: room.id }, data: { status: "in_game" } });
+    void this.saveSnapshot(room);
     return room;
   }
 
@@ -487,6 +498,46 @@ export class RoomManager {
     });
     await this.saveSnapshot(room);
     return room;
+  }
+
+  usesRealtimeTicks(roomId: string): boolean {
+    const room = this.getRoom(roomId);
+    return Boolean(room && this.requireModule(room.gameId).tick);
+  }
+
+  async tickRealtimeGame(roomId: string): Promise<{ room: RoomRuntime; events: unknown[] } | null> {
+    const room = this.getRoom(roomId);
+    if (!room || room.status !== "in_game" || !room.gameState) return null;
+    const module = this.requireModule(room.gameId);
+    if (!module.tick) return null;
+
+    return room.queue.enqueue(async () => {
+      if (room.status !== "in_game" || !room.gameState || !module.tick) return null;
+      const result = module.tick({ state: room.gameState, now: new Date().toISOString() });
+      if (!result) return null;
+
+      room.gameState = result.state;
+      if (result.events.length > 0) {
+        room.actionNumber = this.extractActionNumber(room.gameState, room.actionNumber + 1);
+        this.addGameEventLogMessages(room, result.events);
+        void this.saveSnapshot(room);
+      }
+
+      if (module.isGameOver(room.gameState) && room.matchId && room.matchStartedAt) {
+        room.status = "finished";
+        this.addSystemMessage(room, "Game ended.");
+        void this.matchResults.finalizeMatch({
+          matchId: room.matchId,
+          roomId: room.id,
+          gameId: room.gameId,
+          results: module.getResults(room.gameState),
+          startedAt: new Date(room.matchStartedAt),
+          endedAt: new Date()
+        });
+      }
+
+      return { room, events: result.events };
+    });
   }
 
   async handleGameAction(params: {
@@ -558,7 +609,9 @@ export class RoomManager {
       room.actionNumber = this.extractActionNumber(room.gameState, room.actionNumber + 1);
       this.addGameEventLogMessages(room, result.events);
 
-      void this.saveSnapshot(room);
+      if (module.shouldPersistAction?.(parsedAction.data) !== false) {
+        void this.saveSnapshot(room);
+      }
       if (module.isGameOver(room.gameState) && room.matchId && room.matchStartedAt) {
         room.status = "finished";
         this.addSystemMessage(room, "Game ended.");

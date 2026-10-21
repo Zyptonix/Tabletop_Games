@@ -8,19 +8,16 @@ import { AlertTriangle, BookOpen, ChevronDown, Copy, LogOut, PanelRightClose, Pa
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { RoomChat } from "@/features/game-shell/RoomChat";
+import type { PowerSeatEffect } from "./PowerEventOverlay";
 import type { RenderableCard } from "@/lib/cards";
 import { cn } from "@/lib/utils/cn";
-import { CardDrawAnimationOverlay } from "./CardDrawAnimationOverlay";
 import { DiscardPile } from "./DiscardPile";
 import { DirectionIndicator } from "./DirectionIndicator";
 import { DrawPile } from "./DrawPile";
-import { HandTransferAnimationOverlay } from "./HandTransferAnimationOverlay";
 import { PlayerHand } from "./PlayerHand";
 import { PlayerSeat } from "./PlayerSeat";
-import { PowerEventOverlay, type PowerSeatEffect } from "./PowerEventOverlay";
 import { ReactionOverlay, REACTION_PREFIX } from "./ReactionOverlay";
 import { TurnTimerCircle } from "./TurnTimerCircle";
-import { TurnTransitionOverlay } from "./TurnTransitionOverlay";
 import { UnoActionBar } from "./UnoActionBar";
 import { UnoGameStatus } from "./UnoGameStatus";
 import { UnoRuleBookModal } from "./UnoRuleBookModal";
@@ -404,21 +401,6 @@ export function ClassicUnoTable({
     lastPenaltyAmountRef.current = null;
   }, [pendingPenalty, room.players, state.players]);
 
-
-  const triggerSeatPowerEffect = useCallback((playerId: string, effect: PowerSeatEffect) => {
-    setSeatPowerEffects((current) => ({ ...current, [playerId]: effect }));
-    window.setTimeout(() => {
-      setSeatPowerEffects((current) => {
-        if (current[playerId]?.id !== effect.id) {
-          return current;
-        }
-        const next = { ...current };
-        delete next[playerId];
-        return next;
-      });
-    }, effect.kind === "draw" ? 2100 : 1800);
-  }, []);
-
   function setPanelOpen(next: boolean) {
     setSidePanelOpen(next);
     localStorage.setItem("tabletop.sidePanelHidden", next ? "false" : "true");
@@ -540,43 +522,6 @@ export function ClassicUnoTable({
           <div className={cn("grid min-h-0 flex-1 grid-cols-1 gap-3", sidePanelOpen && "xl:grid-cols-[minmax(0,1fr)_330px]")}>
             <main ref={tableRootRef} className="relative h-full min-h-0 overflow-hidden">
               <div className="pointer-events-none absolute inset-0 classic-uno-stage-light" />
-
-              <TurnTransitionOverlay
-                currentPlayerId={state.currentPlayerId}
-                previousPlayerId={previousPlayerId}
-                currentColor={state.currentColor}
-                containerRef={tableRootRef}
-                seatRefs={seatRefs}
-              />
-
-              <CardDrawAnimationOverlay
-                events={gameEvents}
-                players={state.players}
-                currentUserId={currentUserId}
-                currentColor={state.currentColor}
-                theme={cardTheme}
-                containerRef={tableRootRef}
-                drawPileRef={drawPileRef}
-                handDockRef={handDockRef}
-                seatRefs={seatRefs}
-              />
-
-              <HandTransferAnimationOverlay
-                events={gameEvents}
-                players={state.players}
-                currentUserId={currentUserId}
-                theme={cardTheme}
-                containerRef={tableRootRef}
-                seatRefs={seatRefs}
-                handDockRef={handDockRef}
-              />
-
-              <PowerEventOverlay
-                events={gameEvents}
-                players={state.players}
-                currentUserId={currentUserId}
-                onSeatEffect={triggerSeatPowerEffect}
-              />
 
               <section className="relative z-10 grid h-full min-h-0 grid-rows-[minmax(0,1fr)_13.25rem] gap-2 px-3 pb-3">
                 <div className="classic-uno-table relative min-h-0 overflow-hidden rounded-[2.25rem] bg-transparent shadow-none">

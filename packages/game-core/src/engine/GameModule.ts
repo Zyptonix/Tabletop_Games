@@ -52,6 +52,16 @@ export interface GameModule<State, Action, Settings> {
     events: GameEvent[];
   };
 
+  /** Optional fixed-step update for real-time games (e.g. movement and timed bombs). */
+  tick?(params: { state: State; now: string }): { state: State; events: GameEvent[] } | null;
+
+  /** Return false for high-frequency inputs that should not create database snapshots. */
+  shouldPersistAction?: (action: Action) => boolean;
+
+  /** Optional lifecycle hooks for games that need to freeze absolute timers while paused. */
+  onPause?(params: { state: State; now: string }): State;
+  onResume?(params: { state: State; now: string }): State;
+
   getTurnInfo(state: State): GameTurnInfo;
 
   getTimeoutAction(params: {

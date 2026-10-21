@@ -1,10 +1,11 @@
-﻿import http from "node:http";
+import http from "node:http";
 import net from "node:net";
 
 const PROXY_PORT = Number.parseInt(process.env.PROXY_PORT ?? "8080", 10);
 const WEB_PORT = Number.parseInt(process.env.WEB_PORT ?? "3000", 10);
 const SERVER_PORT = Number.parseInt(process.env.SERVER_PORT ?? "4000", 10);
-const HOST = process.env.PROXY_HOST ?? "127.0.0.1";
+const BIND_HOST = process.env.PROXY_HOST ?? "127.0.0.1";
+const UPSTREAM_HOST = process.env.UPSTREAM_HOST ?? "127.0.0.1";
 
 function pickTarget(url = "/") {
   const parsed = new URL(url, "http://localhost");
@@ -51,13 +52,13 @@ const server = http.createServer((req, res) => {
 
   const headers = {
     ...req.headers,
-    host: `${HOST}:${target.port}`,
+    host: `${UPSTREAM_HOST}:${target.port}`,
     "x-forwarded-host": req.headers.host ?? `localhost:${PROXY_PORT}`,
     "x-forwarded-proto": "http"
   };
 
   const options = {
-    host: HOST,
+    host: UPSTREAM_HOST,
     port: target.port,
     method: req.method,
     path: target.path,
@@ -120,7 +121,7 @@ server.on("upgrade", (req, socket, head) => {
     return;
   }
 
-  const upstream = net.connect(target.port, HOST, () => {
+  const upstream = net.connect(target.port, UPSTREAM_HOST, () => {
     const lines = [`${req.method} ${target.path} HTTP/${req.httpVersion}`];
 
     for (const [name, value] of Object.entries(req.headers)) {
@@ -180,9 +181,9 @@ server.on("error", (error) => {
   process.exit(1);
 });
 
-server.listen(PROXY_PORT, HOST, () => {
-  console.log(`Tabletop local proxy listening at http://localhost:${PROXY_PORT}`);
-  console.log(`  /              -> http://${HOST}:${WEB_PORT}`);
-  console.log(`  /api           -> http://${HOST}:${SERVER_PORT}`);
-  console.log(`  /socket.io     -> http://${HOST}:${SERVER_PORT}`);
+server.listen(PROXY_PORT, BIND_HOST, () => {
+  console.log(`Tabletop proxy listening on ${BIND_HOST}:${PROXY_PORT} (LAN clients use the host PC IP)`);
+  console.log(`  /              -> http://${UPSTREAM_HOST}:${WEB_PORT}`);
+  console.log(`  /api           -> http://${UPSTREAM_HOST}:${SERVER_PORT}`);
+  console.log(`  /socket.io     -> http://${UPSTREAM_HOST}:${SERVER_PORT}`);
 });

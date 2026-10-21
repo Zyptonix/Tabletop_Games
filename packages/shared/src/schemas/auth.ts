@@ -22,3 +22,13 @@ export const createUserSchema = z.object({
 
 export type LoginInput = z.infer<typeof loginSchema>;
 export type CreateUserInput = z.infer<typeof createUserSchema>;
+
+
+// Private LAN game accounts intentionally keep signup friction low.
+export const registerSchema = z.object({
+  username: usernameSchema,
+  password: z.string().min(1, "Enter a password.").max(200),
+  displayName: z.string().trim().max(40).optional()
+});
+
+export type RegisterInput = z.infer<typeof registerSchema>;

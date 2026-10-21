@@ -14,7 +14,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="low-power-mode">
+      <body className="low-power-mode dark-ui">
         <MotionConfig reducedMotion="always">
           {children}
         </MotionConfig>

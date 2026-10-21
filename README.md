@@ -1,111 +1,61 @@
-# Tabletop Arena
+# Tabletop Arena — Local LAN Edition + Strategic Shockwave
 
-Private, friends-only realtime tabletop platform built as a TypeScript monorepo.
+A friends-first browser game server for a trusted local network. Run the app on one Windows PC, share its LAN URL, and let colleagues sign in from their own browsers.
 
-The foundation is intentionally modular:
+**No Docker. No cloud database. No tunnel. No admin-created player accounts.** The host PC runs Node.js and connects to its native PostgreSQL service. Existing Next.js, Express, Socket.IO, game engines, room flow, match storage, and leaderboards are retained.
 
-- `apps/web`: Next.js App Router frontend
-- `apps/server`: Express + Socket.IO authoritative backend
-- `packages/game-core`: pure game engines and rule modules
-- `packages/shared`: shared schemas, socket contracts, constants, errors
-- `packages/db`: Prisma schema, client, and admin seed
+## Quick start (Windows)
 
-Classic UNO is the first complete playable game module. Future games plug into the same `GameModule` interface without rewriting rooms, auth, sockets, snapshots, or stats.
+Prerequisites: Node.js 20+ and a running native PostgreSQL server with an application database and user.
 
-## First Run
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\start-local.ps1
+```
 
-Create `.env` from the example:
+The interactive wizard asks for the host PC's private IPv4 and PostgreSQL connection, creates/updates `.env`, generates secrets, generates Prisma Client, applies the database schema, optionally requests a Windows Firewall rule scoped to the Private profile/LocalSubnet, then starts the web app, API, and local reverse proxy. It avoids Docker and does not start Cloudflare Tunnel.
+
+Open the LAN URL shown in the terminal (usually `http://192.168.x.x:8080`) on the host and colleagues' PCs. Everyone should be on the same office LAN/Wi-Fi; keep the host PC and terminal running while playing. Do not use `localhost` on a colleague's PC.
+
+## PostgreSQL
+
+Create the database and login once if you do not already have them. Example SQL (change the password to your own):
+
+```sql
+CREATE USER tabletop WITH PASSWORD 'change-this-password';
+CREATE DATABASE tabletop_arena OWNER tabletop;
+```
+
+The wizard can reuse a native `DATABASE_URL` already in `.env` or ask for host, port, database, user, and password. A Docker-only host such as `postgres` is not valid for a native Windows process; enter `127.0.0.1` when PostgreSQL is on the host PC.
+
+## Player accounts and leaderboard
+
+Players can create accounts on the sign-in page themselves. Usernames must be 3–24 characters and use letters, numbers, `_`, or `-`. Any non-empty password is accepted by design for this private, low-friction game setup, including `1234`. Passwords are still hashed before being written to PostgreSQL. Player accounts, profiles, match results, XP, and leaderboards use the existing database schema. Use a game-only password, not one from a personal or work account.
+
+## Games and UNO performance
+
+Strategic Shockwave is included in this patch: a 2–10 player Bomberman-style arena game integrated with the existing authoritative room engine.
+
+The visual card artwork remains, with lightweight CSS hover/lift feedback. The patch removes the high-cost card entrance/exit spring choreography and table-wide draw/hand-transfer/turn/seat overlay layers that repeatedly measured DOM positions and animated multiple objects. The app also honors reduced-motion preferences and avoids backdrop blur on the low-power UI. If the host PC still struggles, close other tabs and use a current Chromium-based browser; the authoritative game engine remains server-side.
+
+## Services and ports
+
+- `8080/TCP`: one browser URL for the app, API proxy, and Socket.IO.
+- `3000/TCP`: Next.js service, proxied internally.
+- `4000/TCP`: Express + Socket.IO service, proxied internally.
+- PostgreSQL default is `127.0.0.1:5432` unless configured otherwise.
+
+Only port 8080 needs to be reachable from colleagues' PCs. The script uses `--no-kill-ports` so it will not force-kill unrelated processes occupying a port. Logs are written to `logs/dev/`.
+
+## Developer commands
 
 ```bash
-cp .env.example .env
+corepack pnpm install
+corepack pnpm db:generate
+corepack pnpm db:push
+corepack pnpm typecheck
+corepack pnpm --filter @tabletop/game-core test
 ```
 
-Set strong values for:
+For local LAN hosting, prefer the PowerShell launcher rather than `pnpm dev` so the proxy binds to the network interface and CORS/cookie settings use your selected LAN URL.
 
-```bash
-SESSION_SECRET=
-JWT_SECRET=
-ADMIN_USERNAME=
-ADMIN_EMAIL=
-ADMIN_PASSWORD=
-```
-
-Start the private server:
-
-```bash
-docker compose up --build
-```
-
-Open:
-
-```text
-http://localhost:8080
-```
-
-The server container runs Prisma `db push` and seeds the admin account on startup.
-
-## Cloudflare Tunnel
-
-Expose only the reverse proxy:
-
-```bash
-cloudflared tunnel --url http://localhost:8080
-```
-
-Friends only need the generated browser link. PostgreSQL stays internal, and no port forwarding is required.
-
-## Local Development
-
-After installing dependencies:
-
-```bash
-pnpm install
-pnpm db:push
-pnpm db:seed
-pnpm dev
-```
-
-If Docker Desktop or WSL is blocked, use the Conda/Postgres path in:
-
-```text
-docs/RUNNING_WITHOUT_DOCKER.md
-```
-
-## Tests
-
-Classic UNO has focused engine tests:
-
-```bash
-pnpm --filter @tabletop/game-core test
-```
-
-## Security Model
-
-- no public signup by default
-- admin-created users
-- password hashes via Argon2id
-- HTTP-only session cookie
-- socket auth via session cookie
-- room access by private code
-- hidden game state filtered per viewer
-- robots disallowed
-
-## Current MVP
-
-Implemented:
-
-- account login/logout/session persistence
-- admin user seeding
-- admin-created friend accounts
-- private room create/join
-- lobby ready flow
-- host start/pause/resume
-- reconnect by permanent `userId`
-- in-memory server-authoritative rooms
-- snapshot persistence
-- Classic UNO game module
-- chat with rate limit
-- match result/stat/XP services
-- profile, leaderboards, admin UI scaffolding
-
-See `docs/` for architecture and extension notes.
+See [`docs/LOCAL_LAN_SETUP.md`](docs/LOCAL_LAN_SETUP.md) for troubleshooting and network notes.
