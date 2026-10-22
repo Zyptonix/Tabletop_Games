@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
+import { AnimatePresence, LayoutGroup, MotionConfig, motion } from "framer-motion";
 import type { GameEvent, PublicClassicUnoState, PublicNoMercyState } from "@tabletop/game-core";
 import type { RoomPlayerView, RoomStateView, UserRole } from "@tabletop/shared";
 import { AlertTriangle, BookOpen, ChevronDown, Copy, LogOut, PanelRightClose, PanelRightOpen, Settings, Trophy } from "lucide-react";
@@ -11,6 +11,7 @@ import { RoomChat } from "@/features/game-shell/RoomChat";
 import type { RenderableCard } from "@/lib/cards";
 import { cn } from "@/lib/utils/cn";
 import { CardDrawAnimationOverlay } from "./CardDrawAnimationOverlay";
+import { CardPlayAnimationOverlay } from "./CardPlayAnimationOverlay";
 import { DiscardAllAnimationOverlay } from "./DiscardAllAnimationOverlay";
 import { UnoActivityLogOverlay } from "./UnoActivityLogOverlay";
 import { DiscardPile } from "./DiscardPile";
@@ -49,34 +50,34 @@ const playAreaAccent: Record<
   }
 > = {
   red: {
-    border: "rgba(255, 75, 69, 0.46)",
-    glow: "rgba(255, 75, 69, 0.24)",
-    strongGlow: "rgba(255, 75, 69, 0.42)",
-    soft: "rgba(255, 75, 69, 0.10)",
+    border: "rgba(255, 75, 69, 0.78)",
+    glow: "rgba(255, 54, 48, 0.48)",
+    strongGlow: "rgba(255, 54, 48, 0.82)",
+    soft: "rgba(255, 75, 69, 0.19)",
     bg: "rgba(255, 75, 69, 0.14)",
     text: "rgb(254, 202, 202)"
   },
   yellow: {
-    border: "rgba(255, 201, 40, 0.52)",
-    glow: "rgba(255, 201, 40, 0.26)",
-    strongGlow: "rgba(255, 201, 40, 0.46)",
-    soft: "rgba(255, 201, 40, 0.12)",
+    border: "rgba(255, 201, 40, 0.82)",
+    glow: "rgba(255, 190, 24, 0.5)",
+    strongGlow: "rgba(255, 190, 24, 0.84)",
+    soft: "rgba(255, 201, 40, 0.2)",
     bg: "rgba(255, 201, 40, 0.16)",
     text: "rgb(254, 240, 138)"
   },
   green: {
-    border: "rgba(30, 215, 96, 0.46)",
-    glow: "rgba(30, 215, 96, 0.22)",
-    strongGlow: "rgba(30, 215, 96, 0.38)",
-    soft: "rgba(30, 215, 96, 0.10)",
+    border: "rgba(30, 215, 96, 0.76)",
+    glow: "rgba(30, 215, 96, 0.46)",
+    strongGlow: "rgba(30, 215, 96, 0.78)",
+    soft: "rgba(30, 215, 96, 0.18)",
     bg: "rgba(30, 215, 96, 0.14)",
     text: "rgb(187, 247, 208)"
   },
   blue: {
-    border: "rgba(45, 140, 255, 0.48)",
-    glow: "rgba(45, 140, 255, 0.25)",
-    strongGlow: "rgba(45, 140, 255, 0.44)",
-    soft: "rgba(45, 140, 255, 0.11)",
+    border: "rgba(45, 140, 255, 0.8)",
+    glow: "rgba(45, 140, 255, 0.48)",
+    strongGlow: "rgba(45, 140, 255, 0.82)",
+    soft: "rgba(45, 140, 255, 0.19)",
     bg: "rgba(45, 140, 255, 0.14)",
     text: "rgb(186, 230, 253)"
   }
@@ -215,8 +216,6 @@ export function ClassicUnoTable({
   }, [orderedPlayers, currentUserId]);
 
   const compactSeats = sortedOpponents.length >= 7;
-  const showSelfSeat = sortedOpponents.length <= 2;
-
   const opponentSeatWidth = useMemo(() => {
     if (sortedOpponents.length >= 9) return "clamp(13.2rem, 14.2vw, 15.8rem)";
     if (sortedOpponents.length >= 6) return "clamp(14rem, 15.5vw, 16.5rem)";
@@ -499,7 +498,8 @@ export function ClassicUnoTable({
   }
 
   return (
-    <LayoutGroup id={`uno-${room.id}`}>
+    <MotionConfig reducedMotion="user">
+      <LayoutGroup id={`uno-${room.id}`}>
       <div className="uno-fullscreen relative h-[100dvh] w-screen overflow-hidden text-white">
         <div className="pointer-events-none absolute inset-0 uno-fullscreen-grid" />
         <div className="pointer-events-none absolute inset-0 uno-perspective-grid" />
@@ -610,6 +610,17 @@ export function ClassicUnoTable({
                 seatRefs={seatRefs}
               />
 
+              <CardPlayAnimationOverlay
+                events={gameEvents}
+                players={state.players}
+                currentUserId={currentUserId}
+                theme={cardTheme}
+                containerRef={tableRootRef}
+                handDockRef={handDockRef}
+                seatRefs={seatRefs}
+                discardPileRef={discardPileRef}
+              />
+
               <HandTransferAnimationOverlay
                 events={gameEvents}
                 players={state.players}
@@ -639,38 +650,19 @@ export function ClassicUnoTable({
                 onSeatEffect={triggerSeatPowerEffect}
               />
 
-              <section className="relative z-10 grid h-full min-h-0 grid-rows-[minmax(0,1fr)_13.25rem] gap-2 px-3 pb-3">
+              <section className="relative z-10 grid h-full min-h-0 grid-rows-[minmax(0,1fr)_15rem] gap-2 px-3 pb-3">
                 <div className="classic-uno-table relative min-h-0 overflow-hidden rounded-[2.25rem] bg-transparent shadow-none">
                   <div
-                    className="pointer-events-none absolute rounded-[2.35rem] border"
+                    className="pointer-events-none absolute left-1/2 top-[calc(50%+2rem)] aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border"
                     style={{
-                      top: "25%",
-                      right: "25%",
-                      bottom: "15%",
-                      left: "25%",
+                      width: "min(72%, 31rem, 68vh)",
                       borderColor: activeAccent.border,
-                      background: `
-                        linear-gradient(
-                          to bottom,
-                          ${activeAccent.soft} 0%,
-                          ${activeAccent.glow} 22%,
-                          ${activeAccent.strongGlow} 50%,
-                          ${activeAccent.glow} 78%,
-                          ${activeAccent.soft} 100%
-                        ),
-                        linear-gradient(
-                          to right,
-                          transparent 0%,
-                          ${activeAccent.soft} 18%,
-                          ${activeAccent.glow} 50%,
-                          ${activeAccent.soft} 82%,
-                          transparent 100%
-                        )
-                      `,
+                      background: `radial-gradient(circle, ${activeAccent.strongGlow} 0%, ${activeAccent.glow} 28%, ${activeAccent.soft} 58%, transparent 76%)`,
+                      filter: `drop-shadow(0 0 20px ${activeAccent.glow})`,
                       boxShadow: `
-                        inset 0 0 110px ${activeAccent.glow},
-                        inset 0 0 170px ${activeAccent.soft},
-                        0 0 52px ${activeAccent.glow}
+                        inset 0 0 95px ${activeAccent.glow},
+                        0 0 55px ${activeAccent.glow},
+                        0 0 105px ${activeAccent.soft}
                       `
                     }}
                   />
@@ -706,32 +698,14 @@ export function ClassicUnoTable({
                     </div>
                   ))}
 
-                  {showSelfSeat && me ? (
-                    <div
-                      ref={registerSeatRef(me.userId)}
-                      className="absolute left-6 top-1/2 z-20 hidden w-[min(20rem,24vw)] -translate-y-1/2 xl:block"
-                    >
-                      <PlayerSeat
-                        player={me}
-                        roomPlayer={roomPlayerById.get(me.userId)}
-                        theme={cardTheme}
-                        isSelf
-                        seatSide="left"
-                        stackHitAmount={stackHitNotice?.playerId === me.userId ? stackHitNotice.amount : undefined}
-                        powerEffect={seatPowerEffects[me.userId]}
-                        turnProgress={me.isCurrentTurn ? turnProgress : undefined}
-                      />
-                    </div>
-                  ) : null}
-
                   <div className="relative z-10 grid h-full min-h-0 place-items-center">
                     <motion.div
                       layout
-                      className="relative z-10 translate-y-8 flex items-center justify-center gap-10 rounded-[2.4rem] px-8 py-7 backdrop-blur-xl sm:gap-16 sm:px-12"
+                      className="relative z-10 translate-y-8 flex items-center justify-center gap-10 rounded-[3rem] px-8 py-7 backdrop-blur-xl sm:gap-16 sm:px-12"
                       style={{
                         border: `1px solid ${activeAccent.border}`,
                         background:
-                          "linear-gradient(135deg, rgba(3,5,7,0.88), rgba(6,8,10,0.78) 55%, rgba(0,0,0,0.66) 100%)",
+                          "radial-gradient(ellipse at 50% 18%, rgba(13,62,48,0.76), rgba(3,16,12,0.82) 72%, rgba(0,0,0,0.62) 100%)",
                         boxShadow: `
                           0 30px 90px rgba(0,0,0,0.68),
                           0 0 44px ${activeAccent.glow},
@@ -827,16 +801,56 @@ export function ClassicUnoTable({
                     </div>
                   </div>
 
-                  {me?.hand ? (
-                    <PlayerHand
-                      hand={me.hand as RenderableCard[]}
-                      legalActions={legalActions}
-                      theme={cardTheme}
-                      targetPlayers={state.players.filter((player) => player.userId !== currentUserId)}
-                      onPlay={playCard}
-                      isMyTurn={Boolean(me?.isCurrentTurn)}
-                    />
-                  ) : null}
+                  <div className="flex min-h-0 items-end justify-center gap-3">
+                    {me ? (
+                      <div ref={registerSeatRef(me.userId)} className="shrink-0">
+                        <div
+                          aria-label={`${me.displayName}, ${me.handCount} cards${me.isCurrentTurn ? ", your turn" : ""}`}
+                          className={cn(
+                            "flex w-[4.75rem] flex-col items-center gap-1 rounded-2xl border p-2 text-center sm:hidden",
+                            me.isCurrentTurn ? "border-lime-200/60 bg-lime-400/15" : "border-white/10 bg-black/45"
+                          )}
+                        >
+                          <div className="grid h-9 w-9 place-items-center overflow-hidden rounded-full border border-white/20 bg-black/50 text-xs font-black text-white">
+                            {roomPlayerById.get(me.userId)?.avatarUrl ? (
+                              <img src={roomPlayerById.get(me.userId)?.avatarUrl ?? undefined} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              me.displayName.slice(0, 1).toUpperCase()
+                            )}
+                          </div>
+                          <span className="max-w-full truncate text-[0.58rem] font-black text-white">{me.displayName}</span>
+                          <span className="text-[0.58rem] font-bold text-amber-200">{me.handCount} cards</span>
+                          {me.isCurrentTurn ? <span className="text-[0.52rem] font-black uppercase text-lime-200">Your turn</span> : null}
+                        </div>
+
+                        <div className="hidden w-[min(17rem,24vw)] pb-1 sm:block">
+                          <PlayerSeat
+                            player={me}
+                            roomPlayer={roomPlayerById.get(me.userId)}
+                            theme={cardTheme}
+                            isSelf
+                            compact
+                            fanSide="right"
+                            seatSide="top"
+                            stackHitAmount={stackHitNotice?.playerId === me.userId ? stackHitNotice.amount : undefined}
+                            powerEffect={seatPowerEffects[me.userId]}
+                            turnProgress={me.isCurrentTurn ? turnProgress : undefined}
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {me?.hand ? (
+                      <PlayerHand
+                        hand={me.hand as RenderableCard[]}
+                        legalActions={legalActions}
+                        theme={cardTheme}
+                        targetPlayers={state.players.filter((player) => player.userId !== currentUserId)}
+                        onPlay={playCard}
+                        isMyTurn={Boolean(me?.isCurrentTurn)}
+                      />
+                    ) : null}
+                  </div>
                 </div>
               </section>
             </main>
@@ -965,6 +979,7 @@ export function ClassicUnoTable({
           </Dialog>
         ) : null}
       </div>
-    </LayoutGroup>
+      </LayoutGroup>
+    </MotionConfig>
   );
 }

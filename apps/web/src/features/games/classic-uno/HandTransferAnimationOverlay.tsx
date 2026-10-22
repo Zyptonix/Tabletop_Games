@@ -118,7 +118,7 @@ export function HandTransferAnimationOverlay({
   }, [containerRef, currentUserId, events, handDockRef, players, reduceMotion, seatRefs]);
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-[43] overflow-hidden">
+    <div className="pointer-events-none absolute inset-0 z-[57] overflow-hidden">
       <AnimatePresence>
         {animations.map((animation) => {
           const midX = (animation.from.x + animation.to.x) / 2;
@@ -151,7 +151,10 @@ export function HandTransferAnimationOverlay({
               <div className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-white/20 bg-black/85 px-2 py-1 text-[9px] font-black text-white shadow-lg">
                 {animation.fromPlayerName} <span className="text-emerald-300">→</span> {animation.toPlayerName}
               </div>
-              <div className="relative h-24 w-[4.5rem] drop-shadow-[0_0_20px_rgb(45_140_255_/_0.30)]">
+              <div
+                className="relative h-24 w-[4.5rem]"
+                style={{ boxShadow: animation.kind === "seven_swap" ? "0 0 16px rgba(168,85,247,0.30)" : "0 0 14px rgba(45,140,255,0.24)" }}
+              >
                 <div className="absolute left-0 top-2 rotate-[-10deg] opacity-90">
                   <UnoCard faceDown compact theme={theme} liftOnHover={false} className="h-20 w-[3.4rem] rounded-lg" />
                 </div>

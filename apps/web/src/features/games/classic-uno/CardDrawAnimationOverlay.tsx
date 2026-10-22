@@ -96,9 +96,7 @@ export function CardDrawAnimationOverlay({
       const destinationElement =
         normalized.playerId === currentUserId ? handDockRef.current : seatRefs.current.get(normalized.playerId);
       const to = getElementCenter(destinationElement ?? null, container) ?? getContainerCenter(container);
-      const visibleCards = reduceMotion
-        ? 0
-        : Math.min(normalized.reason === "roulette" ? normalized.count : MAX_FLYING_CARDS, normalized.count);
+      const visibleCards = reduceMotion ? 0 : Math.min(MAX_FLYING_CARDS, normalized.count);
 
       const animation: DrawAnimation = {
         ...normalized,
@@ -106,32 +104,48 @@ export function CardDrawAnimationOverlay({
         from,
         to,
         visibleCards,
-        overflowCount: Math.max(0, normalized.count - visibleCards)
+        overflowCount: reduceMotion ? 0 : Math.max(0, normalized.count - visibleCards)
       };
 
       setAnimations((current) => [...current, animation].slice(-8));
 
-      const staggerMs = reduceMotion ? 0 : visibleCards * 65;
+      const isRoulette = normalized.reason === "roulette";
+      const staggerMs = reduceMotion ? 0 : visibleCards * (isRoulette ? 460 : 65);
+      const baseDuration = reduceMotion ? 1300 : isRoulette ? 850 : 1900;
       const timeout = window.setTimeout(
         () => setAnimations((current) => current.filter((item) => item.id !== animation.id)),
-        (reduceMotion ? 1300 : 1900) + staggerMs
+        baseDuration + staggerMs
       );
       timeoutRef.current.push(timeout);
     }
   }, [containerRef, currentUserId, drawPileRef, events, handDockRef, players, reduceMotion, seatRefs]);
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-[44] overflow-hidden">
+    <div className="pointer-events-none absolute inset-0 z-[56] overflow-hidden">
       <AnimatePresence>
         {animations.map((animation) => (
           <div key={animation.id}>
             {Array.from({ length: animation.visibleCards }).map((_, index) => {
               const isRoulette = animation.reason === "roulette";
-              const card = isRoulette ? animation.revealedCards?.[index] : undefined;
+              const matchingCard = isRoulette
+                ? animation.revealedCards?.find((item) => item.id === animation.matchedCardId)
+                : undefined;
+              const matchingIndex = isRoulette && animation.revealedCards
+                ? animation.revealedCards.findIndex((item) => item.id === animation.matchedCardId)
+                : -1;
+              const matchingCardWasCapped = matchingIndex >= animation.visibleCards && animation.overflowCount > 0;
+              const card = isRoulette
+                ? (matchingCardWasCapped && index === animation.visibleCards - 1 ? matchingCard : animation.revealedCards?.[index])
+                : undefined;
               const isMatchedCard = isRoulette && card?.id === animation.matchedCardId;
               const midX = (animation.from.x + animation.to.x) / 2 + (index % 2 === 0 ? -30 : 30);
               const midY = Math.min(animation.from.y, animation.to.y) - 95 - index * 3;
-              const delay = animation.count > MAX_FLYING_CARDS ? index * 0.045 : index * 0.07;
+              const delay = isRoulette
+                ? index * 0.46
+                : animation.count > MAX_FLYING_CARDS
+                  ? index * 0.045
+                  : index * 0.07;
+              const travelDuration = isRoulette ? 0.4 : 0.82;
 
               return (
                 <motion.div
@@ -146,15 +160,15 @@ export function CardDrawAnimationOverlay({
                     opacity: [0, 1, 0.92, 0]
                   }}
                   exit={{ opacity: 0 }}
-                  transition={{ delay, duration: 0.82, ease: [0.19, 0.88, 0.25, 1] }}
+                  transition={{ delay, duration: travelDuration, ease: [0.19, 0.88, 0.25, 1] }}
                 >
                   <div
                     className={
                       isMatchedCard
-                        ? "drop-shadow-[0_0_34px_rgb(163_230_53_/_0.75)]"
+                        ? "shadow-[0_0_22px_rgb(163_230_53_/_0.58)]"
                         : isRoulette
-                          ? "drop-shadow-[0_0_28px_rgb(45_140_255_/_0.52)]"
-                          : "drop-shadow-[0_0_22px_rgb(45_140_255_/_0.42)]"
+                          ? "shadow-[0_0_18px_rgb(45_140_255_/_0.36)]"
+                          : "shadow-[0_0_14px_rgb(45_140_255_/_0.28)]"
                     }
                   >
                     <UnoCard faceDown compact theme={theme} className="h-[4.75rem] w-[3.2rem] rounded-xl ring-1 ring-white/20" />
