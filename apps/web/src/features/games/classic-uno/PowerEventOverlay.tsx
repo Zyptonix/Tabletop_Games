@@ -22,7 +22,7 @@ interface PowerNotice {
   id: string;
   title: string;
   subtitle?: string | undefined;
-  tone: "skip" | "reverse" | "draw" | "roulette" | "special";
+  tone: "skip" | "reverse" | "draw" | "roulette" | "special" | "swap" | "pass" | "discard" | "elimination";
   targetPlayerId?: string | undefined;
   seatEffect?: PowerSeatEffect | undefined;
   createdAt: string;
@@ -97,11 +97,21 @@ export function PowerEventOverlay({
                   ? {}
                   : {
                       animate: { opacity: [0.25, 0.52, 0.25] },
-                      transition: { duration: 1.4, repeat: Infinity, ease: "easeInOut" as const }
+                      transition: { duration: 0.65, ease: "easeInOut" as const }
                     })}
                 style={noticeGlowStyle(notice.tone)}
               />
               <div className="relative z-10">
+                <motion.div
+                  key={`${notice.id}-symbol`}
+                  aria-hidden="true"
+                  initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.62, rotate: reduceMotion ? 0 : -12 }}
+                  animate={reduceMotion ? { opacity: 1 } : { opacity: 1, scale: [0.82, 1.08, 1], rotate: notice.tone === "reverse" ? [-75, 16, 0] : notice.tone === "roulette" ? [0, 150, 360] : [0, 7, 0] }}
+                  transition={{ duration: reduceMotion ? 0.12 : 0.44, ease: "easeOut" }}
+                  className="mx-auto mb-2 grid h-12 w-12 place-items-center rounded-2xl border border-white/15 bg-black/25 text-3xl font-black text-white shadow-lg sm:h-14 sm:w-14 sm:text-4xl"
+                >
+                  <img src={`/uno-assets/${noticeAsset(notice.tone)}.svg`} alt="" width={56} height={56} className="h-11 w-11 object-contain sm:h-14 sm:w-14" />
+                </motion.div>
                 <p className="text-[0.68rem] font-black uppercase tracking-[0.32em] text-white/55">Table event</p>
                 <p className="mt-1 text-3xl font-black uppercase leading-none tracking-wide text-white drop-shadow-[0_0_16px_rgba(255,255,255,0.28)] sm:text-5xl">
                   {notice.title}
@@ -201,16 +211,33 @@ function normalizePowerEvent(event: GameEvent, players: PublicPlayerLabel[], cur
   }
 
   if (type.endsWith(":zero_pass")) {
-    return { id: event.id, title: "Hands passed", subtitle: "Everyone rotated hands", tone: "special", createdAt: event.createdAt };
+    const direction = getString(payload.directionLabel) ?? (payload.direction === -1 ? "counterclockwise" : "clockwise");
+    const transferCount = Array.isArray(payload.transfers) ? payload.transfers.length : players.length;
+    return { id: event.id, title: "Hands passed", subtitle: `Everyone passed ${direction} · ${transferCount} transfers`, tone: "pass", createdAt: event.createdAt };
   }
 
   if (type.endsWith(":seven_swap")) {
-    return { id: event.id, title: "Hands swapped", subtitle: "7 swap activated", tone: "special", createdAt: event.createdAt };
+    const fromId = getString(payload.fromPlayerId);
+    const toId = getString(payload.toPlayerId);
+    const fromCount = getNumber(payload.fromCount);
+    const toCount = getNumber(payload.toCount);
+    const fromName = playerName(fromId, players, currentUserId);
+    const toName = playerName(toId, players, currentUserId);
+    const counts = fromCount !== undefined && toCount !== undefined ? ` · ${fromCount} ⇄ ${toCount} cards` : "";
+    return { id: event.id, title: "Hand swap", subtitle: `${fromName} ⇄ ${toName}${counts}`, tone: "swap", createdAt: event.createdAt };
   }
 
   if (type.endsWith(":discard_all")) {
     const name = playerName(playerId, players, currentUserId);
-    return { id: event.id, title: "Discard all", subtitle: `${name} cleared a color`, tone: "special", createdAt: event.createdAt };
+    const color = getString(payload.color) ?? "matching";
+    const discarded = getNumber(payload.count);
+    return { id: event.id, title: "Discard all", subtitle: `${name} cleared ${discarded ?? "matching"} ${color} card${discarded === 1 ? "" : "s"}`, tone: "discard", createdAt: event.createdAt };
+  }
+
+  if (type.endsWith(":eliminated")) {
+    const name = playerName(playerId, players, currentUserId);
+    const countAtElimination = getNumber(payload.handCount);
+    return { id: event.id, title: `${name} eliminated`, subtitle: countAtElimination !== undefined ? `Reached ${countAtElimination} cards` : "Out of the match", tone: "elimination", createdAt: event.createdAt };
   }
 
   if (type.endsWith(":comeback")) {
@@ -225,6 +252,21 @@ function playerName(userId: string | undefined, players: PublicPlayerLabel[], cu
   if (!userId) return "Player";
   if (userId === currentUserId) return "You";
   return players.find((player) => player.userId === userId)?.displayName ?? "Player";
+}
+
+function noticeAsset(tone: PowerNotice["tone"]): string {
+  const assets: Record<PowerNotice["tone"], string> = {
+    skip: "skip",
+    reverse: "reverse",
+    draw: "draw-penalty",
+    roulette: "roulette-hit",
+    special: "cards-swirl",
+    swap: "hand-swap",
+    pass: "hand-pass",
+    discard: "discard-all",
+    elimination: "elimination"
+  };
+  return assets[tone];
 }
 
 function noticeStyle(tone: PowerNotice["tone"]): MotionStyle {
@@ -253,7 +295,11 @@ function noticeStyle(tone: PowerNotice["tone"]): MotionStyle {
       borderColor: "rgba(52,211,153,0.42)",
       background: "linear-gradient(135deg,rgba(7,43,31,0.94),rgba(4,10,8,0.88))",
       boxShadow: "0 0 62px rgba(16,185,129,0.30),0 28px 90px rgba(0,0,0,0.68)"
-    }
+    },
+    swap: { borderColor: "rgba(192,132,252,0.5)", background: "linear-gradient(135deg,rgba(42,19,68,0.95),rgba(5,7,14,0.9))", boxShadow: "0 0 58px rgba(192,132,252,0.28),0 28px 90px rgba(0,0,0,0.68)" },
+    pass: { borderColor: "rgba(45,212,191,0.45)", background: "linear-gradient(135deg,rgba(6,45,43,0.94),rgba(4,8,15,0.9))", boxShadow: "0 0 58px rgba(45,212,191,0.27),0 28px 90px rgba(0,0,0,0.68)" },
+    discard: { borderColor: "rgba(251,146,60,0.48)", background: "linear-gradient(135deg,rgba(61,29,9,0.94),rgba(8,8,12,0.9))", boxShadow: "0 0 58px rgba(251,146,60,0.28),0 28px 90px rgba(0,0,0,0.68)" },
+    elimination: { borderColor: "rgba(251,113,133,0.5)", background: "linear-gradient(135deg,rgba(65,10,24,0.96),rgba(8,7,12,0.9))", boxShadow: "0 0 62px rgba(251,113,133,0.3),0 28px 90px rgba(0,0,0,0.68)" }
   };
   return styles[tone];
 }
@@ -264,7 +310,11 @@ function noticeGlowStyle(tone: PowerNotice["tone"]): MotionStyle {
     reverse: "radial-gradient(circle at 50% 50%,rgba(45,140,255,0.30),transparent 64%)",
     draw: "radial-gradient(circle at 50% 50%,rgba(251,191,36,0.28),transparent 64%)",
     roulette: "radial-gradient(circle at 50% 50%,rgba(168,85,247,0.30),transparent 64%)",
-    special: "radial-gradient(circle at 50% 50%,rgba(52,211,153,0.26),transparent 64%)"
+    special: "radial-gradient(circle at 50% 50%,rgba(52,211,153,0.26),transparent 64%)",
+    swap: "radial-gradient(circle at 50% 50%,rgba(192,132,252,0.30),transparent 64%)",
+    pass: "radial-gradient(circle at 50% 50%,rgba(45,212,191,0.28),transparent 64%)",
+    discard: "radial-gradient(circle at 50% 50%,rgba(251,146,60,0.30),transparent 64%)",
+    elimination: "radial-gradient(circle at 50% 50%,rgba(251,113,133,0.30),transparent 64%)"
   };
   return { background: colors[tone] };
 }

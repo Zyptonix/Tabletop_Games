@@ -25,6 +25,19 @@ const REACTION_POSITIONS = [
   { left: "80%", bottom: "62%", driftX: -10, rotate: -9 }
 ] satisfies readonly ReactionPosition[];
 
+function getReactionAsset(emoji: string): string | undefined {
+  const assets: Record<string, string> = {
+    "\u{1F602}": "reaction-laugh",
+    "\u{1F60E}": "reaction-cool",
+    "\u{1F480}": "reaction-skull",
+    "\u{1F525}": "reaction-fire",
+    "\u{1F44F}": "reaction-clap",
+    "\u{2764}\u{FE0F}": "reaction-heart",
+    "\u{1F914}": "reaction-think"
+  };
+  return assets[emoji];
+}
+
 function isReactionMessage(message: ChatMessageView) {
   return message.type === "user" && typeof message.body === "string" && message.body.startsWith(REACTION_PREFIX);
 }
@@ -47,6 +60,7 @@ export function ReactionOverlay({ messages }: { messages: ChatMessageView[] }) {
       return {
         id: message.id,
         emoji: getEmoji(message),
+        asset: getReactionAsset(getEmoji(message)),
         displayName: getDisplayName(message),
         ...position
       };
@@ -72,7 +86,7 @@ export function ReactionOverlay({ messages }: { messages: ChatMessageView[] }) {
             style={{ left: reaction.left, bottom: reaction.bottom }}
           >
             <div className="relative grid h-14 min-w-14 place-items-center rounded-2xl border border-white/10 bg-black/25 px-3 text-4xl shadow-[0_18px_45px_rgb(0_0_0_/_0.32)] backdrop-blur-sm">
-              <span className="drop-shadow-[0_0_18px_rgb(255_255_255_/_0.25)]">{reaction.emoji}</span>
+              {reaction.asset ? <img src={`/uno-assets/${reaction.asset}.svg`} alt="" width={48} height={48} className="h-12 w-12 object-contain drop-shadow-[0_0_16px_rgba(125,211,252,.18)]" /> : <span className="drop-shadow-[0_0_18px_rgb(255_255_255_/_0.25)]">{reaction.emoji}</span>}
               <span className="absolute -bottom-5 left-1/2 max-w-24 -translate-x-1/2 truncate rounded-full border border-white/10 bg-black/45 px-2 py-0.5 text-[0.6rem] font-black uppercase tracking-wide text-white/65 backdrop-blur">
                 {reaction.displayName}
               </span>

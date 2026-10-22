@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" fill="none">
+<defs>
+  <linearGradient id="ink" x1="14" y1="10" x2="82" y2="88" gradientUnits="userSpaceOnUse"><stop stop-color="#F8FAFC"/><stop offset="1" stop-color="#94A3B8"/></linearGradient>
+  <linearGradient id="red" x1="17" y1="11" x2="80" y2="87" gradientUnits="userSpaceOnUse"><stop stop-color="#FF7A85"/><stop offset=".45" stop-color="#F43F5E"/><stop offset="1" stop-color="#8E1235"/></linearGradient>
+  <linearGradient id="blue" x1="15" y1="12" x2="80" y2="84" gradientUnits="userSpaceOnUse"><stop stop-color="#8BE7FF"/><stop offset=".45" stop-color="#3B82F6"/><stop offset="1" stop-color="#1D3E91"/></linearGradient>
+  <linearGradient id="cyan" x1="15" y1="8" x2="81" y2="88" gradientUnits="userSpaceOnUse"><stop stop-color="#A5F3FC"/><stop offset=".48" stop-color="#2DD4BF"/><stop offset="1" stop-color="#0F766E"/></linearGradient>
+  <linearGradient id="purple" x1="14" y1="8" x2="82" y2="88" gradientUnits="userSpaceOnUse"><stop stop-color="#F0ABFC"/><stop offset=".48" stop-color="#A855F7"/><stop offset="1" stop-color="#5B21B6"/></linearGradient>
+  <linearGradient id="gold" x1="14" y1="8" x2="82" y2="88" gradientUnits="userSpaceOnUse"><stop stop-color="#FEF08A"/><stop offset=".45" stop-color="#FBBF24"/><stop offset="1" stop-color="#B45309"/></linearGradient>
+  <linearGradient id="green" x1="14" y1="8" x2="82" y2="88" gradientUnits="userSpaceOnUse"><stop stop-color="#BBF7D0"/><stop offset=".45" stop-color="#34D399"/><stop offset="1" stop-color="#047857"/></linearGradient>
+  <filter id="glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="3.2" result="blur"/><feColorMatrix in="blur" type="saturate" values="1.5"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<g filter="url(#glow)" stroke-linecap="round" stroke-linejoin="round">
+<path d="M71 36A26 26 0 0 0 27 24L20 33" stroke="url(#purple)" stroke-width="7"/><path d="M20 33L19 17L34 25Z" fill="url(#purple)"/>
+<path d="M25 60A26 26 0 0 0 69 72L76 63" stroke="url(#blue)" stroke-width="7"/><path d="M76 63L77 79L62 71Z" fill="url(#blue)"/>
+<circle cx="48" cy="48" r="12" fill="#090F21" stroke="#E9D5FF" stroke-opacity=".65" stroke-width="2"/><path d="M42 48H54M48 42V54" stroke="#F5F3FF" stroke-width="2.5"/>
+</g>
+</svg>

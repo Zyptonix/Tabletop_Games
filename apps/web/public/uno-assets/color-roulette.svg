@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" fill="none">
+<defs>
+  <linearGradient id="ink" x1="14" y1="10" x2="82" y2="88" gradientUnits="userSpaceOnUse"><stop stop-color="#F8FAFC"/><stop offset="1" stop-color="#94A3B8"/></linearGradient>
+  <linearGradient id="red" x1="17" y1="11" x2="80" y2="87" gradientUnits="userSpaceOnUse"><stop stop-color="#FF7A85"/><stop offset=".45" stop-color="#F43F5E"/><stop offset="1" stop-color="#8E1235"/></linearGradient>
+  <linearGradient id="blue" x1="15" y1="12" x2="80" y2="84" gradientUnits="userSpaceOnUse"><stop stop-color="#8BE7FF"/><stop offset=".45" stop-color="#3B82F6"/><stop offset="1" stop-color="#1D3E91"/></linearGradient>
+  <linearGradient id="cyan" x1="15" y1="8" x2="81" y2="88" gradientUnits="userSpaceOnUse"><stop stop-color="#A5F3FC"/><stop offset=".48" stop-color="#2DD4BF"/><stop offset="1" stop-color="#0F766E"/></linearGradient>
+  <linearGradient id="purple" x1="14" y1="8" x2="82" y2="88" gradientUnits="userSpaceOnUse"><stop stop-color="#F0ABFC"/><stop offset=".48" stop-color="#A855F7"/><stop offset="1" stop-color="#5B21B6"/></linearGradient>
+  <linearGradient id="gold" x1="14" y1="8" x2="82" y2="88" gradientUnits="userSpaceOnUse"><stop stop-color="#FEF08A"/><stop offset=".45" stop-color="#FBBF24"/><stop offset="1" stop-color="#B45309"/></linearGradient>
+  <linearGradient id="green" x1="14" y1="8" x2="82" y2="88" gradientUnits="userSpaceOnUse"><stop stop-color="#BBF7D0"/><stop offset=".45" stop-color="#34D399"/><stop offset="1" stop-color="#047857"/></linearGradient>
+  <filter id="glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="3.2" result="blur"/><feColorMatrix in="blur" type="saturate" values="1.5"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<g filter="url(#glow)" stroke-linejoin="round">
+<circle cx="48" cy="48" r="33" fill="#081020" stroke="#E2E8F0" stroke-width="3"/>
+<path d="M48 48L48 16A32 32 0 0 1 75.7 32Z" fill="#F43F5E" stroke="#F8FAFC" stroke-opacity=".72" stroke-width="1.5"/>
+<path d="M48 48L75.7 32A32 32 0 0 1 75.7 64Z" fill="#FBBF24" stroke="#F8FAFC" stroke-opacity=".72" stroke-width="1.5"/>
+<path d="M48 48L75.7 64A32 32 0 0 1 48 80Z" fill="#34D399" stroke="#F8FAFC" stroke-opacity=".72" stroke-width="1.5"/>
+<path d="M48 48L48 80A32 32 0 0 1 20.3 64Z" fill="#3B82F6" stroke="#F8FAFC" stroke-opacity=".72" stroke-width="1.5"/>
+<path d="M48 48L20.3 64A32 32 0 0 1 20.3 32Z" fill="#8B5CF6" stroke="#F8FAFC" stroke-opacity=".72" stroke-width="1.5"/>
+<path d="M48 48L20.3 32A32 32 0 0 1 48 16Z" fill="#0F172A" stroke="#F8FAFC" stroke-opacity=".72" stroke-width="1.5"/>
+<circle cx="48" cy="48" r="8" fill="#F8FAFC" stroke="#0F172A" stroke-width="3"/><path d="M48 8V14M86 48H80M48 88V82M8 48H14" stroke="#FDE68A" stroke-width="3" stroke-linecap="round"/>
+</g>
+</svg>

@@ -27,6 +27,7 @@ import type { SocketData } from "./events";
 type IOServer = Server<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData>;
 type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData>;
 type BotTimer = { userId: string; timeout: ReturnType<typeof setTimeout> };
+const UNO_NO_MERCY_BOT_DELAY_MS = 5_000;
 
 function socketError(error: unknown) {
   if (error instanceof AppError) {
@@ -157,7 +158,7 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
           console.warn(`[bot] failed room=${latestRoom.code} user=${currentPlayerId}: ${socketError(error).message}`);
         }
       })();
-    }, 700 + Math.floor(Math.random() * 800));
+    }, room.gameId === "uno-no-mercy" ? UNO_NO_MERCY_BOT_DELAY_MS : 700 + Math.floor(Math.random() * 800));
 
     botTimers.set(room.id, { userId: currentPlayerId, timeout });
   }

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -136,17 +136,22 @@ export function HandTransferAnimationOverlay({
                 scale: 0.78,
                 opacity: 0
               }}
-              animate={{
-                x: [animation.from.x - 36, midX + sideNudge - 36, animation.to.x - 36],
-                y: [animation.from.y - 34, midY - 34, animation.to.y - 34],
-                rotate: [animation.direction * -8, animation.direction * 10, animation.direction * 4],
-                scale: [0.78, 0.98, 0.84],
-                opacity: [0, 1, 1, 0]
-              }}
+              animate={reduceMotion
+                ? { x: animation.from.x - 36, y: animation.from.y - 34, rotate: 0, scale: 0.9, opacity: [0, 1, 0] }
+                : {
+                    x: [animation.from.x - 36, midX + sideNudge - 36, animation.to.x - 36],
+                    y: [animation.from.y - 34, midY - 34, animation.to.y - 34],
+                    rotate: [animation.direction * -8, animation.direction * 10, animation.direction * 4],
+                    scale: [0.78, 0.98, 0.84],
+                    opacity: [0, 1, 1, 0]
+                  }}
               exit={{ opacity: 0, scale: 0.8 }}
               transition={{ duration: reduceMotion ? 0.72 : 1.12, ease: [0.2, 0.8, 0.2, 1] }}
             >
-              <div className="relative h-24 w-[4.5rem] drop-shadow-[0_0_30px_rgb(45_140_255_/_0.36)]">
+              <div className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-white/20 bg-black/85 px-2 py-1 text-[9px] font-black text-white shadow-lg">
+                {animation.fromPlayerName} <span className="text-emerald-300">→</span> {animation.toPlayerName}
+              </div>
+              <div className="relative h-24 w-[4.5rem] drop-shadow-[0_0_20px_rgb(45_140_255_/_0.30)]">
                 <div className="absolute left-0 top-2 rotate-[-10deg] opacity-90">
                   <UnoCard faceDown compact theme={theme} liftOnHover={false} className="h-20 w-[3.4rem] rounded-lg" />
                 </div>

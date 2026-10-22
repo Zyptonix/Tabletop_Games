@@ -11,6 +11,8 @@ import { RoomChat } from "@/features/game-shell/RoomChat";
 import type { RenderableCard } from "@/lib/cards";
 import { cn } from "@/lib/utils/cn";
 import { CardDrawAnimationOverlay } from "./CardDrawAnimationOverlay";
+import { DiscardAllAnimationOverlay } from "./DiscardAllAnimationOverlay";
+import { UnoActivityLogOverlay } from "./UnoActivityLogOverlay";
 import { DiscardPile } from "./DiscardPile";
 import { DirectionIndicator } from "./DirectionIndicator";
 import { DrawPile } from "./DrawPile";
@@ -162,6 +164,7 @@ export function ClassicUnoTable({
   const cardTheme: CardThemeId = state.gameId === "uno-no-mercy" ? "no_mercy" : "classic";
   const tableRootRef = useRef<HTMLElement | null>(null);
   const drawPileRef = useRef<HTMLDivElement | null>(null);
+  const discardPileRef = useRef<HTMLDivElement | null>(null);
   const handDockRef = useRef<HTMLDivElement | null>(null);
   const seatRefs = useRef<Map<string, HTMLElement>>(new Map());
   const lastCurrentPlayerIdRef = useRef<string | null>(state.currentPlayerId);
@@ -617,6 +620,18 @@ export function ClassicUnoTable({
                 handDockRef={handDockRef}
               />
 
+              <DiscardAllAnimationOverlay
+                events={gameEvents}
+                players={state.players}
+                currentUserId={currentUserId}
+                theme={cardTheme}
+                containerRef={tableRootRef}
+                seatRefs={seatRefs}
+                handDockRef={handDockRef}
+                discardPileRef={discardPileRef}
+              />
+
+
               <PowerEventOverlay
                 events={gameEvents}
                 players={state.players}
@@ -743,7 +758,21 @@ export function ClassicUnoTable({
                         />
                       </div>
 
-                      <DiscardPile card={state.topDiscard as RenderableCard} theme={cardTheme} currentColor={state.currentColor} />
+                      <div ref={discardPileRef} className="relative">
+                        <AnimatePresence initial={false}>
+                          <motion.div
+                            key={`discard-pulse-${state.topDiscard.id}`}
+                            aria-hidden="true"
+                            className="pointer-events-none absolute -inset-3 rounded-[1.4rem] border"
+                            style={{ borderColor: activeAccent.border, boxShadow: `0 0 26px ${activeAccent.glow}` }}
+                            initial={{ opacity: 0, scale: 0.92 }}
+                            animate={{ opacity: [0, 0.7, 0], scale: [0.94, 1.04, 1.1] }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.55, ease: "easeOut" }}
+                          />
+                        </AnimatePresence>
+                        <DiscardPile card={state.topDiscard as RenderableCard} theme={cardTheme} currentColor={state.currentColor} />
+                      </div>
                     </motion.div>
                   </div>
                 </div>
@@ -852,9 +881,9 @@ export function ClassicUnoTable({
                   </button>
                 </div>
               </div>
+              <UnoActivityLogOverlay events={gameEvents} players={state.players} currentUserId={currentUserId} />
 
-
-              <div className="min-h-0 flex-1">
+              <div className="min-h-0 flex-[1_1_0%] overflow-hidden">
                 {onChat ? <RoomChat roomId={room.id} messages={room.chat} onSend={onChat} onlineCount={onlineCount} /> : null}
               </div>
               </aside>
