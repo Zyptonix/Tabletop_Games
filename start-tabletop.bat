@@ -2,7 +2,8 @@
 setlocal EnableExtensions
 set "ROOT=%~dp0"
 set "ENV_DIR=%ROOT%.conda"
-set "CONDA_BAT=%USERPROFILE%\AppData\Local\miniforge3\condabin\conda.bat"
+set "CONDA_BAT=%USERPROFILE%\miniforge3\condabin\conda.bat"
+if not exist "%CONDA_BAT%" set "CONDA_BAT=%USERPROFILE%\AppData\Local\miniforge3\condabin\conda.bat"
 
 echo.
 echo ==========================================
@@ -36,8 +37,9 @@ if not exist "%ENV_DIR%\conda-meta" (
   goto :fail
 )
 if not exist "%CONDA_BAT%" (
-  echo ERROR: Miniforge activation script was not found at:
-  echo   "%CONDA_BAT%"
+  echo ERROR: Miniforge activation script was not found in either location:
+  echo   "%USERPROFILE%\miniforge3\condabin\conda.bat"
+  echo   "%USERPROFILE%\AppData\Local\miniforge3\condabin\conda.bat"
   echo Edit CONDA_BAT in this file if Miniforge is installed elsewhere.
   goto :fail
 )
