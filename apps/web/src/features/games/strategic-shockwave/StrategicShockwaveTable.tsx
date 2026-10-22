@@ -295,13 +295,14 @@ export function StrategicShockwaveTable({
       event.preventDefault();
       const previousSize = keysRef.current.size;
       keysRef.current.add(direction);
-      if (keysRef.current.size !== previousSize) sendCurrentInput();
+      sendCurrentInput(true);
+      if (keysRef.current.size !== previousSize) sendCurrentInput(true);
     };
     const up = (event: KeyboardEvent) => {
       const direction = mapKey(event.key);
       if (!direction) return;
       event.preventDefault();
-      if (keysRef.current.delete(direction)) sendCurrentInput();
+      if (keysRef.current.delete(direction)) sendCurrentInput(true);
     };
     const clear = () => {
       keysRef.current.clear();
@@ -311,7 +312,7 @@ export function StrategicShockwaveTable({
     const heartbeat = window.setInterval(() => {
       const keys = keysRef.current;
       if (canPlayRef.current && keys.size > 0) sendCurrentInput(true);
-    }, 300);
+    }, 75);
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
     window.addEventListener("blur", clear);

@@ -12,7 +12,7 @@ export const SHOCKWAVE_TILE_SIZE = 40;
 export const SHOCKWAVE_BOMB_FUSE_MS = 1_900;
 export const SHOCKWAVE_FLAME_MS = 650;
 const PLAYER_RADIUS = 0.22;
-const INPUT_LEASE_MS = 700;
+const INPUT_LEASE_MS = 180;
 const MAX_TICK_MS = 75;
 
 export const strategicShockwaveSettingsSchema = z.object({
@@ -475,9 +475,10 @@ function tickState(params: { state: StrategicShockwaveState; now: string }): { s
         player.y = nextY;
         changed = true;
       }
+      // Keep the current direction active while the key remains held. Clearing the
+      // input after a successful step stops repeated movement even when the client
+      // keeps sending the same direction each heartbeat.
       if (movedX || movedY) {
-        player.inputX = 0;
-        player.inputY = 0;
         player.inputUpdatedAt = nowMs;
       }
     }
