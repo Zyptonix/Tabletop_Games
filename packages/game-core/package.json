@@ -8,7 +8,8 @@
     "./classic-uno": "./src/games/classic-uno/index.ts",
     "./uno-no-mercy": "./src/games/uno-no-mercy/index.ts",
     "./mafia-werewolf": "./src/games/mafia-werewolf/index.ts",
-    "./strategic-shockwave": "./src/games/strategic-shockwave/index.ts"
+    "./strategic-shockwave": "./src/games/strategic-shockwave/index.ts",
+    "./twenty-nine": "./src/games/twenty-nine/index.ts"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json --noEmit",

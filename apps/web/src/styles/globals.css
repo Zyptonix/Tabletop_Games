@@ -189,6 +189,109 @@ body:has(.uno-fullscreen) {
   }
 }
 
+/* Twenty-Nine: a restrained felt table and low-cost orbit motion. */
+.twenty-nine-shell {
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 50% 20%, rgb(19 94 71 / 0.16), transparent 46%),
+    radial-gradient(ellipse at 50% 110%, rgb(6 40 32 / 0.58), transparent 52%),
+    linear-gradient(135deg, #020807 0%, #061510 44%, #020807 100%);
+}
+
+.twenty-nine-grain {
+  opacity: 0.3;
+  background-image:
+    radial-gradient(circle, rgb(211 255 236 / 0.13) 0.55px, transparent 0.8px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.012) 1px, transparent 1px),
+    linear-gradient(0deg, rgb(255 255 255 / 0.012) 1px, transparent 1px);
+  background-size: 5px 5px, 42px 42px, 42px 42px;
+}
+
+.twenty-nine-table {
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 50% 42%, rgb(16 92 68 / 0.88) 0%, rgb(7 44 34 / 0.96) 44%, rgb(3 21 17 / 0.99) 76%),
+    linear-gradient(135deg, #0b3026, #03100d);
+  box-shadow: inset 0 0 72px rgb(0 0 0 / 0.36), inset 0 1px 0 rgb(227 255 245 / 0.035);
+}
+
+.twenty-nine-table::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse at 50% 50%, transparent 38%, rgb(1 8 6 / 0.12) 68%, rgb(0 0 0 / 0.42) 100%),
+    linear-gradient(180deg, rgb(231 255 245 / 0.025), transparent 25%, transparent 72%, rgb(0 0 0 / 0.15));
+  box-shadow: inset 0 0 0 1px rgb(230 255 243 / 0.045), inset 0 0 48px rgb(0 0 0 / 0.26);
+}
+
+.twenty-nine-orbit {
+  transform-origin: center;
+  will-change: rotate;
+}
+
+.twenty-nine-orbit-outer {
+  animation: twenty-nine-orbit-forward 38s linear infinite;
+  border-color: rgb(110 231 183 / 0.12);
+}
+
+.twenty-nine-orbit-outer::before,
+.twenty-nine-orbit-inner::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.twenty-nine-orbit-outer::before {
+  border: 1px solid transparent;
+  border-top-color: rgb(167 243 208 / 0.48);
+  border-left-color: rgb(110 231 183 / 0.13);
+  mask-image: linear-gradient(90deg, #000 0%, transparent 74%);
+}
+
+.twenty-nine-orbit-inner {
+  animation: twenty-nine-orbit-reverse 27s linear infinite;
+  border-style: dashed;
+  border-color: rgb(125 211 252 / 0.12);
+}
+
+.twenty-nine-orbit-inner::before {
+  inset: -2px;
+  border: 1px solid transparent;
+  border-bottom-color: rgb(125 211 252 / 0.42);
+  border-right-color: rgb(125 211 252 / 0.12);
+  mask-image: linear-gradient(270deg, #000 0%, transparent 68%);
+}
+
+@keyframes twenty-nine-orbit-forward {
+  from { rotate: 0deg; }
+  to { rotate: 360deg; }
+}
+
+@keyframes twenty-nine-orbit-reverse {
+  from { rotate: 0deg; }
+  to { rotate: -360deg; }
+}
+
+.no-motion .twenty-nine-orbit,
+.high-performance-mode .twenty-nine-orbit {
+  animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .twenty-nine-orbit { animation: none !important; }
+}
+
+.no-glow-effects .twenty-nine-table,
+.high-performance-mode .twenty-nine-table {
+  box-shadow: inset 0 0 36px rgb(0 0 0 / 0.24) !important;
+}
+
 /* Dark mode: fix white cards and panels in the site menu */
 .menu-dark [class*="bg-white"],
 .menu-dark [class*="bg-zinc-50"],

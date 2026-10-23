@@ -44,14 +44,43 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function chooseBotAction(legalActions: unknown[]): { type: string; payload: Record<string, unknown> } | null {
+function chooseBotAction(legalActions: unknown[], gameId?: string): { type: string; payload: Record<string, unknown> } | null {
   const actions = legalActions.filter(isRecord);
-  const preferred =
-    actions.find((action) => action.type === "play_card") ??
-    actions.find((action) => action.type === "resolve_roulette") ??
-    actions.find((action) => action.type === "draw_card") ??
-    actions.find((action) => action.type === "pass_turn") ??
-    actions.find((action) => action.type === "call_uno");
+  let preferred: Record<string, unknown> | undefined;
+
+  if (gameId === "twenty-nine") {
+    const bids = actions
+      .filter((action): action is Record<string, unknown> & { type: "bid"; value: number } => action.type === "bid" && typeof action.value === "number")
+      .sort((left, right) => Number(left.value) - Number(right.value));
+    const ditto = actions.find((action) => action.type === "ditto");
+    const passBid = actions.find((action) => action.type === "pass_bid");
+    const lowestBid = bids[0];
+
+    // A restrained bot policy: enter at 16, raise through 19, then normally pass.
+    // The server remains authoritative and only supplies these prevalidated actions.
+    if (lowestBid && Number(lowestBid.value) <= 19) {
+      preferred = ditto && Number(lowestBid.value) >= 18 && Math.random() < 0.18 ? ditto : lowestBid;
+    } else if (passBid) {
+      preferred = passBid;
+    }
+
+    preferred ??= actions.find((action) => action.type === "choose_trump_suit" && action.suit === "spades");
+    preferred ??= actions.find((action) => action.type === "choose_seventh_trump");
+    preferred ??= actions.find((action) => action.type === "pass_double");
+    preferred ??= actions.find((action) => action.type === "continue_contract");
+    preferred ??= actions.find((action) => action.type === "reveal_trump");
+    preferred ??= actions.find((action) => action.type === "declare_pair");
+    preferred ??= actions.find((action) => action.type === "play_card");
+    preferred ??= actions.find((action) => action.type === "redouble");
+    preferred ??= actions.find((action) => action.type === "double");
+  } else {
+    preferred =
+      actions.find((action) => action.type === "play_card") ??
+      actions.find((action) => action.type === "resolve_roulette") ??
+      actions.find((action) => action.type === "draw_card") ??
+      actions.find((action) => action.type === "pass_turn") ??
+      actions.find((action) => action.type === "call_uno");
+  }
 
   if (!preferred || typeof preferred.type !== "string") {
     return null;
@@ -137,7 +166,7 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
           return;
         }
 
-        const botAction = chooseBotAction(manager.getLegalActionsFor(latestRoom, currentPlayerId));
+        const botAction = chooseBotAction(manager.getLegalActionsFor(latestRoom, currentPlayerId), latestRoom.gameId);
         if (!botAction) {
           return;
         }

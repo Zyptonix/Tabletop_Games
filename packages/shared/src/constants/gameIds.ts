@@ -8,7 +8,8 @@ export const GAME_IDS = [
   "codenames",
   "scribble",
   "spades",
-  "polashi"
+  "polashi",
+  "twenty-nine"
 ] as const;
 
 export type GameId = (typeof GAME_IDS)[number];
@@ -23,5 +24,6 @@ export const GAME_LABELS: Record<GameId, string> = {
   codenames: "Codenames",
   scribble: "Scribble",
   spades: "Spades",
-  polashi: "Polashi"
+  polashi: "Polashi",
+  "twenty-nine": "29 (Bangladesh)"
 };

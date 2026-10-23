@@ -2,6 +2,7 @@ import {
   classicUnoModule,
   noMercyModule,
   strategicShockwaveModule,
+  twentyNineModule,
   werewolfModule,
   type ClassicUnoSettings,
   type ClassicUnoState,
@@ -11,6 +12,9 @@ import {
   type StrategicShockwaveAction,
   type StrategicShockwaveSettings,
   type StrategicShockwaveState,
+  type TwentyNineAction,
+  type TwentyNineSettings,
+  type TwentyNineState,
   type UnoAction,
   type WerewolfAction,
   type WerewolfSettings,
@@ -37,6 +41,10 @@ const modules = new Map<GameId, AnyGameModule>([
   [
     "strategic-shockwave",
     strategicShockwaveModule as GameModule<StrategicShockwaveState, StrategicShockwaveAction, StrategicShockwaveSettings> as AnyGameModule
+  ],
+  [
+    "twenty-nine",
+    twentyNineModule as GameModule<TwentyNineState, TwentyNineAction, TwentyNineSettings> as AnyGameModule
   ]
 ]);
 

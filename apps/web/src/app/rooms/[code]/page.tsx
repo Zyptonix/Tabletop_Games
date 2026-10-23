@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { Copy, Loader2 } from "lucide-react";
-import type { PublicClassicUnoState, PublicNoMercyState, PublicStrategicShockwaveState, PublicWerewolfState } from "@tabletop/game-core";
+import type { PublicClassicUnoState, PublicNoMercyState, PublicStrategicShockwaveState, PublicTwentyNineState, PublicWerewolfState } from "@tabletop/game-core";
 import { AppShell } from "@/components/layout/AppShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { useRoomSocket } from "@/lib/socket/useRoomSocket";
 import { GameShell } from "@/features/game-shell/GameShell";
 import { ClassicUnoTable } from "@/features/games/classic-uno/ClassicUnoTable";
 import { StrategicShockwaveTable } from "@/features/games/strategic-shockwave/StrategicShockwaveTable";
+import { TwentyNineTable } from "@/features/games/twenty-nine/TwentyNineTable";
 import { MafiaWerewolfTable } from "@/features/games/mafia-werewolf/MafiaWerewolfTable";
 import { REACTION_PREFIX } from "@/features/games/classic-uno/ReactionOverlay";
 
@@ -59,6 +60,10 @@ export default function RoomPage() {
   const shockwaveState =
     room.gameId === "strategic-shockwave"
       ? (socketState.gameState as PublicStrategicShockwaveState | null)
+      : null;
+  const twentyNineState =
+    room.gameId === "twenty-nine"
+      ? (socketState.gameState as PublicTwentyNineState | null)
       : null;
 
   return (
@@ -122,6 +127,17 @@ export default function RoomPage() {
             onChat={socketState.sendChat}
             onPause={socketState.pauseRoom}
             onResume={socketState.resumeRoom}
+            onEndMatch={socketState.endRoom}
+          />
+        ) : twentyNineState ? (
+          <TwentyNineTable
+            room={room}
+            state={twentyNineState}
+            legalActions={socketState.legalActions}
+            gameEvents={socketState.gameEvents}
+            currentUserId={user.id}
+            onAction={(type, payload) => socketState.sendAction(room.id, type, payload)}
+            onChat={socketState.sendChat}
             onEndMatch={socketState.endRoom}
           />
         ) : unoState ? (
