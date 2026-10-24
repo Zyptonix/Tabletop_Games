@@ -1,3 +1,4 @@
+import { randomBytes, randomInt } from "node:crypto";
 import { nanoid } from "nanoid";
 import { prisma, type Prisma } from "@tabletop/db";
 import {
@@ -35,10 +36,14 @@ import type { RoomChatMessage, RoomRuntime, SerializableRoomState } from "./Room
 function generateRoomCode(): string {
   let code = "";
   for (let index = 0; index < ROOM_CODE_LENGTH; index += 1) {
-    const charIndex = Math.floor(Math.random() * ROOM_CODE_ALPHABET.length);
+    const charIndex = randomInt(0, ROOM_CODE_ALPHABET.length);
     code += ROOM_CODE_ALPHABET[charIndex] ?? "A";
   }
   return code;
+}
+
+function generateSecureSeed(): string {
+  return randomBytes(16).toString("hex");
 }
 
 function assertGameId(value: string): GameId {
@@ -348,9 +353,10 @@ export class RoomManager {
     }
 
     const now = new Date();
+    const roomSeed = generateSecureSeed();
     const randomizedPlayers = room.players.slice();
     for (let index = randomizedPlayers.length - 1; index > 0; index -= 1) {
-      const swapIndex = Math.floor(Math.random() * (index + 1));
+      const swapIndex = randomInt(0, index + 1);
       const current = randomizedPlayers[index];
       const swap = randomizedPlayers[swapIndex];
       if (current && swap) {
@@ -375,7 +381,7 @@ export class RoomManager {
     room.gameState = module.createInitialState({
       players: gamePlayers,
       settings: room.settings,
-      seed: `${room.id}:${now.toISOString()}`,
+      seed: roomSeed,
       now: now.toISOString()
     });
 
