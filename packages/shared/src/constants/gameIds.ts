@@ -9,7 +9,16 @@ export const GAME_IDS = [
   "scribble",
   "spades",
   "polashi",
-  "twenty-nine"
+  "twenty-nine",
+  "connect-four",
+  "reversi",
+  "chess",
+  "battleship",
+  "ludo",
+  "barricades",
+  "risk",
+  "world-conquest",
+  "poker"
 ] as const;
 
 export type GameId = (typeof GAME_IDS)[number];
@@ -25,5 +34,14 @@ export const GAME_LABELS: Record<GameId, string> = {
   scribble: "Scribble",
   spades: "Spades",
   polashi: "Polashi",
-  "twenty-nine": "29 (Bangladesh)"
+  "twenty-nine": "29 (Bangladesh)",
+  "connect-four": "Connect Four",
+  reversi: "Reversi",
+  chess: "Chess",
+  battleship: "Battleships",
+  ludo: "Ludo",
+  barricades: "Barricades",
+  risk: "Risk",
+  "world-conquest": "World Conquest",
+  poker: "Poker · Texas Hold'em"
 };

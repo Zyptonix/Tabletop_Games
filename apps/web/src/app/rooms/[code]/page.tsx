@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { Copy, Loader2 } from "lucide-react";
-import type { PublicClassicUnoState, PublicNoMercyState, PublicStrategicShockwaveState, PublicTwentyNineState, PublicWerewolfState } from "@tabletop/game-core";
+import type { PublicClassicUnoState, PublicGridGameState, PublicNoMercyState, PublicPrototypeGameState, PublicStrategicShockwaveState, PublicTwentyNineState, PublicWerewolfState } from "@tabletop/game-core";
 import { AppShell } from "@/components/layout/AppShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/lib/auth/useAuth";
 import { useRoomSocket } from "@/lib/socket/useRoomSocket";
 import { GameShell } from "@/features/game-shell/GameShell";
+import { BoardGamesTable } from "@/features/games/board-games/BoardGamesTable";
+import { PrototypeBoardGamesTable } from "@/features/games/prototype-board-games/PrototypeBoardGamesTable";
 import { ClassicUnoTable } from "@/features/games/classic-uno/ClassicUnoTable";
 import { StrategicShockwaveTable } from "@/features/games/strategic-shockwave/StrategicShockwaveTable";
 import { TwentyNineTable } from "@/features/games/twenty-nine/TwentyNineTable";
@@ -64,6 +66,14 @@ export default function RoomPage() {
   const twentyNineState =
     room.gameId === "twenty-nine"
       ? (socketState.gameState as PublicTwentyNineState | null)
+      : null;
+  const gridGameState =
+    room.gameId === "connect-four" || room.gameId === "reversi"
+      ? (socketState.gameState as PublicGridGameState | null)
+      : null;
+  const prototypeGameState =
+    ["chess", "battleship", "ludo", "barricades", "monopoly", "risk", "world-conquest", "codenames", "poker"].includes(room.gameId as string)
+      ? (socketState.gameState as PublicPrototypeGameState | null)
       : null;
 
   return (
@@ -133,6 +143,28 @@ export default function RoomPage() {
           <TwentyNineTable
             room={room}
             state={twentyNineState}
+            legalActions={socketState.legalActions}
+            gameEvents={socketState.gameEvents}
+            currentUserId={user.id}
+            onAction={(type, payload) => socketState.sendAction(room.id, type, payload)}
+            onChat={socketState.sendChat}
+            onEndMatch={socketState.endRoom}
+          />
+        ) : prototypeGameState ? (
+          <PrototypeBoardGamesTable
+            room={room}
+            state={prototypeGameState}
+            legalActions={socketState.legalActions}
+            gameEvents={socketState.gameEvents}
+            currentUserId={user.id}
+            onAction={(type, payload) => socketState.sendAction(room.id, type, payload)}
+            onChat={socketState.sendChat}
+            onEndMatch={socketState.endRoom}
+          />
+        ) : gridGameState ? (
+          <BoardGamesTable
+            room={room}
+            state={gridGameState}
             legalActions={socketState.legalActions}
             gameEvents={socketState.gameEvents}
             currentUserId={user.id}

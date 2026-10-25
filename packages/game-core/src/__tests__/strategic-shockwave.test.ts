@@ -44,6 +44,15 @@ describe("Strategic Shockwave", () => {
     expect(Math.abs(result!.state.players[0]!.x - initialX)).toBeGreaterThan(0);
   });
 
+  it("keeps movement input transient while broadcasting gameplay actions", () => {
+    const movement = { type: "set_input" as const, x: 1, y: 0 };
+    const bomb = { type: "place_bomb" as const };
+    expect(strategicShockwaveModule.shouldPersistAction(movement)).toBe(false);
+    expect(strategicShockwaveModule.shouldBroadcastAction(movement)).toBe(false);
+    expect(strategicShockwaveModule.shouldPersistAction(bomb)).toBe(true);
+    expect(strategicShockwaveModule.shouldBroadcastAction(bomb)).toBe(true);
+  });
+
   it("plants timed bombs and emits an explosion after the fuse", () => {
     const state = makeState();
     const action = { type: "place_bomb" as const };

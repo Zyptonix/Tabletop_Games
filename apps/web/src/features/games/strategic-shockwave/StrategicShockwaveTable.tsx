@@ -240,6 +240,26 @@ export function StrategicShockwaveTable({
   const canPlayRef = useRef(room.status === "in_game" && state.phase === "playing" && Boolean(state.players.find((player) => player.userId === currentUserId)?.alive));
   const [chatDraft, setChatDraft] = useState("");
   const [localNow, setLocalNow] = useState(() => Date.now());
+  const mobileActionRef = useRef(onAction);
+  const mobileInputIntervalRef = useRef<number | null>(null);
+  useEffect(() => { mobileActionRef.current = onAction; }, [onAction]);
+  useEffect(() => () => {
+    if (mobileInputIntervalRef.current !== null) window.clearInterval(mobileInputIntervalRef.current);
+    mobileActionRef.current("set_input", { x: 0, y: 0 });
+  }, []);
+
+  function startMobileMove(x: number, y: number) {
+    if (mobileInputIntervalRef.current !== null) window.clearInterval(mobileInputIntervalRef.current);
+    const send = () => mobileActionRef.current("set_input", { x, y });
+    send();
+    mobileInputIntervalRef.current = window.setInterval(send, 75);
+  }
+
+  function stopMobileMove() {
+    if (mobileInputIntervalRef.current !== null) window.clearInterval(mobileInputIntervalRef.current);
+    mobileInputIntervalRef.current = null;
+    mobileActionRef.current("set_input", { x: 0, y: 0 });
+  }
   const me = state.players.find((player) => player.userId === currentUserId);
   const isHost = room.effectiveHostUserId === currentUserId;
   const alivePlayers = state.players.filter((player) => player.alive);
@@ -277,12 +297,30 @@ export function StrategicShockwaveTable({
       lastInputRef.current = key;
       actionRef.current("set_input", { x, y });
     };
-    const mapKey = (key: string): string | null => {
-      if (key === "ArrowUp" || key.toLowerCase() === "w") return "up";
-      if (key === "ArrowDown" || key.toLowerCase() === "s") return "down";
-      if (key === "ArrowLeft" || key.toLowerCase() === "a") return "left";
-      if (key === "ArrowRight" || key.toLowerCase() === "d") return "right";
-      return null;
+    const mapKey = (event: KeyboardEvent): string | null => {
+      const directionByCode: Record<string, string> = {
+        ArrowUp: "up",
+        ArrowDown: "down",
+        ArrowLeft: "left",
+        ArrowRight: "right",
+        KeyW: "up",
+        KeyS: "down",
+        KeyA: "left",
+        KeyD: "right"
+      };
+      const directionByKey: Record<string, string> = {
+        arrowup: "up",
+        arrowdown: "down",
+        arrowleft: "left",
+        arrowright: "right",
+        w: "up",
+        s: "down",
+        a: "left",
+        d: "right"
+      };
+      const byCode = directionByCode[event.code];
+      if (byCode) return byCode;
+      return directionByKey[event.key.toLowerCase()] ?? null;
     };
     const down = (event: KeyboardEvent) => {
       if (event.code === "Space") {
@@ -290,16 +328,15 @@ export function StrategicShockwaveTable({
         if (canPlayRef.current && !event.repeat) actionRef.current("place_bomb", {});
         return;
       }
-      const direction = mapKey(event.key);
+      const direction = mapKey(event);
       if (!direction) return;
       event.preventDefault();
-      const previousSize = keysRef.current.size;
+      const wasPressed = keysRef.current.has(direction);
       keysRef.current.add(direction);
-      sendCurrentInput(true);
-      if (keysRef.current.size !== previousSize) sendCurrentInput(true);
+      if (!wasPressed) sendCurrentInput(true);
     };
     const up = (event: KeyboardEvent) => {
-      const direction = mapKey(event.key);
+      const direction = mapKey(event);
       if (!direction) return;
       event.preventDefault();
       if (keysRef.current.delete(direction)) sendCurrentInput(true);
@@ -375,6 +412,14 @@ export function StrategicShockwaveTable({
             <div className="mx-auto mt-3 flex max-w-[760px] flex-wrap items-center justify-between gap-3 text-xs text-emerald-100/70">
               <p><span className="font-black text-white">MOVE</span> WASD / Arrow keys <span className="ml-3 font-black text-white">BOMB</span> Space</p>
               <button type="button" disabled={!me?.alive || state.phase !== "playing" || room.status !== "in_game"} onClick={() => onAction("place_bomb", {})} className="min-h-10 rounded-lg bg-amber-400 px-4 font-black text-amber-950 shadow-lg shadow-amber-950/20 hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-40">Plant Bomb · Space</button>
+            </div>
+            <div className="mx-auto mt-3 grid w-full max-w-[13rem] grid-cols-3 gap-2 sm:hidden" aria-label="Touch movement controls">
+              <span />
+              <button type="button" className="min-h-12 rounded-xl border border-emerald-200/15 bg-white/10 text-xl font-black" aria-label="Move up" onPointerDown={(event) => { event.preventDefault(); startMobileMove(0, -1); }} onPointerUp={stopMobileMove} onPointerCancel={stopMobileMove} onPointerLeave={stopMobileMove}>↑</button>
+              <span />
+              <button type="button" className="min-h-12 rounded-xl border border-emerald-200/15 bg-white/10 text-xl font-black" aria-label="Move left" onPointerDown={(event) => { event.preventDefault(); startMobileMove(-1, 0); }} onPointerUp={stopMobileMove} onPointerCancel={stopMobileMove} onPointerLeave={stopMobileMove}>←</button>
+              <button type="button" className="min-h-12 rounded-xl border border-emerald-200/15 bg-white/10 text-xl font-black" aria-label="Move down" onPointerDown={(event) => { event.preventDefault(); startMobileMove(0, 1); }} onPointerUp={stopMobileMove} onPointerCancel={stopMobileMove} onPointerLeave={stopMobileMove}>↓</button>
+              <button type="button" className="min-h-12 rounded-xl border border-emerald-200/15 bg-white/10 text-xl font-black" aria-label="Move right" onPointerDown={(event) => { event.preventDefault(); startMobileMove(1, 0); }} onPointerUp={stopMobileMove} onPointerCancel={stopMobileMove} onPointerLeave={stopMobileMove}>→</button>
             </div>
           </section>
 

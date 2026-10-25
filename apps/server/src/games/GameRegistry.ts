@@ -18,7 +18,24 @@ import {
   type UnoAction,
   type WerewolfAction,
   type WerewolfSettings,
-  type WerewolfState
+  type WerewolfState,
+  connectFourModule,
+  reversiModule,
+  type GridGameAction,
+  type GridGameSettings,
+  type GridGameState,
+  chessModule,
+  battleshipModule,
+  ludoModule,
+  barricadesModule,
+  monopolyPrototypeModule,
+  riskModule,
+  worldConquestModule,
+  codenamesPrototypeModule,
+  pokerModule,
+  type PrototypeGameState,
+  type PrototypeAction,
+  type PrototypeSettings
 } from "@tabletop/game-core";
 import type { GameId } from "@tabletop/shared";
 import type { GameModule, RegisteredGameSummary } from "@tabletop/game-core";
@@ -45,7 +62,24 @@ const modules = new Map<GameId, AnyGameModule>([
   [
     "twenty-nine",
     twentyNineModule as GameModule<TwentyNineState, TwentyNineAction, TwentyNineSettings> as AnyGameModule
-  ]
+  ],
+  [
+    "connect-four",
+    connectFourModule as GameModule<GridGameState, GridGameAction, GridGameSettings> as AnyGameModule
+  ],
+  [
+    "reversi",
+    reversiModule as GameModule<GridGameState, GridGameAction, GridGameSettings> as AnyGameModule
+  ],
+  ["chess", chessModule as GameModule<PrototypeGameState, PrototypeAction, PrototypeSettings> as AnyGameModule],
+  ["battleship", battleshipModule as GameModule<PrototypeGameState, PrototypeAction, PrototypeSettings> as AnyGameModule],
+  ["ludo", ludoModule as GameModule<PrototypeGameState, PrototypeAction, PrototypeSettings> as AnyGameModule],
+  ["barricades", barricadesModule as GameModule<PrototypeGameState, PrototypeAction, PrototypeSettings> as AnyGameModule],
+  ["monopoly", monopolyPrototypeModule as GameModule<PrototypeGameState, PrototypeAction, PrototypeSettings> as AnyGameModule],
+  ["risk", riskModule as GameModule<PrototypeGameState, PrototypeAction, PrototypeSettings> as AnyGameModule],
+  ["world-conquest", worldConquestModule as GameModule<PrototypeGameState, PrototypeAction, PrototypeSettings> as AnyGameModule],
+  ["codenames", codenamesPrototypeModule as GameModule<PrototypeGameState, PrototypeAction, PrototypeSettings> as AnyGameModule],
+  ["poker", pokerModule as GameModule<PrototypeGameState, PrototypeAction, PrototypeSettings> as AnyGameModule]
 ]);
 
 export class GameRegistry {

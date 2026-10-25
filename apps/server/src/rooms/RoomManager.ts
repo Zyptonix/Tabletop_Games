@@ -375,7 +375,10 @@ export class RoomManager {
         userId: player.userId,
         username: player.username,
         displayName: player.displayName,
-        seat: player.seat
+        seat: player.seat,
+        // The game engine must know which players are bots. Bomber Tag's AI runs
+        // in its real-time tick and reads this flag from its private game state.
+        isBot: Boolean(player.isBot)
       }));
 
     room.gameState = module.createInitialState({
@@ -498,7 +501,7 @@ export class RoomManager {
   async handleGameAction(params: {
     userId: string;
     envelope: GameActionEnvelope;
-  }): Promise<{ room: RoomRuntime; events: unknown[] }> {
+  }): Promise<{ room: RoomRuntime; events: unknown[]; shouldBroadcast: boolean }> {
     const room = this.requireRoom(params.envelope.roomId);
     return room.queue.enqueue(async () => {
       if (room.status === "paused") {
@@ -564,7 +567,13 @@ export class RoomManager {
       room.actionNumber = this.extractActionNumber(room.gameState, room.actionNumber + 1);
       this.addGameEventLogMessages(room, result.events);
 
-      void this.saveSnapshot(room);
+      const actionModule = module as AnyGameModule & {
+        shouldPersistAction?: (action: unknown) => boolean;
+        shouldBroadcastAction?: (action: unknown) => boolean;
+      };
+      const shouldPersist = actionModule.shouldPersistAction?.(parsedAction.data) ?? true;
+      const shouldBroadcast = actionModule.shouldBroadcastAction?.(parsedAction.data) ?? true;
+      if (shouldPersist) void this.saveSnapshot(room);
       if (module.isGameOver(room.gameState) && room.matchId && room.matchStartedAt) {
         room.status = "finished";
         this.addSystemMessage(room, "Game ended.");
@@ -578,7 +587,7 @@ export class RoomManager {
         });
       }
 
-      return { room, events: result.events };
+      return { room, events: result.events, shouldBroadcast };
     });
   }
 
@@ -1173,5 +1182,4 @@ export class RoomManager {
     return { room, events: result.events };
   }
 }
-
 

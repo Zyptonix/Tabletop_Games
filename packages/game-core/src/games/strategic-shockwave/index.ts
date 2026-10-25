@@ -751,6 +751,7 @@ function getTurnInfo(_state: StrategicShockwaveState): GameTurnInfo { return { c
 export const strategicShockwaveModule: GameModule<StrategicShockwaveState, StrategicShockwaveAction, StrategicShockwaveSettings> & {
   tick: (params: { state: StrategicShockwaveState; now: string }) => { state: StrategicShockwaveState; events: GameEvent[] } | null;
   shouldPersistAction: (action: StrategicShockwaveAction) => boolean;
+  shouldBroadcastAction: (action: StrategicShockwaveAction) => boolean;
 } = {
   id: "strategic-shockwave",
   displayName: "Bomber Tag",
@@ -769,6 +770,7 @@ export const strategicShockwaveModule: GameModule<StrategicShockwaveState, Strat
   getTimeoutAction: () => null,
   tick: tickState,
   shouldPersistAction: (action) => action.type !== "set_input",
+  shouldBroadcastAction: (action) => action.type !== "set_input",
   isGameOver: (state) => state.phase === "finished",
   getResults
 };
