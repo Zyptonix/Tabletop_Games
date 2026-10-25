@@ -72,7 +72,7 @@ export function PrototypeBoardGamesTable({ room, state, legalActions, gameEvents
     const selectedMoves = legalMoves.filter((action) => action.from === selectedSquare);
     return <div className="mx-auto w-full max-w-[min(75vh,740px)]">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div className="text-xs font-black uppercase tracking-[.2em] text-white/45">White at bottom · Select a piece, then a highlighted square</div><div className="rounded-full border border-white/10 bg-black/25 px-3 py-1 text-xs font-bold">{currentPlayer?.displayName ?? "Waiting"} to move</div></div>
-      <div className="overflow-hidden rounded-2xl border-[7px] border-[#26394d] bg-[#26394d] shadow-[0_24px_50px_rgba(0,0,0,.45)]"><div className="grid grid-cols-8">
+      <div className="overflow-hidden rounded-2xl border-[7px] border-[#214b2a] bg-[#214b2a] shadow-[0_24px_50px_rgba(0,0,0,.45)]"><div className="grid grid-cols-8">
         {state.board.flatMap((row, rowIndex) => row.map((piece, column) => {
           const index = rowIndex * 8 + column;
           const highlighted = selectedMoves.some((action) => action.to === index);
@@ -84,12 +84,12 @@ export function PrototypeBoardGamesTable({ room, state, legalActions, gameEvents
             }
             const isOwnPiece = Boolean(piece && ((me?.seat ?? 0) % 2 === 0 ? piece === piece.toUpperCase() : piece === piece.toLowerCase()));
             if (isOwnPiece) setSelectedSquare(index); else setSelectedSquare(null);
-          }} className={`relative grid aspect-square place-items-center text-[clamp(1.5rem,4.6vw,3.2rem)] leading-none transition-colors ${((rowIndex + column) % 2 === 0) ? "bg-[#e3d8c4] text-[#1e293b]" : "bg-[#65816d] text-white"} ${selected ? "ring-4 ring-inset ring-amber-300" : ""} ${highlighted ? "after:absolute after:h-3 after:w-3 after:rounded-full after:bg-emerald-500/80 after:shadow-[0_0_0_4px_rgba(16,185,129,.18)]" : ""}`}>
+          }} className={`relative grid aspect-square place-items-center text-[clamp(1.5rem,4.6vw,3.2rem)] leading-none transition-colors ${((rowIndex + column) % 2 === 0) ? "bg-[#c9eac5] text-[#142a18]" : "bg-[#4f8e5b] text-white"} ${selected ? "ring-4 ring-inset ring-amber-300" : ""} ${highlighted ? "after:absolute after:h-3 after:w-3 after:rounded-full after:bg-emerald-500/80 after:shadow-[0_0_0_4px_rgba(16,185,129,.18)]" : ""}`}>
             {piece ? <span className={piece === piece.toUpperCase() ? "drop-shadow-[0_2px_1px_rgba(255,255,255,.45)]" : "drop-shadow-[0_2px_1px_rgba(0,0,0,.6)]"}>{PIECES[piece] ?? piece}</span> : null}
             {column === 0 ? <span className="absolute left-1 top-1 text-[9px] font-black opacity-40">{8 - rowIndex}</span> : null}{rowIndex === 7 ? <span className="absolute bottom-1 right-1 text-[9px] font-black opacity-40">{"abcdefgh"[column]}</span> : null}
           </button>;
         }))}
-      </div></div><p className="mt-3 text-xs leading-relaxed text-amber-100/60">Prototype rules: move geometry and captures work, but check/checkmate legality, castling and en passant are still being built.</p>
+      </div></div><p className="mt-3 text-xs leading-relaxed text-amber-100/60">Server rules enforce legal movement, check, checkmate and stalemate. Castling, en passant and repetition/fifty-move draw rules are still outstanding.</p>
     </div>;
   }
 

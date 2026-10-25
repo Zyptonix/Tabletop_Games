@@ -9,6 +9,7 @@ import {
   pokerModule,
   riskModule,
   worldConquestModule,
+  evaluateTexasHoldemHand,
   type PrototypeGameState
 } from "../games/prototype-board-games";
 import type { GamePlayer } from "../engine/GameTypes";
@@ -72,3 +73,50 @@ describe("prototype board-game modules are registered and start valid states", (
     expect(p1.myPokerCards).not.toEqual(p2.myPokerCards);
   });
 });
+
+// Backend rules hardening v2: focused regression tests for previously incorrect mechanics.
+describe("backend rules hardening v2", () => {
+  it("requires exact Ludo home entry rather than clamping an overshoot", () => {
+    const state = start(ludoModule);
+    state.hasRolled = true;
+    state.diceRoll = 2;
+    state.ludoTokens.p1![0] = 56;
+    expect(ludoModule.getLegalActions({ state, playerId: "p1" })).not.toContainEqual({ type: "move_token", tokenIndex: 0 });
+    state.diceRoll = 1;
+    expect(ludoModule.getLegalActions({ state, playerId: "p1" })).toContainEqual({ type: "move_token", tokenIndex: 0 });
+  });
+
+  it("captures an opponent token on an unprotected Ludo square and grants the capture bonus turn", () => {
+    const state = start(ludoModule);
+    state.hasRolled = true;
+    state.diceRoll = 1;
+    state.ludoTokens.p1![0] = 3;
+    state.ludoTokens.p2![0] = 43; // seat 1's progress 43 maps onto seat 0's track square 4.
+    const result = ludoModule.applyAction({
+      state,
+      playerId: "p1",
+      action: { type: "move_token", tokenIndex: 0 },
+      now: "2026-10-25T00:01:00.000Z"
+    });
+    expect(result.state.ludoTokens.p2?.[0]).toBe(-1);
+    expect(result.state.currentPlayerId).toBe("p1");
+  });
+
+  it("rejects overlapping/crossing Barricades walls", () => {
+    const state = start(barricadesModule);
+    state.walls = [{ x: 3, y: 0, orientation: "h", playerId: "p2" }];
+    const legal = barricadesModule.getLegalActions({ state, playerId: "p1" });
+    expect(legal).not.toContainEqual({ type: "place_wall", x: 3, y: 0, orientation: "h" });
+    expect(legal).not.toContainEqual({ type: "place_wall", x: 3, y: 0, orientation: "v" });
+  });
+
+  it("ranks Texas Hold'em hands by the best five-card combination", () => {
+    const royalFlush = evaluateTexasHoldemHand(["A♠", "K♠", "Q♠", "J♠", "10♠", "2♦", "3♣"]);
+    const fourOfAKind = evaluateTexasHoldemHand(["A♠", "A♥", "A♦", "A♣", "K♠", "K♦", "2♣"]);
+    const wheelStraight = evaluateTexasHoldemHand(["A♠", "2♥", "3♦", "4♣", "5♠", "K♦", "9♣"]);
+    expect(royalFlush[0]).toBe(8);
+    expect(fourOfAKind[0]).toBe(7);
+    expect(wheelStraight).toEqual([4, 5]);
+  });
+});
+

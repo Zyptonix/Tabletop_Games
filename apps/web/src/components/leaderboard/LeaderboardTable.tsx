@@ -10,23 +10,27 @@ export interface LeaderboardRow {
   level?: number;
   coins?: number;
   wins?: number;
+  totalWins?: number;
   gamesPlayed?: number;
+  totalGamesPlayed?: number;
+  totalScore?: number;
+  bestScore?: number;
   losses?: number;
   winRate?: number;
   rating?: number;
   avatarUrl?: string | null;
 }
 
-export function LeaderboardTable({ title, rows }: { title: string; rows: LeaderboardRow[] }) {
+export function LeaderboardTable({ title, rows, mode = "global" }: { title: string; rows: LeaderboardRow[]; mode?: "global" | "game" }) {
   return (
-    <Card>
+    <Card className="border-emerald-400/20 bg-[#0c1715] text-emerald-50">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="text-xs uppercase text-zinc-500">
+          <table className="w-full text-left text-sm text-emerald-50/85">
+            <thead className="text-xs uppercase text-emerald-200/60">
               <tr>
                 <th className="py-2">Rank</th>
                 <th className="py-2">Player</th>
@@ -36,12 +40,14 @@ export function LeaderboardTable({ title, rows }: { title: string; rows: Leaderb
                 <th className="py-2">Wins</th>
                 <th className="py-2">Played</th>
                 <th className="py-2">Win %</th>
+                {mode === "game" ? <th className="py-2">Score</th> : null}
+                {mode === "game" ? <th className="py-2">Best</th> : null}
                 <th className="py-2">Rating</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((row, index) => (
-                <tr key={row.userId ?? `${row.username}-${index}`} className="border-t border-zinc-100">
+                <tr key={row.userId ?? `${row.username}-${index}`} className="border-t border-white/10">
                   <td className="py-3 font-black">{index + 1}</td>
                   <td className="py-3 font-semibold">
                     <span className="inline-flex items-center gap-2">
@@ -52,10 +58,12 @@ export function LeaderboardTable({ title, rows }: { title: string; rows: Leaderb
                   <td className="py-3">{row.level ?? "-"}</td>
                   <td className="py-3">{row.xp ?? "-"}</td>
                   <td className="py-3">{row.coins ?? "-"}</td>
-                  <td className="py-3">{row.wins ?? "-"}</td>
-                  <td className="py-3">{row.gamesPlayed ?? "-"}</td>
+                  <td className="py-3">{row.wins ?? row.totalWins ?? "-"}</td>
+                  <td className="py-3">{row.gamesPlayed ?? row.totalGamesPlayed ?? "-"}</td>
                   <td className="py-3">{typeof row.winRate === "number" ? `${Math.round(row.winRate * 100)}%` : "-"}</td>
-                  <td className="py-3">{row.rating ?? "-"}</td>
+                  {mode === "game" ? <td className="py-3">{row.totalScore ?? "-"}</td> : null}
+                {mode === "game" ? <td className="py-3">{row.bestScore ?? "-"}</td> : null}
+                <td className="py-3">{row.rating ?? "-"}</td>
                 </tr>
               ))}
             </tbody>

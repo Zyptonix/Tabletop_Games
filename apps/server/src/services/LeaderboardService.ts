@@ -26,7 +26,7 @@ export class LeaderboardService {
   async getGameWins(gameId: string, limit = 25) {
     const stats = await prisma.playerGameStats.findMany({
       where: { gameId },
-      orderBy: [{ wins: "desc" }, { rating: "desc" }],
+      orderBy: [{ wins: "desc" }, { totalScore: "desc" }, { rating: "desc" }],
       take: limit,
       include: {
         user: {
