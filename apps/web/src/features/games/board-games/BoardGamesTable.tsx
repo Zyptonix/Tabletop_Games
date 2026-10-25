@@ -131,6 +131,7 @@ export function BoardGamesTable({
   const router = useRouter();
   const [hoverColumn, setHoverColumn] = useState<number | null>(null);
   const [keyboardColumn, setKeyboardColumn] = useState(3);
+  const [keyboardNavigationActive, setKeyboardNavigationActive] = useState(false);
   const [chatOpen, setChatOpen] = useState(true);
   const [connectFourArt, setConnectFourArt] = useState<ConnectFourArt>(CONNECT_FOUR_ART_DEFAULTS);
   const useBoardSprite = state.gameId === "connect-four" && Boolean(connectFourArt.boardOverlay);
@@ -181,9 +182,11 @@ export function BoardGamesTable({
       if (target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
       if (event.key === "ArrowLeft") {
         event.preventDefault();
+        setKeyboardNavigationActive(true);
         setKeyboardColumn((column) => Math.max(0, column - 1));
       } else if (event.key === "ArrowRight") {
         event.preventDefault();
+        setKeyboardNavigationActive(true);
         setKeyboardColumn((column) => Math.min(state.columns - 1, column + 1));
       } else if (event.key === "Enter" || event.code === "Space") {
         if (target instanceof HTMLElement && target.closest("button")) return;
@@ -199,6 +202,7 @@ export function BoardGamesTable({
     if (!isMyTurn || !columnsWithMoves.has(column)) return;
     onAction("drop", { column });
     setKeyboardColumn(column);
+    setKeyboardNavigationActive(false);
   }
 
   function sendPlace(row: number, column: number) {
@@ -252,6 +256,8 @@ export function BoardGamesTable({
                 <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 pb-1">
                   <div
                     className={`connect-four-cabinet relative flex max-h-full min-h-0 max-w-full ${useBoardSprite ? "connect-four-sprite-cabinet" : "flex-col rounded-[1.25rem] border-[3px] border-[#126bb3] p-2.5 sm:rounded-[1.5rem] sm:p-3"}`}
+                    onPointerMove={(event) => { if (event.pointerType === "mouse") setKeyboardNavigationActive(false); }}
+                    onPointerLeave={() => { setHoverColumn(null); setKeyboardNavigationActive(false); }}
                     style={{
                       width: useBoardSprite
                         ? "min(100%, 1200px, calc((100dvh - 250px) * 1.8347))"
@@ -260,13 +266,13 @@ export function BoardGamesTable({
                     }}
                   >
                     {useBoardSprite ? (
-                      <div className="connect-four-sprite-controls absolute z-30 grid" style={{ left: "17.2%", top: "2.2%", width: "65.6%", height: "4.3%", gridTemplateColumns: `repeat(${state.columns}, minmax(0, 1fr))` }} aria-label="Drop into column">
+                      <div className="connect-four-sprite-controls absolute z-30 grid" style={{ left: "17.2%", top: "2.2%", width: "65.6%", height: "4.3%", gridTemplateColumns: `repeat(${state.columns}, minmax(0, 1fr))` }} aria-label="Drop into column" onPointerLeave={() => setHoverColumn(null)}>
                         {Array.from({ length: state.columns }, (_, column) => {
                           const enabled = isMyTurn && columnsWithMoves.has(column);
-                          const hovered = hoverColumn === column || keyboardColumn === column;
+                          const hovered = hoverColumn === column || (keyboardNavigationActive && keyboardColumn === column);
                           const discColor = CONNECT_FOUR_COLORS[state.players.findIndex((player) => player.userId === currentUserId)] ?? CONNECT_FOUR_COLORS[0]!;
                           return (
-                            <button key={column} type="button" disabled={!enabled} onMouseEnter={() => setHoverColumn(column)} onMouseLeave={() => setHoverColumn(null)} onFocus={() => setHoverColumn(column)} onBlur={() => setHoverColumn(null)} onClick={() => sendDrop(column)} aria-label={`Drop disc in column ${column + 1}`} className="grid h-full min-w-0 place-items-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-white/80 disabled:cursor-not-allowed">
+                            <button key={column} type="button" disabled={!enabled} onPointerEnter={() => { setHoverColumn(column); setKeyboardNavigationActive(false); }} onFocus={() => { setHoverColumn(column); setKeyboardNavigationActive(true); }} onBlur={() => { setHoverColumn(null); setKeyboardNavigationActive(false); }} onClick={() => sendDrop(column)} aria-label={`Drop disc in column ${column + 1}`} className="grid h-full min-w-0 place-items-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-white/80 disabled:cursor-not-allowed">
                               <motion.span animate={{ scale: hovered && enabled ? 1.08 : 1, opacity: enabled ? (hovered ? 0.96 : 0.52) : 0.08, y: hovered && enabled ? 1 : 0 }} transition={{ type: "spring", stiffness: 360, damping: 24 }} className="connect-four-drop-indicator relative block aspect-square h-[min(0.9rem,90%)] rounded-full border" style={{ background: `radial-gradient(circle at 30% 20%,${discColor.light},${discColor.css} 52%,${discColor.dark})`, borderColor: discColor.light, boxShadow: hovered && enabled ? `0 0 14px ${discColor.css}88` : "inset 0 2px 4px #0008" }}>
                                 {connectFourArt.dropIndicator ? <img src={connectFourArt.dropIndicator} alt="" aria-hidden="true" draggable={false} onError={(event) => { event.currentTarget.style.display = "none"; }} className="pointer-events-none absolute inset-[-20%] h-[140%] w-[140%] object-contain" /> : null}
                               </motion.span>
@@ -275,13 +281,13 @@ export function BoardGamesTable({
                         })}
                       </div>
                     ) : null}
-                    {!useBoardSprite ? <div className="connect-four-top-lip relative z-10 mb-1 grid h-7 shrink-0 grid-cols-7 items-center gap-1 rounded-md border border-[#064a86] px-1.5 sm:mb-2 sm:h-8 sm:px-2" aria-label="Drop into column">
+                    {!useBoardSprite ? <div className="connect-four-top-lip relative z-10 mb-1 grid h-7 shrink-0 grid-cols-7 items-center gap-1 rounded-md border border-[#064a86] px-1.5 sm:mb-2 sm:h-8 sm:px-2" aria-label="Drop into column" onPointerLeave={() => setHoverColumn(null)}>
                       {Array.from({ length: state.columns }, (_, column) => {
                         const enabled = isMyTurn && columnsWithMoves.has(column);
-                        const hovered = hoverColumn === column || keyboardColumn === column;
+                        const hovered = hoverColumn === column || (keyboardNavigationActive && keyboardColumn === column);
                         const discColor = CONNECT_FOUR_COLORS[state.players.findIndex((player) => player.userId === currentUserId)] ?? CONNECT_FOUR_COLORS[0]!;
                         return (
-                          <button key={column} type="button" disabled={!enabled} onMouseEnter={() => setHoverColumn(column)} onMouseLeave={() => setHoverColumn(null)} onFocus={() => setHoverColumn(column)} onBlur={() => setHoverColumn(null)} onClick={() => sendDrop(column)} aria-label={`Drop disc in column ${column + 1}`} className="grid h-full min-w-0 place-items-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-white/80 disabled:cursor-not-allowed">
+                          <button key={column} type="button" disabled={!enabled} onPointerEnter={() => { setHoverColumn(column); setKeyboardNavigationActive(false); }} onFocus={() => { setHoverColumn(column); setKeyboardNavigationActive(true); }} onBlur={() => { setHoverColumn(null); setKeyboardNavigationActive(false); }} onClick={() => sendDrop(column)} aria-label={`Drop disc in column ${column + 1}`} className="grid h-full min-w-0 place-items-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-white/80 disabled:cursor-not-allowed">
                             <motion.span animate={{ scale: hovered && enabled ? 1.07 : 1, opacity: enabled ? (hovered ? 0.95 : 0.5) : 0.12, y: hovered && enabled ? 1 : 0 }} transition={{ type: "spring", stiffness: 360, damping: 24 }} className="connect-four-drop-indicator relative block aspect-square h-[min(1.25rem,80%)] rounded-full border" style={{ background: `radial-gradient(circle at 30% 20%,${discColor.light},${discColor.css} 52%,${discColor.dark})`, borderColor: discColor.light, boxShadow: hovered && enabled ? `0 0 14px ${discColor.css}88` : "inset 0 2px 4px #0008" }}>
                               {connectFourArt.dropIndicator ? <img src={connectFourArt.dropIndicator} alt="" aria-hidden="true" draggable={false} onError={(event) => { event.currentTarget.style.display = "none"; }} className="pointer-events-none absolute inset-[-20%] h-[140%] w-[140%] object-contain" /> : null}
                             </motion.span>
@@ -297,6 +303,7 @@ export function BoardGamesTable({
                         : { gridTemplateColumns: `repeat(${state.columns}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${state.rows}, minmax(0, 1fr))`, aspectRatio: "7 / 6" }}
                       role="group"
                       aria-label="Connect Four board"
+                      onPointerLeave={() => setHoverColumn(null)}
                     >
                         {state.board.flatMap((row, rowIndex) => row.map((cell, columnIndex) => {
                         const key = `${rowIndex},${columnIndex}`;
@@ -305,15 +312,15 @@ export function BoardGamesTable({
                         const color = CONNECT_FOUR_COLORS[playerIndex] ?? CONNECT_FOUR_COLORS[0]!;
                         const isLast = state.lastMove?.row === rowIndex && state.lastMove?.column === columnIndex;
                         const isWinning = winningCells.has(key);
-                        const isHovered = hoverColumn === columnIndex || keyboardColumn === columnIndex;
+                        const isHovered = hoverColumn === columnIndex || (keyboardNavigationActive && keyboardColumn === columnIndex);
                         const occupied = Boolean(cell);
                         return (
-                          <button key={key} type="button" onClick={() => sendDrop(columnIndex)} onMouseEnter={() => setHoverColumn(columnIndex)} onMouseLeave={() => setHoverColumn(null)} disabled={!isMyTurn || state.phase !== "playing" || !legal} aria-label={cell ? `${state.players[playerIndex]?.displayName ?? "Player"} ${color.name.toLowerCase()} disc at row ${rowIndex + 1}, column ${columnIndex + 1}` : `Empty slot row ${rowIndex + 1}, column ${columnIndex + 1}${legal ? ", legal column" : ""}`} className={`${useBoardSprite ? "connect-four-sprite-cell" : "connect-four-cell relative grid min-h-0 min-w-0 place-items-center border-b border-r border-[#064c88]/90 p-0"} focus-visible:z-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/80 ${isHovered && isMyTurn && !occupied ? (useBoardSprite ? "connect-four-sprite-slot-hover" : "connect-four-slot-hover") : ""} ${isWinning ? "connect-four-winning-slot" : ""}`} style={{ zIndex: isLast ? 20 : 0 }}>
+                          <button key={key} type="button" onClick={() => sendDrop(columnIndex)} onPointerEnter={() => { setHoverColumn(columnIndex); setKeyboardNavigationActive(false); }} disabled={!isMyTurn || state.phase !== "playing" || !legal} aria-label={cell ? `${state.players[playerIndex]?.displayName ?? "Player"} ${color.name.toLowerCase()} disc at row ${rowIndex + 1}, column ${columnIndex + 1}` : `Empty slot row ${rowIndex + 1}, column ${columnIndex + 1}${legal ? ", legal column" : ""}`} className={`${useBoardSprite ? "connect-four-sprite-cell" : "connect-four-cell relative grid min-h-0 min-w-0 place-items-center border-b border-r border-[#064c88]/90 p-0"} focus-visible:z-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/80 ${isHovered && isMyTurn && !occupied ? (useBoardSprite ? "connect-four-sprite-slot-hover" : "connect-four-slot-hover") : ""} ${isWinning ? "connect-four-winning-slot" : ""}`} style={{ zIndex: isLast ? 20 : 0 }}>
                             <span className={useBoardSprite ? `connect-four-sprite-cell-content ${isWinning ? "connect-four-winning-hole" : ""}` : `connect-four-hole relative grid aspect-square w-[80%] place-items-center rounded-full ${isWinning ? "connect-four-winning-hole" : ""}`}>
                               {cell ? (
-                                <motion.span key={`${key}-${cell}`} initial={{ y: -((rowIndex + 1) * (useBoardSprite ? 68 : 100)), scale: 0.84, rotate: rowIndex % 2 ? 4 : -4 }} animate={{ y: 0, scale: isWinning ? [1, 1.055, 1] : 1, rotate: 0 }} transition={{ type: "spring", stiffness: 290, damping: 17, mass: 0.72, scale: { duration: 0.34, repeat: isWinning ? Infinity : 0, repeatType: "reverse" } }} className={`${useBoardSprite ? "connect-four-sprite-disc" : "connect-four-disc relative z-10 block h-[91%] w-[91%] rounded-full"} ${isLast ? "connect-four-last-disc" : ""} ${isWinning ? "connect-four-winning-disc" : ""}`} style={{ width: useBoardSprite ? "56%" : undefined, height: useBoardSprite ? "auto" : undefined, aspectRatio: useBoardSprite ? "1 / 1" : undefined, background: `radial-gradient(circle at 29% 21%,${color.light} 0%,${color.css} 32%,${color.dark} 100%)`, border: `2px solid ${color.light}bb`, boxShadow: `inset 0 3px 5px rgba(255,255,255,.46),inset 0 -7px 10px rgba(0,0,0,.25),0 3px 5px rgba(0,0,0,.32)` }}>
+                                <motion.span key={`${key}-${cell}`} initial={{ y: -((rowIndex + 1) * (useBoardSprite ? 68 : 100)), scale: 0.84, rotate: rowIndex % 2 ? 4 : -4 }} animate={{ y: 0, scale: isWinning ? [1, 1.055, 1] : 1, rotate: 0 }} transition={{ type: "spring", stiffness: 290, damping: 17, mass: 0.72, scale: { duration: 0.34, repeat: isWinning ? Infinity : 0, repeatType: "reverse" } }} className={`${useBoardSprite ? "connect-four-sprite-disc" : "connect-four-disc relative z-10 block h-[91%] w-[91%] rounded-full"} ${isLast ? "connect-four-last-disc" : ""} ${isWinning ? "connect-four-winning-disc" : ""}`} style={{ width: useBoardSprite ? "75%" : undefined, height: useBoardSprite ? "auto" : undefined, aspectRatio: useBoardSprite ? "1 / 1" : undefined, background: `radial-gradient(circle at 29% 21%,${color.light} 0%,${color.css} 32%,${color.dark} 100%)`, border: `2px solid ${color.light}bb`, boxShadow: `inset 0 3px 5px rgba(255,255,255,.46),inset 0 -7px 10px rgba(0,0,0,.25),0 3px 5px rgba(0,0,0,.32)` }}>
                                   {!useBoardSprite ? <span className="pointer-events-none absolute left-[21%] top-[15%] h-[17%] w-[29%] rounded-full bg-white/55 blur-[0.5px]" /> : null}
-                                  {state.gameId === "connect-four" && (playerIndex === 0 ? connectFourArt.redDisc : connectFourArt.yellowDisc) ? <img src={(playerIndex === 0 ? connectFourArt.redDisc : connectFourArt.yellowDisc) ?? undefined} alt="" aria-hidden="true" draggable={false} onError={(event) => { event.currentTarget.style.display = "none"; }} className={`connect-four-custom-disc pointer-events-none absolute z-10 select-none ${useBoardSprite ? "object-contain" : "inset-0 h-full w-full object-fill"}`} style={useBoardSprite ? { inset: "-6%", width: "112%", height: "112%" } : undefined} /> : null}
+                                  {state.gameId === "connect-four" && (playerIndex === 0 ? connectFourArt.redDisc : connectFourArt.yellowDisc) ? <img src={(playerIndex === 0 ? connectFourArt.redDisc : connectFourArt.yellowDisc) ?? undefined} alt="" aria-hidden="true" draggable={false} onError={(event) => { event.currentTarget.style.display = "none"; }} className={`connect-four-custom-disc pointer-events-none absolute z-10 select-none ${useBoardSprite ? "object-contain" : "inset-0 h-full w-full object-fill"}`} style={useBoardSprite ? { inset: "-6%", width: "100%", height: "100%" } : undefined} /> : null}
                                 </motion.span>
                               ) : useBoardSprite && isHovered && isMyTurn && legal ? <span className="connect-four-sprite-empty-preview" /> : !useBoardSprite && isHovered && isMyTurn && legal ? <span className="connect-four-empty-preview block h-[86%] w-[86%] rounded-full border-2 border-dashed border-white/45" /> : null}
                             </span>

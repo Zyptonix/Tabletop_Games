@@ -734,3 +734,143 @@ body:has(.uno-fullscreen) {
     animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important;
   }
 }
+
+/* CONNECT FOUR FINAL ARCADE POLISH V4 — isolated to the Connect Four/Reversi screen. */
+.board-game-screen:has(.connect-four-cabinet) {
+  background-color: #050914;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+}
+
+.board-game-screen .board-game-panel:has(.connect-four-cabinet) {
+  border-color: rgb(96 165 250 / 0.2);
+  background:
+    radial-gradient(ellipse at 50% 36%, rgb(14 116 214 / 0.2), transparent 58%),
+    radial-gradient(ellipse at 50% 100%, rgb(3 9 24 / 0.36), transparent 64%),
+    linear-gradient(145deg, rgb(9 18 34 / 0.78), rgb(5 10 21 / 0.83) 72%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.045), 0 22px 64px rgb(0 0 0 / 0.38);
+}
+
+.board-game-screen .connect-four-sprite-cabinet {
+  filter: drop-shadow(0 20px 22px rgb(0 0 0 / 0.52)) drop-shadow(0 0 20px rgb(37 99 235 / 0.13));
+}
+
+.board-game-screen .connect-four-sprite-cabinet::after {
+  content: "";
+  position: absolute;
+  inset: 2% 8% -3%;
+  z-index: -1;
+  border-radius: 1.4rem;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, rgb(37 99 235 / 0.23), rgb(14 165 233 / 0.06) 46%, transparent 74%);
+  filter: blur(18px);
+}
+
+.board-game-screen .connect-four-sprite-controls button {
+  border-radius: 0.55rem;
+  transition: background-color 120ms ease, box-shadow 120ms ease;
+}
+
+.board-game-screen .connect-four-sprite-controls button:focus-visible,
+.board-game-screen .connect-four-sprite-cell:focus-visible {
+  outline: 2px solid rgb(255 255 255 / 0.92);
+  outline-offset: -3px;
+  box-shadow: inset 0 0 0 2px rgb(37 99 235 / 0.76), 0 0 0 2px rgb(59 130 246 / 0.16);
+}
+
+.board-game-screen .connect-four-sprite-slot-hover .connect-four-sprite-cell-content {
+  background: radial-gradient(circle, rgb(255 255 255 / 0.075), rgb(59 130 246 / 0.035) 45%, transparent 73%);
+}
+
+.board-game-screen .connect-four-sprite-disc {
+  backface-visibility: hidden;
+  transform-origin: 50% 50%;
+  will-change: transform, filter;
+}
+
+.board-game-screen .connect-four-sprite-disc.connect-four-last-disc {
+  filter: drop-shadow(0 0 5px rgb(255 255 255 / 0.25));
+}
+
+.board-game-screen .connect-four-sprite-disc.connect-four-winning-disc {
+  filter: drop-shadow(0 0 7px rgb(255 255 255 / 0.24));
+}
+
+.board-game-screen .connect-four-winning-slot .connect-four-sprite-cell-content {
+  box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.15), 0 0 12px rgb(255 255 255 / 0.11);
+}
+
+.board-game-screen .connect-four-sprite-empty-preview {
+  width: 62%;
+  border: 2px solid rgb(255 255 255 / 0.58);
+  background: rgb(255 255 255 / 0.075);
+  box-shadow: 0 0 15px rgb(255 255 255 / 0.18), inset 0 1px 2px rgb(255 255 255 / 0.15);
+}
+
+@media (max-height: 790px) and (min-width: 1024px) {
+  .board-game-screen .board-game-panel:has(.connect-four-cabinet) {
+    padding: 0.65rem;
+  }
+  .board-game-screen .connect-four-sprite-cabinet {
+    filter: drop-shadow(0 12px 16px rgb(0 0 0 / 0.48)) drop-shadow(0 0 12px rgb(37 99 235 / 0.1));
+  }
+  .board-game-screen .connect-four-sprite-cabinet::after {
+    filter: blur(12px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board-game-screen .connect-four-sprite-disc,
+  .board-game-screen .connect-four-sprite-controls button {
+    transition: none !important;
+  }
+}
+
+/* Twenty-Nine arcade polish: full-viewport stage, unobtrusive physical card rails. */
+.twenty-nine-shell {
+  width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  isolation: isolate;
+  background-color: #020807;
+  background-size: cover;
+  background-position: center;
+}
+.twenty-nine-playing-card {
+  aspect-ratio: 0.715;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+.twenty-nine-trick-rail {
+  perspective: 1100px;
+}
+.twenty-nine-trick-rail > div > * {
+  transform-origin: center bottom;
+}
+.twenty-nine-winning-play {
+  border-radius: 0.9rem;
+  animation: twenty-nine-winner-breathe 1.8s ease-in-out infinite;
+}
+.twenty-nine-score-card-back {
+  transform-origin: 78% 84%;
+  backface-visibility: hidden;
+}
+.twenty-nine-score-card-face {
+  transform-origin: 50% 86%;
+  backface-visibility: hidden;
+}
+.twenty-nine-bid-prompt {
+  isolation: isolate;
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+@keyframes twenty-nine-winner-breathe {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(252,211,77,0)); }
+  50% { filter: drop-shadow(0 0 14px rgba(252,211,77,.18)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .twenty-nine-winning-play { animation: none !important; }
+}
+
+/* twenty-nine-arcade-polish-v1 */
