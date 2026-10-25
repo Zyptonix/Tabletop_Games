@@ -14,3 +14,4 @@ postgres.log
 .tmp
 *.zip
 *.tsbuildinfo
+patches/

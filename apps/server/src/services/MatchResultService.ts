@@ -1,3 +1,4 @@
+/* TABLETOP GAME ENGINE CONTINUATION V3 */
 import { prisma } from "@tabletop/db";
 import type { GameResults } from "@tabletop/game-core";
 import { levelFromXp } from "../utils/http";
@@ -90,6 +91,11 @@ export class MatchResultService {
     const winnerUserId = params.results.winnerUserId && !isBotUserId(params.results.winnerUserId) ? params.results.winnerUserId : null;
 
     await prisma.$transaction(async (transaction) => {
+      const existingMatch = await transaction.match.findUnique({ where: { id: params.matchId }, select: { endedAt: true } });
+      // Socket retries/reconnects can deliver the same terminal snapshot more than once.
+      // Never duplicate XP, coins, scores or leaderboard increments for an already-finalized match.
+      if (!existingMatch || existingMatch.endedAt) return;
+
       await transaction.match.update({
         where: { id: params.matchId },
         data: {

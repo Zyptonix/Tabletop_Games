@@ -1,3 +1,4 @@
+/* TABLETOP GAME ENGINE CONTINUATION V3 */
 "use client";
 
 import type { RoomStateView, TimerView } from "@tabletop/shared";
@@ -44,7 +45,7 @@ export function GameShell({
    */
   if (inGame) {
     return (
-      <div className="min-h-screen bg-[#020604] text-white">
+      <div className="tt-game-viewport h-dvh bg-[#020604] text-white">
         <ReconnectOverlay connected={connected} />
         {children}
       </div>

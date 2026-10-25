@@ -1,3 +1,4 @@
+/* TABLETOP GAME ENGINE CONTINUATION V3 */
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -196,7 +197,7 @@ function WerewolfVotingDialog({
               ) : null}
             </div>
 
-            <div className="grid max-h-[18rem] grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3 [scrollbar-color:rgba(245,158,11,0.52)_rgba(255,255,255,0.06)] [scrollbar-width:thin]">
+            <div className="grid max-h-[18rem] grid-cols-1 gap-2 overflow-hidden pr-1 sm:grid-cols-2 xl:grid-cols-3 [scrollbar-color:rgba(245,158,11,0.52)_rgba(255,255,255,0.06)] [scrollbar-width:thin]">
               {voteActions.map((action) => {
                 const player = state.players.find((item) => item.userId === action.targetPlayerId);
                 const selected = selectedTargetId === action.targetPlayerId;
@@ -253,7 +254,7 @@ function WerewolfVotingDialog({
           <div className="min-h-0 overflow-hidden rounded-[1.45rem] border border-amber-200/14 bg-[linear-gradient(180deg,rgba(245,158,11,0.10),rgba(0,0,0,0.32))] p-3">
             <p className="text-[0.62rem] font-black uppercase tracking-[0.24em] text-amber-200/62">Live tally</p>
 
-            <div className="mt-3 max-h-[18rem] space-y-2 overflow-y-auto pr-1 [scrollbar-color:rgba(245,158,11,0.52)_rgba(255,255,255,0.06)] [scrollbar-width:thin]">
+            <div className="mt-3 max-h-[18rem] space-y-2 overflow-hidden pr-1 [scrollbar-color:rgba(245,158,11,0.52)_rgba(255,255,255,0.06)] [scrollbar-width:thin]">
               {voteRows.map((player) => {
                 const highest = player.count > 0 && player.count === Math.max(...voteRows.map((item) => item.count), state.passVoteCount);
                 return (
@@ -450,7 +451,7 @@ function NightActionDialog({
           </p>
         </div>
 
-        <div className="max-h-[min(70dvh,34rem)] min-h-0 overflow-y-auto p-4 [scrollbar-color:rgba(96,165,250,0.52)_rgba(255,255,255,0.06)] [scrollbar-width:thin]">
+        <div className="max-h-[min(70dvh,34rem)] min-h-0 overflow-hidden p-4 [scrollbar-color:rgba(96,165,250,0.52)_rgba(255,255,255,0.06)] [scrollbar-width:thin]">
           <div className="space-y-4">
             {actionGroups.map((group) => (
               <div key={group.key} className="rounded-[1.45rem] border border-white/10 bg-black/35 p-3">
@@ -493,7 +494,7 @@ function NightActionDialog({
                   </div>
                 ) : null}
 
-                <div className="grid max-h-[17rem] grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3 [scrollbar-color:rgba(96,165,250,0.52)_rgba(255,255,255,0.06)] [scrollbar-width:thin]">
+                <div className="grid max-h-[17rem] grid-cols-1 gap-2 overflow-hidden pr-1 sm:grid-cols-2 xl:grid-cols-3 [scrollbar-color:rgba(96,165,250,0.52)_rgba(255,255,255,0.06)] [scrollbar-width:thin]">
                   {group.actions.map((action) => {
                     const player = state.players.find((item) => item.userId === action.targetPlayerId);
                     const selected = selectedTargetId === action.targetPlayerId;
@@ -690,12 +691,12 @@ export function MafiaWerewolfTable({
   }
 
   return (
-    <div className={cn("relative min-h-[100dvh] overflow-hidden bg-gradient-to-b text-white", phaseTone(state.phase))}>
+    <div className={cn("tt-game-viewport mafia-werewolf-screen relative h-dvh min-h-0 overflow-hidden bg-gradient-to-b text-white", phaseTone(state.phase))}>
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_10%,rgba(180,200,255,0.14),transparent_11%),radial-gradient(circle_at_50%_48%,rgba(40,50,80,0.46),transparent_44%),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(180deg,rgba(255,255,255,0.020)_1px,transparent_1px)] bg-[length:auto,auto,32px_32px,32px_32px]" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[45%] bg-[radial-gradient(circle_at_25%_70%,rgba(148,163,184,0.10),transparent_34%),radial-gradient(circle_at_78%_62%,rgba(120,130,150,0.10),transparent_38%)] blur-xl" />
       <div className="pointer-events-none absolute left-1/2 top-[6%] h-24 w-24 -translate-x-1/2 rounded-full bg-slate-200/20 blur-sm shadow-[0_0_90px_rgba(191,219,254,0.30)]" />
 
-      <div className="relative z-10 flex min-h-[100dvh] flex-col p-3">
+      <div className="relative z-10 flex h-full min-h-0 flex-col overflow-hidden p-2">
         <header className="flex h-[4.35rem] shrink-0 items-start justify-between gap-3">
           <div className="flex items-center gap-2">
             <button className="inline-flex min-h-[3rem] w-[12rem] items-center justify-between rounded-[1.1rem] border border-white/10 bg-black/42 px-4 text-left text-sm font-black text-white shadow-xl backdrop-blur-md">
@@ -807,7 +808,7 @@ export function MafiaWerewolfTable({
 
               <div className="rounded-2xl border border-white/10 bg-black/35 p-3 shadow-[0_18px_60px_rgba(0,0,0,0.35)] backdrop-blur-xl">
                 <p className="text-[0.65rem] font-black uppercase tracking-[0.22em] text-white/35">Game log</p>
-                <div className="mt-2 max-h-36 space-y-2 overflow-y-auto pr-1 text-xs font-semibold text-white/56 [scrollbar-width:thin]">
+                <div className="mt-2 max-h-36 space-y-2 overflow-hidden pr-1 text-xs font-semibold text-white/56 [scrollbar-width:thin]">
                   {gameEvents.slice(-8).reverse().map((event) => <p key={event.id} className="rounded-lg bg-white/[0.04] px-2 py-1.5">{event.message ?? event.type}</p>)}
                 </div>
               </div>
@@ -836,7 +837,7 @@ export function MafiaWerewolfTable({
             {resultStep === 0 ? (
               <div className="space-y-3 rounded-2xl bg-zinc-950 p-4">
                 <p className="text-sm font-bold text-white/60">Every player's role is now revealed.</p>
-                <div className="grid max-h-[55vh] grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2 [scrollbar-width:thin]">
+                <div className="grid max-h-[55vh] grid-cols-1 gap-2 overflow-hidden pr-1 sm:grid-cols-2 [scrollbar-width:thin]">
                   {state.players.map((player) => {
                     const role = player.role ?? player.revealedRole;
                     const theme = getWerewolfRoleTheme(role ?? "villager");

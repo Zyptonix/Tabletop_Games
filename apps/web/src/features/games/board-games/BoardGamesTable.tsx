@@ -1,3 +1,4 @@
+/* TABLETOP GAME ENGINE CONTINUATION V3 */
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -219,7 +220,7 @@ export function BoardGamesTable({
 
   return (
     <main
-      className="board-game-screen flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-[#070b11] px-3 py-3 text-white lg:px-4 lg:py-3"
+      className="tt-game-viewport board-game-screen flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-[#070b11] px-3 py-3 text-white lg:px-4 lg:py-3"
       style={connectFourArt.screenBackground ? { backgroundImage: `linear-gradient(rgba(7,11,17,.76), rgba(7,11,17,.88)), url("${connectFourArt.screenBackground}")`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
     >
       <div className="mx-auto flex h-full min-h-0 w-full max-w-[1920px] flex-col gap-3">
@@ -403,7 +404,7 @@ export function BoardGamesTable({
 
             <section className="flex min-h-[130px] min-w-0 flex-[0.85] flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[linear-gradient(145deg,#101b29,#080e17)] shadow-[0_14px_38px_rgba(0,0,0,.22)]">
               <header className="flex shrink-0 items-center justify-between border-b border-white/[0.07] px-3 py-2.5"><h2 className="text-[0.65rem] font-black uppercase tracking-[0.2em] text-white/50">📜 Game log</h2><span className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-[0.58rem] font-bold text-white/30">LIVE</span></header>
-              <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto p-2.5 [scrollbar-color:#334155_#080e17] [scrollbar-width:thin]">
+              <div className="min-h-0 flex-1 space-y-1 overflow-hidden p-2.5 [scrollbar-color:#334155_#080e17] [scrollbar-width:thin]">
                 {recentEvents.length ? recentEvents.map((event) => (
                   <article key={event.id} className="flex items-start gap-2 rounded-lg border border-white/[0.045] bg-white/[0.025] px-2 py-1.5">
                     <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-white/[0.07] bg-black/20 text-base">{eventEmoji(event, state.gameId)}</span>

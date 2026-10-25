@@ -80,7 +80,15 @@ export function useRoomSocket(roomCode?: string): RoomSocketState {
   const [gameEvents, setGameEvents] = useState<GameEvent[]>([]);
   const [timer, setTimer] = useState<TimerView | null>(null);
   const [error, setError] = useState<string | null>(null);
+    useEffect(() => {
+    if (!error) return;
 
+    const timeoutId = window.setTimeout(() => {
+      setError(null);
+    }, 2000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [error]);
   useEffect(() => {
     roomCodeRef.current = roomCode?.toUpperCase() ?? null;
     joinedRoomCodeRef.current = null;

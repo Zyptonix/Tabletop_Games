@@ -1105,3 +1105,138 @@ body:has(.uno-fullscreen) {
 }
 
 /* TWENTY-NINE TABLETOP POLISH V3 */
+
+/* TABLETOP GAME ENGINE CONTINUATION V3 — PC-first game viewport fit.
+   Keep active tables inside the display; shrink board content on short displays.
+   Individual game panels still use fixed-size visual affordances, not page scrolling. */
+html:has(.tt-game-viewport),
+body:has(.tt-game-viewport) {
+  width: 100%;
+  height: 100%;
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+.tt-game-viewport {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+.tt-game-viewport .overflow-y-auto,
+.tt-game-viewport .overflow-x-auto {
+  overflow: hidden !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+.tt-game-viewport .overflow-y-auto::-webkit-scrollbar,
+.tt-game-viewport .overflow-x-auto::-webkit-scrollbar {
+  display: none !important;
+}
+.prototype-game-screen .prototype-board-content {
+  min-height: 0;
+  overflow: hidden;
+  transform-origin: top center;
+}
+.prototype-game-screen .prototype-barricades-wrap { min-height: 0; }
+.barricades-hover-board { touch-action: manipulation; }
+.barricades-wall-solid { min-width: 0; min-height: 0; }
+.barricades-h-wall { width: 100%; height: 62%; }
+.barricades-v-wall { width: 62%; height: 100%; }
+@media (max-height: 860px) {
+  .prototype-game-screen .prototype-board-content { zoom: .86; }
+  .prototype-game-screen .prototype-barricades-wrap { gap: .35rem; }
+}
+@media (max-height: 740px) {
+  .prototype-game-screen .prototype-board-content { zoom: .76; }
+  .prototype-game-screen .prototype-barricades-wrap h2 { font-size: 1rem; }
+  .prototype-game-screen .prototype-barricades-wrap p { font-size: .62rem; }
+}
+@media (max-height: 850px) {
+  .twenty-nine-hand-row { min-height: 0 !important; padding-top: .75rem !important; margin-top: 0 !important; }
+  .twenty-nine-hand-row > * { min-width: 0 !important; flex-shrink: 1 !important; }
+  .twenty-nine-shell .twenty-nine-board-telemetry { transform: scale(.88); transform-origin: top left; }
+  .twenty-nine-shell .twenty-nine-trick-racks { transform: scale(.88); transform-origin: bottom left; }
+}
+@media (max-height: 740px) {
+  .twenty-nine-shell header { padding-top: .25rem !important; padding-bottom: .25rem !important; }
+  .twenty-nine-shell .twenty-nine-table { min-height: 0; }
+  .twenty-nine-shell .twenty-nine-hand-card { transform-origin: bottom center; }
+}
+
+
+/* TABLETOP ARENA FULL PATCH V4 — no-scroll casino layout + poker card art */
+.tt-game-viewport .overflow-y-auto,
+.tt-game-viewport .overflow-x-auto {
+  overflow: hidden !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+.tt-game-viewport .overflow-y-auto::-webkit-scrollbar,
+.tt-game-viewport .overflow-x-auto::-webkit-scrollbar { display: none !important; }
+.tt-game-viewport,
+.tt-game-viewport * { overscroll-behavior: none; }
+.poker-casino { --poker-gold: #d8ae67; }
+.poker-casino-felt {
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(21,108,73,.98) 0%, rgba(7,59,42,.98) 46%, rgba(3,28,21,.99) 78%),
+    repeating-linear-gradient(115deg, rgba(255,255,255,.012) 0 1px, transparent 1px 4px);
+  box-shadow: inset 0 0 55px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,245,216,.08);
+}
+.poker-playing-card {
+  position: relative;
+  display: grid;
+  width: clamp(2.25rem, 4.2vw, 3.45rem);
+  aspect-ratio: 5 / 7;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: .42rem;
+  border: 1px solid rgba(255,255,255,.75);
+  background: #f8fafc;
+  box-shadow: 0 3px 9px rgba(0,0,0,.28);
+}
+.poker-playing-card > img { display:block; width:100%; height:100%; object-fit:contain; }
+.poker-card-compact { width: clamp(1.8rem, 3.3vw, 2.75rem); border-radius: .3rem; }
+.poker-card-back {
+  place-items: center;
+  color: #f4d497;
+  border: 1px solid rgba(255,226,172,.72);
+  background:
+    linear-gradient(45deg, transparent 46%, rgba(255,255,255,.12) 48%, transparent 52%),
+    linear-gradient(-45deg, transparent 46%, rgba(255,255,255,.12) 48%, transparent 52%),
+    repeating-linear-gradient(45deg, #112f29 0 4px, #1c4c3f 4px 8px);
+  outline: 2px solid rgba(10,25,20,.9);
+  outline-offset: -4px;
+}
+.poker-card-back > span { font-size: clamp(.8rem, 1.8vw, 1.3rem); line-height: 1; }
+.poker-card-back > b { font-size: clamp(.28rem, .7vw, .42rem); letter-spacing: .1em; }
+.poker-card-back > small { font-size: .32rem; letter-spacing: .18em; }
+.poker-card-fallback { width:100%; height:100%; display:flex; flex-direction:column; justify-content:space-between; padding:.18rem .22rem; font-weight:900; line-height:1; }
+.poker-card-fallback strong { font-size:clamp(.55rem,1.2vw,.9rem); }
+.poker-card-fallback span { align-self:center; font-size:clamp(.8rem,1.8vw,1.2rem); }
+.poker-card-fallback small { align-self:flex-end; font-size:.45rem; }
+.poker-rules-modal { max-height: calc(100dvh - 1.5rem); overflow: hidden; }
+@media (max-height: 850px) {
+  .poker-casino-felt { padding-top: .35rem !important; padding-bottom: .35rem !important; }
+  .poker-casino .poker-playing-card { width: clamp(1.8rem, 3.4vw, 2.8rem); }
+  .poker-casino .poker-card-compact { width: clamp(1.55rem, 2.9vw, 2.35rem); }
+  .poker-casino-felt .mt-2 { margin-top: .3rem !important; }
+  .poker-casino-felt .mt-1 { margin-top: .15rem !important; }
+}
+@media (max-height: 700px) {
+  .poker-casino header { padding-top: .25rem; padding-bottom: .25rem; }
+  .poker-casino .poker-playing-card { width: clamp(1.55rem, 2.8vw, 2.2rem); }
+  .poker-casino .poker-card-compact { width: clamp(1.3rem, 2.4vw, 1.8rem); }
+  .poker-rules-modal { padding: .65rem; }
+  .poker-rules-modal .mt-3 { margin-top: .4rem; }
+}
+@media (max-width: 900px) {
+  .poker-casino-felt { border-width: 3px; }
+}
+@media (max-height: 850px) {
+  .mafia-werewolf-screen > .relative.z-10 { zoom: .88; }
+}
+@media (max-height: 700px) {
+  .mafia-werewolf-screen > .relative.z-10 { zoom: .76; }
+}
+

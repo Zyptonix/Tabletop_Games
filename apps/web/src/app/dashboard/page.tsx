@@ -1,3 +1,4 @@
+/* TABLETOP GAME ENGINE CONTINUATION V3 */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -12,6 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth/useAuth";
 import { api } from "@/lib/api/client";
+import { GameSelectionMenu } from "@/components/game-menu/GameSelectionMenu";
 
 export default function DashboardPage() {
   const { user } = useAuth({ required: true });
@@ -36,6 +38,7 @@ export default function DashboardPage() {
 
   return (
     <AppShell>
+      <div className="mb-6"><GameSelectionMenu /></div>
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <section className="rounded-lg border border-emerald-500/30 bg-[#0d1715] p-5 shadow-[0_0_0_1px_rgba(16,185,129,0.08),0_22px_40px_rgba(2,6,23,0.4)]">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

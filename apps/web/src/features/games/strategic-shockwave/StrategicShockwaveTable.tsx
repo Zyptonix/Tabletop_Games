@@ -1,3 +1,4 @@
+/* TABLETOP GAME ENGINE CONTINUATION V3 */
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -381,8 +382,8 @@ export function StrategicShockwaveTable({
   const newestEvents = gameEvents.slice(-4).reverse();
 
   return (
-    <div className="min-h-screen bg-[#07120f] px-3 py-4 text-white sm:px-5 lg:px-8">
-      <div className="mx-auto max-w-[1500px] space-y-4">
+    <div className="tt-game-viewport strategic-shockwave-screen h-dvh bg-[#07120f] overflow-hidden px-3 py-2 text-white sm:px-4 lg:px-5">
+      <div className="mx-auto flex h-full min-h-0 max-w-[1500px] flex-col gap-2 space-y-0">
         <header className="flex flex-col gap-3 rounded-2xl border border-emerald-900/80 bg-[#10231c] p-4 shadow-xl sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-[11px] font-black uppercase tracking-[0.28em] text-emerald-300">Tabletop Arena / Room {room.code}</p>
@@ -404,10 +405,10 @@ export function StrategicShockwaveTable({
           </div>
         </header>
 
-        <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_290px]">
+        <div className="grid min-h-0 flex-1 items-stretch gap-3 overflow-hidden xl:grid-cols-[minmax(0,1fr)_290px]">
           <section className="overflow-hidden rounded-2xl border border-emerald-900/80 bg-[#10231c] p-2 shadow-2xl sm:p-4">
             <div className="mx-auto max-w-[760px] overflow-hidden rounded-xl border border-emerald-300/15 bg-[#0c1f1a] shadow-[0_0_55px_rgba(16,185,129,0.09)]">
-              <canvas ref={canvasRef} aria-label="Strategic Shockwave bomb arena" className="block h-auto w-full" style={{ imageRendering: "pixelated" }} />
+              <canvas ref={canvasRef} aria-label="Strategic Shockwave bomb arena" className="block h-auto max-h-[calc(100dvh-210px)] w-full object-contain" style={{ imageRendering: "pixelated" }} />
             </div>
             <div className="mx-auto mt-3 flex max-w-[760px] flex-wrap items-center justify-between gap-3 text-xs text-emerald-100/70">
               <p><span className="font-black text-white">MOVE</span> WASD / Arrow keys <span className="ml-3 font-black text-white">BOMB</span> Space</p>
@@ -452,7 +453,7 @@ export function StrategicShockwaveTable({
 
             <section className="rounded-2xl border border-white/10 bg-[#10231c] p-4">
               <h2 className="text-xs font-black uppercase tracking-[0.22em] text-emerald-200/70">Room chat</h2>
-              <div className="mt-3 max-h-48 space-y-2 overflow-y-auto pr-1">
+              <div className="mt-3 max-h-24 space-y-1 overflow-hidden pr-1">
                 {room.chat.slice(-12).map((message) => <p key={message.id} className="text-xs leading-relaxed"><span className="font-black text-emerald-200">{message.displayName}: </span><span className="text-white/75">{message.body}</span></p>)}
               </div>
               <form onSubmit={submitChat} className="mt-3 flex gap-2">

@@ -1,3 +1,4 @@
+/* TABLETOP GAME ENGINE CONTINUATION V3 */
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -500,7 +501,7 @@ export function ClassicUnoTable({
   return (
     <MotionConfig reducedMotion="user">
       <LayoutGroup id={`uno-${room.id}`}>
-      <div className="uno-fullscreen relative h-[100dvh] w-screen overflow-hidden text-white">
+      <div className="uno-fullscreen tt-game-viewport relative h-[100dvh] w-screen overflow-hidden text-white">
         <div className="pointer-events-none absolute inset-0 uno-fullscreen-grid" />
         <div className="pointer-events-none absolute inset-0 uno-perspective-grid" />
         <div className="pointer-events-none absolute inset-0 uno-fullscreen-glow" />
@@ -951,7 +952,7 @@ export function ClassicUnoTable({
                 </div>
               </div>
 
-              <div className="max-h-[42vh] space-y-2 overflow-y-auto pr-1 [scrollbar-color:rgba(251,191,36,0.65)_rgba(255,255,255,0.08)] [scrollbar-width:thin]">
+              <div className="max-h-[22vh] space-y-1 overflow-hidden pr-1 [scrollbar-color:rgba(251,191,36,0.65)_rgba(255,255,255,0.08)] [scrollbar-width:thin]">
                 {placementRows.map((placement) => (
                   <div
                     key={placement.userId}

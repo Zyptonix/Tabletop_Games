@@ -1,3 +1,6 @@
+// TABLETOP ARENA FULL PATCH V5 — CODENAMES RULES
+/* TABLETOP ARENA FULL PATCH V4 */
+/* TABLETOP GAME ENGINE CONTINUATION V3 */
 /* TABLETOP GAME ENGINE HARDENING V2 */
 import { z } from "zod";
 import type { GameModule } from "../engine/GameModule";
@@ -29,7 +32,8 @@ export interface PrototypeSettings {
 }
 
 export type PrototypeAction =
-  | { type: "move_piece"; from: number; to: number }
+  | { type: "move_piece"; from: number; to: number;promotion?: "q" | "r" | "b" | "n" | undefined; }
+  | { type: "claim_chess_draw" }
   | { type: "fire"; x: number; y: number }
   | { type: "roll_dice" }
   | { type: "move_token"; tokenIndex: number }
@@ -41,6 +45,8 @@ export type PrototypeAction =
   | { type: "reinforce_territory"; territoryId: string }
   | { type: "attack_territory"; fromId: string; toId: string }
   | { type: "reveal_word"; index: number }
+  | { type: "give_clue"; clue: string; number: number }
+  | { type: "end_codenames_turn" }
   | { type: "poker_action"; choice: "fold" | "check" | "call" | "raise" | "all_in" };
 
 interface ActivityItem {
@@ -63,6 +69,10 @@ export interface PrototypeGameState {
   players: GamePlayer[];
   currentPlayerId: string | null;
   winnerUserId: string | null;
+  chessCastlingRights: string;
+  chessEnPassantTarget: number | null;
+  chessHalfmoveClock: number;
+  chessPositionHistory: string[];
   turnNumber: number;
   actionNumber: number;
   startedAt: string;
@@ -75,6 +85,7 @@ export interface PrototypeGameState {
   walls: Wall[];
   wallsRemaining: Record<string, number>;
   ludoTokens: Record<string, number[]>;
+  ludoConsecutiveSixes: Record<string, number>;
   diceRoll: number | null;
   hasRolled: boolean;
   money: Record<string, number>;
@@ -85,9 +96,15 @@ export interface PrototypeGameState {
   territoryTroops: Record<string, number>;
   reinforcedThisTurn: boolean;
   shipCellsByPlayer: Record<string, string[]>;
+  shipGroupsByPlayer: Record<string, string[][]>;
   shots: Shot[];
   wordCards: WordCard[];
   codenamesTeamByPlayer: Record<string, "red" | "blue">;
+  codenamesSpymasterByTeam: Record<"red" | "blue", string>;
+  codenamesRoundTeam: "red" | "blue";
+  codenamesClue: string | null;
+  codenamesClueNumber: number | null;
+  codenamesGuessesRemaining: number;
   pokerCardsByPlayer: Record<string, string[]>;
   pokerDeck: string[];
   communityCards: string[];
@@ -99,6 +116,7 @@ export interface PrototypeGameState {
   pokerPot: number;
   pokerContributions: Record<string, number>;
   pokerButtonSeat: number;
+  pokerHandNumber: number;
   pokerStreet: PokerStreet;
   pokerLastAction: string;
 }
@@ -119,6 +137,7 @@ export interface PublicPrototypeGameState {
     folded: boolean;
     bet: number;
     team: "red" | "blue" | null;
+    isSpymaster: boolean;
   }>;
   currentPlayerId: string | null;
   winnerUserId: string | null;
@@ -141,7 +160,12 @@ export interface PublicPrototypeGameState {
   reinforcedThisTurn: boolean;
   ownShipCells: string[];
   shots: Shot[];
-  wordCards: Array<{ word: string; revealed: boolean; revealedRole: Team | null }>;
+  wordCards: Array<{ word: string; revealed: boolean; revealedRole: Team | null; keyRole: Team | null }>;
+  isCodenamesSpymaster: boolean;
+  codenamesCurrentTeam: "red" | "blue";
+  codenamesClue: string | null;
+  codenamesClueNumber: number | null;
+  codenamesGuessesRemaining: number;
   myPokerCards: string[];
   communityCards: string[];
   pokerStacks: Record<string, number>;
@@ -150,6 +174,8 @@ export interface PublicPrototypeGameState {
   pokerBetToCall: number;
   pokerPot: number;
   pokerStreet: PokerStreet;
+  pokerButtonSeat: number;
+  pokerHandNumber: number;
   pokerLastAction: string;
   activityLog: ActivityItem[];
   prototypeNotice: string;
@@ -157,7 +183,8 @@ export interface PublicPrototypeGameState {
 
 const settingsSchema = z.object({ turnSeconds: z.number().int().min(0).max(600).nullable().default(null) });
 const actionSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("move_piece"), from: z.number().int().min(0).max(63), to: z.number().int().min(0).max(63) }),
+  z.object({ type: z.literal("move_piece"), from: z.number().int().min(0).max(63), to: z.number().int().min(0).max(63), promotion: z.enum(["q", "r", "b", "n"]).optional() }),
+  z.object({ type: z.literal("claim_chess_draw") }),
   z.object({ type: z.literal("fire"), x: z.number().int().min(0).max(9), y: z.number().int().min(0).max(9) }),
   z.object({ type: z.literal("roll_dice") }),
   z.object({ type: z.literal("move_token"), tokenIndex: z.number().int().min(0).max(3) }),
@@ -169,20 +196,22 @@ const actionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("reinforce_territory"), territoryId: z.string().min(1).max(40) }),
   z.object({ type: z.literal("attack_territory"), fromId: z.string().min(1).max(40), toId: z.string().min(1).max(40) }),
   z.object({ type: z.literal("reveal_word"), index: z.number().int().min(0).max(24) }),
+  z.object({ type: z.literal("give_clue"), clue: z.string().trim().min(1).max(30), number: z.number().int().min(0).max(9) }),
+  z.object({ type: z.literal("end_codenames_turn") }),
   z.object({ type: z.literal("poker_action"), choice: z.enum(["fold", "check", "call", "raise", "all_in"]) })
 ]);
 
 const DEFAULT_SETTINGS: PrototypeSettings = { turnSeconds: null };
 const SPECS: Record<PrototypeGameId, { title: string; min: number; max: number; notice: string }> = {
-  chess: { title: "Chess", min: 2, max: 2, notice: "Server-authoritative legal moves, check, checkmate and stalemate are implemented; castling, en passant, repetition and fifty-move draws remain." },
+  chess: { title: "Chess", min: 2, max: 2, notice: "Legal moves, check/checkmate, castling, en passant, selectable promotion, repetition and move-count draw rules are enforced by the server." },
   battleship: { title: "Battleships", min: 2, max: 2, notice: "Early access · alternating target shots, hits and fleet elimination work. Fleet placement and all ship-sinking details are coming next." },
   ludo: { title: "Ludo", min: 2, max: 4, notice: "Early access · dice, four tokens per player and a shared progress track work. Exact safe squares, captures and home lanes are in progress." },
   barricades: { title: "Barricades", min: 2, max: 4, notice: "Early access · pawn moves, wall placement and reaching the opposite edge work. Full path-preservation checks and 4-player balance are in progress." },
   monopoly: { title: "Property Tycoon", min: 2, max: 6, notice: "Early access · dice movement, buying properties, rent and passing Start are implemented. Auctions, jail, mortgages, trades and bankruptcy rules are next." },
   risk: { title: "Risk", min: 2, max: 6, notice: "Early access · territory claims, reinforcements and simplified dice attacks work on a compact map. Full Risk setup, cards and battle dice are in progress." },
   "world-conquest": { title: "World Conquest", min: 2, max: 10, notice: "Early access · a larger original territory map supports claims, reinforcements and simplified attacks. Full strategic phases and balance are in progress." },
-  codenames: { title: "Codenames", min: 2, max: 10, notice: "Early access · the word grid, hidden team key, reveals and basic team scoring are wired. Spymaster clue-giving, clue limits and full round scoring are next." },
-  poker: { title: "Poker · Texas Hold'em", min: 2, max: 6, notice: "Best-five-of-seven hand ranking and side-pot settlement are implemented for the single-hand prototype; tournament sessions and raise-reopening edge cases remain separate work." }
+  codenames: { title: "Codenames", min: 4, max: 10, notice: "Team Codenames · spymaster-only key, clue numbers, operative guesses, turn passing and assassin/team victory are enforced. Standard team play requires 4–10 players." },
+  poker: { title: "Poker · Texas Hold'em", min: 2, max: 6, notice: "Server-side Hold’em hand ranking, all-in side pots, split pots and rotating multi-hand tournament sessions are implemented. The configured table uses fixed $10/$20 blinds and fixed $20 raises." }
 };
 
 function hashSeed(seed: string): number {
@@ -214,6 +243,43 @@ function nextPlayerId(state: PrototypeGameState, fromId: string | null = state.c
 }
 function nextPlayerOnTeam(state: PrototypeGameState, team: "red" | "blue"): string | null {
   return state.players.find((player) => state.codenamesTeamByPlayer[player.userId] === team)?.userId ?? null;
+}
+function normalizeCodenamesSnapshot(state: PrototypeGameState): void {
+  if (state.gameId !== "codenames") return;
+  const snapshotFields = state as unknown as Record<string, unknown>;
+  const needsTeamPhaseMigration = !snapshotFields.codenamesSpymasterByTeam || !snapshotFields.codenamesRoundTeam || !("codenamesClue" in snapshotFields) || !("codenamesClueNumber" in snapshotFields) || !("codenamesGuessesRemaining" in snapshotFields);
+  state.codenamesTeamByPlayer ??= Object.fromEntries(state.players.map((player) => [player.userId, player.seat % 2 === 0 ? "red" : "blue"])) as Record<string, "red" | "blue">;
+  state.codenamesSpymasterByTeam ??= {
+    red: state.players.slice().sort((a, b) => a.seat - b.seat).find((player) => state.codenamesTeamByPlayer[player.userId] === "red")?.userId ?? "",
+    blue: state.players.slice().sort((a, b) => a.seat - b.seat).find((player) => state.codenamesTeamByPlayer[player.userId] === "blue")?.userId ?? ""
+  };
+  state.codenamesRoundTeam ??= state.codenamesTeamByPlayer[state.currentPlayerId ?? ""] ?? "red";
+  state.codenamesClue ??= null;
+  state.codenamesClueNumber ??= null;
+  state.codenamesGuessesRemaining ??= 0;
+  // An old snapshot has no explicit clue/operative phase. Resume it at the
+  // current team's spymaster rather than leaving a former operative stranded.
+  if (needsTeamPhaseMigration && state.codenamesClue === null) {
+    const currentTeam = state.codenamesTeamByPlayer[state.currentPlayerId ?? ""];
+    if (currentTeam) state.codenamesRoundTeam = currentTeam;
+    const spymasterId = state.codenamesSpymasterByTeam[state.codenamesRoundTeam] || nextPlayerOnTeam(state, state.codenamesRoundTeam);
+    if (spymasterId) state.currentPlayerId = spymasterId;
+  }
+}
+function nextCodenamesOperative(state: PrototypeGameState, team: "red" | "blue", fromId: string | null = null): string | null {
+  const spymasterId = state.codenamesSpymasterByTeam[team];
+  const operatives = state.players.filter((player) => state.codenamesTeamByPlayer[player.userId] === team && player.userId !== spymasterId).slice().sort((a, b) => a.seat - b.seat);
+  if (!operatives.length) return null;
+  const index = operatives.findIndex((player) => player.userId === fromId);
+  return operatives[(index + 1 + operatives.length) % operatives.length]?.userId ?? operatives[0]?.userId ?? null;
+}
+function endCodenamesTeamTurn(state: PrototypeGameState): void {
+  const nextTeam: "red" | "blue" = state.codenamesRoundTeam === "red" ? "blue" : "red";
+  state.codenamesRoundTeam = nextTeam;
+  state.codenamesClue = null;
+  state.codenamesClueNumber = null;
+  state.codenamesGuessesRemaining = 0;
+  state.currentPlayerId = state.codenamesSpymasterByTeam[nextTeam] || nextPlayerOnTeam(state, nextTeam);
 }
 function scoreForPlayer(state: PrototypeGameState, player: GamePlayer): number {
   const userId = player.userId;
@@ -248,64 +314,28 @@ function scoreForPlayer(state: PrototypeGameState, player: GamePlayer): number {
 }
 
 function makeResults(state: PrototypeGameState): GameResults {
-  const scores = new Map(state.players.map((player) => [player.userId, scoreForPlayer(state, player)]));
-  let winnerIds = new Set<string>();
-  let teamResult = false;
-  if (state.gameId === "codenames" && state.winnerUserId) {
-    const winningTeam = state.codenamesTeamByPlayer[state.winnerUserId];
-    if (winningTeam) {
-      winnerIds = new Set(state.players.filter((player) => state.codenamesTeamByPlayer[player.userId] === winningTeam).map((player) => player.userId));
-      teamResult = true;
-    }
-  } else if (state.gameId === "poker") {
-    const maximum = Math.max(...state.players.map((player) => scores.get(player.userId) ?? 0));
-    winnerIds = new Set(state.players.filter((player) => (scores.get(player.userId) ?? 0) === maximum).map((player) => player.userId));
-  } else if (state.winnerUserId) {
-    winnerIds.add(state.winnerUserId);
-  } else if (state.gameId === "chess") {
-    // Stalemate is a draw for both players, regardless of their temporary material score.
-    winnerIds = new Set(state.players.map((player) => player.userId));
+  const winnerId = state.winnerUserId;
+  if (state.gameId === "codenames" && winnerId) {
+    const winningTeam = state.codenamesTeamByPlayer[winnerId];
+    const winningPlayers = state.players.filter((player) => state.codenamesTeamByPlayer[player.userId] === winningTeam).sort((a, b) => a.seat - b.seat);
+    const losingPlayers = state.players.filter((player) => state.codenamesTeamByPlayer[player.userId] !== winningTeam).sort((a, b) => a.seat - b.seat);
+    const orderedTeamPlayers = [...winningPlayers, ...losingPlayers];
+    return {
+      winnerUserId: winnerId,
+      placements: orderedTeamPlayers.map((player) => {
+        const won = state.codenamesTeamByPlayer[player.userId] === winningTeam;
+        return { userId: player.userId, placement: won ? 1 : 2, score: won ? 1 : 0, result: won ? ("WIN" as const) : ("LOSS" as const) };
+      }),
+      scoreByUserId: Object.fromEntries(orderedTeamPlayers.map((player) => [player.userId, state.codenamesTeamByPlayer[player.userId] === winningTeam ? 1 : 0]))
+    };
   }
-
-  const scoreTiers = (player: GamePlayer) => {
-    if (state.gameId === "chess" && !state.winnerUserId) return 1;
-    if (winnerIds.has(player.userId)) return 0;
-    return 2;
-  };
-  const ordered = state.players.slice().sort((a, b) => scoreTiers(a) - scoreTiers(b) || (scores.get(b.userId) ?? 0) - (scores.get(a.userId) ?? 0) || a.seat - b.seat);
-  const resultFor = (player: GamePlayer): "WIN" | "LOSS" | "DRAW" => {
-    if (state.gameId === "chess" && !state.winnerUserId) return "DRAW";
-    if (state.gameId === "poker" && winnerIds.size > 1 && winnerIds.has(player.userId)) return "DRAW";
-    if (teamResult && winnerIds.has(player.userId)) return "WIN";
-    if (winnerIds.has(player.userId)) return "WIN";
-    return state.winnerUserId ? "LOSS" : winnerIds.size > 0 ? "LOSS" : "DRAW";
-  };
-  let previousScore: number | null = null;
-  let previousResult: "WIN" | "LOSS" | "DRAW" | null = null;
-  let previousPlacement = 0;
-  const placements = ordered.map((player, index) => {
-    const score = scores.get(player.userId) ?? 0;
-    const result = resultFor(player);
-    // Team wins are team placements too: all winning teammates share first place.
-    if (teamResult) return { userId: player.userId, placement: winnerIds.has(player.userId) ? 1 : 2, score, result };
-    const sameRank = index > 0 && score === previousScore && result === previousResult;
-    const placement = sameRank ? previousPlacement : index + 1;
-    previousScore = score;
-    previousResult = result;
-    previousPlacement = placement;
-    return { userId: player.userId, placement, score, result };
-  });
-  const resultWinnerUserId = state.gameId === "poker"
-    ? (winnerIds.size === 1 ? [...winnerIds][0] ?? null : null)
-    : state.winnerUserId;
+  const ordered = state.players.slice().sort((a, b) => Number(b.userId === winnerId) - Number(a.userId === winnerId) || a.seat - b.seat);
   return {
-    winnerUserId: resultWinnerUserId,
-    placements,
-    scoreByUserId: Object.fromEntries(state.players.map((player) => [player.userId, scores.get(player.userId) ?? 0]))
+    winnerUserId: winnerId,
+    placements: ordered.map((player, index) => ({ userId: player.userId, placement: index + 1, score: player.userId === winnerId ? 1 : 0, result: player.userId === winnerId ? "WIN" : winnerId ? "LOSS" : "DRAW" })),
+    scoreByUserId: Object.fromEntries(ordered.map((player) => [player.userId, player.userId === winnerId ? 1 : 0]))
   };
 }
-
-
 function finish(state: PrototypeGameState, winnerId: string | null, now: string): void {
   state.phase = "finished";
   state.winnerUserId = winnerId;
@@ -323,37 +353,52 @@ function chessPseudoMoves(state: PrototypeGameState, playerId: string): Prototyp
   const player = state.players.find((candidate) => candidate.userId === playerId);
   if (!player) return output;
   const board = state.board;
+  const isWhite = player.seat % 2 === 0;
+  const own = (piece: string | null) => playerOwnsChessPiece(state, playerId, piece);
+  const push = (from: number, to: number) => {
+    const row = Math.floor(to / 8);
+    const piece = board[Math.floor(from / 8)]?.[from % 8] ?? null;
+    if (piece?.toLowerCase() === "p" && (row === 0 || row === 7)) {
+      for (const promotion of ["q", "r", "b", "n"] as const) output.push({ type: "move_piece", from, to, promotion });
+    } else output.push({ type: "move_piece", from, to });
+  };
   const directions: Record<string, Array<[number, number]>> = {
-    n: [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]],
-    k: [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]],
-    b: [[-1, -1], [-1, 1], [1, -1], [1, 1]],
-    r: [[-1, 0], [0, -1], [0, 1], [1, 0]],
+    n: [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]],
+    k: [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]],
+    b: [[-1,-1],[-1,1],[1,-1],[1,1]],
+    r: [[-1,0],[0,-1],[0,1],[1,0]]
   };
   for (let from = 0; from < 64; from += 1) {
-    const fr = Math.floor(from / 8); const fc = from % 8;
+    const fr = Math.floor(from / 8), fc = from % 8;
     const piece = board[fr]?.[fc] ?? null;
-    if (!playerOwnsChessPiece(state, playerId, piece)) continue;
+    if (!own(piece)) continue;
     const kind = piece!.toLowerCase();
     const tryMove = (r: number, c: number): boolean => {
       if (r < 0 || r > 7 || c < 0 || c > 7) return false;
       const target = board[r]?.[c] ?? null;
-      if (target && (playerOwnsChessPiece(state, playerId, target) || target.toLowerCase() === "k")) return false;
-      output.push({ type: "move_piece", from, to: r * 8 + c });
+      if (target && (own(target) || target.toLowerCase() === "k")) return false;
+      push(from, r * 8 + c);
       return !target;
     };
     if (kind === "p") {
-      const dir: number = player.seat % 2 === 0 ? -1 : 1;
+      const dir = isWhite ? -1 : 1;
       const one = fr + dir;
-      if (one >= 0 && one <= 7 && !(board[one]?.[fc])) {
-        output.push({ type: "move_piece", from, to: one * 8 + fc });
-        const startRow = player.seat % 2 === 0 ? 6 : 1;
+      if (one >= 0 && one <= 7 && !board[one]?.[fc]) {
+        push(from, one * 8 + fc);
+        const startRow = isWhite ? 6 : 1;
         const two = fr + dir * 2;
-        if (fr === startRow && !(board[two]?.[fc])) output.push({ type: "move_piece", from, to: two * 8 + fc });
+        if (fr === startRow && !board[two]?.[fc]) push(from, two * 8 + fc);
       }
       for (const dc of [-1, 1]) {
-        const c = fc + dc; const r = fr + dir;
+        const r = fr + dir, c = fc + dc;
+        if (r < 0 || r > 7 || c < 0 || c > 7) continue;
         const target = board[r]?.[c] ?? null;
-        if (r >= 0 && r <= 7 && c >= 0 && c <= 7 && target && !playerOwnsChessPiece(state, playerId, target)) output.push({ type: "move_piece", from, to: r * 8 + c });
+        const to = r * 8 + c;
+        if (target && !own(target) && target.toLowerCase() !== "k") push(from, to);
+        else if (!target && state.chessEnPassantTarget === to) {
+          const passedPawn = board[fr]?.[c] ?? null;
+          if (passedPawn?.toLowerCase() === "p" && !own(passedPawn)) push(from, to);
+        }
       }
       continue;
     }
@@ -362,8 +407,26 @@ function chessPseudoMoves(state: PrototypeGameState, playerId: string): Prototyp
     const slides = ["b", "r", "q"].includes(kind);
     for (const [dr, dc] of dirs) {
       for (let step = 1; step <= (slides ? 7 : 1); step += 1) {
-        const keepGoing = tryMove(fr + dr * step, fc + dc * step);
-        if (!keepGoing) break;
+        if (!tryMove(fr + dr * step, fc + dc * step)) break;
+      }
+    }
+    if (kind === "k") {
+      const homeRow = isWhite ? 7 : 0;
+      const home = homeRow * 8 + 4;
+      const enemy = state.players.find((candidate) => candidate.userId !== playerId);
+      const rights = state.chessCastlingRights ?? "KQkq";
+      const kingSide = isWhite ? "K" : "k";
+      const queenSide = isWhite ? "Q" : "q";
+      const rook = isWhite ? "R" : "r";
+      if (from === home && enemy && !chessKingInCheck(state, playerId)) {
+        if (rights.includes(kingSide) && board[homeRow]?.[7] === rook && !board[homeRow]?.[5] && !board[homeRow]?.[6]
+          && !chessSquareAttacked(state, enemy.userId, homeRow, 5) && !chessSquareAttacked(state, enemy.userId, homeRow, 6)) {
+          output.push({ type: "move_piece", from, to: home + 2 });
+        }
+        if (rights.includes(queenSide) && board[homeRow]?.[0] === rook && !board[homeRow]?.[1] && !board[homeRow]?.[2] && !board[homeRow]?.[3]
+          && !chessSquareAttacked(state, enemy.userId, homeRow, 3) && !chessSquareAttacked(state, enemy.userId, homeRow, 2)) {
+          output.push({ type: "move_piece", from, to: home - 2 });
+        }
       }
     }
   }
@@ -371,7 +434,7 @@ function chessPseudoMoves(state: PrototypeGameState, playerId: string): Prototyp
 }
 
 const BATTLESHIP_LENGTHS = [5, 4, 3, 3, 2];
-function fleetForSeat(seat: number, seed: number): { cells: string[]; rngState: number } {
+function fleetForSeat(seat: number, seed: number): { cells: string[]; ships: string[][]; rngState: number } {
   // Seeded, independently generated ship placements. The exact fleet stays private
   // in the server state; clients receive only their own cells and public shot history.
   let localRng = (seed ^ Math.imul(seat + 1, 0x9e3779b1)) >>> 0 || 1;
@@ -413,7 +476,7 @@ function fleetForSeat(seat: number, seed: number): { cells: string[]; rngState: 
     ships.push(placed);
     placed.forEach((cell) => occupied.add(cell));
   }
-  return { cells: ships.flat(), rngState: localRng };
+  return { cells: ships.flat(), ships, rngState: localRng };
 }
 
 const PROPERTY_NAMES = ["Start", "Old Kent Road", "Community Chest", "Whitechapel Road", "Income Tax", "King's Cross", "The Angel Islington", "Chance", "Euston Road", "Pentonville Road", "Jail / Just Visiting", "Pall Mall", "Electric Company", "Whitehall", "Northumberland Avenue", "Marylebone Station", "Bow Street", "Community Chest", "Marlborough Street", "Vine Street", "Free Parking", "Strand", "Chance", "Fleet Street", "Trafalgar Square", "Fenchurch Street", "Leicester Square", "Coventry Street", "Water Works", "Piccadilly", "Go To Jail", "Regent Street", "Oxford Street", "Community Chest", "Bond Street", "Liverpool Street Station", "Chance", "Park Lane", "Luxury Tax", "Mayfair"];
@@ -485,15 +548,15 @@ function createInitialState(params: { players: GamePlayer[]; settings: Prototype
   const players = params.players.slice(0, SPECS[gameId].max);
   const firstId = players[0]?.userId ?? null;
   const state: PrototypeGameState = {
-    gameId, version: "0.2.0-rules-hardening", settings: params.settings, phase: "playing", players,
-    currentPlayerId: firstId, winnerUserId: null, turnNumber: 1, actionNumber: 0,
+    gameId, version: "0.3.0-chess-rules", settings: params.settings, phase: "playing", players,
+    currentPlayerId: firstId, winnerUserId: null, chessCastlingRights: "KQkq", chessEnPassantTarget: null, chessHalfmoveClock: 0, chessPositionHistory: [], turnNumber: 1, actionNumber: 0,
     startedAt: params.now, updatedAt: params.now, turnStartedAt: params.now, activityLog: [], rngState,
     board: Array.from({ length: gameId === "chess" ? 8 : gameId === "battleship" ? 10 : gameId === "barricades" ? 9 : 5 }, () => Array.from({ length: gameId === "chess" ? 8 : gameId === "battleship" ? 10 : gameId === "barricades" ? 9 : 5 }, () => null)),
-    pawns: {}, walls: [], wallsRemaining: {}, ludoTokens: {}, diceRoll: null, hasRolled: false,
+    pawns: {}, walls: [], wallsRemaining: {}, ludoTokens: {}, ludoConsecutiveSixes: {}, diceRoll: null, hasRolled: false,
     money: {}, positions: {}, properties: makeProperties(), territories: gameId === "world-conquest" ? WORLD_TERRITORIES : RISK_TERRITORIES,
     territoryOwners: {}, territoryTroops: {}, reinforcedThisTurn: false,
-    shipCellsByPlayer: {}, shots: [], wordCards: [], codenamesTeamByPlayer: {},
-    pokerCardsByPlayer: {}, pokerDeck: [], communityCards: [], pokerStacks: {}, pokerBets: {}, pokerContributions: {}, pokerButtonSeat: players[0]?.seat ?? 0, pokerFolded: [], pokerActed: [], pokerBetToCall: 0, pokerPot: 0, pokerStreet: "preflop", pokerLastAction: "Deal in",
+    shipCellsByPlayer: {}, shipGroupsByPlayer: {}, shots: [], wordCards: [], codenamesTeamByPlayer: {}, codenamesSpymasterByTeam: { red: "", blue: "" }, codenamesRoundTeam: "red", codenamesClue: null, codenamesClueNumber: null, codenamesGuessesRemaining: 0,
+    pokerCardsByPlayer: {}, pokerDeck: [], communityCards: [], pokerStacks: {}, pokerBets: {}, pokerContributions: {}, pokerButtonSeat: players[0]?.seat ?? 0, pokerHandNumber: 1, pokerFolded: [], pokerActed: [], pokerBetToCall: 0, pokerPot: 0, pokerStreet: "preflop", pokerLastAction: "Deal in",
   };
   const line = (s: string) => s.split("");
   if (gameId === "chess") {
@@ -503,6 +566,7 @@ function createInitialState(params: { players: GamePlayer[]; settings: Prototype
     for (const player of players) {
       const fleet = fleetForSeat(player.seat, rngState);
       state.shipCellsByPlayer[player.userId] = fleet.cells;
+      state.shipGroupsByPlayer[player.userId] = fleet.ships;
       rngState = fleet.rngState;
     }
     state.rngState = rngState;
@@ -512,7 +576,7 @@ function createInitialState(params: { players: GamePlayer[]; settings: Prototype
     players.forEach((player, index) => {
       const starts = players.length > 2 ? [{ x: 4, y: 0 }, { x: 4, y: 8 }, { x: 0, y: 4 }, { x: 8, y: 4 }] : [{ x: 4, y: 0 }, { x: 4, y: 8 }];
       state.pawns[player.userId] = starts[index] ?? { x: 4, y: 0 };
-      state.wallsRemaining[player.userId] = 10;
+      state.wallsRemaining[player.userId] = players.length > 2 ? 5 : 10;
     });
   }
   if (gameId === "monopoly") {
@@ -523,10 +587,17 @@ function createInitialState(params: { players: GamePlayer[]; settings: Prototype
   }
   if (gameId === "codenames") {
     const shuffled = shuffle(WORDS, rngState); rngState = shuffled.rngState;
+    // Standard team setup: 9 red agents, 8 blue agents, 7 bystanders and 1 assassin.
     const roles: Team[] = [...Array<Team>(9).fill("red"), ...Array<Team>(8).fill("blue"), ...Array<Team>(7).fill("neutral"), "assassin"];
     const shuffledRoles = shuffle(roles, rngState); rngState = shuffledRoles.rngState;
     state.wordCards = shuffled.items.map((word, index) => ({ word, role: shuffledRoles.items[index] ?? "neutral", revealed: false }));
-    players.forEach((player) => { state.codenamesTeamByPlayer[player.userId] = player.seat % 2 === 0 ? "red" : "blue"; });
+    const bySeat = players.slice().sort((a, b) => a.seat - b.seat);
+    bySeat.forEach((player) => { state.codenamesTeamByPlayer[player.userId] = player.seat % 2 === 0 ? "red" : "blue"; });
+    for (const team of ["red", "blue"] as const) {
+      state.codenamesSpymasterByTeam[team] = bySeat.find((player) => state.codenamesTeamByPlayer[player.userId] === team)?.userId ?? "";
+    }
+    state.codenamesRoundTeam = "red";
+    state.currentPlayerId = state.codenamesSpymasterByTeam.red || firstId;
   }
   if (gameId === "poker") {
     const shuffled = shuffle(freshDeck(), rngState); rngState = shuffled.rngState;
@@ -557,6 +628,7 @@ function createInitialState(params: { players: GamePlayer[]; settings: Prototype
     state.currentPlayerId = players[firstToActIndex]?.userId ?? null;
   }
   state.rngState = rngState;
+  if (gameId === "chess") state.chessPositionHistory = [chessPositionKey(state)];
   state.activityLog.push(makeActivity(state, "game_started", `🟢 ${SPECS[gameId].title} table started.`, null, params.now));
   return state;
 }
@@ -726,17 +798,30 @@ function chessKingInCheck(state: PrototypeGameState, playerId: string, board = s
 function chessBoardAfterMove(state: PrototypeGameState, action: PrototypeAction): Array<Array<string | null>> | null {
   if (action.type !== "move_piece" || !Number.isInteger(action.from) || !Number.isInteger(action.to) || action.from < 0 || action.from >= 64 || action.to < 0 || action.to >= 64) return null;
   const board = state.board.map((row) => row.slice());
-  const fromRow = Math.floor(action.from / 8);
-  const fromColumn = action.from % 8;
-  const toRow = Math.floor(action.to / 8);
-  const toColumn = action.to % 8;
+  const fromRow = Math.floor(action.from / 8), fromColumn = action.from % 8;
+  const toRow = Math.floor(action.to / 8), toColumn = action.to % 8;
   const piece = board[fromRow]?.[fromColumn] ?? null;
-  if (!piece) return null;
-  if (board[toRow]?.[toColumn]?.toLowerCase() === "k") return null;
+  if (!piece || board[toRow]?.[toColumn]?.toLowerCase() === "k") return null;
+  const target = board[toRow]?.[toColumn] ?? null;
+  // En passant captures the pawn behind the empty destination square.
+  if (piece.toLowerCase() === "p" && fromColumn !== toColumn && !target && state.chessEnPassantTarget === action.to) {
+    board[fromRow]![toColumn] = null;
+  }
   board[fromRow]![fromColumn] = null;
   board[toRow]![toColumn] = piece;
+  // Castling moves the rook as part of the same indivisible move.
+  if (piece.toLowerCase() === "k" && Math.abs(toColumn - fromColumn) === 2) {
+    const rookFrom = toColumn > fromColumn ? 7 : 0;
+    const rookTo = toColumn > fromColumn ? 5 : 3;
+    const rook = board[toRow]?.[rookFrom] ?? null;
+    if (rook?.toLowerCase() !== "r") return null;
+    board[toRow]![rookTo] = rook;
+    board[toRow]![rookFrom] = null;
+  }
   if (piece.toLowerCase() === "p" && (toRow === 0 || toRow === 7)) {
-    board[toRow]![toColumn] = piece === piece.toUpperCase() ? "Q" : "q";
+    const promotion = action.promotion ?? "q";
+    if (!( ["q", "r", "b", "n"] as string[]).includes(promotion)) return null;
+    board[toRow]![toColumn] = piece === piece.toUpperCase() ? promotion.toUpperCase() : promotion.toLowerCase();
   }
   return board;
 }
@@ -747,9 +832,45 @@ function chessActions(state: PrototypeGameState, playerId: string): PrototypeAct
     return board !== null && !chessKingInCheck(state, playerId, board);
   });
 }
+
+function chessPositionKey(state: PrototypeGameState): string {
+  const active = state.players.find((player) => player.userId === state.currentPlayerId);
+  const sideToMove = active && active.seat % 2 === 0 ? "w" : "b";
+  let ep = "-";
+  const target = state.chessEnPassantTarget ?? null;
+  if (target !== null) {
+    const targetRow = Math.floor(target / 8), targetColumn = target % 8;
+    const pawnRow = targetRow + (sideToMove === "w" ? 1 : -1);
+    const pawn = sideToMove === "w" ? "P" : "p";
+    if ([-1, 1].some((delta) => state.board[pawnRow]?.[targetColumn + delta] === pawn)) ep = String(target);
+  }
+  return `${state.board.map((row) => row.join("")).join("/")}:${sideToMove}:${state.chessCastlingRights ?? "KQkq"}:${ep}`;
+}
+function chessPositionCount(state: PrototypeGameState): number {
+  const key = chessPositionKey(state);
+  return (state.chessPositionHistory ?? []).filter((position) => position === key).length;
+}
+function chessDrawClaimAvailable(state: PrototypeGameState): boolean {
+  return (state.chessHalfmoveClock ?? 0) >= 100 || chessPositionCount(state) >= 3;
+}
+function chessInsufficientMaterial(state: PrototypeGameState): boolean {
+  const pieces: Array<{kind:string; color:number}> = [];
+  for (let row = 0; row < 8; row += 1) for (let column = 0; column < 8; column += 1) {
+    const piece = state.board[row]?.[column] ?? null;
+    if (!piece || piece.toLowerCase() === "k") continue;
+    pieces.push({ kind: piece.toLowerCase(), color: (row + column) % 2 });
+  }
+  if (pieces.length === 0) return true;
+  if (pieces.length === 1 && ["b", "n"].includes(pieces[0]!.kind)) return true;
+  return pieces.every((piece) => piece.kind === "b") && new Set(pieces.map((piece) => piece.color)).size === 1;
+}
 function actionsFor(state: PrototypeGameState, playerId: string): PrototypeAction[] {
   if (!currentPlayer(state, playerId)) return [];
-  if (state.gameId === "chess") return chessActions(state, playerId);
+  if (state.gameId === "chess") {
+    const moves = chessActions(state, playerId);
+    if (chessDrawClaimAvailable(state)) moves.push({ type: "claim_chess_draw" });
+    return moves;
+  }
   if (state.gameId === "battleship") {
     const target = nextPlayerId(state, playerId);
     if (!target || target === playerId) return [];
@@ -801,7 +922,19 @@ function actionsFor(state: PrototypeGameState, playerId: string): PrototypeActio
     }
     return [...actions, { type: "end_turn" }];
   }
-  if (state.gameId === "codenames") return state.wordCards.map((card, index) => ({ card, index })).filter(({ card }) => !card.revealed).map(({ index }) => ({ type: "reveal_word", index }));
+  if (state.gameId === "codenames") {
+    const team = state.codenamesTeamByPlayer[playerId];
+    if (!team || team !== state.codenamesRoundTeam) return [];
+    const spymasterId = state.codenamesSpymasterByTeam[team];
+    if (state.codenamesClue === null) {
+      return playerId === spymasterId ? [{ type: "give_clue", clue: "", number: 1 }] : [];
+    }
+    if (playerId === spymasterId) return [];
+    return [
+      ...state.wordCards.map((card, index) => ({ card, index })).filter(({ card }) => !card.revealed).map(({ index }) => ({ type: "reveal_word", index } as PrototypeAction)),
+      { type: "end_codenames_turn" } as PrototypeAction
+    ];
+  }
   if (state.gameId === "poker") {
     const paid = state.pokerBets[playerId] ?? 0;
     const stack = state.pokerStacks[playerId] ?? 0;
@@ -819,6 +952,19 @@ function actionsFor(state: PrototypeGameState, playerId: string): PrototypeActio
 function validateAction(params: { state: PrototypeGameState; playerId: string; action: PrototypeAction }): ValidationResult {
   const { state, playerId, action } = params;
   const legal = actionsFor(state, playerId);
+  if (action.type === "give_clue" && state.gameId === "codenames") {
+    const team = state.codenamesTeamByPlayer[playerId];
+    const clue = action.clue.trim();
+    const normalized = clue.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const clashesWithBoard = state.wordCards.some((card) => card.word.toLowerCase().replace(/[^a-z0-9]/g, "") === normalized);
+    if (!legal.some((candidate) => candidate.type === "give_clue") || team !== state.codenamesRoundTeam || playerId !== state.codenamesSpymasterByTeam[team ?? "red"] || state.codenamesClue !== null) {
+      return { ok: false, code: "ILLEGAL_ACTION", message: "Only the active team's spymaster may give a clue." };
+    }
+    if (!clue || clue.length > 30 || /\s/.test(clue) || !Number.isInteger(action.number) || action.number < 0 || action.number > 9 || clashesWithBoard) {
+      return { ok: false, code: "INVALID_CLUE", message: "Use one 1–30 character word, choose a number from 0 to 9, and do not repeat a word on the grid." };
+    }
+    return { ok: true };
+  }
   const stableAction = (candidate: PrototypeAction) => JSON.stringify(Object.entries(candidate).sort(([left], [right]) => left.localeCompare(right)));
   const allowed = legal.some((candidate) => stableAction(candidate) === stableAction(action));
   if (allowed) return { ok: true };
@@ -917,6 +1063,86 @@ function nextPokerActor(state: PrototypeGameState, fromId: string | null = state
   return null;
 }
 
+function startNextPokerHand(state: PrototypeGameState, now: string, previousHandNote = ""): void {
+  const survivingPlayers = state.players.filter((player) => (state.pokerStacks[player.userId] ?? 0) > 0);
+  if (survivingPlayers.length <= 1) {
+    const champion = survivingPlayers[0] ?? null;
+    state.pokerPot = 0;
+    state.pokerLastAction = champion
+      ? `${previousHandNote ? `${previousHandNote} · ` : ""}${champion.displayName} wins the Poker tournament with the last remaining stack.`
+      : `${previousHandNote ? `${previousHandNote} · ` : ""}Poker tournament ended without a surviving stack.`;
+    finish(state, champion?.userId ?? null, now);
+    return;
+  }
+
+  // Reset hand-scoped data but preserve tournament stacks and rotate the dealer
+  // to the next player who still has chips. Zero-stack players are eliminated.
+  const ordered = state.players.slice().sort((a, b) => a.seat - b.seat);
+  const oldButtonIndex = ordered.findIndex((player) => player.seat === state.pokerButtonSeat);
+  let button: GamePlayer | null = null;
+  for (let offset = 1; offset <= ordered.length; offset += 1) {
+    const candidate = ordered[(Math.max(0, oldButtonIndex) + offset) % ordered.length];
+    if (candidate && (state.pokerStacks[candidate.userId] ?? 0) > 0) { button = candidate; break; }
+  }
+  button ??= survivingPlayers[0] ?? null;
+  if (!button) {
+    finish(state, null, now);
+    return;
+  }
+
+  state.phase = "playing";
+  state.winnerUserId = null;
+  state.pokerHandNumber = (state.pokerHandNumber ?? 1) + 1;
+  state.pokerButtonSeat = button.seat;
+  state.pokerStreet = "preflop";
+  state.pokerPot = 0;
+  state.pokerBetToCall = 0;
+  state.pokerFolded = state.players
+    .filter((player) => (state.pokerStacks[player.userId] ?? 0) <= 0)
+    .map((player) => player.userId);
+  state.pokerActed = [];
+  state.pokerBets = Object.fromEntries(state.players.map((player) => [player.userId, 0]));
+  state.pokerContributions = Object.fromEntries(state.players.map((player) => [player.userId, 0]));
+  state.communityCards = [];
+  state.pokerCardsByPlayer = {};
+
+  const shuffled = shuffle(freshDeck(), state.rngState);
+  state.pokerDeck = shuffled.items;
+  state.rngState = shuffled.rngState;
+  for (const player of survivingPlayers) {
+    state.pokerCardsByPlayer[player.userId] = [state.pokerDeck.shift()!, state.pokerDeck.shift()!];
+  }
+
+  const active = ordered.filter((player) => (state.pokerStacks[player.userId] ?? 0) > 0);
+  const buttonIndex = active.findIndex((player) => player.userId === button!.userId);
+  const smallBlindIndex = active.length <= 2 ? buttonIndex : (buttonIndex + 1) % active.length;
+  const bigBlindIndex = active.length <= 2 ? (buttonIndex + 1) % active.length : (buttonIndex + 2) % active.length;
+  const smallBlindPlayer = active[smallBlindIndex] ?? button;
+  const bigBlindPlayer = active[bigBlindIndex] ?? active.find((player) => player.userId !== smallBlindPlayer.userId) ?? button;
+  for (const [blindPlayer, nominalBlind] of [[smallBlindPlayer, 10], [bigBlindPlayer, 20]] as Array<[GamePlayer, number]>) {
+    if (!blindPlayer || state.pokerFolded.includes(blindPlayer.userId)) continue;
+    const paid = Math.min(nominalBlind, state.pokerStacks[blindPlayer.userId] ?? 0);
+    state.pokerStacks[blindPlayer.userId] = (state.pokerStacks[blindPlayer.userId] ?? 0) - paid;
+    state.pokerBets[blindPlayer.userId] = (state.pokerBets[blindPlayer.userId] ?? 0) + paid;
+    state.pokerContributions[blindPlayer.userId] = (state.pokerContributions[blindPlayer.userId] ?? 0) + paid;
+    state.pokerPot += paid;
+  }
+  state.pokerBetToCall = Math.max(0, ...Object.values(state.pokerBets));
+  if (active.length <= 2) {
+    state.currentPlayerId = (state.pokerStacks[button.userId] ?? 0) > 0 ? button.userId : nextPokerActor(state, button.userId);
+  } else {
+    state.currentPlayerId = nextPokerActor(state, bigBlindPlayer.userId);
+  }
+  state.updatedAt = now;
+  state.turnStartedAt = now;
+  state.pokerLastAction = [previousHandNote, `Hand ${state.pokerHandNumber} begins`, `Blinds $10/$20`, `Button: ${button.displayName}`]
+    .filter(Boolean).join(" · ");
+
+  // When blind posts put every remaining player all-in, play the runout and
+  // showdown automatically instead of waiting for an action that cannot happen.
+  if (!state.currentPlayerId) advancePokerStreet(state, now);
+}
+
 function settlePokerShowdown(state: PrototypeGameState, now: string): void {
   const active = state.players.filter((player) => !state.pokerFolded.includes(player.userId));
   const values = new Map(active.map((player) => [player.userId, bestPokerHandValue([...(state.pokerCardsByPlayer[player.userId] ?? []), ...state.communityCards])]));
@@ -981,12 +1207,9 @@ function settlePokerShowdown(state: PrototypeGameState, now: string): void {
   } else {
     state.pokerLastAction = `Main pot split: ${mainPotWinners.map((player) => player.displayName).join(", ") || "no eligible player"}. Side pots are settled.`;
   }
-  // In this single-hand table, the game result is based on final chips after every
-  // pot is paid, not merely who won the main pot. This keeps the result overlay,
-  // stored match result and leaderboard score consistent when side pots differ.
-  const highestStack = Math.max(...state.players.map((player) => state.pokerStacks[player.userId] ?? 0));
-  const topStackPlayers = state.players.filter((player) => (state.pokerStacks[player.userId] ?? 0) === highestStack);
-  finish(state, topStackPlayers.length === 1 ? topStackPlayers[0]!.userId : null, now);
+  // Only the tournament end condition finalizes a match. A normal showdown pays
+  // the pots and immediately starts the next hand while at least two stacks remain.
+  startNextPokerHand(state, now, state.pokerLastAction);
 }
 
 function advancePokerStreet(state: PrototypeGameState, now: string): void {
@@ -995,8 +1218,8 @@ function advancePokerStreet(state: PrototypeGameState, now: string): void {
     const winner = active[0];
     if (winner) state.pokerStacks[winner.userId] = (state.pokerStacks[winner.userId] ?? 0) + state.pokerPot;
     state.pokerPot = 0;
-    finish(state, winner?.userId ?? null, now);
-    state.pokerLastAction = winner ? `${winner.displayName} wins the pot because every opponent folded.` : "Hand ended without an eligible player.";
+    state.pokerLastAction = winner ? `${winner.displayName} won hand ${state.pokerHandNumber} because every opponent folded.` : "Hand ended without an eligible player.";
+    startNextPokerHand(state, now, state.pokerLastAction);
     return;
   }
 
@@ -1035,6 +1258,13 @@ function advancePokerStreet(state: PrototypeGameState, now: string): void {
 
 function applyAction(params: { state: PrototypeGameState; playerId: string; action: PrototypeAction; now: string }): { state: PrototypeGameState; events: GameEvent[] } {
   const state = JSON.parse(JSON.stringify(params.state)) as PrototypeGameState;
+  // Normalize older persisted snapshots before touching fields introduced by this patch.
+  state.ludoConsecutiveSixes ??= {};
+  state.shipGroupsByPlayer ??= {};
+  state.pokerHandNumber ??= 1;
+  state.pokerButtonSeat ??= state.players[0]?.seat ?? 0;
+  state.pokerContributions ??= {};
+  normalizeCodenamesSnapshot(state);
   const { playerId, action, now } = params;
   const player = state.players.find((item) => item.userId === playerId);
   if (!player) return { state, events: [] };
@@ -1042,18 +1272,42 @@ function applyAction(params: { state: PrototypeGameState; playerId: string; acti
   let message = "";
   const title = SPECS[state.gameId].title;
 
-  if (action.type === "move_piece" && state.gameId === "chess") {
-    const fromRow = Math.floor(action.from / 8); const fromCol = action.from % 8;
-    const toRow = Math.floor(action.to / 8); const toCol = action.to % 8;
+  if (action.type === "claim_chess_draw" && state.gameId === "chess") {
+    if (!chessDrawClaimAvailable(state)) return { state: params.state, events: [] };
+    finish(state, null, now);
+    message = `🤝 ${player.displayName} claimed a draw by ${state.chessHalfmoveClock >= 100 ? "the 50-move rule" : "threefold repetition"}.`;
+  } else if (action.type === "move_piece" && state.gameId === "chess") {
+    const legalMove = chessActions(state, playerId).some((candidate) => candidate.type === "move_piece" && candidate.from === action.from && candidate.to === action.to && (candidate.promotion ?? "") === (action.promotion ?? ""));
+    if (!legalMove) return { state: params.state, events: [] };
+    const fromRow = Math.floor(action.from / 8), fromCol = action.from % 8;
+    const toRow = Math.floor(action.to / 8), toCol = action.to % 8;
     const piece = state.board[fromRow]?.[fromCol] ?? null;
     const captured = state.board[toRow]?.[toCol] ?? null;
-    if (!playerOwnsChessPiece(state, playerId, piece)) return { state: params.state, events: [] };
-    state.board[fromRow]![fromCol] = null;
-    state.board[toRow]![toCol] = piece;
-    if (piece?.toLowerCase() === "p" && (toRow === 0 || toRow === 7)) state.board[toRow]![toCol] = player.seat % 2 === 0 ? "Q" : "q";
+    if (!piece || !playerOwnsChessPiece(state, playerId, piece)) return { state: params.state, events: [] };
+    const epCapture = piece.toLowerCase() === "p" && fromCol !== toCol && !captured && state.chessEnPassantTarget === action.to;
+    const board = chessBoardAfterMove(state, action);
+    if (!board) return { state: params.state, events: [] };
+    let rights = state.chessCastlingRights ?? "KQkq";
+    if (piece === "K") rights = rights.replace(/[KQ]/g, "");
+    if (piece === "k") rights = rights.replace(/[kq]/g, "");
+    if (piece === "R" && action.from === 63) rights = rights.replace("K", "");
+    if (piece === "R" && action.from === 56) rights = rights.replace("Q", "");
+    if (piece === "r" && action.from === 7) rights = rights.replace("k", "");
+    if (piece === "r" && action.from === 0) rights = rights.replace("q", "");
+    if (captured === "R" && action.to === 63) rights = rights.replace("K", "");
+    if (captured === "R" && action.to === 56) rights = rights.replace("Q", "");
+    if (captured === "r" && action.to === 7) rights = rights.replace("k", "");
+    if (captured === "r" && action.to === 0) rights = rights.replace("q", "");
+    state.chessCastlingRights = rights;
+    state.chessEnPassantTarget = piece.toLowerCase() === "p" && Math.abs(action.to - action.from) === 16 ? (action.to + action.from) / 2 : null;
+    state.chessHalfmoveClock = piece.toLowerCase() === "p" || captured !== null || epCapture ? 0 : (state.chessHalfmoveClock ?? 0) + 1;
+    state.board = board;
     state.currentPlayerId = nextPlayerId(state, playerId);
+    state.turnNumber += 1;
+    state.chessPositionHistory = [...(state.chessPositionHistory ?? []), chessPositionKey(state)].slice(-200);
     const opponentId = state.currentPlayerId;
     const destination = `${String.fromCharCode(97 + toCol)}${8 - toRow}`;
+    const repetitionCount = chessPositionCount(state);
     if (opponentId) {
       const replies = chessActions(state, opponentId);
       const checked = chessKingInCheck(state, opponentId);
@@ -1063,8 +1317,11 @@ function applyAction(params: { state: PrototypeGameState; playerId: string; acti
       } else if (replies.length === 0) {
         finish(state, null, now);
         message = `🤝 Stalemate after ${player.displayName}'s move to ${destination}. The game is a draw.`;
+      } else if ((state.chessHalfmoveClock ?? 0) >= 150 || repetitionCount >= 5 || chessInsufficientMaterial(state)) {
+        finish(state, null, now);
+        message = `🤝 Draw after ${player.displayName}'s move (${(state.chessHalfmoveClock ?? 0) >= 150 ? "75-move rule" : repetitionCount >= 5 ? "fivefold repetition" : "insufficient material"}).`;
       } else {
-        message = `♟️ ${player.displayName} moved ${piece} from ${String.fromCharCode(97 + fromCol)}${8 - fromRow} to ${destination}${captured ? " and captured a piece" : ""}${checked ? " — CHECK!" : ""}.`;
+        message = `♟️ ${player.displayName} moved ${piece}${action.promotion ? `=${action.promotion.toUpperCase()}` : ""} from ${String.fromCharCode(97 + fromCol)}${8 - fromRow} to ${destination}${captured || epCapture ? " and captured a piece" : ""}${checked ? " — CHECK!" : ""}${Math.abs(toCol-fromCol)===2 && piece.toLowerCase()==="k" ? " — CASTLING" : ""}.`;
       }
     } else {
       message = `♟️ ${player.displayName} moved ${piece} to ${destination}.`;
@@ -1072,18 +1329,52 @@ function applyAction(params: { state: PrototypeGameState; playerId: string; acti
   } else if (action.type === "fire" && state.gameId === "battleship") {
     const targetId = nextPlayerId(state, playerId);
     if (!targetId || targetId === playerId) return { state: params.state, events: [] };
-    const hit = (state.shipCellsByPlayer[targetId] ?? []).includes(coordsKey(action.x, action.y));
+    const targetCell = coordsKey(action.x, action.y);
+    const hit = (state.shipCellsByPlayer[targetId] ?? []).includes(targetCell);
+    const priorTargetShots = state.shots.filter((item) => item.targetId === targetId);
+    if (priorTargetShots.some((item) => item.x === action.x && item.y === action.y)) return { state: params.state, events: [] };
     const shot: Shot = { shooterId: playerId, targetId, x: action.x, y: action.y, hit, sunk: false };
     state.shots.push(shot);
-    const hits = state.shots.filter((item) => item.targetId === targetId && item.hit).length;
-    const sunk = hits >= (state.shipCellsByPlayer[targetId] ?? []).length;
-    shot.sunk = sunk;
-    message = `${hit ? "💥 HIT" : "🌊 Splash"}! ${player.displayName} fired at ${String.fromCharCode(65 + action.x)}${action.y + 1}${sunk ? " — fleet destroyed!" : ""}`;
-    if (sunk) finish(state, playerId, now);
+    const targetShots = state.shots.filter((item) => item.targetId === targetId && item.hit);
+    const hitCells = new Set(targetShots.map((item) => coordsKey(item.x, item.y)));
+    state.shipGroupsByPlayer ??= {};
+    const groups = state.shipGroupsByPlayer[targetId] ?? (() => {
+      const flattened = state.shipCellsByPlayer[targetId] ?? [];
+      let offset = 0;
+      return [5, 4, 3, 3, 2].map((length) => {
+        const group = flattened.slice(offset, offset + length);
+        offset += length;
+        return group;
+      }).filter((group) => group.length > 0);
+    })();
+    state.shipGroupsByPlayer[targetId] = groups;
+    const sunkGroups = groups.filter((group) => group.every((cell) => hitCells.has(cell)));
+    const priorHitCells = new Set(priorTargetShots.filter((item) => item.hit).map((item) => coordsKey(item.x, item.y)));
+    const previouslySunkGroups = groups.filter((group) => group.every((cell) => priorHitCells.has(cell)));
+    const newlySunk = sunkGroups.find((group) => !previouslySunkGroups.includes(group));
+    shot.sunk = Boolean(newlySunk);
+    const fleetDestroyed = groups.length > 0 ? sunkGroups.length === groups.length : targetShots.length >= (state.shipCellsByPlayer[targetId] ?? []).length;
+    const shipNames = ["Carrier", "Battleship", "Cruiser", "Submarine", "Destroyer"];
+    const sunkName = newlySunk ? shipNames[groups.indexOf(newlySunk)] ?? `${newlySunk.length}-cell ship` : "";
+    message = `${hit ? "💥 HIT" : "🌊 Splash"}! ${player.displayName} fired at ${String.fromCharCode(65 + action.x)}${action.y + 1}${newlySunk ? ` — ${sunkName} sunk!` : ""}${fleetDestroyed ? " — entire fleet destroyed!" : ""}`;
+    if (fleetDestroyed) finish(state, playerId, now);
     else state.currentPlayerId = targetId;
   } else if (action.type === "roll_dice" && state.gameId === "ludo") {
-    state.diceRoll = random(state, 6) + 1; state.hasRolled = true;
-    message = `🎲 ${player.displayName} rolled ${state.diceRoll}.`;
+    const roll = random(state, 6) + 1;
+    state.diceRoll = roll;
+    state.hasRolled = true;
+    state.ludoConsecutiveSixes ??= {};
+    state.ludoConsecutiveSixes[playerId] = roll === 6 ? (state.ludoConsecutiveSixes[playerId] ?? 0) + 1 : 0;
+    if (roll === 6 && (state.ludoConsecutiveSixes[playerId] ?? 0) >= 3) {
+      state.ludoConsecutiveSixes[playerId] = 0;
+      state.diceRoll = null;
+      state.hasRolled = false;
+      state.currentPlayerId = nextPlayerId(state, playerId);
+      state.turnNumber += 1;
+      message = `🎲 ${player.displayName} rolled a third consecutive six and forfeited the turn.`;
+    } else {
+      message = `🎲 ${player.displayName} rolled ${roll}.`;
+    }
   } else if (action.type === "move_token" && state.gameId === "ludo") {
     const tokens = state.ludoTokens[playerId] ?? [-1, -1, -1, -1];
     const current = tokens[action.tokenIndex] ?? -1;
@@ -1196,22 +1487,58 @@ function applyAction(params: { state: PrototypeGameState; playerId: string; acti
       finish(state, playerId, now);
       message += " 🏆 All territories conquered!";
     }
+  } else if (action.type === "give_clue" && state.gameId === "codenames") {
+    const team = state.codenamesTeamByPlayer[playerId];
+    const clue = action.clue.trim();
+    const normalized = clue.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (!team || team !== state.codenamesRoundTeam || playerId !== state.codenamesSpymasterByTeam[team] || state.codenamesClue !== null || !clue || clue.length > 30 || /\s/.test(clue) || state.wordCards.some((card) => card.word.toLowerCase().replace(/[^a-z0-9]/g, "") === normalized)) return { state: params.state, events: [] };
+    state.codenamesClue = clue;
+    state.codenamesClueNumber = action.number;
+    state.codenamesGuessesRemaining = action.number === 0 ? state.wordCards.filter((card) => !card.revealed).length : action.number + 1;
+    const operativeId = nextCodenamesOperative(state, team);
+    if (!operativeId) {
+      message = `🕵️ ${player.displayName} gave ${clue} (${action.number}), but the team has no operative to guess.`;
+      endCodenamesTeamTurn(state);
+    } else {
+      state.currentPlayerId = operativeId;
+      message = `🕵️ ${player.displayName} gives ${team.toUpperCase()} the clue “${clue}” (${action.number}). Operatives may make ${state.codenamesGuessesRemaining} guess${state.codenamesGuessesRemaining === 1 ? "" : "es"}.`;
+    }
+  } else if (action.type === "end_codenames_turn" && state.gameId === "codenames") {
+    const team = state.codenamesTeamByPlayer[playerId];
+    if (!team || team !== state.codenamesRoundTeam || state.currentPlayerId !== playerId || playerId === state.codenamesSpymasterByTeam[team] || state.codenamesClue === null) return { state: params.state, events: [] };
+    endCodenamesTeamTurn(state);
+    message = `➡️ ${player.displayName} ended the ${team.toUpperCase()} guessing turn. ${state.codenamesRoundTeam.toUpperCase()} is up next.`;
   } else if (action.type === "reveal_word" && state.gameId === "codenames") {
+    const team = state.codenamesTeamByPlayer[playerId];
     const card = state.wordCards[action.index];
-    if (!card || card.revealed) return { state: params.state, events: [] };
+    if (!team || team !== state.codenamesRoundTeam || state.currentPlayerId !== playerId || playerId === state.codenamesSpymasterByTeam[team] || state.codenamesClue === null || state.codenamesGuessesRemaining <= 0 || !card || card.revealed) return { state: params.state, events: [] };
     card.revealed = true;
-    const team = state.codenamesTeamByPlayer[playerId] ?? "red";
-    message = `🕵️ ${player.displayName} revealed “${card.word}” — ${card.role === "assassin" ? "ASSASSIN" : card.role.toUpperCase()}.`;
     const redRemaining = state.wordCards.filter((item) => item.role === "red" && !item.revealed).length;
     const blueRemaining = state.wordCards.filter((item) => item.role === "blue" && !item.revealed).length;
     if (card.role === "assassin") {
-      const opponentTeam = team === "red" ? "blue" : "red";
-      finish(state, nextPlayerOnTeam(state, opponentTeam), now);
+      const winnerTeam = team === "red" ? "blue" : "red";
+      const winnerId = nextPlayerOnTeam(state, winnerTeam);
+      finish(state, winnerId, now);
+      message = `☠️ ${player.displayName} revealed the assassin. ${winnerTeam.toUpperCase()} wins!`;
+    } else if (redRemaining === 0) {
+      finish(state, nextPlayerOnTeam(state, "red"), now);
+      message = `🏆 ${player.displayName} revealed the final red agent. RED wins!`;
+    } else if (blueRemaining === 0) {
+      finish(state, nextPlayerOnTeam(state, "blue"), now);
+      message = `🏆 ${player.displayName} revealed the final blue agent. BLUE wins!`;
     } else if (card.role === team) {
-      if (redRemaining === 0 || blueRemaining === 0) finish(state, nextPlayerOnTeam(state, team), now);
+      state.codenamesGuessesRemaining = Math.max(0, state.codenamesGuessesRemaining - 1);
+      if (state.codenamesGuessesRemaining === 0) {
+        endCodenamesTeamTurn(state);
+        message = `✅ ${player.displayName} found a ${team.toUpperCase()} agent. The clue's guess budget is used; ${state.codenamesRoundTeam.toUpperCase()} is up next.`;
+      } else {
+        state.currentPlayerId = nextCodenamesOperative(state, team, playerId) ?? playerId;
+        message = `✅ ${player.displayName} found a ${team.toUpperCase()} agent. ${state.codenamesGuessesRemaining} guess${state.codenamesGuessesRemaining === 1 ? "" : "es"} remain.`;
+      }
     } else {
-      const opponentTeam = team === "red" ? "blue" : "red";
-      state.currentPlayerId = nextPlayerOnTeam(state, opponentTeam) ?? nextPlayerId(state, playerId);
+      const revealedRole = card.role === "neutral" ? "a bystander" : "an opposing agent";
+      endCodenamesTeamTurn(state);
+      message = `🟨 ${player.displayName} revealed ${revealedRole}. The guessing turn ends; ${state.codenamesRoundTeam.toUpperCase()} is up next.`;
     }
   } else if (action.type === "poker_action" && state.gameId === "poker") {
     const paid = state.pokerBets[playerId] ?? 0; const stack = state.pokerStacks[playerId] ?? 0;
@@ -1242,13 +1569,16 @@ function applyAction(params: { state: PrototypeGameState; playerId: string; acti
     const everyoneActed = canStillAct.every((item) => state.pokerActed.includes(item.userId));
     const allMatched = active.every((item) => (state.pokerBets[item.userId] ?? 0) === state.pokerBetToCall || (state.pokerStacks[item.userId] ?? 0) === 0);
     if (active.length <= 1) {
-      const winner = active[0]; if (winner) state.pokerStacks[winner.userId] = (state.pokerStacks[winner.userId] ?? 0) + state.pokerPot;
+      const winner = active[0];
+      if (winner) state.pokerStacks[winner.userId] = (state.pokerStacks[winner.userId] ?? 0) + state.pokerPot;
       state.pokerPot = 0;
-      finish(state, winner?.userId ?? null, now); state.pokerLastAction = winner ? `${winner.displayName} wins the pot because every opponent folded.` : "Hand ended without an eligible player.";
+      state.pokerLastAction = winner ? `${winner.displayName} won hand ${state.pokerHandNumber} because every opponent folded.` : "Hand ended without an eligible player.";
+      startNextPokerHand(state, now, state.pokerLastAction);
     } else if (everyoneActed && allMatched) advancePokerStreet(state, now);
     else state.currentPlayerId = nextPokerActor(state, playerId);
   } else if (action.type === "end_turn") {
     state.currentPlayerId = nextPlayerId(state, playerId); state.turnNumber += 1; state.hasRolled = false; state.diceRoll = null; state.reinforcedThisTurn = false;
+    if (state.gameId === "ludo") state.ludoConsecutiveSixes[playerId] = 0;
     if (state.gameId === "poker") return { state: params.state, events: [] };
     message = `➡️ ${player.displayName} ended the turn.`;
   } else {
@@ -1274,7 +1604,8 @@ function publicState(state: PrototypeGameState, viewerId: string): PublicPrototy
       isCurrentTurn: player.userId === state.currentPlayerId, money: state.money[player.userId] ?? null,
       position: state.positions[player.userId] ?? null, tokens: state.ludoTokens[player.userId] ? [...state.ludoTokens[player.userId]!] : null,
       stack: state.pokerStacks[player.userId] ?? null, folded: state.pokerFolded.includes(player.userId), bet: state.pokerBets[player.userId] ?? 0,
-      team: state.codenamesTeamByPlayer[player.userId] ?? null
+      team: state.codenamesTeamByPlayer[player.userId] ?? null,
+      isSpymaster: state.codenamesSpymasterByTeam[state.codenamesTeamByPlayer[player.userId] ?? "red"] === player.userId
     })),
     currentPlayerId: state.currentPlayerId, winnerUserId: state.winnerUserId, turnNumber: state.turnNumber, actionNumber: state.actionNumber, updatedAt: state.updatedAt,
     board: state.board.map((row) => row.slice()), pawns: { ...state.pawns }, walls: state.walls.map((wall) => ({ ...wall })), wallsRemaining: { ...state.wallsRemaining },
@@ -1282,8 +1613,10 @@ function publicState(state: PrototypeGameState, viewerId: string): PublicPrototy
     money: { ...state.money }, positions: { ...state.positions }, properties: state.properties.map((property) => ({ ...property })),
     territories: state.territories.map((territory) => ({ ...territory, neighbors: territory.neighbors.slice() })), territoryOwners: { ...state.territoryOwners }, territoryTroops: { ...state.territoryTroops }, reinforcedThisTurn: state.reinforcedThisTurn,
     ownShipCells: (state.shipCellsByPlayer[viewerId] ?? []).slice(), shots: state.shots.map((shot) => ({ ...shot })),
-    wordCards: state.wordCards.map((card) => ({ word: card.word, revealed: card.revealed, revealedRole: card.revealed ? card.role : null })),
-    myPokerCards: (state.pokerCardsByPlayer[viewerId] ?? []).slice(), communityCards: state.communityCards.slice(), pokerStacks: { ...state.pokerStacks }, pokerBets: { ...state.pokerBets }, pokerFolded: state.pokerFolded.slice(), pokerBetToCall: state.pokerBetToCall, pokerPot: state.pokerPot, pokerStreet: state.pokerStreet, pokerLastAction: state.pokerLastAction,
+    wordCards: state.wordCards.map((card) => ({ word: card.word, revealed: card.revealed, revealedRole: card.revealed ? card.role : null, keyRole: state.codenamesSpymasterByTeam[state.codenamesTeamByPlayer[viewerId] ?? "red"] === viewerId ? card.role : null })),
+    isCodenamesSpymaster: state.codenamesSpymasterByTeam[state.codenamesTeamByPlayer[viewerId] ?? "red"] === viewerId,
+    codenamesCurrentTeam: state.codenamesRoundTeam, codenamesClue: state.codenamesClue, codenamesClueNumber: state.codenamesClueNumber, codenamesGuessesRemaining: state.codenamesGuessesRemaining,
+    myPokerCards: (state.pokerCardsByPlayer[viewerId] ?? []).slice(), communityCards: state.communityCards.slice(), pokerStacks: { ...state.pokerStacks }, pokerBets: { ...state.pokerBets }, pokerFolded: state.pokerFolded.slice(), pokerBetToCall: state.pokerBetToCall, pokerPot: state.pokerPot, pokerStreet: state.pokerStreet, pokerButtonSeat: state.pokerButtonSeat, pokerHandNumber: state.pokerHandNumber, pokerLastAction: state.pokerLastAction,
     activityLog: state.activityLog.slice(-30), prototypeNotice: SPECS[state.gameId].notice
   };
 }
@@ -1293,15 +1626,15 @@ function createModule(gameId: PrototypeGameId): GameModule<PrototypeGameState, P
   return {
     id: gameId as GameId,
     displayName: spec.title,
-    version: "0.2.0-rules-hardening",
+    version: "0.3.0-chess-rules",
     minPlayers: spec.min,
     maxPlayers: spec.max,
     defaultSettings: DEFAULT_SETTINGS,
     settingsSchema,
     actionSchema,
     createInitialState: (params) => createInitialState(params, gameId),
-    getPublicState: ({ state, viewerId }) => publicState(state, viewerId),
-    getLegalActions: ({ state, playerId }) => actionsFor(state, playerId),
+    getPublicState: ({ state, viewerId }) => { normalizeCodenamesSnapshot(state); return publicState(state, viewerId); },
+    getLegalActions: ({ state, playerId }) => { normalizeCodenamesSnapshot(state); return actionsFor(state, playerId); },
     validateAction,
     applyAction,
     getTurnInfo: (state): GameTurnInfo => ({ currentPlayerId: state.currentPlayerId, turnStartedAt: state.phase === "playing" ? state.turnStartedAt : null, turnSeconds: state.settings.turnSeconds }),

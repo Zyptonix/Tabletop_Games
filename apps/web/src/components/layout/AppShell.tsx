@@ -1,4 +1,5 @@
-﻿"use client";
+/* TABLETOP GAME ENGINE CONTINUATION V3 */
+"use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -25,11 +26,11 @@ export function AppShell({ children, wide = false }: { children: React.ReactNode
    * so we intentionally remove the normal white site header and page padding.
    */
   if (wide) {
-    return <main className="min-h-screen overflow-hidden bg-[#020604] text-white">{children}</main>;
+    return <main className="tt-game-viewport h-dvh overflow-hidden bg-[#020604] text-white">{children}</main>;
   }
 
   return (
-    <div className="min-h-min-h-screen bg-[#090d12] text-slate-100">
+    <div className="min-h-screen bg-[#090d12] text-slate-100">
       <header className="sticky top-0 z-30 border-b border-emerald-500/20 bg-[#0d131b] backdrop-blur">
         <div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-3 px-4">
           <Link href="/dashboard" className="flex items-center gap-2 font-black text-emerald-50">
