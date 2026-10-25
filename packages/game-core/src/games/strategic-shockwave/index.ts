@@ -461,26 +461,34 @@ function tickState(params: { state: StrategicShockwaveState; now: string }): { s
         continue;
       }
       if (player.inputX === 0 && player.inputY === 0) continue;
-      const dx = Math.sign(player.inputX);
-      const dy = Math.sign(player.inputY);
-      const nextX = player.x + dx;
-      const nextY = player.y + dy;
-      const movedX = dx !== 0 && canOccupy(state, player.userId, nextX, player.y);
-      const movedY = dy !== 0 && canOccupy(state, player.userId, player.x, nextY);
-      if (movedX) {
-        player.x = nextX;
-        changed = true;
+// TABLETOP GAME LOGIC PHASE 1: dt-scaled movement
+      // Movement is velocity-based, not one whole tile per server tick. This keeps
+      // player speed upgrades meaningful, normalizes diagonal input, and avoids
+      // tunnelling through narrow gaps when tick intervals vary under office LAN load.
+      const inputLength = Math.hypot(player.inputX, player.inputY);
+      if (inputLength === 0 || player.speed <= 0) continue;
+      const distance = player.speed * dt;
+      const stepCount = Math.max(1, Math.ceil(distance / Math.max(PLAYER_RADIUS * 0.5, 0.05)));
+      const stepX = (player.inputX / inputLength) * distance / stepCount;
+      const stepY = (player.inputY / inputLength) * distance / stepCount;
+      let moved = false;
+      for (let step = 0; step < stepCount; step += 1) {
+        // Resolve axes separately so a blocked axis does not prevent sliding along a wall.
+        const nextX = player.x + stepX;
+        if (Math.abs(stepX) > 0 && canOccupy(state, player.userId, nextX, player.y)) {
+          player.x = nextX;
+          moved = true;
+        }
+        const nextY = player.y + stepY;
+        if (Math.abs(stepY) > 0 && canOccupy(state, player.userId, player.x, nextY)) {
+          player.y = nextY;
+          moved = true;
+        }
       }
-      if (movedY) {
-        player.y = nextY;
-        changed = true;
-      }
-      // Keep the current direction active while the key remains held. Clearing the
-      // input after a successful step stops repeated movement even when the client
-      // keeps sending the same direction each heartbeat.
-      if (movedX || movedY) {
-        player.inputUpdatedAt = nowMs;
-      }
+      if (moved) changed = true;
+      // Do not refresh inputUpdatedAt here: it represents the last client heartbeat.
+      // Otherwise a lost client can leave a movement key stuck forever. The input
+      // lease is refreshed only by a fresh set_input action.
     }
   }
   state.lastTickAt = nowMs;

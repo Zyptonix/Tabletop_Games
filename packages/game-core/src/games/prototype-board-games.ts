@@ -252,7 +252,7 @@ function chessPseudoMoves(state: PrototypeGameState, playerId: string): Prototyp
     const tryMove = (r: number, c: number): boolean => {
       if (r < 0 || r > 7 || c < 0 || c > 7) return false;
       const target = board[r]?.[c] ?? null;
-      if (target && playerOwnsChessPiece(state, playerId, target)) return false;
+      if (target && (playerOwnsChessPiece(state, playerId, target) || target.toLowerCase() === "k")) return false;
       output.push({ type: "move_piece", from, to: r * 8 + c });
       return !target;
     };
@@ -437,7 +437,98 @@ function wallsBlockMove(state: PrototypeGameState, from: { x: number; y: number 
     ? from.x === to.x && Math.min(from.y, to.y) === wall.y && to.x >= wall.x && to.x <= wall.x + 1
     : from.y === to.y && Math.min(from.x, to.x) === wall.x && to.y >= wall.y && to.y <= wall.y + 1);
 }
-function chessActions(state: PrototypeGameState, playerId: string): PrototypeAction[] { return chessPseudoMoves(state, playerId); }
+// TABLETOP GAME LOGIC PHASE 1: legal king-safety filtering
+function chessSquareAttacked(state: PrototypeGameState, byPlayerId: string, targetRow: number, targetColumn: number, board = state.board): boolean {
+  const attacker = state.players.find((player) => player.userId === byPlayerId);
+  if (!attacker) return false;
+  const knightOffsets: Array<[number, number]> = [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]];
+  const kingOffsets: Array<[number, number]> = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
+  const rayDirections: Array<[number, number]> = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
+  const pawnDirection = attacker.seat % 2 === 0 ? -1 : 1;
+  for (let row = 0; row < 8; row += 1) {
+    for (let column = 0; column < 8; column += 1) {
+      const piece = board[row]?.[column] ?? null;
+      if (!piece || !playerOwnsChessPiece(state, byPlayerId, piece)) continue;
+      const kind = piece.toLowerCase();
+      const rowDelta = targetRow - row;
+      const columnDelta = targetColumn - column;
+      if (kind === "p") {
+        if (rowDelta === pawnDirection && Math.abs(columnDelta) === 1) return true;
+        continue;
+      }
+      if (kind === "n") {
+        if (knightOffsets.some(([dr, dc]) => row + dr === targetRow && column + dc === targetColumn)) return true;
+        continue;
+      }
+      if (kind === "k") {
+        if (kingOffsets.some(([dr, dc]) => row + dr === targetRow && column + dc === targetColumn)) return true;
+        continue;
+      }
+      const allowedRay = kind === "q"
+        ? rayDirections
+        : kind === "r"
+          ? rayDirections.filter(([dr, dc]) => dr === 0 || dc === 0)
+          : kind === "b"
+            ? rayDirections.filter(([dr, dc]) => dr !== 0 && dc !== 0)
+            : [];
+      for (const [dr, dc] of allowedRay) {
+        let r = row + dr;
+        let c = column + dc;
+        while (r >= 0 && r < 8 && c >= 0 && c < 8) {
+          if (r === targetRow && c === targetColumn) return true;
+          if (board[r]?.[c]) break;
+          r += dr;
+          c += dc;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+function chessKingInCheck(state: PrototypeGameState, playerId: string, board = state.board): boolean {
+  let kingRow = -1;
+  let kingColumn = -1;
+  for (let row = 0; row < 8; row += 1) {
+    for (let column = 0; column < 8; column += 1) {
+      const piece = board[row]?.[column] ?? null;
+      if (piece?.toLowerCase() === "k" && playerOwnsChessPiece(state, playerId, piece)) {
+        kingRow = row;
+        kingColumn = column;
+        break;
+      }
+    }
+    if (kingRow >= 0) break;
+  }
+  if (kingRow < 0) return true;
+  const opponent = state.players.find((player) => player.userId !== playerId);
+  return opponent ? chessSquareAttacked(state, opponent.userId, kingRow, kingColumn, board) : false;
+}
+
+function chessBoardAfterMove(state: PrototypeGameState, action: PrototypeAction): Array<Array<string | null>> | null {
+  if (action.type !== "move_piece" || !Number.isInteger(action.from) || !Number.isInteger(action.to) || action.from < 0 || action.from >= 64 || action.to < 0 || action.to >= 64) return null;
+  const board = state.board.map((row) => row.slice());
+  const fromRow = Math.floor(action.from / 8);
+  const fromColumn = action.from % 8;
+  const toRow = Math.floor(action.to / 8);
+  const toColumn = action.to % 8;
+  const piece = board[fromRow]?.[fromColumn] ?? null;
+  if (!piece) return null;
+  if (board[toRow]?.[toColumn]?.toLowerCase() === "k") return null;
+  board[fromRow]![fromColumn] = null;
+  board[toRow]![toColumn] = piece;
+  if (piece.toLowerCase() === "p" && (toRow === 0 || toRow === 7)) {
+    board[toRow]![toColumn] = piece === piece.toUpperCase() ? "Q" : "q";
+  }
+  return board;
+}
+
+function chessActions(state: PrototypeGameState, playerId: string): PrototypeAction[] {
+  return chessPseudoMoves(state, playerId).filter((action) => {
+    const board = chessBoardAfterMove(state, action);
+    return board !== null && !chessKingInCheck(state, playerId, board);
+  });
+}
 function actionsFor(state: PrototypeGameState, playerId: string): PrototypeAction[] {
   if (!currentPlayer(state, playerId)) return [];
   if (state.gameId === "chess") return chessActions(state, playerId);
@@ -573,12 +664,23 @@ function applyAction(params: { state: PrototypeGameState; playerId: string; acti
     state.board[fromRow]![fromCol] = null;
     state.board[toRow]![toCol] = piece;
     if (piece?.toLowerCase() === "p" && (toRow === 0 || toRow === 7)) state.board[toRow]![toCol] = player.seat % 2 === 0 ? "Q" : "q";
-    if (captured?.toLowerCase() === "k") {
-      finish(state, playerId, now);
-      message = `♟️ ${player.displayName} captured the king and wins the prototype match.`;
+    state.currentPlayerId = nextPlayerId(state, playerId);
+    const opponentId = state.currentPlayerId;
+    const destination = `${String.fromCharCode(97 + toCol)}${8 - toRow}`;
+    if (opponentId) {
+      const replies = chessActions(state, opponentId);
+      const checked = chessKingInCheck(state, opponentId);
+      if (replies.length === 0 && checked) {
+        finish(state, playerId, now);
+        message = `♟️ ${player.displayName} delivered checkmate on ${destination} and wins!`;
+      } else if (replies.length === 0) {
+        finish(state, null, now);
+        message = `🤝 Stalemate after ${player.displayName}'s move to ${destination}. The game is a draw.`;
+      } else {
+        message = `♟️ ${player.displayName} moved ${piece} from ${String.fromCharCode(97 + fromCol)}${8 - fromRow} to ${destination}${captured ? " and captured a piece" : ""}${checked ? " — CHECK!" : ""}.`;
+      }
     } else {
-      state.currentPlayerId = nextPlayerId(state, playerId);
-      message = `♟️ ${player.displayName} moved ${piece} from ${String.fromCharCode(97 + fromCol)}${8 - fromRow} to ${String.fromCharCode(97 + toCol)}${8 - toRow}${captured ? " and captured a piece" : ""}.`;
+      message = `♟️ ${player.displayName} moved ${piece} to ${destination}.`;
     }
   } else if (action.type === "fire" && state.gameId === "battleship") {
     const targetId = nextPlayerId(state, playerId);
