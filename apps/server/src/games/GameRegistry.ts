@@ -28,14 +28,14 @@ import {
   battleshipModule,
   ludoModule,
   barricadesModule,
-  monopolyPrototypeModule,
+  monopolyModule,
   riskModule,
   worldConquestModule,
-  codenamesPrototypeModule,
+  codenamesModule,
   pokerModule,
-  type PrototypeGameState,
-  type PrototypeAction,
-  type PrototypeSettings
+  type BoardGameState,
+  type BoardGameAction,
+  type BoardGameSettings
 } from "@tabletop/game-core";
 import type { GameId } from "@tabletop/shared";
 import type { GameModule, RegisteredGameSummary } from "@tabletop/game-core";
@@ -71,15 +71,15 @@ const modules = new Map<GameId, AnyGameModule>([
     "reversi",
     reversiModule as GameModule<GridGameState, GridGameAction, GridGameSettings> as AnyGameModule
   ],
-  ["chess", chessModule as GameModule<PrototypeGameState, PrototypeAction, PrototypeSettings> as AnyGameModule],
-  ["battleship", battleshipModule as GameModule<PrototypeGameState, PrototypeAction, PrototypeSettings> as AnyGameModule],
-  ["ludo", ludoModule as GameModule<PrototypeGameState, PrototypeAction, PrototypeSettings> as AnyGameModule],
-  ["barricades", barricadesModule as GameModule<PrototypeGameState, PrototypeAction, PrototypeSettings> as AnyGameModule],
-  ["monopoly", monopolyPrototypeModule as GameModule<PrototypeGameState, PrototypeAction, PrototypeSettings> as AnyGameModule],
-  ["risk", riskModule as GameModule<PrototypeGameState, PrototypeAction, PrototypeSettings> as AnyGameModule],
-  ["world-conquest", worldConquestModule as GameModule<PrototypeGameState, PrototypeAction, PrototypeSettings> as AnyGameModule],
-  ["codenames", codenamesPrototypeModule as GameModule<PrototypeGameState, PrototypeAction, PrototypeSettings> as AnyGameModule],
-  ["poker", pokerModule as GameModule<PrototypeGameState, PrototypeAction, PrototypeSettings> as AnyGameModule]
+  ["chess", chessModule as GameModule<BoardGameState, BoardGameAction, BoardGameSettings> as AnyGameModule],
+  ["battleship", battleshipModule as GameModule<BoardGameState, BoardGameAction, BoardGameSettings> as AnyGameModule],
+  ["ludo", ludoModule as GameModule<BoardGameState, BoardGameAction, BoardGameSettings> as AnyGameModule],
+  ["barricades", barricadesModule as GameModule<BoardGameState, BoardGameAction, BoardGameSettings> as AnyGameModule],
+  ["monopoly", monopolyModule as GameModule<BoardGameState, BoardGameAction, BoardGameSettings> as AnyGameModule],
+  ["risk", riskModule as GameModule<BoardGameState, BoardGameAction, BoardGameSettings> as AnyGameModule],
+  ["world-conquest", worldConquestModule as GameModule<BoardGameState, BoardGameAction, BoardGameSettings> as AnyGameModule],
+  ["codenames", codenamesModule as GameModule<BoardGameState, BoardGameAction, BoardGameSettings> as AnyGameModule],
+  ["poker", pokerModule as GameModule<BoardGameState, BoardGameAction, BoardGameSettings> as AnyGameModule]
 ]);
 
 export class GameRegistry {

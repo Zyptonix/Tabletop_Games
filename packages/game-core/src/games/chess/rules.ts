@@ -1,14 +1,14 @@
 import type {
-  PrototypeAction,
-  PrototypeGameState,
-} from "../prototype-board-games";
+  BoardGameAction,
+  BoardGameState,
+} from "../shared/types";
 
-export function playerOwnsChessPiece(state: PrototypeGameState, playerId: string, piece: string | null): boolean {
+export function playerOwnsChessPiece(state: BoardGameState, playerId: string, piece: string | null): boolean {
   const player = state.players.find((item) => item.userId === playerId);
   return Boolean(player && piece && (player.seat % 2 === 0 ? piece === piece.toUpperCase() : piece === piece.toLowerCase()));
 }
-export function chessPseudoMoves(state: PrototypeGameState, playerId: string): PrototypeAction[] {
-  const output: PrototypeAction[] = [];
+export function chessPseudoMoves(state: BoardGameState, playerId: string): BoardGameAction[] {
+  const output: BoardGameAction[] = [];
   const player = state.players.find((candidate) => candidate.userId === playerId);
   if (!player) return output;
   const board = state.board;
@@ -93,7 +93,7 @@ export function chessPseudoMoves(state: PrototypeGameState, playerId: string): P
 }
 
 // TABLETOP GAME LOGIC PHASE 1: legal king-safety filtering
-export function chessSquareAttacked(state: PrototypeGameState, byPlayerId: string, targetRow: number, targetColumn: number, board = state.board): boolean {
+export function chessSquareAttacked(state: BoardGameState, byPlayerId: string, targetRow: number, targetColumn: number, board = state.board): boolean {
   const attacker = state.players.find((player) => player.userId === byPlayerId);
   if (!attacker) return false;
   const knightOffsets: Array<[number, number]> = [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]];
@@ -141,7 +141,7 @@ export function chessSquareAttacked(state: PrototypeGameState, byPlayerId: strin
   return false;
 }
 
-export function chessKingInCheck(state: PrototypeGameState, playerId: string, board = state.board): boolean {
+export function chessKingInCheck(state: BoardGameState, playerId: string, board = state.board): boolean {
   let kingRow = -1;
   let kingColumn = -1;
   for (let row = 0; row < 8; row += 1) {
@@ -160,7 +160,7 @@ export function chessKingInCheck(state: PrototypeGameState, playerId: string, bo
   return opponent ? chessSquareAttacked(state, opponent.userId, kingRow, kingColumn, board) : false;
 }
 
-export function chessBoardAfterMove(state: PrototypeGameState, action: PrototypeAction): Array<Array<string | null>> | null {
+export function chessBoardAfterMove(state: BoardGameState, action: BoardGameAction): Array<Array<string | null>> | null {
   if (action.type !== "move_piece" || !Number.isInteger(action.from) || !Number.isInteger(action.to) || action.from < 0 || action.from >= 64 || action.to < 0 || action.to >= 64) return null;
   const board = state.board.map((row) => row.slice());
   const fromRow = Math.floor(action.from / 8), fromColumn = action.from % 8;
@@ -191,14 +191,14 @@ export function chessBoardAfterMove(state: PrototypeGameState, action: Prototype
   return board;
 }
 
-export function chessActions(state: PrototypeGameState, playerId: string): PrototypeAction[] {
+export function chessActions(state: BoardGameState, playerId: string): BoardGameAction[] {
   return chessPseudoMoves(state, playerId).filter((action) => {
     const board = chessBoardAfterMove(state, action);
     return board !== null && !chessKingInCheck(state, playerId, board);
   });
 }
 
-export function chessPositionKey(state: PrototypeGameState): string {
+export function chessPositionKey(state: BoardGameState): string {
   const active = state.players.find((player) => player.userId === state.currentPlayerId);
   const sideToMove = active && active.seat % 2 === 0 ? "w" : "b";
   let ep = "-";
@@ -211,14 +211,14 @@ export function chessPositionKey(state: PrototypeGameState): string {
   }
   return `${state.board.map((row) => row.join("")).join("/")}:${sideToMove}:${state.chessCastlingRights ?? "KQkq"}:${ep}`;
 }
-export function chessPositionCount(state: PrototypeGameState): number {
+export function chessPositionCount(state: BoardGameState): number {
   const key = chessPositionKey(state);
   return (state.chessPositionHistory ?? []).filter((position) => position === key).length;
 }
-export function chessDrawClaimAvailable(state: PrototypeGameState): boolean {
+export function chessDrawClaimAvailable(state: BoardGameState): boolean {
   return (state.chessHalfmoveClock ?? 0) >= 100 || chessPositionCount(state) >= 3;
 }
-export function chessInsufficientMaterial(state: PrototypeGameState): boolean {
+export function chessInsufficientMaterial(state: BoardGameState): boolean {
   const pieces: Array<{kind:string; color:number}> = [];
   for (let row = 0; row < 8; row += 1) for (let column = 0; column < 8; column += 1) {
     const piece = state.board[row]?.[column] ?? null;

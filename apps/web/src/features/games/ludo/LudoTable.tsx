@@ -1,0 +1,23 @@
+"use client";
+import { useState } from "react";
+import type { AnyAction, BoardGameTableProps } from "../board-games/shared/types";
+import { PLAYER_COLORS, owns, isAction, hasAction, money } from "../board-games/shared/ui-utils";
+
+
+export function LudoTable(props:BoardGameTableProps){
+const { room, state, legalActions, gameEvents, currentUserId, onAction, onChat, onEndMatch } = props;
+const me = state.players.find((player) => player.userId === currentUserId);
+const isMyTurn = owns(state, currentUserId);
+const currentPlayer = state.players.find((player) => player.userId === state.currentPlayerId);
+
+function renderLudo() {
+    const track = Array.from({ length: 58 }, (_, index) => index);
+    const allTokenCount = Object.values(state.ludoTokens).reduce((sum, tokens) => sum + tokens.filter((position) => position >= 0).length, 0);
+    return <div className="mx-auto w-full max-w-[780px]"><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-black">🎲 Race to home</h2><p className="text-sm text-white/50">Roll a six to launch a token. First player to finish all four wins.</p></div><div className="flex items-center gap-3 rounded-2xl border border-amber-200/15 bg-amber-300/10 px-4 py-3"><span className="text-3xl">{state.diceRoll ? ["⚀","⚁","⚂","⚃","⚄","⚅"][state.diceRoll - 1] : "🎲"}</span><div><p className="text-[10px] font-black uppercase tracking-widest text-amber-100/50">Last roll</p><p className="text-2xl font-black text-amber-100">{state.diceRoll ?? "—"}</p></div></div></div>
+      <div className="rounded-3xl border border-white/10 bg-[#10211f] p-4 shadow-[0_25px_70px_rgba(0,0,0,.3)]"><div className="grid grid-cols-[repeat(13,minmax(0,1fr))] gap-1 sm:gap-1.5">{track.map((index) => { const tokenList = state.players.flatMap((player) => (state.ludoTokens[player.userId] ?? []).map((position, tokenIndex) => ({ player, position, tokenIndex }))).filter((token) => token.position === index); return <div key={index} className={`relative grid aspect-square place-items-center rounded-lg border text-[10px] ${tokenList.length ? "border-white/15 bg-white/10" : "border-white/[.045] bg-black/10"}`}>{tokenList.map((token) => <span key={token.player.userId + token.tokenIndex} title={token.player.displayName} className="grid h-5 w-5 place-items-center rounded-full border-2 border-white/70 text-[8px] font-black text-slate-950" style={{ background: PLAYER_COLORS[token.player.seat % PLAYER_COLORS.length] }}>{token.tokenIndex + 1}</span>)}{tokenList.length === 0 ? <span className="text-white/15">{index + 1}</span> : null}</div>; })}</div><p className="mt-3 text-[10px] font-bold uppercase tracking-wider text-white/35">52-space shared route + 6-space home stretch; safe-square rules are still in progress</p></div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">{state.players.map((player) => <section key={player.userId} className={`rounded-2xl border p-3 ${player.userId === currentUserId ? "border-amber-200/30 bg-amber-200/[.06]" : "border-white/10 bg-black/15"}`}><div className="flex items-center justify-between gap-2"><p className="font-black">{player.displayName}{player.userId === currentUserId ? " (you)" : ""}</p><span className="text-xs font-bold text-white/40">{(player.tokens ?? [-1,-1,-1,-1]).filter((pos) => pos >= 57).length}/4 home</span></div><div className="mt-3 grid grid-cols-4 gap-2">{(player.tokens ?? [-1,-1,-1,-1]).map((position, tokenIndex) => <button key={tokenIndex} type="button" onClick={() => onAction("move_token", { tokenIndex })} disabled={player.userId !== currentUserId || !isMyTurn || !state.hasRolled || !hasAction(legalActions, "move_token", (action) => action.tokenIndex === tokenIndex)} className="min-h-12 rounded-xl border text-xl font-black transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40" style={{ borderColor: PLAYER_COLORS[player.seat % PLAYER_COLORS.length], background: `${PLAYER_COLORS[player.seat % PLAYER_COLORS.length]}22` }}>{position < 0 ? "🏠" : position >= 57 ? "🏁" : position + 1}</button>)}</div></section>)}</div>
+      <div className="mt-4 flex gap-2">{hasAction(legalActions,"roll_dice") ? <button onClick={() => onAction("roll_dice")} className="min-h-12 rounded-xl bg-amber-300 px-5 font-black text-slate-950 hover:bg-amber-200">🎲 Roll dice</button> : null}{hasAction(legalActions,"end_turn") ? <button onClick={() => onAction("end_turn")} className="min-h-12 rounded-xl border border-white/10 px-4 font-bold">End turn</button> : null}<span className="self-center text-xs text-white/40">{allTokenCount} tokens on the track</span></div>
+    </div>;
+  }
+return renderLudo();
+}

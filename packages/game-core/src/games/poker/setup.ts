@@ -1,0 +1,6 @@
+import type { GamePlayer } from "../../engine/GameTypes";
+import type { BoardGameState } from "../shared/types";
+import { shuffle } from "../shared/utils";
+import { freshDeck } from "./deck";
+
+export function setupPoker(state:BoardGameState,players:GamePlayer[],rngState:number):number {const shuffled=shuffle(freshDeck(),rngState);rngState=shuffled.rngState;state.pokerDeck=shuffled.items;for(const p of players){state.pokerCardsByPlayer[p.userId]=[state.pokerDeck.shift()??"A♠",state.pokerDeck.shift()??"K♣"];state.pokerStacks[p.userId]=1000;state.pokerBets[p.userId]=0;}state.pokerButtonSeat=players[0]?.seat??0;const small=players.length<=2?0:1;const big=players.length<=2?1:2;for(const [blindIndex,playerIndex] of [[0,small],[1,big]] as const){const p=players[playerIndex];if(!p)continue;const blind=blindIndex===0?10:20;const paid=Math.min(blind,state.pokerStacks[p.userId]??0);state.pokerStacks[p.userId]=(state.pokerStacks[p.userId]??0)-paid;state.pokerBets[p.userId]=paid;state.pokerContributions[p.userId]=paid;state.pokerPot+=paid;}state.pokerBetToCall=Math.max(0,...Object.values(state.pokerBets));state.pokerLastAction="Small blind 10 · Big blind 20";const first=players.length<=2?0:3%players.length;state.currentPlayerId=players[first]?.userId??null;return rngState;}

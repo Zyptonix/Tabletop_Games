@@ -1,0 +1,10 @@
+import { pokerActionSchema, getPokerLegalActions } from "./actions";
+import { setupPoker } from "./setup";
+import { reducePokerAction } from "./reducer";
+import { getPokerPublicState } from "./public-state";
+import { getPokerResults } from "./scoring";
+import { createBoardGameModule } from "../shared/runtime";
+export { evaluateTexasHoldemHand } from "./rules";
+export type { PokerHandValue } from "./rules";
+export const pokerModule = createBoardGameModule({ id: "poker", displayName: "Poker · Texas Hold’em", minPlayers: 2, maxPlayers: 6, notice: "Hold’em hand ranking, side pots, split pots and multi-hand sessions are handled server-side.", actionSchema: pokerActionSchema, setup: setupPoker, legalActions: getPokerLegalActions, reduceAction: reducePokerAction, publicState: getPokerPublicState, results: getPokerResults });
+export * from "./types";

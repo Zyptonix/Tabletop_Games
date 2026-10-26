@@ -1,0 +1,10 @@
+import { codenamesActionSchema, getCodenamesLegalActions } from "./actions";
+import { setupCodenames } from "./setup";
+import { reduceCodenamesAction } from "./reducer";
+import { getCodenamesPublicState } from "./public-state";
+import { getCodenamesResults } from "./scoring";
+import { createBoardGameModule } from "../shared/runtime";
+import { normalizeCodenamesSnapshot } from "./rules";
+import { validateCodenamesAction } from "./validation";
+export const codenamesModule = createBoardGameModule({ id: "codenames", displayName: "Codenames", minPlayers: 4, maxPlayers: 10, notice: "Private spymaster keys, clues, guesses, passing and team victory are enforced server-side.", actionSchema: codenamesActionSchema, setup: setupCodenames, legalActions: getCodenamesLegalActions, reduceAction: reduceCodenamesAction, publicState: getCodenamesPublicState, results: getCodenamesResults, normalizeState: normalizeCodenamesSnapshot, validateAction: validateCodenamesAction });
+export * from "./types";

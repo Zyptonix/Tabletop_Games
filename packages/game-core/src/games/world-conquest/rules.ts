@@ -1,0 +1,2 @@
+import type { BoardGameState } from "../shared/types";
+export function canAttackWorldTerritory(state:BoardGameState,playerId:string,fromId:string,toId:string):boolean { const from=state.territories.find(t=>t.id===fromId); const to=state.territories.find(t=>t.id===toId); return Boolean(from&&to&&state.territoryOwners[from.id]===playerId&&from.neighbors.includes(to.id)&&state.territoryOwners[to.id]&&state.territoryOwners[to.id]!==playerId&&(state.territoryTroops[from.id]??0)>=2&&(state.territoryTroops[to.id]??0)>=1); }

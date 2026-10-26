@@ -1,3 +1,6 @@
+import type { GamePlayer } from "../../engine/GameTypes";
+import type { BoardGameState } from "../shared/types";
+
 const BATTLESHIP_LENGTHS = [5, 4, 3, 3, 2];
 
 export function fleetForSeat(
@@ -80,3 +83,5 @@ export function fleetForSeat(
     rngState: localRng,
   };
 }
+
+export function setupBattleship(state:BoardGameState,players:GamePlayer[],rngState:number):number { for(const player of players){const fleet=fleetForSeat(player.seat,rngState);state.shipCellsByPlayer[player.userId]=fleet.cells;state.shipGroupsByPlayer[player.userId]=fleet.ships;rngState=fleet.rngState;} return rngState; }

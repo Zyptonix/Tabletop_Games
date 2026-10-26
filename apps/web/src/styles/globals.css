@@ -710,27 +710,27 @@ body:has(.uno-fullscreen) {
   .connect-four-winning-hole { animation: none !important; }
 }
 
-/* PROTOTYPE BOARD GAMES MEGA V1 */
+/* board-game BOARD GAMES MEGA V1 */
 /* PC-first game screens; only inner panels scroll during a match. */
-.prototype-game-screen {
+.board-game-screen {
   color-scheme: dark;
   overscroll-behavior: none;
 }
-.prototype-game-screen button {
+.board-game-screen button {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
-.prototype-game-screen ::-webkit-scrollbar { width: 7px; height: 7px; }
-.prototype-game-screen ::-webkit-scrollbar-track { background: rgb(255 255 255 / 0.025); border-radius: 999px; }
-.prototype-game-screen ::-webkit-scrollbar-thumb { background: rgb(148 163 184 / 0.23); border-radius: 999px; }
-.prototype-game-screen ::-webkit-scrollbar-thumb:hover { background: rgb(148 163 184 / 0.38); }
+.board-game-screen ::-webkit-scrollbar { width: 7px; height: 7px; }
+.board-game-screen ::-webkit-scrollbar-track { background: rgb(255 255 255 / 0.025); border-radius: 999px; }
+.board-game-screen ::-webkit-scrollbar-thumb { background: rgb(148 163 184 / 0.23); border-radius: 999px; }
+.board-game-screen ::-webkit-scrollbar-thumb:hover { background: rgb(148 163 184 / 0.38); }
 @media (max-width: 1023px) {
-  .prototype-game-screen { height: auto; min-height: 100dvh; overflow: visible; }
-  .prototype-game-screen > div { min-height: 100dvh; height: auto; }
-  .prototype-game-screen > div > div { overflow: visible; }
+  .board-game-screen { height: auto; min-height: 100dvh; overflow: visible; }
+  .board-game-screen > div { min-height: 100dvh; height: auto; }
+  .board-game-screen > div > div { overflow: visible; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .prototype-game-screen *, .prototype-game-screen *::before, .prototype-game-screen *::after {
+  .board-game-screen *, .board-game-screen *::before, .board-game-screen *::after {
     animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important;
   }
 }
@@ -1132,24 +1132,24 @@ body:has(.tt-game-viewport) {
 .tt-game-viewport .overflow-x-auto::-webkit-scrollbar {
   display: none !important;
 }
-.prototype-game-screen .prototype-board-content {
+.board-game-screen .board-game-content {
   min-height: 0;
   overflow: hidden;
   transform-origin: top center;
 }
-.prototype-game-screen .prototype-barricades-wrap { min-height: 0; }
+.board-game-screen .board-game-barricades-wrap { min-height: 0; }
 .barricades-hover-board { touch-action: manipulation; }
 .barricades-wall-solid { min-width: 0; min-height: 0; }
 .barricades-h-wall { width: 100%; height: 62%; }
 .barricades-v-wall { width: 62%; height: 100%; }
 @media (max-height: 860px) {
-  .prototype-game-screen .prototype-board-content { zoom: .86; }
-  .prototype-game-screen .prototype-barricades-wrap { gap: .35rem; }
+  .board-game-screen .board-game-content { zoom: .86; }
+  .board-game-screen .board-game-barricades-wrap { gap: .35rem; }
 }
 @media (max-height: 740px) {
-  .prototype-game-screen .prototype-board-content { zoom: .76; }
-  .prototype-game-screen .prototype-barricades-wrap h2 { font-size: 1rem; }
-  .prototype-game-screen .prototype-barricades-wrap p { font-size: .62rem; }
+  .board-game-screen .board-game-content { zoom: .76; }
+  .board-game-screen .board-game-barricades-wrap h2 { font-size: 1rem; }
+  .board-game-screen .board-game-barricades-wrap p { font-size: .62rem; }
 }
 @media (max-height: 850px) {
   .twenty-nine-hand-row { min-height: 0 !important; padding-top: .75rem !important; margin-top: 0 !important; }

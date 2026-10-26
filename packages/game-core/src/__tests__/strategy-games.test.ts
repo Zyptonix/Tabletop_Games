@@ -5,15 +5,15 @@ import {
   barricadesModule,
   battleshipModule,
   chessModule,
-  codenamesPrototypeModule,
+  codenamesModule,
   ludoModule,
-  monopolyPrototypeModule,
+  monopolyModule,
   pokerModule,
   riskModule,
   worldConquestModule,
   evaluateTexasHoldemHand,
-  type PrototypeGameState
-} from "../games/prototype-board-games";
+  type BoardGameState
+} from "../games";
 import type { GamePlayer } from "../engine/GameTypes";
 
 const players: GamePlayer[] = [
@@ -21,10 +21,10 @@ const players: GamePlayer[] = [
   { userId: "p2", username: "p2", displayName: "Player Two", seat: 1 }
 ];
 function start(module: { createInitialState: (params: { players: GamePlayer[]; settings: never; seed: string; now: string }) => unknown }) {
-  return module.createInitialState({ players, settings: { turnSeconds: null } as never, seed: "prototype-test", now: "2026-10-25T00:00:00.000Z" }) as PrototypeGameState;
+  return module.createInitialState({ players, settings: { turnSeconds: null } as never, seed: "board-game-test", now: "2026-10-25T00:00:00.000Z" }) as BoardGameState;
 }
 
-describe("prototype board-game modules are registered and start valid states", () => {
+describe("board-game board-game modules are registered and start valid states", () => {
   it("creates a standard chess layout and legal opening moves", () => {
     const state = start(chessModule);
     expect(state.board).toHaveLength(8);
@@ -51,7 +51,7 @@ describe("prototype board-game modules are registered and start valid states", (
     expect(state.wallsRemaining.p1).toBe(10);
   });
   it("initializes a property track with 40 spaces and starting funds", () => {
-    const state = start(monopolyPrototypeModule);
+    const state = start(monopolyModule);
     expect(state.properties).toHaveLength(40);
     expect(state.money.p1).toBe(1500);
   });
@@ -67,8 +67,8 @@ describe("prototype board-game modules are registered and start valid states", (
       { userId: "p3", username: "p3", displayName: "Red Operative", seat: 2 },
       { userId: "p4", username: "p4", displayName: "Blue Operative", seat: 3 }
     ];
-    const state = codenamesPrototypeModule.createInitialState({ players: operativePlayers, settings: { turnSeconds: null } as never, seed: "hidden-key-test", now: "2026-10-25T00:00:00.000Z" }) as PrototypeGameState;
-    const view = codenamesPrototypeModule.getPublicState({ state, viewerId: "p3" }) as { wordCards: Array<{ revealedRole: string | null; keyRole: string | null }> };
+    const state = codenamesModule.createInitialState({ players: operativePlayers, settings: { turnSeconds: null } as never, seed: "hidden-key-test", now: "2026-10-25T00:00:00.000Z" }) as BoardGameState;
+    const view = codenamesModule.getPublicState({ state, viewerId: "p3" }) as { wordCards: Array<{ revealedRole: string | null; keyRole: string | null }> };
     expect(view.wordCards).toHaveLength(25);
     expect(view.wordCards.every((card) => card.revealedRole === null && card.keyRole === null)).toBe(true);
   });
@@ -150,7 +150,7 @@ describe("chess rules continuation v3", () => {
     const result = chessModule.applyAction({ state, playerId: "p1", action: { type: "move_piece", from: 28, to: 19 }, now: "2026-10-25T00:02:00.000Z" });
     expect(result.state.board[2]?.[3]).toBe("P");
     expect(result.state.board[3]?.[3]).toBeNull();
-    expect((result.state as PrototypeGameState).chessEnPassantTarget).toBeNull();
+    expect((result.state as BoardGameState).chessEnPassantTarget).toBeNull();
   });
 
   it("offers all four standard promotion choices", () => {
@@ -177,7 +177,7 @@ describe("Poker tournament hand lifecycle v4", () => {
       action: { type: "poker_action", choice: "fold" },
       now: "2026-10-25T00:03:00.000Z"
     });
-    const next = result.state as PrototypeGameState;
+    const next = result.state as BoardGameState;
     const afterChips = Object.values(next.pokerStacks).reduce((sum, stack) => sum + stack, 0) + next.pokerPot;
     expect(next.phase).toBe("playing");
     expect(next.pokerHandNumber).toBe(beforeHand + 1);
@@ -201,7 +201,7 @@ describe("Ludo and Battleships rule regressions v4", () => {
       action: { type: "roll_dice" },
       now: "2026-10-25T00:04:00.000Z"
     });
-    const next = result.state as PrototypeGameState;
+    const next = result.state as BoardGameState;
     expect(next.currentPlayerId).toBe("p2");
     expect(next.hasRolled).toBe(false);
     expect(next.diceRoll).toBeNull();
@@ -221,7 +221,7 @@ describe("Ludo and Battleships rule regressions v4", () => {
       action: { type: "end_turn" },
       now: "2026-10-25T00:04:30.000Z"
     });
-    const next = result.state as PrototypeGameState;
+    const next = result.state as BoardGameState;
     expect(next.currentPlayerId).toBe("p2");
     expect(next.ludoConsecutiveSixes.p1).toBe(0);
   });
@@ -238,7 +238,7 @@ describe("Ludo and Battleships rule regressions v4", () => {
       settings: { turnSeconds: null } as never,
       seed: "barricades-four-player",
       now: "2026-10-25T00:04:45.000Z"
-    }) as PrototypeGameState;
+    }) as BoardGameState;
     expect(Object.values(state.wallsRemaining)).toEqual([5, 5, 5, 5]);
   });
 
@@ -261,11 +261,11 @@ describe("Ludo and Battleships rule regressions v4", () => {
       action: { type: "fire", x: x!, y: y! },
       now: "2026-10-25T00:05:00.000Z"
     });
-    const shotHistory = (result.state as PrototypeGameState).shots;
+    const shotHistory = (result.state as BoardGameState).shots;
     const latest = shotHistory[shotHistory.length - 1];
     expect(latest?.hit).toBe(true);
     expect(latest?.sunk).toBe(true);
-    expect((result.state as PrototypeGameState).phase).toBe("playing");
+    expect((result.state as BoardGameState).phase).toBe("playing");
   });
 });
 
@@ -278,20 +278,20 @@ describe("Codenames team and clue rules v5", () => {
     { userId: "p3", username: "p3", displayName: "Red Operative", seat: 2 },
     { userId: "p4", username: "p4", displayName: "Blue Operative", seat: 3 }
   ];
-  const startTeamGame = () => codenamesPrototypeModule.createInitialState({
+  const startTeamGame = () => codenamesModule.createInitialState({
     players: fourPlayers,
     settings: { turnSeconds: null } as never,
     seed: "codenames-v5-regression",
     now: "2026-10-26T00:00:00.000Z"
-  }) as PrototypeGameState;
+  }) as BoardGameState;
 
   it("shows the full hidden key only to that team's spymaster", () => {
     const state = startTeamGame();
-    const spy = codenamesPrototypeModule.getPublicState({ state, viewerId: "p1" }) as {
+    const spy = codenamesModule.getPublicState({ state, viewerId: "p1" }) as {
       isCodenamesSpymaster: boolean;
       wordCards: Array<{ revealedRole: string | null; keyRole: string | null }>;
     };
-    const operative = codenamesPrototypeModule.getPublicState({ state, viewerId: "p3" }) as {
+    const operative = codenamesModule.getPublicState({ state, viewerId: "p3" }) as {
       isCodenamesSpymaster: boolean;
       wordCards: Array<{ revealedRole: string | null; keyRole: string | null }>;
     };
@@ -305,10 +305,10 @@ describe("Codenames team and clue rules v5", () => {
   it("accepts one-word clues from the active spymaster and moves to an operative", () => {
     const state = startTeamGame();
     const clue = { type: "give_clue" as const, clue: "Tropical", number: 2 };
-    expect(codenamesPrototypeModule.validateAction({ state, playerId: "p1", action: clue }).ok).toBe(true);
-    expect(codenamesPrototypeModule.validateAction({ state, playerId: "p3", action: clue }).ok).toBe(false);
-    const result = codenamesPrototypeModule.applyAction({ state, playerId: "p1", action: clue, now: "2026-10-26T00:01:00.000Z" });
-    const next = result.state as PrototypeGameState;
+    expect(codenamesModule.validateAction({ state, playerId: "p1", action: clue }).ok).toBe(true);
+    expect(codenamesModule.validateAction({ state, playerId: "p3", action: clue }).ok).toBe(false);
+    const result = codenamesModule.applyAction({ state, playerId: "p1", action: clue, now: "2026-10-26T00:01:00.000Z" });
+    const next = result.state as BoardGameState;
     expect(next.currentPlayerId).toBe("p3");
     expect(next.codenamesClue).toBe("Tropical");
     expect(next.codenamesClueNumber).toBe(2);
@@ -318,14 +318,14 @@ describe("Codenames team and clue rules v5", () => {
   it("rejects a clue that repeats a visible grid word", () => {
     const state = startTeamGame();
     const boardWord = state.wordCards[0]!.word.toLowerCase();
-    expect(codenamesPrototypeModule.validateAction({ state, playerId: "p1", action: { type: "give_clue", clue: boardWord, number: 1 } }).ok).toBe(false);
+    expect(codenamesModule.validateAction({ state, playerId: "p1", action: { type: "give_clue", clue: boardWord, number: 1 } }).ok).toBe(false);
   });
 
   it("allows a correct guess to continue until the clue budget is consumed", () => {
     const initial = startTeamGame();
-    const afterClue = codenamesPrototypeModule.applyAction({ state: initial, playerId: "p1", action: { type: "give_clue", clue: "Tropical", number: 1 }, now: "2026-10-26T00:01:00.000Z" }).state as PrototypeGameState;
+    const afterClue = codenamesModule.applyAction({ state: initial, playerId: "p1", action: { type: "give_clue", clue: "Tropical", number: 1 }, now: "2026-10-26T00:01:00.000Z" }).state as BoardGameState;
     const correctIndex = afterClue.wordCards.findIndex((card) => card.role === "red");
-    const afterGuess = codenamesPrototypeModule.applyAction({ state: afterClue, playerId: "p3", action: { type: "reveal_word", index: correctIndex }, now: "2026-10-26T00:02:00.000Z" }).state as PrototypeGameState;
+    const afterGuess = codenamesModule.applyAction({ state: afterClue, playerId: "p3", action: { type: "reveal_word", index: correctIndex }, now: "2026-10-26T00:02:00.000Z" }).state as BoardGameState;
     expect(afterGuess.phase).toBe("playing");
     expect(afterGuess.codenamesGuessesRemaining).toBe(1);
     expect(afterGuess.currentPlayerId).toBe("p3");
@@ -335,25 +335,25 @@ describe("Codenames team and clue rules v5", () => {
     const state = startTeamGame();
     state.phase = "finished";
     state.winnerUserId = "p2";
-    const results = codenamesPrototypeModule.getResults(state);
+    const results = codenamesModule.getResults(state);
     expect(results.scoreByUserId).toEqual({ p2: 1, p4: 1, p1: 0, p3: 0 });
     expect(results.placements.filter((placement) => placement.result === "WIN").map((placement) => placement.userId).sort()).toEqual(["p2", "p4"]);
   });
 
   it("ends immediately when an operative reveals the assassin", () => {
     const initial = startTeamGame();
-    const afterClue = codenamesPrototypeModule.applyAction({ state: initial, playerId: "p1", action: { type: "give_clue", clue: "Tropical", number: 1 }, now: "2026-10-26T00:01:00.000Z" }).state as PrototypeGameState;
+    const afterClue = codenamesModule.applyAction({ state: initial, playerId: "p1", action: { type: "give_clue", clue: "Tropical", number: 1 }, now: "2026-10-26T00:01:00.000Z" }).state as BoardGameState;
     const assassinIndex = afterClue.wordCards.findIndex((card) => card.role === "assassin");
-    const afterGuess = codenamesPrototypeModule.applyAction({ state: afterClue, playerId: "p3", action: { type: "reveal_word", index: assassinIndex }, now: "2026-10-26T00:02:00.000Z" }).state as PrototypeGameState;
+    const afterGuess = codenamesModule.applyAction({ state: afterClue, playerId: "p3", action: { type: "reveal_word", index: assassinIndex }, now: "2026-10-26T00:02:00.000Z" }).state as BoardGameState;
     expect(afterGuess.phase).toBe("finished");
     expect(afterGuess.winnerUserId).toBe("p2");
   });
 
   it("passes the turn after a neutral guess and resets the clue phase", () => {
     const initial = startTeamGame();
-    const afterClue = codenamesPrototypeModule.applyAction({ state: initial, playerId: "p1", action: { type: "give_clue", clue: "Tropical", number: 2 }, now: "2026-10-26T00:01:00.000Z" }).state as PrototypeGameState;
+    const afterClue = codenamesModule.applyAction({ state: initial, playerId: "p1", action: { type: "give_clue", clue: "Tropical", number: 2 }, now: "2026-10-26T00:01:00.000Z" }).state as BoardGameState;
     const neutralIndex = afterClue.wordCards.findIndex((card) => card.role === "neutral");
-    const afterGuess = codenamesPrototypeModule.applyAction({ state: afterClue, playerId: "p3", action: { type: "reveal_word", index: neutralIndex }, now: "2026-10-26T00:02:00.000Z" }).state as PrototypeGameState;
+    const afterGuess = codenamesModule.applyAction({ state: afterClue, playerId: "p3", action: { type: "reveal_word", index: neutralIndex }, now: "2026-10-26T00:02:00.000Z" }).state as BoardGameState;
     expect(afterGuess.phase).toBe("playing");
     expect(afterGuess.codenamesRoundTeam).toBe("blue");
     expect(afterGuess.currentPlayerId).toBe("p2");

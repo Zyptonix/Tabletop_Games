@@ -1,0 +1,11 @@
+import type { GameEvent, GameResults } from "../../engine/GameTypes";
+import type { ActivityItem, BoardGameState } from "./types";
+export function hashSeed(seed: string): number { let value=2166136261; for(let i=0;i<seed.length;i+=1) value=Math.imul(value ^ seed.charCodeAt(i),16777619); return value>>>0 || 1; }
+export function random(state: BoardGameState,max: number): number { state.rngState=(Math.imul(state.rngState,1664525)+1013904223)>>>0; return Math.floor((state.rngState/0x1_0000_0000)*max); }
+export function shuffle<T>(items:T[],rngState:number):{items:T[];rngState:number}{const result=items.slice();let state=rngState>>>0||1;for(let i=result.length-1;i>0;i-=1){state=(Math.imul(state,1664525)+1013904223)>>>0;const j=Math.floor((state/0x1_0000_0000)*(i+1));[result[i],result[j]]=[result[j]!,result[i]!];}return {items:result,rngState:state};}
+export function makeActivity(state:BoardGameState,type:string,message:string,playerId:string|null,now:string):ActivityItem{return {id:"game-"+state.gameId+"-"+state.actionNumber+"-"+state.activityLog.length,type,message,playerId,createdAt:now};}
+export function nextPlayerId(state:BoardGameState,fromId:string|null=state.currentPlayerId):string|null{if(!state.players.length)return null;const index=state.players.findIndex(p=>p.userId===fromId);return state.players[(index+1+state.players.length)%state.players.length]?.userId??null;}
+export function currentPlayer(state:BoardGameState,playerId:string):boolean{return state.phase==='playing'&&state.currentPlayerId===playerId;}
+export function coordsKey(x:number,y:number):string{return x+","+y;}
+export function finish(state:BoardGameState,winnerId:string|null,now:string):void{state.phase='finished';state.winnerUserId=winnerId;state.currentPlayerId=null;state.updatedAt=now;state.turnStartedAt=now;}
+export function makeStandardResults(state:BoardGameState):GameResults{const winnerId=state.winnerUserId;const ordered=state.players.slice().sort((a,b)=>Number(b.userId===winnerId)-Number(a.userId===winnerId)||a.seat-b.seat);return {winnerUserId:winnerId,placements:ordered.map((p,i)=>({userId:p.userId,placement:i+1,score:p.userId===winnerId?1:0,result:p.userId===winnerId?("WIN" as const):winnerId?("LOSS" as const):("DRAW" as const)})),scoreByUserId:Object.fromEntries(ordered.map(p=>[p.userId,p.userId===winnerId?1:0]))};}

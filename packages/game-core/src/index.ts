@@ -9,4 +9,4 @@ export * from "./games/mafia-werewolf";
 export * from "./games/strategic-shockwave";
 export * from "./games/twenty-nine";
 export * from "./games/board-games";
-export * from "./games/prototype-board-games";
+export * from "./games";

@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { Copy, Loader2 } from "lucide-react";
-import type { PublicClassicUnoState, PublicGridGameState, PublicNoMercyState, PublicPrototypeGameState, PublicStrategicShockwaveState, PublicTwentyNineState, PublicWerewolfState } from "@tabletop/game-core";
+import type { PublicClassicUnoState, PublicGridGameState, PublicNoMercyState, PublicBoardGameState, PublicStrategicShockwaveState, PublicTwentyNineState, PublicWerewolfState } from "@tabletop/game-core";
 import { AppShell } from "@/components/layout/AppShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { useAuth } from "@/lib/auth/useAuth";
 import { useRoomSocket } from "@/lib/socket/useRoomSocket";
 import { GameShell } from "@/features/game-shell/GameShell";
 import { BoardGamesTable } from "@/features/games/board-games/BoardGamesTable";
-import { PrototypeBoardGamesTable } from "@/features/games/prototype-board-games/PrototypeBoardGamesTable";
+import { BoardGameTable } from "@/features/games/board-games/BoardGameTable";
 import { ClassicUnoTable } from "@/features/games/classic-uno/ClassicUnoTable";
 import { StrategicShockwaveTable } from "@/features/games/strategic-shockwave/StrategicShockwaveTable";
 import { TwentyNineTable } from "@/features/games/twenty-nine/TwentyNineTable";
@@ -71,9 +71,9 @@ export default function RoomPage() {
     room.gameId === "connect-four" || room.gameId === "reversi"
       ? (socketState.gameState as PublicGridGameState | null)
       : null;
-  const prototypeGameState =
+  const boardGameState =
     ["chess", "battleship", "ludo", "barricades", "monopoly", "risk", "world-conquest", "codenames", "poker"].includes(room.gameId as string)
-      ? (socketState.gameState as PublicPrototypeGameState | null)
+      ? (socketState.gameState as PublicBoardGameState | null)
       : null;
 
   return (
@@ -150,10 +150,10 @@ export default function RoomPage() {
             onChat={socketState.sendChat}
             onEndMatch={socketState.endRoom}
           />
-        ) : prototypeGameState ? (
-          <PrototypeBoardGamesTable
+        ) : boardGameState ? (
+          <BoardGameTable
             room={room}
-            state={prototypeGameState}
+            state={boardGameState}
             legalActions={socketState.legalActions}
             gameEvents={socketState.gameEvents}
             currentUserId={user.id}
