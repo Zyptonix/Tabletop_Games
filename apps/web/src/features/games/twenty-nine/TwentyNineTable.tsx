@@ -19,6 +19,10 @@ type EventSpotlight = {
   detail: string;
   emoji: string;
   tone: "amber" | "rose" | "emerald" | "violet" | "sky";
+  visual: "trump" | "trick" | "hand-result" | "match-result" | "auction" | "stakes" | "single-hand" | "pair" | "pass" | "deal-cancelled" | "notice";
+  suit?: TwentyNineSuit;
+  team?: number | null;
+  value?: string;
   durationMs?: number;
 };
 
@@ -110,35 +114,38 @@ function spotlightForEvent(event: GameEvent, state: PublicTwentyNineState, curre
   const actorId = typeof payload.playerId === "string" ? payload.playerId : null;
   const actor = playerName(state, actorId, currentUserId);
   const value = typeof payload.value === "number" ? payload.value : null;
-  const titleFor = (title: string, detail: string, emoji: string, tone: EventSpotlight["tone"], durationMs = 2450): EventSpotlight => ({ id: event.id, title, detail, emoji, tone, durationMs });
+  const titleFor = (title: string, detail: string, emoji: string, tone: EventSpotlight["tone"], durationMs = 2450, visual: EventSpotlight["visual"] = "notice", extra: { suit?: TwentyNineSuit; team?: number | null; value?: string } = {}): EventSpotlight => ({ id: event.id, title, detail, emoji, tone, durationMs, visual, ...(extra.suit ? { suit: extra.suit } : {}), ...(extra.team !== undefined ? { team: extra.team } : {}), ...(extra.value !== undefined ? { value: extra.value } : {}) });
 
   switch (event.type) {
     case "twenty-nine:bid":
-      return titleFor(`BID ${value ?? "PLACED"}`, `${actor} raised the auction${value !== null ? ` to ${value}` : ""}.`, "🎯", "amber");
+      return titleFor(`BID ${value ?? "PLACED"}`, `${actor} raised the auction${value !== null ? ` to ${value}` : ""}.`, "🎯", "amber", 2850, "auction", { value: String(value ?? "") });
     case "twenty-nine:ditto":
-      return titleFor("DITTO!", event.message || `${actor} called Ditto${value !== null ? ` at ${value}` : ""}.`, "🤝", "violet");
+      return titleFor("DITTO!", event.message || `${actor} called Ditto${value !== null ? ` at ${value}` : ""}.`, "🤝", "violet", 2500, "auction", { value: String(value ?? "DITTO") });
     case "twenty-nine:pass_bid":
-      return titleFor("PASS", `${actor} passed the bid.`, "✋", "sky");
+      return titleFor("PASS", `${actor} passed the bid.`, "✋", "sky", 2000, "pass");
     case "twenty-nine:double":
-      return titleFor("CONTRACT DOUBLED", event.message || `${actor} doubled the stakes to ×2.`, "⚔️", "rose");
+      return titleFor("CONTRACT DOUBLED", event.message || `${actor} doubled the stakes to ×2.`, "⚔️", "rose", 3000, "stakes", { value: "×2" });
     case "twenty-nine:redouble":
-      return titleFor("REDOUBLE! ×4", event.message || `${actor} redoubled the contract.`, "🔥", "rose");
+      return titleFor("REDOUBLE! ×4", event.message || `${actor} redoubled the contract.`, "🔥", "rose", 3400, "stakes", { value: "×4" });
     case "twenty-nine:trick_won": {
       const winnerId = typeof payload.winnerPlayerId === "string" ? payload.winnerPlayerId : null;
       const winner = state.players.find((player) => player.userId === winnerId);
       const teamName = winner?.team === 0 ? "RED" : winner?.team === 1 ? "BLUE" : "A TEAM";
       const number = typeof payload.trickNumber === "number" ? payload.trickNumber : state.completedTricks.length;
       const points = typeof payload.points === "number" ? payload.points : 0;
-      return titleFor(`${teamName} TAKES THE TRICK`, `${playerName(state, winnerId, currentUserId)} wins trick ${number} · +${points} card points`, "🏆", winner?.team === 0 ? "rose" : "sky");
+      return titleFor(`${teamName} TAKES THE TRICK`, `${playerName(state, winnerId, currentUserId)} wins trick ${number} · +${points} card points`, "🏆", winner?.team === 0 ? "rose" : "sky", 3200, "trick", { team: winner?.team ?? null, value: `+${points}` });
     }
-    case "twenty-nine:trump_revealed":
-      return titleFor("TRUMP REVEALED", `Trump is ${String(payload.trumpSuit ?? "now revealed")}.`, "🃏", "emerald");
+    case "twenty-nine:trump_revealed": {
+      const rawSuit = typeof payload.trumpSuit === "string" ? payload.trumpSuit : state.trumpSuit;
+      const revealedSuit = SUITS.find((item) => item.suit === rawSuit)?.suit;
+      return titleFor("TRUMP REVEALED", `Trump is ${revealedSuit ? suitInfo(revealedSuit).label : "now revealed"}.`, "🃏", "emerald", 4200, "trump", revealedSuit ? { suit: revealedSuit } : {});
+    }
     case "twenty-nine:pair":
-      return titleFor("PAIR DECLARED", event.message || "The King–Queen pair changes the contract.", "👑", "violet");
+      return titleFor("PAIR DECLARED", event.message || "The King–Queen pair changes the contract.", "👑", "violet", 3000, "pair", { team: typeof payload.team === "number" ? payload.team : null, ...(state.trumpSuit ? { suit: state.trumpSuit } : {}) });
     case "twenty-nine:single_hand_declared":
-      return titleFor("SINGLE HAND!", event.message || `${actor} is playing alone.`, "🗡️", "violet");
+      return titleFor("SINGLE HAND!", event.message || `${actor} is playing alone.`, "🗡️", "violet", 3400, "single-hand", { team: state.players.find((player) => player.userId === actorId)?.team ?? null });
     case "twenty-nine:single_hand_scored":
-      return titleFor(payload.succeeded === true ? "SINGLE HAND WON" : "SINGLE HAND LOST", event.message || "Single Hand contract scored.", payload.succeeded === true ? "🏆" : "💥", payload.succeeded === true ? "emerald" : "rose");
+      return titleFor(payload.succeeded === true ? "SINGLE HAND WON" : "SINGLE HAND LOST", event.message || "Single Hand contract scored.", payload.succeeded === true ? "🏆" : "💥", payload.succeeded === true ? "emerald" : "rose", 3800, "hand-result", { team: state.lastHandResult ? (state.lastHandResult.succeeded ? state.lastHandResult.declarerTeam : state.lastHandResult.declarerTeam === 0 ? 1 : 0) : null, value: payload.succeeded === true ? "+3" : "−3" });
     case "twenty-nine:hand_scored": {
       const result = state.lastHandResult;
       if (!result) return titleFor("HAND COMPLETE", event.message || "The eight tricks are complete.", "📊", "amber", 3600);
@@ -151,15 +158,81 @@ function spotlightForEvent(event: GameEvent, state: PublicTwentyNineState, curre
       const after = state.teamGamePoints[biddingTeamKey];
       const signed = (number: number) => number > 0 ? `+${number}` : String(number);
       const detail = `Team ${biddingTeamName} needed ${result.contractTarget} card points and took ${actualPoints}. ${result.succeeded ? `Team ${winnerName} made the contract` : `Team ${winnerName} won because the contract failed`}. Game points ${signed(before)} → ${signed(after)} (${signed(result.scoreChange)} · ×${result.multiplier}).`;
-      return titleFor(result.succeeded ? `TEAM ${winnerName} WINS THE HAND` : `TEAM ${winnerName} TAKES THE HAND`, detail, result.succeeded ? "🏆" : "⚔️", winnerTeam === 0 ? "rose" : "sky", 4400);
+      return titleFor(result.succeeded ? `TEAM ${winnerName} WINS THE HAND` : `TEAM ${winnerName} TAKES THE HAND`, detail, result.succeeded ? "🏆" : "⚔️", winnerTeam === 0 ? "rose" : "sky", 4600, "hand-result", { team: winnerTeam, value: signed(result.scoreChange) });
     }
     case "twenty-nine:game_over":
-      return titleFor(state.winnerTeam === null ? "MATCH DRAW" : `TEAM ${state.winnerTeam === 0 ? "RED" : "BLUE"} WINS THE MATCH`, event.message || (state.winnerTeam === null ? "The match ended in a draw." : `Team ${state.winnerTeam === 0 ? "Red" : "Blue"} wins the match.`), state.winnerTeam === null ? "🤝" : "🏆", state.winnerTeam === 0 ? "rose" : state.winnerTeam === 1 ? "sky" : "amber", 4400);
+      return titleFor(state.winnerTeam === null ? "MATCH DRAW" : `TEAM ${state.winnerTeam === 0 ? "RED" : "BLUE"} WINS THE MATCH`, event.message || (state.winnerTeam === null ? "The match ended in a draw." : `Team ${state.winnerTeam === 0 ? "Red" : "Blue"} wins the match.`), state.winnerTeam === null ? "🤝" : "🏆", state.winnerTeam === 0 ? "rose" : state.winnerTeam === 1 ? "sky" : "amber", 5200, "match-result", { team: state.winnerTeam });
     case "twenty-nine:deal_cancelled":
-      return titleFor("DEAL CANCELLED", event.message || "The auction ended without a contract.", "🔄", "sky");
+      return titleFor("DEAL CANCELLED", event.message || "The auction ended without a contract.", "🔄", "sky", 2800, "deal-cancelled");
     default:
       return null;
   }
+}
+
+function SpotlightHero({ spotlight, reduceMotion }: { spotlight: EventSpotlight; reduceMotion: boolean }) {
+  const team = spotlight.team;
+  const teamLabel = team === 0 ? "TEAM RED" : team === 1 ? "TEAM BLUE" : "BOTH TEAMS";
+  const teamTone = team === 0 ? "rose" : team === 1 ? "sky" : "emerald";
+
+  if (spotlight.visual === "trump" && spotlight.suit) {
+    const suit = suitInfo(spotlight.suit);
+    const ink = spotlight.suit === "hearts" || spotlight.suit === "diamonds" ? "#ff637b" : "#b9ffe4";
+    return (
+      <motion.div className="twenty-nine-spotlight-hero twenty-nine-spotlight-trump" initial={reduceMotion ? false : { opacity: 0, scale: 0.78, rotateY: -18 }} animate={{ opacity: 1, scale: 1, rotateY: 0 }} transition={{ type: "spring", stiffness: 240, damping: 20 }}>
+        <motion.div className="twenty-nine-trump-sigil" animate={reduceMotion ? false : { rotate: [0, 3, 0, -3, 0], scale: [0.96, 1.04, 0.98, 1.02, 1] }} transition={{ duration: 2.2, ease: "easeInOut" }}>
+          <SuitMark suit={spotlight.suit} color={ink} size={150} />
+        </motion.div>
+        <div className="twenty-nine-trump-wordmark"><span>TRUMP SUIT</span><strong>{suit.label.toUpperCase()}</strong><small>NOW IN PLAY</small></div>
+      </motion.div>
+    );
+  }
+
+  if (spotlight.visual === "match-result") {
+    return (
+      <div className={cn("twenty-nine-spotlight-hero twenty-nine-spotlight-victory", `twenty-nine-spotlight-${teamTone}`)}>
+        <div className="twenty-nine-victory-rays" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /><i /></div>
+        <motion.div className="twenty-nine-victory-medal" initial={reduceMotion ? false : { scale: 0.5, rotate: -24 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: "spring", stiffness: 270, damping: 17 }}><Trophy className="h-16 w-16" /></motion.div>
+        <strong className="twenty-nine-hero-value">{team === null ? "DRAW" : teamLabel}</strong>
+        <span className="twenty-nine-hero-kicker">MATCH VICTORY</span>
+      </div>
+    );
+  }
+
+  if (spotlight.visual === "hand-result" || spotlight.visual === "trick") {
+    return (
+      <div className={cn("twenty-nine-spotlight-hero twenty-nine-spotlight-result", `twenty-nine-spotlight-${teamTone}`)}>
+        <div className="twenty-nine-result-icon"><Trophy className="h-10 w-10" /></div>
+        <div className="min-w-0"><span className="twenty-nine-hero-kicker">{spotlight.visual === "trick" ? "TRICK CAPTURED" : "HAND SCORE"}</span><strong className="twenty-nine-hero-value">{spotlight.value ?? (spotlight.visual === "trick" ? "+0" : "SCORED")}</strong><span className="twenty-nine-hero-team">{teamLabel}</span></div>
+        <div className="twenty-nine-result-mini-cards" aria-hidden="true"><CardBack small /><CardBack small /></div>
+      </div>
+    );
+  }
+
+  if (spotlight.visual === "stakes") {
+    return <div className="twenty-nine-spotlight-hero twenty-nine-spotlight-stakes"><Swords className="h-10 w-10 text-rose-100" /><strong className="twenty-nine-hero-value">{spotlight.value ?? "×2"}</strong><span className="twenty-nine-hero-kicker">STAKES RAISED</span></div>;
+  }
+
+  if (spotlight.visual === "single-hand") {
+    return <div className="twenty-nine-spotlight-hero twenty-nine-spotlight-solo"><div className="twenty-nine-solo-cards"><CardBack small /><CardBack small /></div><div><span className="twenty-nine-hero-kicker">ONE PLAYER · ALL EIGHT TRICKS</span><strong className="twenty-nine-hero-value">SINGLE HAND</strong></div><Swords className="h-8 w-8 text-violet-100" /></div>;
+  }
+
+  if (spotlight.visual === "pair") {
+    return <div className="twenty-nine-spotlight-hero twenty-nine-spotlight-pair"><div className="twenty-nine-pair-card"><strong>K</strong>{spotlight.suit ? <SuitMark suit={spotlight.suit} color={spotlight.suit === "hearts" || spotlight.suit === "diamonds" ? "#d83f58" : "#14533d"} size={25} /> : null}</div><span className="twenty-nine-pair-plus">+</span><div className="twenty-nine-pair-card"><strong>Q</strong>{spotlight.suit ? <SuitMark suit={spotlight.suit} color={spotlight.suit === "hearts" || spotlight.suit === "diamonds" ? "#d83f58" : "#14533d"} size={25} /> : null}</div><div className="min-w-0 text-left"><span className="twenty-nine-hero-kicker">KING + QUEEN</span><strong className="twenty-nine-hero-value">PAIR</strong></div></div>;
+  }
+
+  if (spotlight.visual === "auction") {
+    return <div className="twenty-nine-spotlight-hero twenty-nine-spotlight-auction"><div className="twenty-nine-auction-cards"><CardBack small /><CardBack small /><CardBack small /></div><div><span className="twenty-nine-hero-kicker">AUCTION TABLE</span><strong className="twenty-nine-hero-value">{spotlight.value || "DITTO"}</strong></div><Sparkles className="h-8 w-8 text-amber-100" /></div>;
+  }
+
+  if (spotlight.visual === "pass") {
+    return <div className="twenty-nine-spotlight-hero twenty-nine-spotlight-pass"><div className="twenty-nine-pass-mark">{spotlight.emoji}</div><div><span className="twenty-nine-hero-kicker">AUCTION MOVE</span><strong className="twenty-nine-hero-value">PASS</strong><span className="twenty-nine-hero-team">The bid moves to the next player</span></div></div>;
+  }
+
+  if (spotlight.visual === "deal-cancelled") {
+    return <div className="twenty-nine-spotlight-hero twenty-nine-spotlight-deal-cancelled"><div className="twenty-nine-deal-cards"><CardBack small /><CardBack small /><CardBack small /></div><div><span className="twenty-nine-hero-kicker">NO CONTRACT</span><strong className="twenty-nine-hero-value">REDEAL</strong></div><Sparkles className="h-8 w-8 text-sky-100" /></div>;
+  }
+
+  return <div className="twenty-nine-spotlight-hero twenty-nine-spotlight-notice"><div className="twenty-nine-notice-emoji">{spotlight.emoji}</div><span className="twenty-nine-hero-kicker">TABLE EVENT</span></div>;
 }
 
 function formatEvent(event: GameEvent, state: PublicTwentyNineState, currentUserId: string | null): { label: string; tone: string } | null {
@@ -224,25 +297,25 @@ function CardSprite({ rank, suit, className = "" }: { rank: string; suit: Twenty
   );
 }
 
-function CardFace({ card, small = false, muted = false }: { card: TwentyNineCard; small?: boolean; muted?: boolean }) {
+function CardFace({ card, small = false, muted = false, hand = false }: { card: TwentyNineCard; small?: boolean; muted?: boolean; hand?: boolean }) {
   const suit = suitInfo(card.suit);
   return (
     <div className={cn(
       "twenty-nine-playing-card relative flex shrink-0 select-none flex-col justify-between overflow-hidden rounded-[0.62rem] border font-black",
-      small ? "h-[6.1rem] w-[4.35rem] p-1.5" : "h-[9.3rem] w-[6.65rem] p-2.5",
+      small ? "h-[6.1rem] w-[4.35rem] p-1.5" : hand ? "h-[6.7rem] w-[4.8rem] p-1.5" : "h-[9.3rem] w-[6.65rem] p-2.5",
       muted ? "border-white/15 bg-[#0c1618]" : "border-[#d9e4dc] bg-[linear-gradient(145deg,#fffef8,#dce8df)] text-[#101a18]"
     )}>
       {!muted ? <span className="pointer-events-none absolute -right-3 -top-4 h-14 w-14 rounded-full border border-black/5" /> : null}
       <div className="relative z-10 flex items-start justify-between gap-1">
-        <span className={cn(small ? "text-sm" : "text-xl", muted && "text-white")}>{card.rank}</span>
-        <SuitMark suit={card.suit} color={muted ? "#8ac8b2" : suit.color} size={small ? 16 : 23} />
+        <span className={cn(small ? "text-sm" : hand ? "text-base" : "text-xl", muted && "text-white")}>{card.rank}</span>
+        <SuitMark suit={card.suit} color={muted ? "#8ac8b2" : suit.color} size={small ? 16 : hand ? 18 : 23} />
       </div>
       <div className="relative z-10 grid flex-1 place-items-center">
-        <SuitMark suit={card.suit} color={muted ? "#8ac8b2" : suit.color} size={small ? 31 : 48} />
+        <SuitMark suit={card.suit} color={muted ? "#8ac8b2" : suit.color} size={small ? 31 : hand ? 34 : 48} />
       </div>
       <div className="relative z-10 flex items-end justify-between">
-        <span className={cn(small ? "text-[0.62rem]" : "text-xs", muted ? "text-white/60" : "text-zinc-500")}>{card.points ? `${card.points} PT` : ""}</span>
-        <span className={cn(small ? "text-sm" : "text-xl", muted && "text-white")}>{card.rank}</span>
+        <span className={cn(small ? "text-[0.62rem]" : hand ? "text-[0.68rem]" : "text-xs", muted ? "text-white/60" : "text-zinc-500")}>{card.points ? `${card.points} PT` : ""}</span>
+        <span className={cn(small ? "text-sm" : hand ? "text-base" : "text-xl", muted && "text-white")}>{card.rank}</span>
       </div>
       {/* Sprite is layered over the procedural face; a missing image transparently falls back. */}
       <CardSprite rank={card.rank} suit={card.suit} className="absolute inset-0 z-20 h-full w-full object-cover object-center" />
@@ -646,7 +719,7 @@ export function TwentyNineTable({
 
 
   return (
-    <div data-ui-patch="twenty-nine-tabletop-polish-v3" className="twenty-nine-shell tt-game-viewport fixed inset-0 z-10 h-[100dvh] min-h-0 w-screen overflow-hidden text-white" style={{ backgroundImage: "linear-gradient(180deg,rgba(2,8,6,.56),rgba(2,8,6,.74)),url(/game-assets/twenty-nine/arcade-background-v1.webp)", backgroundSize: "cover", backgroundPosition: "center" }}>
+    <div data-ui-patch="twenty-nine-full-felt-hero-events-v1" className="twenty-nine-shell tt-game-viewport fixed inset-0 z-10 h-[100dvh] min-h-0 w-screen overflow-hidden text-white">
       <div className="twenty-nine-grain pointer-events-none absolute inset-0" />
       <div className="relative z-10 flex h-full min-h-0 w-full flex-col gap-2 p-2">
         <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-[#04110f]/45 px-3 py-2 shadow-[0_10px_34px_rgba(0,0,0,.2)]">
@@ -664,9 +737,7 @@ export function TwentyNineTable({
 
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_320px]">
           <main className="flex min-h-0 flex-col gap-2">
-            <section ref={tableRef} className="twenty-nine-table relative min-h-0 flex-1 overflow-hidden rounded-[1.1rem] border border-emerald-100/[0.08] shadow-[inset_0_0_56px_rgba(0,0,0,.24)]">
-              <div className="twenty-nine-table-rim pointer-events-none absolute inset-[3%] rounded-[48%] border border-emerald-100/[0.16]" />
-              <div className="twenty-nine-table-inner pointer-events-none absolute inset-[7%] rounded-[47%] border border-emerald-200/[0.07]" />
+            <section ref={tableRef} className="twenty-nine-table relative min-h-0 flex-1 overflow-hidden">
               <div className="twenty-nine-orbit twenty-nine-orbit-outer pointer-events-none absolute left-1/2 top-1/2 h-[min(75%,34rem)] aspect-[1.72/1] -translate-x-1/2 -translate-y-1/2 rounded-[50%] border border-emerald-200/10" />
               <div className="twenty-nine-orbit twenty-nine-orbit-inner pointer-events-none absolute left-1/2 top-1/2 h-[min(61%,28rem)] aspect-[1.72/1] -translate-x-1/2 -translate-y-1/2 rounded-[50%] border border-cyan-200/[0.09]" />
               <div className="pointer-events-none absolute left-1/2 top-1/2 h-64 w-[27rem] max-w-[80%] -translate-x-1/2 -translate-y-1/2 rounded-[50%] bg-emerald-400/[0.035] blur-2xl" />
@@ -676,10 +747,6 @@ export function TwentyNineTable({
                   <TeamScore team={0} points={state.teamGamePoints["0"]} caption="Team Red" />
                   <TeamScore team={1} points={state.teamGamePoints["1"]} caption="Team Blue" />
                 </div>
-              </div>
-              <div className="twenty-nine-trick-racks absolute bottom-[1.8%] left-[1.25%] z-30 grid grid-cols-1 gap-1.5">
-                <TrickProgress team={0} count={state.tricksWonByTeam["0"]} caption="Red · Tricks won" />
-                <TrickProgress team={1} count={state.tricksWonByTeam["1"]} caption="Blue · Tricks won" />
               </div>
 
               {partner ? (
@@ -702,7 +769,7 @@ export function TwentyNineTable({
                 <div><span className="block text-[0.5rem] font-black uppercase tracking-[0.22em] text-emerald-100/45">Current trick</span><strong className="text-sm font-black text-white">{String(turnIndex).padStart(2, "0")} <span className="text-[0.6rem] text-white/35">/ 08</span></strong></div>
               </div>
 
-              <div className="absolute left-[28%] top-[65%] z-20 w-[min(52rem,44%)] -translate-y-1/2">
+              <div className="twenty-nine-trick-stage absolute z-20">
                 <div className="mb-2 flex flex-wrap items-center gap-2.5 rounded-xl border border-white/[0.09] bg-[#03100f]/72 px-3 py-2 shadow-lg backdrop-blur-sm">
                   <span className="text-[0.56rem] font-black uppercase tracking-[0.2em] text-emerald-100/45">Trick {String(turnIndex).padStart(2, "0")} / 08</span>
                   {ledSuit ? (
@@ -739,12 +806,12 @@ export function TwentyNineTable({
               </AnimatePresence>
             </section>
 
-            <section className="twenty-nine-action-panel relative z-30 shrink-0 rounded-[1.35rem] border p-3.5 shadow-lg">
+            <section className="twenty-nine-action-panel relative z-30 shrink-0 rounded-xl border px-3 py-2 shadow-lg">
               <AnimatePresence initial={false}>
                 {state.phase === "bidding" && isMyTurn && !sittingOutSingleHand ? (
                   <motion.div
                     key={`bid-prompt-${state.handNumber}-${state.currentBid ?? "open"}`}
-                    className="twenty-nine-bid-prompt relative mb-3 flex w-full items-center gap-4 rounded-2xl border border-amber-100/40 bg-[linear-gradient(105deg,rgba(92,54,8,.96),rgba(28,21,9,.98)_55%,rgba(10,13,12,.98))] px-4 py-3.5 shadow-[0_12px_40px_rgba(0,0,0,.45)]"
+                    className="twenty-nine-bid-prompt relative mb-2 flex w-full items-center gap-2.5 rounded-xl border border-amber-100/40 bg-[linear-gradient(105deg,rgba(92,54,8,.96),rgba(28,21,9,.98)_55%,rgba(10,13,12,.98))] px-3 py-2 shadow-[0_8px_26px_rgba(0,0,0,.32)]"
                     initial={{ opacity: 0, y: 12, scale: 0.98 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 8, scale: 0.98 }}
@@ -752,13 +819,12 @@ export function TwentyNineTable({
                     role="status"
                     aria-live="polite"
                   >
-                    <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-amber-100/30 bg-amber-200/10 text-amber-100 text-2xl">🎯</div>
+                    <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-amber-100/30 bg-amber-200/10 text-amber-100 text-lg">🎯</div>
                     <div className="min-w-0 flex-1">
                       <p className="text-[0.67rem] font-black uppercase tracking-[0.23em] text-amber-100/75">Your turn to bid</p>
-                      <p className="mt-0.5 text-base font-black text-white">{state.currentBid === null ? `Open the auction · minimum ${lowestLegalBid ?? 16}` : `Current bid ${state.currentBid} · ${state.highestBidderId ? playerName(state, state.highestBidderId, currentUserId) : "No bidder yet"}`}</p>
-                      <p className="mt-0.5 text-xs font-semibold text-white/65">Set your contract, call Ditto if available, or Pass. Highest possible bid: 28.</p>
+                      <p className="mt-0.5 text-sm font-black text-white">{state.currentBid === null ? `Opening bid · minimum ${lowestLegalBid ?? 16}` : `Bid ${state.currentBid} · ${state.highestBidderId ? playerName(state, state.highestBidderId, currentUserId) : "No bidder yet"}`}</p>
+                      <p className="hidden text-[0.65rem] font-semibold text-white/55 sm:block">Range 16–28 · Ditto or Pass when available</p>
                     </div>
-                    <div className="hidden shrink-0 rounded-xl border border-amber-100/25 bg-black/20 px-4 py-2 text-center sm:block"><span className="block text-[0.54rem] font-black uppercase tracking-wider text-amber-100/45">Hand</span><strong className="text-xl font-black text-amber-100">{state.handNumber}</strong></div>
                   </motion.div>
                 ) : null}
               </AnimatePresence>
@@ -792,15 +858,21 @@ export function TwentyNineTable({
               </div>
             </section>
 
-            <section ref={handRef} className="twenty-nine-hand-panel relative z-40 shrink-0 overflow-visible rounded-xl border border-white/[0.07] bg-[#04120f]/45 px-3 pb-2 pt-2 shadow-none">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="twenty-nine-bottom-dock">
+              <section className="twenty-nine-trick-dock" aria-label="Tricks won">
+                <p className="twenty-nine-trick-dock-title">Tricks won</p>
+                <TrickProgress team={0} count={state.tricksWonByTeam["0"]} caption="Red" />
+                <TrickProgress team={1} count={state.tricksWonByTeam["1"]} caption="Blue" />
+              </section>
+              <section ref={handRef} className="twenty-nine-hand-panel relative z-40 min-w-0 shrink-0 overflow-visible rounded-xl border border-white/[0.07] bg-[#04120f]/35 px-3 pb-1.5 pt-2 shadow-none">
+              <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-2">
                   <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-emerald-100/15 bg-emerald-300/[0.08] text-emerald-100"><Crown className="h-4 w-4" /></div>
                   <div className="min-w-0"><p className="truncate text-sm font-black">{me?.displayName ?? "Your hand"}</p><p className="text-[0.58rem] font-bold uppercase tracking-[0.17em] text-white/35">{sittingOutSingleHand ? "Partner playing alone" : me?.team === 0 ? "Team Red" : "Team Blue"} · {(me?.hand?.length ?? 0) + (state.privateSeventhCard ? 1 : 0)} cards</p></div>
                 </div>
                 <div className="flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.035] px-3 py-1.5 text-[0.63rem] font-bold text-white/48"><Shield className="h-3.5 w-3.5" /> Follow suit when possible</div>
               </div>
-              {sittingOutSingleHand ? <div className="flex min-h-[7.7rem] flex-col items-center justify-center gap-2 rounded-xl border border-violet-200/10 bg-violet-300/[0.035] px-4 py-3 text-center"><div className="flex -space-x-3">{Array.from({ length: Math.min(me?.hand?.length ?? 0, 8) }).map((_, index) => <div key={index} className="origin-bottom" style={{ transform: `rotate(${(index - 3.5) * 2}deg)` }}><CardBack small /></div>)}</div><p className="text-xs font-black text-violet-100">You're sitting out this hand.</p><p className="max-w-md text-[0.68rem] font-semibold text-white/45">Your teammate must win all eight tricks alone. Your cards stay out of play.</p></div> : <div className="twenty-nine-hand-row relative z-50 -mt-12 flex min-h-[12.8rem] items-end justify-center gap-0 overflow-hidden overflow-y-visible px-1 pb-1 pt-2 [scrollbar-width:thin] [scrollbar-color:rgba(52,211,153,.25)_transparent]">
+              {sittingOutSingleHand ? <div className="flex min-h-[7.7rem] flex-col items-center justify-center gap-2 rounded-xl border border-violet-200/10 bg-violet-300/[0.035] px-4 py-3 text-center"><div className="flex -space-x-3">{Array.from({ length: Math.min(me?.hand?.length ?? 0, 8) }).map((_, index) => <div key={index} className="origin-bottom" style={{ transform: `rotate(${(index - 3.5) * 2}deg)` }}><CardBack small /></div>)}</div><p className="text-xs font-black text-violet-100">You're sitting out this hand.</p><p className="max-w-md text-[0.68rem] font-semibold text-white/45">Your teammate must win all eight tricks alone. Your cards stay out of play.</p></div> : <div className="twenty-nine-hand-row relative z-50 mt-0 flex min-h-[8.25rem] items-end justify-center gap-0 overflow-visible px-1 pb-1 pt-3">
                 {sortedHand.map((card, index) => {
                   const canPlay = legalPlayIds.has(card.id) && isMyTurn && state.phase === "playing";
                   const fanOffset = index - (sortedHand.length - 1) / 2;
@@ -819,20 +891,21 @@ export function TwentyNineTable({
                       {...(canPlay ? { whileTap: { scale: 0.96 } } : {})}
                       transition={{ duration: reduceMotion ? 0.1 : 0.2 }}
                       className={cn("twenty-nine-hand-card relative shrink-0 rounded-xl text-left outline-none transition", canPlay ? "cursor-pointer ring-2 ring-emerald-100/90 shadow-[0_0_30px_rgba(52,211,153,.3)]" : "cursor-default opacity-100")}
-                      style={{ marginLeft: index === 0 ? 0 : sortedHand.length >= 8 ? "-1.45rem" : sortedHand.length >= 7 ? "-1.1rem" : "-0.62rem", transformOrigin: "50% 100%", zIndex: 10 + index }}
+                      style={{ marginLeft: index === 0 ? 0 : sortedHand.length >= 8 ? "-0.9rem" : sortedHand.length >= 7 ? "-0.62rem" : "-0.35rem", transformOrigin: "50% 100%", zIndex: 10 + index }}
                       title={canPlay ? "Play this card" : "Your card"}
                     >
-                      <CardFace card={card} />
+                      <CardFace card={card} hand />
                       {canPlay ? <span className="absolute -bottom-1 left-1/2 h-1 w-8 -translate-x-1/2 rounded-full bg-emerald-200 shadow-[0_0_10px_rgba(110,231,183,.65)]" /> : null}
                     </motion.button>
                   );
                 })}
                 {state.privateSeventhCard && state.phase === "playing" && state.completedTricks.length === 7 && (me?.hand?.length ?? 0) === 0 ? (
-                  <motion.button type="button" onClick={() => play(state.privateSeventhCard!)} className="relative rounded-xl ring-2 ring-amber-200/60 shadow-[0_0_18px_rgba(251,191,36,.2)]"><CardFace card={state.privateSeventhCard} /><span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full border border-amber-200/25 bg-[#211807] px-2 py-0.5 text-[0.53rem] font-black uppercase tracking-widest text-amber-100">Seventh</span></motion.button>
+                  <motion.button type="button" onClick={() => play(state.privateSeventhCard!)} className="relative rounded-xl ring-2 ring-amber-200/60 shadow-[0_0_18px_rgba(251,191,36,.2)]"><CardFace card={state.privateSeventhCard} hand /><span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full border border-amber-200/25 bg-[#211807] px-2 py-0.5 text-[0.53rem] font-black uppercase tracking-widest text-amber-100">Seventh</span></motion.button>
                 ) : null}
                 {!me?.hand?.length && state.phase !== "finished" ? <div className="px-6 py-5 text-xs font-bold text-white/35">Your cards appear here.</div> : null}
               </div>}
-            </section>
+              </section>
+            </div>
           </main>
 
           <aside className="flex min-h-[25rem] flex-col gap-3 xl:max-h-[calc(100dvh-7.5rem)]">
@@ -866,10 +939,12 @@ export function TwentyNineTable({
             aria-live="assertive"
             role="status"
           >
-            <motion.div className="absolute inset-0 bg-black/52 backdrop-blur-[3px]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
+            <motion.div className="absolute inset-0 bg-black/26 backdrop-blur-[1px]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
             <motion.div
               className={cn(
-                "twenty-nine-event-spotlight relative flex w-[min(92vw,44rem)] flex-col items-center overflow-y-auto overflow-x-hidden rounded-[1.5rem] border px-6 py-5 text-center shadow-[0_28px_90px_rgba(0,0,0,.62)]",
+                "twenty-nine-event-spotlight relative flex flex-col items-center overflow-y-auto overflow-x-hidden rounded-[1.5rem] border px-5 py-5 text-center shadow-[0_28px_90px_rgba(0,0,0,.62)]",
+                eventSpotlight.visual === "trump" || eventSpotlight.visual === "match-result" ? "w-[min(92vw,50rem)]" : "w-[min(92vw,42rem)]",
+                `twenty-nine-event-spotlight--${eventSpotlight.visual}`,
                 eventSpotlight.tone === "amber" ? "border-amber-100/45 bg-[linear-gradient(145deg,rgba(64,43,10,.98),rgba(10,16,14,.98))]" :
                 eventSpotlight.tone === "rose" ? "border-rose-100/40 bg-[linear-gradient(145deg,rgba(65,15,28,.98),rgba(10,12,16,.98))]" :
                 eventSpotlight.tone === "emerald" ? "border-emerald-100/40 bg-[linear-gradient(145deg,rgba(6,59,41,.98),rgba(5,16,14,.98))]" :
@@ -882,17 +957,10 @@ export function TwentyNineTable({
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
             >
               <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white/65 to-transparent" />
-              <motion.div className="grid h-16 w-16 place-items-center rounded-[1.2rem] border border-white/20 bg-white/[0.075] text-4xl shadow-[0_0_32px_rgba(255,255,255,.08)]" {...(!reduceMotion ? { animate: { y: [0, -4, 0], rotate: [0, -2, 2, 0] }, transition: { duration: 1.15, repeat: 1 } } : {})}>{eventSpotlight.emoji}</motion.div>
-              <p className="mt-2.5 text-[0.63rem] font-black uppercase tracking-[0.26em] text-white/55">Twenty-Nine · Table event</p>
-              <h2 className="mt-2 text-[clamp(1.7rem,4vw,3rem)] font-black leading-tight tracking-tight text-white">{eventSpotlight.title}</h2>
-              <p className="mt-2 max-w-2xl text-base font-semibold leading-relaxed text-white/75">{eventSpotlight.detail}</p>
-              <div className="mt-3 flex items-center justify-center gap-2" aria-hidden="true">
-                {Array.from({ length: 3 }, (_, index) => (
-                  <motion.div key={`${eventSpotlight.id}-card-${index}`} initial={reduceMotion ? false : { opacity: 0, y: 14, rotate: (index - 1.5) * 9, scale: 0.85 }} animate={{ opacity: 1, y: 0, rotate: (index - 1.5) * 5, scale: 1 }} transition={{ delay: reduceMotion ? 0 : index * 0.055, type: "spring", stiffness: 300, damping: 24 }}>
-                    <CardBack small />
-                  </motion.div>
-                ))}
-              </div>
+              <SpotlightHero spotlight={eventSpotlight} reduceMotion={Boolean(reduceMotion)} />
+              <p className="mt-2 text-[0.58rem] font-black uppercase tracking-[0.26em] text-white/45">Twenty-Nine · {eventSpotlight.visual === "trump" ? "Trump revealed" : eventSpotlight.visual === "match-result" ? "Match complete" : eventSpotlight.visual === "hand-result" ? "Hand resolution" : eventSpotlight.visual === "trick" ? "Trick result" : eventSpotlight.visual === "auction" ? "Auction update" : eventSpotlight.visual === "stakes" ? "Contract stakes" : eventSpotlight.visual === "single-hand" ? "Solo challenge" : eventSpotlight.visual === "pair" ? "Pair declared" : eventSpotlight.visual === "pass" ? "Auction pass" : eventSpotlight.visual === "deal-cancelled" ? "Deal cancelled" : "Table event"}</p>
+              <h2 className="mt-1 text-[clamp(1.45rem,3.2vw,2.7rem)] font-black leading-tight tracking-tight text-white">{eventSpotlight.title}</h2>
+              <p className="mt-2 max-w-2xl text-sm font-semibold leading-relaxed text-white/78">{eventSpotlight.detail}</p>
             </motion.div>
           </motion.div>
         ) : null}
@@ -900,7 +968,17 @@ export function TwentyNineTable({
 
       <AnimatePresence>{rulesOpen ? <motion.div className="fixed inset-0 z-[100] grid place-items-center bg-black/55 p-4 backdrop-blur-[2px]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setRulesOpen(false)}><motion.div className="max-h-[85dvh] w-full max-w-2xl overflow-y-auto rounded-[1.8rem] border border-emerald-100/15 bg-[#061510] p-5 shadow-2xl" initial={{ y: 12, scale: 0.98 }} animate={{ y: 0, scale: 1 }} exit={{ y: 8, scale: 0.98 }} onClick={(event) => event.stopPropagation()}><div className="flex items-center gap-3"><BookOpen className="h-5 w-5 text-emerald-200" /><h2 className="text-xl font-black">29 — Quick rules</h2></div><div className="mt-4 grid gap-3 sm:grid-cols-2"><RuleTile title="Rank" body="J > 9 > A > 10 > K > Q > 8 > 7. The deck contains exactly 28 card points." /><RuleTile title="Partnerships" body="Four players, partners opposite. Play proceeds counterclockwise." /><RuleTile title="Auction" body="Deal four cards each; bid from 16 to 28. Raise, Ditto or Pass; partners can take over. Three passes end the auction." /><RuleTile title="Trump" body="Declarer chooses a hidden suit or calls for the seventh card. If unable to follow suit, reveal trump before discarding." /><RuleTile title="Pair" body="After trump is revealed, King + Queen of trump can adjust the target by four. Bids 16–18 are not reduced for your team." /><RuleTile title="Single Hand" body="Before the first card, any player may declare Single Hand. No trump is used; their partner sits out and the caller must win all eight tricks for +3, otherwise −3." /><RuleTile title="Contract" body="After eight tricks, the bidding team gains or loses 1, 2 or 4 game points. First to +6 wins; reaching −6 loses." /></div><p className="mt-4 text-xs font-semibold leading-relaxed text-white/35">House rules: 28 card points only (no last-trick bonus). Double/Redouble and seventh-card trump are enabled; Set is not used.</p><button type="button" onClick={() => setRulesOpen(false)} className="mt-4 rounded-xl border border-emerald-200/20 bg-emerald-200/10 px-4 py-2 text-sm font-black text-emerald-100">Got it</button></motion.div></motion.div> : null}</AnimatePresence>
 
-      {state.phase === "finished" && state.winnerTeam !== null ? <div className="pointer-events-none fixed inset-0 z-[90] grid place-items-center bg-black/20 p-4"><motion.div initial={{ opacity: 0, y: 10, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} className="pointer-events-auto w-full max-w-md rounded-[2rem] border border-amber-200/20 bg-[#061510]/95 p-6 text-center shadow-[0_24px_100px_rgba(0,0,0,.65)]"><div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl border border-amber-200/20 bg-amber-200/10 text-amber-100"><Trophy className="h-7 w-7" /></div><p className="mt-4 text-[0.62rem] font-black uppercase tracking-[0.3em] text-amber-100/50">Match complete</p><h2 className="mt-1 text-2xl font-black">Team {state.winnerTeam + 1} wins!</h2><p className="mt-2 text-sm font-semibold text-white/55">Emerald {state.teamGamePoints["0"]} · Sapphire {state.teamGamePoints["1"]}</p><p className="mt-4 text-xs text-white/35">Start a new room to play another match.</p></motion.div></div> : null}
+      {state.phase === "finished" && state.winnerTeam !== null ? (
+        <div className="twenty-nine-match-finish pointer-events-none fixed inset-0 z-[90] grid place-items-center p-4">
+          <motion.div initial={{ opacity: 0, y: 24, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: "spring", stiffness: 220, damping: 22 }} className={cn("twenty-nine-match-finish-card pointer-events-auto", state.winnerTeam === 0 ? "twenty-nine-match-finish-card--red" : "twenty-nine-match-finish-card--blue")}>
+            <div className="twenty-nine-match-finish-medal"><Trophy className="h-12 w-12" /></div>
+            <p className="twenty-nine-match-finish-kicker">Match complete · Twenty-Nine</p>
+            <h2>{state.winnerTeam === 0 ? "TEAM RED WINS" : "TEAM BLUE WINS"}</h2>
+            <div className="twenty-nine-match-score"><div><span>TEAM RED</span><strong>{state.teamGamePoints["0"]}</strong></div><span className="twenty-nine-match-score-divider">VS</span><div><span>TEAM BLUE</span><strong>{state.teamGamePoints["1"]}</strong></div></div>
+            <p className="twenty-nine-match-finish-note">The match is over. Start a new room to play again.</p>
+          </motion.div>
+        </div>
+      ) : null}
     </div>
   );
 }
