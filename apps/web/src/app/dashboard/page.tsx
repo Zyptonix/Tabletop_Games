@@ -301,9 +301,8 @@ export default function DashboardPage() {
       >
         <CreateRoomPanel
           key={selectedGameId ?? "completed-games"}
-          initialGameId={selectedGameId ?? undefined}
+          {...(selectedGameId ? { initialGameId: selectedGameId } : {})}
           hideGameSelect={Boolean(selectedGameId)}
-          allowedGameIds={selectedGameId ? [selectedGameId] : completedGames.map((game) => game.id)}
         />
       </Dialog>
 

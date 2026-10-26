@@ -3,7 +3,7 @@ import type { GameModule } from "../../engine/GameModule";
 import type { GameEvent, GamePlayer, GameResults, GameTurnInfo, TimeoutReason, ValidationResult } from "../../engine/GameTypes";
 import type { GameId } from "@tabletop/shared";
 import type { BoardGameAction, BoardGameId, BoardGameSettings, BoardGameState, PublicBoardGameState } from "./types";
-import { hashSeed, makeActivity, makeStandardResults, nextPlayerId } from "./utils";
+import { finish, hashSeed, makeActivity, makeStandardResults, nextPlayerId } from "./utils";
 export const boardGameSettingsSchema = z.object({ turnSeconds: z.number().int().min(0).max(600).nullable().default(null), clockSeconds: z.number().int().min(0).max(7200).nullable().default(null) });
 export const defaultBoardGameSettings: BoardGameSettings = { turnSeconds: null, clockSeconds: null };
 export type BoardGameReduction = { accepted: boolean; message: string };
