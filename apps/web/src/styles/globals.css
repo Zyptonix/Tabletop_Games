@@ -1306,11 +1306,29 @@ body:has(.tt-game-viewport) {
 .twenty-nine-trick-stage .twenty-nine-winning-play { filter: drop-shadow(0 0 18px rgb(252 211 77 / 0.36)); }
 
 /* Lower dock has two predictable zones; cards never occupy the trick-score column. */
+.twenty-nine-play-dock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.twenty-nine-play-dock .twenty-nine-action-panel {
+  width: 100%;
+  /* max-width: 58rem; */
+  align-self: flex-start;
+}
+
+.twenty-nine-play-dock .twenty-nine-hand-panel {
+  width: 100%;
+  min-width: 0;
+}
+
 .twenty-nine-bottom-dock {
   display: grid;
-  grid-template-columns: clamp(10rem, 16vw, 13rem) minmax(0, 1fr);
+  grid-template-columns: clamp(50rem, 25vw, 50rem) minmax(0, 1fr);
   align-items: stretch;
-  gap: clamp(0.5rem, 0.8vw, 0.8rem);
+  gap: 0.65rem;
   min-width: 0;
   flex: 0 0 auto;
 }
@@ -1318,24 +1336,24 @@ body:has(.tt-game-viewport) {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 0.5rem;
+  gap: 1.6 rem;
   min-width: 0;
-  padding: 0.35rem 0;
+  padding: 0.1rem 0;
 }
 .twenty-nine-trick-dock-title {
-  margin: 0 0 0.1rem;
+  margin: 0 0 0.5rem;
   color: rgb(220 252 231 / 0.58);
-  font-size: 0.57rem;
+  font-size: 0.8rem;
   font-weight: 900;
   letter-spacing: 0.2em;
   line-height: 1;
   text-transform: uppercase;
 }
-.twenty-nine-trick-dock .twenty-nine-trick-progress { width: 100%; padding: 0.45rem; }
-.twenty-nine-trick-dock .twenty-nine-trick-progress > div:first-child { margin-bottom: 0.35rem; }
-.twenty-nine-trick-dock .twenty-nine-trick-progress > div:first-child span { font-size: 0.55rem; }
-.twenty-nine-trick-dock .twenty-nine-trick-progress > div:first-child strong { font-size: 0.92rem; }
-.twenty-nine-trick-dock .twenty-nine-trick-progress .twenty-nine-trick-slot { border-radius: 0.16rem; }
+.twenty-nine-trick-dock .twenty-nine-trick-progress { width: 100%; padding: 0.1rem;box-sizing: border-box; }
+.twenty-nine-trick-dock .twenty-nine-trick-progress > div:first-child { margin-bottom: 0.5rem; }
+.twenty-nine-trick-dock .twenty-nine-trick-progress > div:first-child span { font-size: 0.8rem; }
+.twenty-nine-trick-dock .twenty-nine-trick-progress > div:first-child strong { font-size: 1.05rem; }
+.twenty-nine-trick-dock .twenty-nine-trick-progress .twenty-nine-trick-slot { border-radius: 0.2rem; }
 .twenty-nine-hand-panel { position: relative; z-index: 20 !important; min-width: 0; }
 .twenty-nine-hand-row { min-height: 8.25rem; padding-top: 0.8rem; }
 .twenty-nine-hand-row .twenty-nine-hand-card { min-width: 0; }
@@ -1354,7 +1372,7 @@ body:has(.tt-game-viewport) {
 .twenty-nine-bid-prompt { padding: 0.45rem 0.65rem !important; margin-bottom: 0.45rem !important; gap: 0.65rem !important; }
 .twenty-nine-bid-prompt > div:nth-child(2) { min-width: 0; }
 .twenty-nine-bid-prompt p { line-height: 1.2; }
-.twenty-nine-action-panel > div:last-child { gap: 0.5rem; }
+.twenty-nine-action-panel > div:last-child { gap: 0.4rem; }
 
 /* Major event spotlights each get bespoke artwork, color, scale and motion. */
 .twenty-nine-event-spotlight { gap: 0.1rem; background-image: radial-gradient(ellipse at 50% 0%, rgb(255 255 255 / 0.09), transparent 55%); }
@@ -1403,7 +1421,7 @@ body:has(.tt-game-viewport) {
 .twenty-nine-deal-cards > div:nth-child(3) { transform: rotate(13deg); }
 
 @media (min-width: 1280px) and (max-height: 850px) {
-  .twenty-nine-bottom-dock { grid-template-columns: clamp(9.5rem, 15vw, 11.5rem) minmax(0, 1fr); gap: 0.55rem; }
+  .twenty-nine-bottom-dock { grid-template-columns:  clamp(14rem, 19vw, 17rem) minmax(0, 1fr); gap: 0.6rem; }
   .twenty-nine-hand-panel { padding-top: 0.4rem !important; padding-bottom: 0.3rem !important; }
   .twenty-nine-hand-row { min-height: 7.5rem; padding-top: 0.45rem; }
   .twenty-nine-trick-stage { top: 52%; }
@@ -1454,5 +1472,150 @@ body:has(.tt-game-viewport) {
 .twenty-nine-match-finish-note { margin-top: 0.65rem; color: rgb(255 255 255 / 0.4); font-size: 0.72rem; font-weight: 600; }
 @media (prefers-reduced-motion: reduce) {
   .twenty-nine-trump-sigil, .twenty-nine-victory-medal, .twenty-nine-event-spotlight * { animation: none !important; transition: none !important; }
+}
+
+/* TWENTY-NINE DENSE LAYOUT / HAND CARDS V1 */
+/* Trim unused panel gutters so the felt and cards use the available viewport. */
+.twenty-nine-shell > .relative.z-10 {
+  gap: 0.4rem !important;
+  padding: 0.35rem !important;
+}
+.twenty-nine-shell > .relative.z-10 > header {
+  gap: 0.5rem !important;
+  padding: 0.35rem 0.65rem !important;
+  border-radius: 0.75rem !important;
+}
+.twenty-nine-shell > .relative.z-10 > .grid.min-h-0.flex-1 {
+  gap: 0.45rem !important;
+}
+.twenty-nine-shell main { gap: 0.4rem !important; }
+.twenty-nine-shell aside { gap: 0.45rem !important; }
+.twenty-nine-shell aside > section,
+.twenty-nine-shell aside > div { border-radius: 1rem !important; }
+.twenty-nine-shell aside > section:first-child > button { padding: 0.55rem 0.7rem !important; }
+.twenty-nine-shell aside > section:nth-child(2) { gap: 0.4rem !important; padding: 0.5rem !important; }
+.twenty-nine-action-panel { padding: 0.35rem 0.5rem !important; border-radius: 0.85rem !important; }
+.twenty-nine-bid-prompt { padding: 0.35rem 0.5rem !important; margin-bottom: 0.35rem !important; gap: 0.5rem !important; }
+.twenty-nine-bottom-dock { gap: 0.4rem !important; }
+.twenty-nine-trick-dock { gap: 0.3rem !important; padding: 0.1rem 0 !important; }
+.twenty-nine-trick-dock .twenty-nine-trick-progress { padding: 0.3rem !important; }
+.twenty-nine-hand-panel { padding: 0.3rem 0.4rem 0.15rem !important; border-radius: 0.75rem !important; }
+.twenty-nine-hand-panel > div:first-child { gap: 0.35rem !important; margin-bottom: 0.15rem !important; }
+.twenty-nine-hand-row {
+  min-height: 9.7rem !important;
+  padding: 0.25rem 0 0.2rem !important;
+  gap: 0 !important;
+}
+/* The hand is meant to be read at a glance: make cards substantially larger. */
+.twenty-nine-hand-row .twenty-nine-playing-card {
+  width: clamp(4.8rem, 6vw, 6.4rem) !important;
+  height: auto !important;
+  aspect-ratio: 0.715;
+  padding: 0.2rem !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 8px 20px rgb(0 0 0 / 0.28);
+}
+.twenty-nine-hand-row .twenty-nine-playing-card > div:first-child span,
+.twenty-nine-hand-row .twenty-nine-playing-card > div:last-of-type span {
+  font-size: clamp(0.9rem, 1.05vw, 1.08rem) !important;
+  line-height: 1 !important;
+}
+.twenty-nine-hand-row .twenty-nine-playing-card svg {
+  width: clamp(1.35rem, 1.7vw, 1.75rem) !important;
+  height: auto !important;
+}
+/* Tighten the played cards themselves; keep their faces large and uncluttered. */
+.twenty-nine-trick-stage {
+  top: 65% !important;
+  width: min(54rem, calc(100% - 25rem)) !important;
+}
+.twenty-nine-trick-stage .twenty-nine-trick-meta {
+  gap: 0.35rem !important;
+  margin-bottom: 0.25rem !important;
+  padding: 0.3rem 0.45rem !important;
+  background: rgb(2 13 10 / 0.97) !important;
+  border-color: rgb(255 255 255 / 0.13) !important;
+  backdrop-filter: none !important;
+}
+.twenty-nine-trick-stage .twenty-nine-trick-rail {
+  gap: clamp(0.25rem, 0.5vw, 0.5rem) !important;
+  padding: 0.05rem 0 0.15rem !important;
+}
+/* Make center trick cards larger */
+.twenty-nine-trick-stage .twenty-nine-trick-card-frame {
+  width: clamp(8rem, 10vw, 10rem) !important;
+  flex: 0 0 auto !important;
+  aspect-ratio: 0.715 !important;
+}
+
+.twenty-nine-trick-stage .twenty-nine-trick-card-frame
+  .twenty-nine-playing-card {
+  width: 100% !important;
+  height: 100% !important;
+  padding: 2rem !important;
+}
+.twenty-nine-played-card { gap: 0.22rem !important; }
+.twenty-nine-trick-player-label {
+  max-width: 6.5rem !important;
+  padding: 0.2rem 0.42rem !important;
+  font-size: 0.58rem !important;
+  background-color: rgb(2 14 11 / 0.97) !important;
+}
+.twenty-nine-played-card > span:last-child {
+  padding: 0.1rem 0.32rem !important;
+  line-height: 1.1 !important;
+  background-color: rgb(3 16 12 / 0.9);
+}
+/* Keep the top seat above the center lane, and give the trick rail its own space. */
+.twenty-nine-partner-seat { top: 0.35% !important; z-index: 25 !important; }
+.twenty-nine-partner-seat .twenty-nine-player-seat {
+  width: clamp(9.5rem, 11vw, 12rem) !important;
+  padding: 0.45rem !important;
+  border-radius: 0.8rem !important;
+}
+.twenty-nine-opponent-seat .twenty-nine-player-seat {
+  width: clamp(8rem, 9vw, 10rem) !important;
+  padding: 0.42rem !important;
+  border-radius: 0.8rem !important;
+}
+.twenty-nine-player-seat > div:first-child { gap: 0.45rem !important; }
+.twenty-nine-player-seat .twenty-nine-seat-character {
+  width: 2.25rem !important;
+  height: 2.25rem !important;
+  border-radius: 0.65rem !important;
+  font-size: 1.2rem !important;
+}
+.twenty-nine-current-trick {
+  background: rgb(2 15 11 / 0.98) !important;
+  backdrop-filter: none !important;
+}
+/* Keep event cards legible: an opaque event panel and a stronger dimmed backdrop. */
+.twenty-nine-event-spotlight {
+  background-color: rgb(3 12 10 / 0.995) !important;
+  background-blend-mode: normal;
+  border-color: rgb(209 250 229 / 0.45) !important;
+  box-shadow: 0 30px 95px rgb(0 0 0 / 0.76), inset 0 1px 0 rgb(255 255 255 / 0.12) !important;
+}
+.twenty-nine-event-spotlight--trump { background-color: rgb(2 29 21 / 0.995) !important; }
+.twenty-nine-event-spotlight--match-result { background-color: rgb(12 14 10 / 0.995) !important; }
+@media (min-width: 1280px) and (max-height: 850px) {
+  .twenty-nine-hand-row { min-height: 8rem !important; padding-top: 0.2rem !important; }
+  .twenty-nine-hand-row .twenty-nine-playing-card { width: clamp(4.2rem, 5.1vw, 5.3rem) !important; }
+  .twenty-nine-trick-stage { top: 64% !important; width: min(52rem, calc(100% - 24rem)) !important; }
+}
+@media (max-width: 1000px) {
+  .twenty-nine-hand-row { min-height: 7.2rem !important; }
+  .twenty-nine-hand-row .twenty-nine-playing-card { width: clamp(3.8rem, 5.4vw, 4.8rem) !important; }
+  .twenty-nine-trick-stage { top: 56% !important; width: min(48rem, calc(100% - 12rem)) !important; }
+  .twenty-nine-opponent-seat .twenty-nine-player-seat { width: clamp(7.5rem, 13vw, 8.8rem) !important; }
+}
+@media (max-width: 640px) {
+  .twenty-nine-shell > .relative.z-10 { padding: 0.25rem !important; gap: 0.3rem !important; }
+  .twenty-nine-hand-row { min-height: 5.2rem !important; justify-content: flex-start !important; overflow-x: auto !important; padding: 0.2rem 0 0.4rem !important; }
+  .twenty-nine-hand-row .twenty-nine-playing-card { width: clamp(3.3rem, 11vw, 4.5rem) !important; }
+  .twenty-nine-trick-stage { top: 56% !important; width: calc(100% - 0.5rem) !important; }
+  .twenty-nine-trick-stage .twenty-nine-trick-rail { flex-wrap: wrap !important; gap: 0.35rem !important; }
+  .twenty-nine-trick-stage .twenty-nine-trick-card-frame { width: clamp(4.5rem, 19vw, 6.5rem) !important; }
+  .twenty-nine-event-spotlight { max-height: calc(100dvh - 1rem); padding: 0.75rem !important; }
 }
 

@@ -371,17 +371,6 @@ function ScoreCardFace({ suit, points, positive }: { suit: TwentyNineSuit; point
     <div className="twenty-nine-score-card-face relative h-full w-full overflow-hidden rounded-[0.62rem] border border-white/80 bg-[#fffdf6] shadow-[0_8px_22px_rgba(0,0,0,.38)]" style={{ color: ink }}>
       <CardSprite rank="6" suit={suit} className="absolute inset-0 z-0 h-full w-full object-cover object-center" />
       <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(145deg,rgba(255,255,255,.08),transparent_44%,rgba(0,0,0,.06))]" />
-      {scoreText ? (
-        <motion.div
-          key={scoreText}
-          initial={{ opacity: 0, y: 5, scale: 0.9 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ type: "spring", stiffness: 300, damping: 22 }}
-          className="absolute inset-x-[9%] top-[38%] z-20 grid h-[25%] place-items-center rounded-md border border-white/45 bg-white/82 text-[clamp(.8rem,1.4vw,1.25rem)] font-black leading-none shadow-sm"
-        >
-          {scoreText}
-        </motion.div>
-      ) : null}
     </div>
   );
 }
@@ -693,7 +682,7 @@ export function TwentyNineTable({
           initial={reduceMotion ? false : { opacity: 0, x: 18, y: -8, scale: 0.86, rotate: playIndex % 2 === 0 ? -2 : 2 }}
           animate={{ opacity: 1, x: 0, y: 0, scale: 1, rotate: 0 }}
           transition={{ type: "spring", stiffness: 320, damping: 25, delay: reduceMotion ? 0 : playIndex * 0.045 }}
-          className={cn("relative flex shrink-0 flex-col items-center gap-1.5", isTakingTrick && "twenty-nine-winning-play")}
+          className={cn("twenty-nine-played-card relative flex shrink-0 flex-col items-center gap-1", isTakingTrick && "twenty-nine-winning-play")}
         >
           <div className={cn(
             "max-w-[7.8rem] truncate rounded-full border px-2.5 py-1 text-[0.64rem] font-black shadow-md",
@@ -750,7 +739,7 @@ export function TwentyNineTable({
               </div>
 
               {partner ? (
-                <div ref={(el) => registerSeat(partner.userId, el)} className={cn("absolute left-1/2 top-[1%] z-10 -translate-x-1/2", partner.isCurrentTurn && "z-20")}>
+                <div ref={(el) => registerSeat(partner.userId, el)} className={cn("twenty-nine-partner-seat absolute left-1/2 top-[1%] z-10 -translate-x-1/2", partner.isCurrentTurn && "z-20")}>
                   <Seat playerName={partner.displayName} team={partner.team} count={partner.handCount} active={partner.isCurrentTurn} dealer={state.dealerPlayerId === partner.userId} seat={partner.seat} />
                   {singleHandCaller && partner.userId !== singleHandCaller.userId && partner.team === singleHandCaller.team ? <span className="mt-1 block rounded-full border border-violet-200/20 bg-violet-300/10 px-2 py-1 text-center text-[0.5rem] font-black uppercase tracking-[0.2em] text-violet-100/70">Sitting out</span> : null}
                 </div>
@@ -758,19 +747,19 @@ export function TwentyNineTable({
               {enemyPlayers.map((player) => {
                 const pos = positionFor(player.userId, state, currentUserId);
                 return (
-                  <div key={player.userId} ref={(el) => registerSeat(player.userId, el)} className={cn("absolute z-10", pos === "left" ? "left-[2.5%] top-[45%] -translate-y-1/2" : "right-[2.5%] top-[45%] -translate-y-1/2", player.isCurrentTurn && "z-20")}>
+                  <div key={player.userId} ref={(el) => registerSeat(player.userId, el)} className={cn("twenty-nine-opponent-seat absolute z-10", pos === "left" ? "left-[2.5%] top-[45%] -translate-y-1/2" : "right-[2.5%] top-[45%] -translate-y-1/2", player.isCurrentTurn && "z-20")}>
                     <Seat playerName={player.displayName} team={player.team} count={player.handCount} active={player.isCurrentTurn} dealer={state.dealerPlayerId === player.userId} seat={player.seat} vertical />
                   </div>
                 );
               })}
 
-              <div className="absolute right-[2.5%] top-[2.8%] z-30 flex items-center gap-2 rounded-xl border border-emerald-100/15 bg-[#02110d]/75 px-3 py-2 shadow-lg backdrop-blur-sm">
+              <div className="twenty-nine-current-trick absolute right-[2.5%] top-[2.8%] z-30 flex items-center gap-2 rounded-xl border border-emerald-100/15 bg-[#02110d]/95 px-3 py-2 shadow-lg">
                 <div className="grid h-8 w-8 place-items-center rounded-lg border border-emerald-100/15 bg-emerald-300/[0.08] text-emerald-100">🃏</div>
                 <div><span className="block text-[0.5rem] font-black uppercase tracking-[0.22em] text-emerald-100/45">Current trick</span><strong className="text-sm font-black text-white">{String(turnIndex).padStart(2, "0")} <span className="text-[0.6rem] text-white/35">/ 08</span></strong></div>
               </div>
 
               <div className="twenty-nine-trick-stage absolute z-20">
-                <div className="mb-2 flex flex-wrap items-center gap-2.5 rounded-xl border border-white/[0.09] bg-[#03100f]/72 px-3 py-2 shadow-lg backdrop-blur-sm">
+                <div className="twenty-nine-trick-meta mb-2 flex flex-wrap items-center gap-2 rounded-xl border border-white/[0.11] bg-[#03100f]/96 px-2.5 py-1.5 shadow-lg">
                   <span className="text-[0.56rem] font-black uppercase tracking-[0.2em] text-emerald-100/45">Trick {String(turnIndex).padStart(2, "0")} / 08</span>
                   {ledSuit ? (
                     <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.045] px-2.5 py-1 text-xs font-black text-white/90">
@@ -806,57 +795,7 @@ export function TwentyNineTable({
               </AnimatePresence>
             </section>
 
-            <section className="twenty-nine-action-panel relative z-30 shrink-0 rounded-xl border px-3 py-2 shadow-lg">
-              <AnimatePresence initial={false}>
-                {state.phase === "bidding" && isMyTurn && !sittingOutSingleHand ? (
-                  <motion.div
-                    key={`bid-prompt-${state.handNumber}-${state.currentBid ?? "open"}`}
-                    className="twenty-nine-bid-prompt relative mb-2 flex w-full items-center gap-2.5 rounded-xl border border-amber-100/40 bg-[linear-gradient(105deg,rgba(92,54,8,.96),rgba(28,21,9,.98)_55%,rgba(10,13,12,.98))] px-3 py-2 shadow-[0_8px_26px_rgba(0,0,0,.32)]"
-                    initial={{ opacity: 0, y: 12, scale: 0.98 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 8, scale: 0.98 }}
-                    transition={{ type: "spring", stiffness: 340, damping: 28 }}
-                    role="status"
-                    aria-live="polite"
-                  >
-                    <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-amber-100/30 bg-amber-200/10 text-amber-100 text-lg">🎯</div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[0.67rem] font-black uppercase tracking-[0.23em] text-amber-100/75">Your turn to bid</p>
-                      <p className="mt-0.5 text-sm font-black text-white">{state.currentBid === null ? `Opening bid · minimum ${lowestLegalBid ?? 16}` : `Bid ${state.currentBid} · ${state.highestBidderId ? playerName(state, state.highestBidderId, currentUserId) : "No bidder yet"}`}</p>
-                      <p className="hidden text-[0.65rem] font-semibold text-white/55 sm:block">Range 16–28 · Ditto or Pass when available</p>
-                    </div>
-                  </motion.div>
-                ) : null}
-              </AnimatePresence>
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div><p className="text-[0.58rem] font-black uppercase tracking-[0.24em] text-white/35">Your move</p><p className="mt-1 text-sm font-black text-white">{isMyTurn ? phaseLabel(state.phase) : `${currentTurnName} is acting`}</p></div>
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  {state.phase === "bidding" && isMyTurn ? <>
-                    {selectedBidValue !== null && lowestLegalBid !== null && highestLegalBid !== null ? (
-                      <div className="flex items-center gap-1 rounded-xl border border-amber-100/15 bg-amber-200/[0.045] p-1">
-                        <button type="button" aria-label="Lower bid" disabled={selectedBidValue <= lowestLegalBid} onClick={() => setSelectedBid(Math.max(lowestLegalBid, selectedBidValue - 1))} className="grid h-8 w-8 place-items-center rounded-lg border border-white/[0.08] bg-white/[0.035] text-sm font-black text-white/65 disabled:opacity-25">−</button>
-                        <div className="min-w-[3rem] px-1 text-center"><p className="text-[0.5rem] font-black uppercase tracking-[0.17em] text-amber-100/40">Bid</p><p className="text-lg font-black leading-tight text-amber-100">{selectedBidValue}</p></div>
-                        <button type="button" aria-label="Raise bid" disabled={selectedBidValue >= highestLegalBid} onClick={() => setSelectedBid(Math.min(highestLegalBid, selectedBidValue + 1))} className="grid h-8 w-8 place-items-center rounded-lg border border-white/[0.08] bg-white/[0.035] text-sm font-black text-white/65 disabled:opacity-25">+</button>
-                        <ActionButton label={`Bid ${selectedBidValue}`} tone="gold" onClick={() => onAction("bid", { value: selectedBidValue })} />
-                      </div>
-                    ) : null}
-                    {hasAction(legalActions, "ditto") ? <ActionButton label="Ditto" tone="violet" onClick={() => onAction("ditto")} /> : null}
-                    {hasAction(legalActions, "pass_bid") ? <ActionButton label="Pass" tone="neutral" onClick={() => onAction("pass_bid")} /> : null}
-                  </> : null}
-                  {state.phase === "trump" && isMyTurn ? <>
-                    {SUITS.map((item) => <button key={item.suit} type="button" onClick={() => onAction("choose_trump_suit", { suit: item.suit })} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.045] px-3 py-2 text-sm font-black text-white/80 transition hover:border-emerald-200/35 hover:bg-emerald-300/10"><SuitMark suit={item.suit} color={item.suit === "spades" || item.suit === "clubs" ? "#a7f3d0" : item.color} size={18} /><span className="hidden sm:inline">{item.label}</span></button>)}
-                    {hasAction(legalActions, "choose_seventh_trump") ? <ActionButton label="Seventh card" tone="violet" icon={<Sparkles className="h-3.5 w-3.5" />} onClick={() => onAction("choose_seventh_trump")} /> : null}
-                  </> : null}
-                  {state.phase === "doubling" && isMyTurn && !state.doubleByPlayerId ? <><ActionButton label="Pass" tone="neutral" onClick={() => onAction("pass_double")} /><ActionButton label="Double" tone="rose" icon={<Swords className="h-3.5 w-3.5" />} onClick={() => onAction("double")} /></> : null}
-                  {state.phase === "doubling" && isMyTurn && state.doubleByPlayerId ? <><ActionButton label="Continue ×2" tone="neutral" onClick={() => onAction("continue_contract")} /><ActionButton label="Redouble ×4" tone="rose" icon={<Swords className="h-3.5 w-3.5" />} onClick={() => onAction("redouble")} /></> : null}
-                  {state.phase === "playing" && hasAction(legalActions, "declare_single_hand") ? <ActionButton label="Declare Single Hand · ±3" tone="violet" icon={<Crown className="h-3.5 w-3.5" />} onClick={() => onAction("declare_single_hand")} /> : null}
-                  {state.phase === "playing" && isMyTurn && hasAction(legalActions, "reveal_trump") ? <ActionButton label="Reveal trump" tone="violet" icon={<Eye className="h-3.5 w-3.5" />} onClick={() => onAction("reveal_trump")} /> : null}
-                  {state.phase === "playing" && hasAction(legalActions, "declare_pair") ? <ActionButton label="Declare pair" tone="gold" icon={<Crown className="h-3.5 w-3.5" />} onClick={() => onAction("declare_pair")} /> : null}
-                  {state.phase === "finished" ? <ActionButton label="Match complete" tone="gold" icon={<Trophy className="h-3.5 w-3.5" />} onClick={() => {}} disabled /> : null}
-                  {!isMyTurn && state.phase !== "finished" && !hasAction(legalActions, "declare_single_hand") ? <span className="rounded-full border border-white/10 bg-white/[0.035] px-4 py-2 text-xs font-bold text-white/45">Waiting for {currentTurnName}…</span> : null}
-                </div>
-              </div>
-            </section>
+            
 
             <div className="twenty-nine-bottom-dock">
               <section className="twenty-nine-trick-dock" aria-label="Tricks won">
@@ -864,47 +803,101 @@ export function TwentyNineTable({
                 <TrickProgress team={0} count={state.tricksWonByTeam["0"]} caption="Red" />
                 <TrickProgress team={1} count={state.tricksWonByTeam["1"]} caption="Blue" />
               </section>
-              <section ref={handRef} className="twenty-nine-hand-panel relative z-40 min-w-0 shrink-0 overflow-visible rounded-xl border border-white/[0.07] bg-[#04120f]/35 px-3 pb-1.5 pt-2 shadow-none">
-              <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                <div className="flex min-w-0 items-center gap-2">
-                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-emerald-100/15 bg-emerald-300/[0.08] text-emerald-100"><Crown className="h-4 w-4" /></div>
-                  <div className="min-w-0"><p className="truncate text-sm font-black">{me?.displayName ?? "Your hand"}</p><p className="text-[0.58rem] font-bold uppercase tracking-[0.17em] text-white/35">{sittingOutSingleHand ? "Partner playing alone" : me?.team === 0 ? "Team Red" : "Team Blue"} · {(me?.hand?.length ?? 0) + (state.privateSeventhCard ? 1 : 0)} cards</p></div>
+              <div className="twenty-nine-play-dock">
+                <section className="twenty-nine-action-panel relative z-30 shrink-0 rounded-xl border px-3 py-2 shadow-lg">
+                  <AnimatePresence initial={false}>
+                    {state.phase === "bidding" && isMyTurn && !sittingOutSingleHand ? (
+                      <motion.div
+                        key={`bid-prompt-${state.handNumber}-${state.currentBid ?? "open"}`}
+                        className="twenty-nine-bid-prompt relative mb-2 flex w-full items-center gap-2.5 rounded-xl border border-amber-100/40 bg-[linear-gradient(105deg,rgba(92,54,8,.96),rgba(28,21,9,.98)_55%,rgba(10,13,12,.98))] px-3 py-2 shadow-[0_8px_26px_rgba(0,0,0,.32)]"
+                        initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                        transition={{ type: "spring", stiffness: 340, damping: 28 }}
+                        role="status"
+                        aria-live="polite"
+                      >
+                        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-amber-100/30 bg-amber-200/10 text-amber-100 text-lg">🎯</div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[0.67rem] font-black uppercase tracking-[0.23em] text-amber-100/75">Your turn to bid</p>
+                          <p className="mt-0.5 text-sm font-black text-white">{state.currentBid === null ? `Opening bid · minimum ${lowestLegalBid ?? 16}` : `Bid ${state.currentBid} · ${state.highestBidderId ? playerName(state, state.highestBidderId, currentUserId) : "No bidder yet"}`}</p>
+                          <p className="hidden text-[0.65rem] font-semibold text-white/55 sm:block">Range 16–28 · Ditto or Pass when available</p>
+                        </div>
+                      </motion.div>
+                    ) : null}
+                  </AnimatePresence>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div><p className="text-[0.58rem] font-black uppercase tracking-[0.24em] text-white/35">Your move</p><p className="mt-1 text-sm font-black text-white">{isMyTurn ? phaseLabel(state.phase) : `${currentTurnName} is acting`}</p></div>
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      {state.phase === "bidding" && isMyTurn ? <>
+                        {selectedBidValue !== null && lowestLegalBid !== null && highestLegalBid !== null ? (
+                          <div className="flex items-center gap-1 rounded-xl border border-amber-100/15 bg-amber-200/[0.045] p-1">
+                            <button type="button" aria-label="Lower bid" disabled={selectedBidValue <= lowestLegalBid} onClick={() => setSelectedBid(Math.max(lowestLegalBid, selectedBidValue - 1))} className="grid h-8 w-8 place-items-center rounded-lg border border-white/[0.08] bg-white/[0.035] text-sm font-black text-white/65 disabled:opacity-25">−</button>
+                            <div className="min-w-[3rem] px-1 text-center"><p className="text-[0.5rem] font-black uppercase tracking-[0.17em] text-amber-100/40">Bid</p><p className="text-lg font-black leading-tight text-amber-100">{selectedBidValue}</p></div>
+                            <button type="button" aria-label="Raise bid" disabled={selectedBidValue >= highestLegalBid} onClick={() => setSelectedBid(Math.min(highestLegalBid, selectedBidValue + 1))} className="grid h-8 w-8 place-items-center rounded-lg border border-white/[0.08] bg-white/[0.035] text-sm font-black text-white/65 disabled:opacity-25">+</button>
+                            <ActionButton label={`Bid ${selectedBidValue}`} tone="gold" onClick={() => onAction("bid", { value: selectedBidValue })} />
+                          </div>
+                        ) : null}
+                        {hasAction(legalActions, "ditto") ? <ActionButton label="Ditto" tone="violet" onClick={() => onAction("ditto")} /> : null}
+                        {hasAction(legalActions, "pass_bid") ? <ActionButton label="Pass" tone="neutral" onClick={() => onAction("pass_bid")} /> : null}
+                      </> : null}
+                      {state.phase === "trump" && isMyTurn ? <>
+                        {SUITS.map((item) => <button key={item.suit} type="button" onClick={() => onAction("choose_trump_suit", { suit: item.suit })} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.045] px-3 py-2 text-sm font-black text-white/80 transition hover:border-emerald-200/35 hover:bg-emerald-300/10"><SuitMark suit={item.suit} color={item.suit === "spades" || item.suit === "clubs" ? "#a7f3d0" : item.color} size={18} /><span className="hidden sm:inline">{item.label}</span></button>)}
+                        {hasAction(legalActions, "choose_seventh_trump") ? <ActionButton label="Seventh card" tone="violet" icon={<Sparkles className="h-3.5 w-3.5" />} onClick={() => onAction("choose_seventh_trump")} /> : null}
+                      </> : null}
+                      {state.phase === "doubling" && isMyTurn && !state.doubleByPlayerId ? <><ActionButton label="Pass" tone="neutral" onClick={() => onAction("pass_double")} /><ActionButton label="Double" tone="rose" icon={<Swords className="h-3.5 w-3.5" />} onClick={() => onAction("double")} /></> : null}
+                      {state.phase === "doubling" && isMyTurn && state.doubleByPlayerId ? <><ActionButton label="Continue ×2" tone="neutral" onClick={() => onAction("continue_contract")} /><ActionButton label="Redouble ×4" tone="rose" icon={<Swords className="h-3.5 w-3.5" />} onClick={() => onAction("redouble")} /></> : null}
+                      {state.phase === "playing" && hasAction(legalActions, "declare_single_hand") ? <ActionButton label="Declare Single Hand · ±3" tone="violet" icon={<Crown className="h-3.5 w-3.5" />} onClick={() => onAction("declare_single_hand")} /> : null}
+                      {state.phase === "playing" && isMyTurn && hasAction(legalActions, "reveal_trump") ? <ActionButton label="Reveal trump" tone="violet" icon={<Eye className="h-3.5 w-3.5" />} onClick={() => onAction("reveal_trump")} /> : null}
+                      {state.phase === "playing" && hasAction(legalActions, "declare_pair") ? <ActionButton label="Declare pair" tone="gold" icon={<Crown className="h-3.5 w-3.5" />} onClick={() => onAction("declare_pair")} /> : null}
+                      {state.phase === "finished" ? <ActionButton label="Match complete" tone="gold" icon={<Trophy className="h-3.5 w-3.5" />} onClick={() => {}} disabled /> : null}
+                      {!isMyTurn && state.phase !== "finished" && !hasAction(legalActions, "declare_single_hand") ? <span className="rounded-full border border-white/10 bg-white/[0.035] px-4 py-2 text-xs font-bold text-white/45">Waiting for {currentTurnName}…</span> : null}
+                    </div>
+                  </div>
+                </section>
+                <section ref={handRef} className="twenty-nine-hand-panel relative z-40 min-w-0 shrink-0 overflow-visible rounded-xl border border-white/[0.07] bg-[#04120f]/35 px-3 pb-1.5 pt-2 shadow-none">
+                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-emerald-100/15 bg-emerald-300/[0.08] text-emerald-100"><Crown className="h-4 w-4" /></div>
+                    <div className="min-w-0"><p className="truncate text-sm font-black">{me?.displayName ?? "Your hand"}</p><p className="text-[0.58rem] font-bold uppercase tracking-[0.17em] text-white/35">{sittingOutSingleHand ? "Partner playing alone" : me?.team === 0 ? "Team Red" : "Team Blue"} · {(me?.hand?.length ?? 0) + (state.privateSeventhCard ? 1 : 0)} cards</p></div>
+                  </div>
+                  <div className="flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.035] px-3 py-1.5 text-[0.63rem] font-bold text-white/48"><Shield className="h-3.5 w-3.5" /> Follow suit when possible</div>
                 </div>
-                <div className="flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.035] px-3 py-1.5 text-[0.63rem] font-bold text-white/48"><Shield className="h-3.5 w-3.5" /> Follow suit when possible</div>
+                {sittingOutSingleHand ? <div className="flex min-h-[7.7rem] flex-col items-center justify-center gap-2 rounded-xl border border-violet-200/10 bg-violet-300/[0.035] px-4 py-3 text-center"><div className="flex -space-x-3">{Array.from({ length: Math.min(me?.hand?.length ?? 0, 8) }).map((_, index) => <div key={index} className="origin-bottom" style={{ transform: `rotate(${(index - 3.5) * 2}deg)` }}><CardBack small /></div>)}</div><p className="text-xs font-black text-violet-100">You're sitting out this hand.</p><p className="max-w-md text-[0.68rem] font-semibold text-white/45">Your teammate must win all eight tricks alone. Your cards stay out of play.</p></div> : <div className="twenty-nine-hand-row relative z-50 mt-0 flex min-h-[8.25rem] items-end justify-center gap-0 overflow-visible px-1 pb-1 pt-3">
+                  {sortedHand.map((card, index) => {
+                    const canPlay = legalPlayIds.has(card.id) && isMyTurn && state.phase === "playing";
+                    const fanOffset = index - (sortedHand.length - 1) / 2;
+                    const fanRotate = fanOffset * (sortedHand.length >= 7 ? 1.25 : 0.9);
+                    const fanLift = Math.abs(fanOffset) * 1.15;
+                    const hoverMotion = canPlay && !reduceMotion ? { y: -31, rotate: fanRotate + (fanOffset < 0 ? -1.6 : 1.6), scale: 1.14, zIndex: 100 } : null;
+                    return (
+                      <motion.button
+                        key={card.id}
+                        type="button"
+                        disabled={!canPlay}
+                        onClick={() => play(card)}
+                        initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: canPlay ? -10 - fanLift : -fanLift, rotate: fanRotate, scale: canPlay ? 1.035 : 1 }}
+                        {...(hoverMotion ? { whileHover: hoverMotion } : {})}
+                        {...(canPlay ? { whileTap: { scale: 0.96 } } : {})}
+                        transition={{ duration: reduceMotion ? 0.1 : 0.2 }}
+                        className={cn("twenty-nine-hand-card relative shrink-0 rounded-xl text-left outline-none transition", canPlay ? "cursor-pointer ring-2 ring-emerald-100/90 shadow-[0_0_30px_rgba(52,211,153,.3)]" : "cursor-default opacity-100")}
+                        style={{ marginLeft: index === 0 ? 0 : sortedHand.length >= 8 ? "-0.9rem" : sortedHand.length >= 7 ? "-0.62rem" : "-0.35rem", transformOrigin: "50% 100%", zIndex: 10 + index }}
+                        title={canPlay ? "Play this card" : "Your card"}
+                      >
+                        <CardFace card={card} hand />
+                        {canPlay ? <span className="absolute -bottom-1 left-1/2 h-1 w-8 -translate-x-1/2 rounded-full bg-emerald-200 shadow-[0_0_10px_rgba(110,231,183,.65)]" /> : null}
+                      </motion.button>
+                    );
+                  })}
+                  {state.privateSeventhCard && state.phase === "playing" && state.completedTricks.length === 7 && (me?.hand?.length ?? 0) === 0 ? (
+                    <motion.button type="button" onClick={() => play(state.privateSeventhCard!)} className="relative rounded-xl ring-2 ring-amber-200/60 shadow-[0_0_18px_rgba(251,191,36,.2)]"><CardFace card={state.privateSeventhCard} hand /><span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full border border-amber-200/25 bg-[#211807] px-2 py-0.5 text-[0.53rem] font-black uppercase tracking-widest text-amber-100">Seventh</span></motion.button>
+                  ) : null}
+                  {!me?.hand?.length && state.phase !== "finished" ? <div className="px-6 py-5 text-xs font-bold text-white/35">Your cards appear here.</div> : null}
+                </div>}
+                </section>
               </div>
-              {sittingOutSingleHand ? <div className="flex min-h-[7.7rem] flex-col items-center justify-center gap-2 rounded-xl border border-violet-200/10 bg-violet-300/[0.035] px-4 py-3 text-center"><div className="flex -space-x-3">{Array.from({ length: Math.min(me?.hand?.length ?? 0, 8) }).map((_, index) => <div key={index} className="origin-bottom" style={{ transform: `rotate(${(index - 3.5) * 2}deg)` }}><CardBack small /></div>)}</div><p className="text-xs font-black text-violet-100">You're sitting out this hand.</p><p className="max-w-md text-[0.68rem] font-semibold text-white/45">Your teammate must win all eight tricks alone. Your cards stay out of play.</p></div> : <div className="twenty-nine-hand-row relative z-50 mt-0 flex min-h-[8.25rem] items-end justify-center gap-0 overflow-visible px-1 pb-1 pt-3">
-                {sortedHand.map((card, index) => {
-                  const canPlay = legalPlayIds.has(card.id) && isMyTurn && state.phase === "playing";
-                  const fanOffset = index - (sortedHand.length - 1) / 2;
-                  const fanRotate = fanOffset * (sortedHand.length >= 7 ? 1.25 : 0.9);
-                  const fanLift = Math.abs(fanOffset) * 1.15;
-                  const hoverMotion = canPlay && !reduceMotion ? { y: -31, rotate: fanRotate + (fanOffset < 0 ? -1.6 : 1.6), scale: 1.14, zIndex: 100 } : null;
-                  return (
-                    <motion.button
-                      key={card.id}
-                      type="button"
-                      disabled={!canPlay}
-                      onClick={() => play(card)}
-                      initial={reduceMotion ? false : { opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: canPlay ? -10 - fanLift : -fanLift, rotate: fanRotate, scale: canPlay ? 1.035 : 1 }}
-                      {...(hoverMotion ? { whileHover: hoverMotion } : {})}
-                      {...(canPlay ? { whileTap: { scale: 0.96 } } : {})}
-                      transition={{ duration: reduceMotion ? 0.1 : 0.2 }}
-                      className={cn("twenty-nine-hand-card relative shrink-0 rounded-xl text-left outline-none transition", canPlay ? "cursor-pointer ring-2 ring-emerald-100/90 shadow-[0_0_30px_rgba(52,211,153,.3)]" : "cursor-default opacity-100")}
-                      style={{ marginLeft: index === 0 ? 0 : sortedHand.length >= 8 ? "-0.9rem" : sortedHand.length >= 7 ? "-0.62rem" : "-0.35rem", transformOrigin: "50% 100%", zIndex: 10 + index }}
-                      title={canPlay ? "Play this card" : "Your card"}
-                    >
-                      <CardFace card={card} hand />
-                      {canPlay ? <span className="absolute -bottom-1 left-1/2 h-1 w-8 -translate-x-1/2 rounded-full bg-emerald-200 shadow-[0_0_10px_rgba(110,231,183,.65)]" /> : null}
-                    </motion.button>
-                  );
-                })}
-                {state.privateSeventhCard && state.phase === "playing" && state.completedTricks.length === 7 && (me?.hand?.length ?? 0) === 0 ? (
-                  <motion.button type="button" onClick={() => play(state.privateSeventhCard!)} className="relative rounded-xl ring-2 ring-amber-200/60 shadow-[0_0_18px_rgba(251,191,36,.2)]"><CardFace card={state.privateSeventhCard} hand /><span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full border border-amber-200/25 bg-[#211807] px-2 py-0.5 text-[0.53rem] font-black uppercase tracking-widest text-amber-100">Seventh</span></motion.button>
-                ) : null}
-                {!me?.hand?.length && state.phase !== "finished" ? <div className="px-6 py-5 text-xs font-bold text-white/35">Your cards appear here.</div> : null}
-              </div>}
-              </section>
+              
             </div>
           </main>
 
@@ -939,17 +932,17 @@ export function TwentyNineTable({
             aria-live="assertive"
             role="status"
           >
-            <motion.div className="absolute inset-0 bg-black/26 backdrop-blur-[1px]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
+            <motion.div className="absolute inset-0 bg-black/68 backdrop-blur-[4px]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
             <motion.div
               className={cn(
                 "twenty-nine-event-spotlight relative flex flex-col items-center overflow-y-auto overflow-x-hidden rounded-[1.5rem] border px-5 py-5 text-center shadow-[0_28px_90px_rgba(0,0,0,.62)]",
                 eventSpotlight.visual === "trump" || eventSpotlight.visual === "match-result" ? "w-[min(92vw,50rem)]" : "w-[min(92vw,42rem)]",
                 `twenty-nine-event-spotlight--${eventSpotlight.visual}`,
-                eventSpotlight.tone === "amber" ? "border-amber-100/45 bg-[linear-gradient(145deg,rgba(64,43,10,.98),rgba(10,16,14,.98))]" :
-                eventSpotlight.tone === "rose" ? "border-rose-100/40 bg-[linear-gradient(145deg,rgba(65,15,28,.98),rgba(10,12,16,.98))]" :
-                eventSpotlight.tone === "emerald" ? "border-emerald-100/40 bg-[linear-gradient(145deg,rgba(6,59,41,.98),rgba(5,16,14,.98))]" :
-                eventSpotlight.tone === "sky" ? "border-sky-100/40 bg-[linear-gradient(145deg,rgba(8,42,72,.98),rgba(5,13,20,.98))]" :
-                "border-violet-100/40 bg-[linear-gradient(145deg,rgba(46,23,72,.98),rgba(10,12,18,.98))]"
+                eventSpotlight.tone === "amber" ? "border-amber-100/45 bg-[linear-gradient(145deg,rgba(64,43,10,.995),rgba(10,16,14,.995))]" :
+                eventSpotlight.tone === "rose" ? "border-rose-100/40 bg-[linear-gradient(145deg,rgba(65,15,28,.995),rgba(10,12,16,.995))]" :
+                eventSpotlight.tone === "emerald" ? "border-emerald-100/40 bg-[linear-gradient(145deg,rgba(6,59,41,.995),rgba(5,16,14,.995))]" :
+                eventSpotlight.tone === "sky" ? "border-sky-100/40 bg-[linear-gradient(145deg,rgba(8,42,72,.995),rgba(5,13,20,.995))]" :
+                "border-violet-100/40 bg-[linear-gradient(145deg,rgba(46,23,72,.995),rgba(10,12,18,.995))]"
               )}
               initial={{ opacity: 0, y: 30, scale: 0.84, rotateX: 8 }}
               animate={{ opacity: 1, y: 0, scale: 1, rotateX: 0 }}
