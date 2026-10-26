@@ -52,7 +52,7 @@ function ActivityIcon({ type, message }: { type: string; message: string }) {
   return <span className="text-base leading-none">{fallbacks[type] ?? "✨"}</span>;
 }
 
-export function BoardGameTable({ room, state, legalActions, gameEvents, currentUserId, onAction, onChat, onEndMatch }: BoardGameTableProps) {
+export function BoardGameTable({ room, state, legalActions, gameEvents, currentUserId, timer, onAction, onChat, onEndMatch }: BoardGameTableProps) {
   const router = useRouter();
   const meta = GAME_META[state.gameId] ?? GAME_META.chess!;
   
@@ -97,7 +97,7 @@ export function BoardGameTable({ room, state, legalActions, gameEvents, currentU
   
 
 
-  function renderBoard(){const gameProps={room,state,legalActions,gameEvents,currentUserId,onAction,onChat,...(onEndMatch ? {onEndMatch} : {})};switch(state.gameId){case "chess":return <ChessTable {...gameProps}/>;case "battleship":return <BattleshipTable {...gameProps}/>;case "ludo":return <LudoTable {...gameProps}/>;case "barricades":return <BarricadesTable {...gameProps}/>;case "monopoly":return <MonopolyTable {...gameProps}/>;case "risk":return <RiskTable {...gameProps}/>;case "world-conquest":return <WorldConquestTable {...gameProps}/>;case "codenames":return <CodenamesTable {...gameProps}/>;case "poker":return <PokerTable {...gameProps}/>;default:return null;}}
+  function renderBoard(){const gameProps={room,state,legalActions,gameEvents,currentUserId,timer,onAction,onChat,...(onEndMatch ? {onEndMatch} : {})};switch(state.gameId){case "chess":return <ChessTable {...gameProps}/>;case "battleship":return <BattleshipTable {...gameProps}/>;case "ludo":return <LudoTable {...gameProps}/>;case "barricades":return <BarricadesTable {...gameProps}/>;case "monopoly":return <MonopolyTable {...gameProps}/>;case "risk":return <RiskTable {...gameProps}/>;case "world-conquest":return <WorldConquestTable {...gameProps}/>;case "codenames":return <CodenamesTable {...gameProps}/>;case "poker":return <PokerTable {...gameProps}/>;default:return null;}}
 
   return <div className="board-game-screen h-dvh min-h-0 overflow-hidden bg-[#050a0f] text-slate-100">
     <div className="flex h-full min-h-0 flex-col">

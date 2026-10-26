@@ -1,0 +1,174 @@
+import type { GamePlayer } from "../../engine/GameTypes";
+
+export type BoardGameId =
+  | "chess"
+  | "battleship"
+  | "ludo"
+  | "barricades"
+  | "monopoly"
+  | "risk"
+  | "world-conquest"
+  | "codenames"
+  | "poker";
+
+export type PokerStreet = "preflop" | "flop" | "turn" | "river" | "showdown";
+
+export type Team = "red" | "blue" | "neutral" | "assassin";
+
+export interface BoardGameSettings {
+  turnSeconds: number | null;
+}
+
+export type BoardGameAction =
+  | { type: "move_piece"; from: number; to: number;promotion?: "q" | "r" | "b" | "n" | undefined; }
+  | { type: "claim_chess_draw" }
+  | { type: "fire"; x: number; y: number }
+  | { type: "roll_dice" }
+  | { type: "move_token"; tokenIndex: number }
+  | { type: "move_pawn"; x: number; y: number }
+  | { type: "place_wall"; x: number; y: number; orientation: "h" | "v" }
+  | { type: "buy_property" }
+  | { type: "end_turn" }
+  | { type: "claim_territory"; territoryId: string }
+  | { type: "reinforce_territory"; territoryId: string }
+  | { type: "attack_territory"; fromId: string; toId: string }
+  | { type: "reveal_word"; index: number }
+  | { type: "give_clue"; clue: string; number: number }
+  | { type: "end_codenames_turn" }
+  | { type: "poker_action"; choice: "fold" | "check" | "call" | "raise" | "all_in" };
+
+export interface ActivityItem {
+  id: string;
+  type: string;
+  message: string;
+  playerId: string | null;
+  createdAt: string;
+}
+
+export interface Wall { x: number; y: number; orientation: "h" | "v"; playerId: string }
+
+export interface Shot { shooterId: string; targetId: string; x: number; y: number; hit: boolean; sunk: boolean }
+
+export interface Territory { id: string; label: string; x: number; y: number; neighbors: string[] }
+
+export interface WordCard { word: string; role: Team; revealed: boolean }
+
+export interface BoardGameState {
+  gameId: BoardGameId;
+  version: string;
+  settings: BoardGameSettings;
+  phase: "playing" | "finished";
+  players: GamePlayer[];
+  currentPlayerId: string | null;
+  winnerUserId: string | null;
+  chessCastlingRights: string;
+  chessEnPassantTarget: number | null;
+  chessHalfmoveClock: number;
+  chessPositionHistory: string[];
+  turnNumber: number;
+  actionNumber: number;
+  startedAt: string;
+  updatedAt: string;
+  turnStartedAt: string;
+  activityLog: ActivityItem[];
+  rngState: number;
+  board: Array<Array<string | null>>;
+  pawns: Record<string, { x: number; y: number }>;
+  walls: Wall[];
+  wallsRemaining: Record<string, number>;
+  ludoTokens: Record<string, number[]>;
+  ludoConsecutiveSixes: Record<string, number>;
+  diceRoll: number | null;
+  hasRolled: boolean;
+  money: Record<string, number>;
+  positions: Record<string, number>;
+  properties: Array<{ id: string; label: string; cost: number; rent: number; ownerId: string | null }>;
+  territories: Territory[];
+  territoryOwners: Record<string, string | null>;
+  territoryTroops: Record<string, number>;
+  reinforcedThisTurn: boolean;
+  shipCellsByPlayer: Record<string, string[]>;
+  shipGroupsByPlayer: Record<string, string[][]>;
+  shots: Shot[];
+  wordCards: WordCard[];
+  codenamesTeamByPlayer: Record<string, "red" | "blue">;
+  codenamesSpymasterByTeam: Record<"red" | "blue", string>;
+  codenamesRoundTeam: "red" | "blue";
+  codenamesClue: string | null;
+  codenamesClueNumber: number | null;
+  codenamesGuessesRemaining: number;
+  pokerCardsByPlayer: Record<string, string[]>;
+  pokerDeck: string[];
+  communityCards: string[];
+  pokerStacks: Record<string, number>;
+  pokerBets: Record<string, number>;
+  pokerFolded: string[];
+  pokerActed: string[];
+  pokerBetToCall: number;
+  pokerPot: number;
+  pokerContributions: Record<string, number>;
+  pokerButtonSeat: number;
+  pokerHandNumber: number;
+  pokerStreet: PokerStreet;
+  pokerLastAction: string;
+}
+
+export interface PublicBoardGameState {
+  gameId: BoardGameId;
+  phase: "playing" | "finished";
+  players: Array<{
+    userId: string;
+    displayName: string;
+    seat: number;
+    isBot: boolean;
+    isCurrentTurn: boolean;
+    money: number | null;
+    position: number | null;
+    tokens: number[] | null;
+    stack: number | null;
+    folded: boolean;
+    bet: number;
+    team: "red" | "blue" | null;
+    isSpymaster: boolean;
+  }>;
+  currentPlayerId: string | null;
+  winnerUserId: string | null;
+  turnNumber: number;
+  actionNumber: number;
+  updatedAt: string;
+  board: Array<Array<string | null>>;
+  pawns: Record<string, { x: number; y: number }>;
+  walls: Wall[];
+  wallsRemaining: Record<string, number>;
+  ludoTokens: Record<string, number[]>;
+  diceRoll: number | null;
+  hasRolled: boolean;
+  money: Record<string, number>;
+  positions: Record<string, number>;
+  properties: Array<{ id: string; label: string; cost: number; rent: number; ownerId: string | null }>;
+  territories: Territory[];
+  territoryOwners: Record<string, string | null>;
+  territoryTroops: Record<string, number>;
+  reinforcedThisTurn: boolean;
+  ownShipCells: string[];
+  shots: Shot[];
+  wordCards: Array<{ word: string; revealed: boolean; revealedRole: Team | null; keyRole: Team | null }>;
+  isCodenamesSpymaster: boolean;
+  codenamesCurrentTeam: "red" | "blue";
+  codenamesClue: string | null;
+  codenamesClueNumber: number | null;
+  codenamesGuessesRemaining: number;
+  myPokerCards: string[];
+  communityCards: string[];
+  pokerStacks: Record<string, number>;
+  pokerBets: Record<string, number>;
+  pokerFolded: string[];
+  pokerBetToCall: number;
+  pokerPot: number;
+  pokerStreet: PokerStreet;
+  pokerButtonSeat: number;
+  pokerHandNumber: number;
+  pokerLastAction: string;
+  activityLog: ActivityItem[];
+  gameNotice: string;
+}

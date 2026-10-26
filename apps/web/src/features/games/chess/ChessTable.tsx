@@ -100,7 +100,7 @@ function getCheckedKingSquares(board: Array<Array<string | null>>): Set<number> 
   return checked;
 }
 export function ChessTable(props:BoardGameTableProps){
-const { room, state, legalActions, gameEvents, currentUserId, onAction, onChat, onEndMatch } = props;
+const { room, state, legalActions, gameEvents, currentUserId, timer, onAction, onChat, onEndMatch } = props;
 const me = state.players.find((player) => player.userId === currentUserId);
 const isMyTurn = owns(state, currentUserId);
 const currentPlayer = state.players.find((player) => player.userId === state.currentPlayerId);
@@ -111,8 +111,18 @@ function renderChess() {
     const selectedMoves = legalMoves.filter((action) => action.from === selectedSquare);
     const checkedKingSquares = getCheckedKingSquares(state.board);
     const chessFlipped = (me?.seat ?? 0) % 2 === 1;
-    return <div className="mx-auto w-full max-w-[min(75vh,740px)]">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div className="text-xs font-black uppercase tracking-[.2em] text-white/45">Your pieces at the bottom · Select a piece, then a highlighted square</div><div className="rounded-full border border-white/10 bg-black/25 px-3 py-1 text-xs font-bold">{currentPlayer?.displayName ?? "Waiting"} to move</div></div>
+    const clockSeconds = Number(room.settings?.clockSeconds ?? 0);
+    const chessClockEnabled = clockSeconds > 0;
+    const clockFor = (userId: string) => timer != null && timer.currentPlayerId === userId && timer.remainingMs !== null
+      ? timer.remainingMs
+      : state.clockRemainingMsByPlayer?.[userId] ?? clockSeconds * 1000;
+    const formatClock = (milliseconds: number) => {
+      const seconds = Math.max(0, Math.ceil(milliseconds / 1000));
+      return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+    };
+    return <div className="mx-auto w-full max-w-[min(70vh,740px)]">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2"><div className="text-xs font-black uppercase tracking-[.2em] text-white/45">Your pieces at the bottom · Select a piece, then a highlighted square</div><div className="rounded-full border border-white/10 bg-black/25 px-3 py-1 text-xs font-bold">{currentPlayer?.displayName ?? "Waiting"} to move</div></div>
+      {chessClockEnabled ? <div className="mb-2 grid grid-cols-2 gap-2">{state.players.map((player) => { const active = player.userId === state.currentPlayerId && state.phase === "playing"; const remaining = clockFor(player.userId); return <div key={player.userId} className={`flex min-w-0 items-center justify-between gap-2 rounded-xl border px-3 py-2 ${active ? remaining <= 10000 ? "border-rose-300/40 bg-rose-400/15" : "border-emerald-200/35 bg-emerald-300/10" : "border-white/10 bg-black/25"}`}><span className="truncate text-xs font-bold text-white/70">{player.displayName}{player.userId === currentUserId ? " (you)" : ""}</span><span className={`shrink-0 font-mono text-lg font-black tabular-nums ${active && remaining <= 10000 ? "text-rose-200" : "text-white"}`}>{formatClock(remaining)}</span></div>; })}</div> : null}
       <div className="overflow-hidden rounded-2xl border-[7px] border-[#214b2a] bg-[#214b2a] shadow-[0_24px_50px_rgba(0,0,0,.45)]"><div className="grid grid-cols-8">
        {Array.from({ length: 64 }, (_, displayIndex) => {
           const displayRow = Math.floor(displayIndex / 8);

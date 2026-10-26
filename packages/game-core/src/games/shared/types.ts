@@ -16,7 +16,10 @@ export type PokerStreet = "preflop" | "flop" | "turn" | "river" | "showdown";
 export type Team = "red" | "blue" | "neutral" | "assassin";
 
 export interface BoardGameSettings {
+  /** Per-turn limit, used by Barricades. Null disables it. */
   turnSeconds: number | null;
+  /** Per-player total chess-clock budget, in seconds. Used by Chess. */
+  clockSeconds?: number | null;
 }
 
 export type BoardGameAction =
@@ -89,6 +92,8 @@ export interface BoardGameState {
   reinforcedThisTurn: boolean;
   shipCellsByPlayer: Record<string, string[]>;
   shipGroupsByPlayer: Record<string, string[][]>;
+  /** Per-player clock remaining at the beginning of their latest turn. */
+  clockRemainingMsByPlayer?: Record<string, number>;
   shots: Shot[];
   wordCards: WordCard[];
   codenamesTeamByPlayer: Record<string, "red" | "blue">;
@@ -151,6 +156,8 @@ export interface PublicBoardGameState {
   territoryTroops: Record<string, number>;
   reinforcedThisTurn: boolean;
   ownShipCells: string[];
+  /** Clock values are public in timed games; the active countdown is streamed separately. */
+  clockRemainingMsByPlayer?: Record<string, number>;
   shots: Shot[];
   wordCards: Array<{ word: string; revealed: boolean; revealedRole: Team | null; keyRole: Team | null }>;
   isCodenamesSpymaster: boolean;

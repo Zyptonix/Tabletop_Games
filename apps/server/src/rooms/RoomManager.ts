@@ -944,7 +944,8 @@ export class RoomManager {
 
     const module = this.requireModule(room.gameId);
     const turnInfo = module.getTurnInfo(room.gameState);
-    if (!turnInfo.currentPlayerId || !turnInfo.turnStartedAt || !turnInfo.turnSeconds || room.status !== "in_game") {
+    const hasChessClock = turnInfo.turnRemainingMs !== undefined && turnInfo.turnRemainingMs !== null;
+    if (!turnInfo.currentPlayerId || !turnInfo.turnStartedAt || room.status !== "in_game" || (!hasChessClock && !turnInfo.turnSeconds)) {
       return {
         roomId,
         running: false,
@@ -954,7 +955,8 @@ export class RoomManager {
       };
     }
 
-    const deadline = new Date(new Date(turnInfo.turnStartedAt).getTime() + turnInfo.turnSeconds * 1000);
+    const durationMs = hasChessClock ? Math.max(0, turnInfo.turnRemainingMs ?? 0) : (turnInfo.turnSeconds ?? 0) * 1000;
+    const deadline = new Date(new Date(turnInfo.turnStartedAt).getTime() + durationMs);
     return {
       roomId,
       running: true,

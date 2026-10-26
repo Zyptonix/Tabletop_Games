@@ -49,6 +49,8 @@ export function CreateRoomPanel({ initialGameId, hideGameSelect = false, allowed
   const [dayDiscussionSeconds, setDayDiscussionSeconds] = useState(120);
   const [votingSeconds, setVotingSeconds] = useState(45);
   const [revealRoleOnDeath, setRevealRoleOnDeath] = useState(true);
+  const [chessClockSeconds, setChessClockSeconds] = useState(300);
+  const [barricadesTurnSeconds, setBarricadesTurnSeconds] = useState(45);
 
   const allowedGameKey = useMemo(() => allowedGameIds ? [...allowedGameIds].sort().join("|") : "*", [allowedGameIds]);
 
@@ -95,7 +97,11 @@ export function CreateRoomPanel({ initialGameId, hideGameSelect = false, allowed
           voteResultSeconds: 8,
           enabledOptionalRoles
         }
-      : {};
+      : gameId === "chess"
+        ? { clockSeconds: chessClockSeconds }
+        : gameId === "barricades"
+          ? { turnSeconds: barricadesTurnSeconds }
+          : {};
 
     try {
       const result = await api.createRoom({ gameId, settings });
@@ -134,6 +140,26 @@ export function CreateRoomPanel({ initialGameId, hideGameSelect = false, allowed
           ) : null}
 
           {noGamesAvailable ? <p className="rounded-lg border border-amber-200/15 bg-amber-100/[0.05] p-3 text-sm text-amber-100">No playable games are available for this selection. Check the game registry and game-status configuration.</p> : null}
+
+          {gameId === "chess" ? (
+            <div className="space-y-2 rounded-xl border border-indigo-200/15 bg-indigo-200/[0.04] p-3">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-indigo-200">Chess clock</p>
+              <p className="text-xs text-slate-400">Each player gets their own clock. It runs during their move and switches automatically after a legal move.</p>
+              <label className="block text-xs font-bold text-slate-300" htmlFor="chess-clock-seconds">Time per player</label>
+              <select id="chess-clock-seconds" value={chessClockSeconds} onChange={(event) => setChessClockSeconds(Number(event.target.value))} className="min-h-10 w-full rounded-md border border-white/15 bg-[#08110f] px-3 text-sm font-semibold text-white">
+                <option value={60}>1 minute</option><option value={180}>3 minutes</option><option value={300}>5 minutes</option><option value={600}>10 minutes</option><option value={900}>15 minutes</option><option value={1800}>30 minutes</option><option value={3600}>60 minutes</option><option value={0}>Unlimited</option>
+              </select>
+            </div>
+          ) : gameId === "barricades" ? (
+            <div className="space-y-2 rounded-xl border border-orange-200/15 bg-orange-200/[0.04] p-3">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-200">Turn timer</p>
+              <p className="text-xs text-slate-400">The active player's countdown starts automatically and resets when the turn changes. If time expires, the turn is skipped.</p>
+              <label className="block text-xs font-bold text-slate-300" htmlFor="barricades-turn-seconds">Time per turn</label>
+              <select id="barricades-turn-seconds" value={barricadesTurnSeconds} onChange={(event) => setBarricadesTurnSeconds(Number(event.target.value))} className="min-h-10 w-full rounded-md border border-white/15 bg-[#08110f] px-3 text-sm font-semibold text-white">
+                <option value={15}>15 seconds</option><option value={30}>30 seconds</option><option value={45}>45 seconds</option><option value={60}>1 minute</option><option value={90}>90 seconds</option><option value={120}>2 minutes</option><option value={0}>Unlimited</option>
+              </select>
+            </div>
+          ) : null}
 
           {gameId === "mafia-werewolf" ? (
             <div className="space-y-4 rounded-xl border border-white/10 bg-white/[0.025] p-3">

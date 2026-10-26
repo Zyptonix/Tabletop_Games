@@ -38,6 +38,8 @@ export interface GameTurnInfo {
   currentPlayerId: string | null;
   turnStartedAt: string | null;
   turnSeconds: number | null;
+  /** Exact remaining clock budget at the start of the active turn, for chess clocks. */
+  turnRemainingMs?: number | null;
 }
 
 export type TimeoutReason = "turn_timer" | "offline_grace";
