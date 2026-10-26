@@ -20,7 +20,7 @@ export const GAME_STATUS: Record<string, GameStatus> = {
   "mafia-werewolf": "complete",
   "connect-four": "complete",
   "chess": "complete",
-  reversi: "prototype",
+  reversi: "complete",
   poker: "prototype",
   barricades: "prototype",
 
@@ -31,8 +31,7 @@ export const GAME_STATUS: Record<string, GameStatus> = {
   scribble: "prototype",
   spades: "prototype",
   polashi: "prototype",
-  "strategic-shockwave": "prototype",
-  "bomber-tag": "prototype",
+  "strategic-shockwave": "complete",
 };
 
 export const DEFAULT_GAME_STATUS: GameStatus = "prototype";
