@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450">
+  <defs>
+    <radialGradient id="codeGlow" cx="50%" cy="45%" r="70%">
+      <stop offset="0%" stop-color="#181528"/>
+      <stop offset="60%" stop-color="#0a0814"/>
+      <stop offset="100%" stop-color="#040308"/>
+    </radialGradient>
+    <filter id="matrixGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <rect width="800" height="450" fill="url(#codeGlow)"/>
+
+  <!-- Classified Dossier Folder Background Angle -->
+  <g transform="translate(400, 225) rotate(-6)" opacity="0.35">
+    <rect x="-240" y="-150" width="480" height="300" rx="12" fill="#1e1b2e" stroke="#475569" stroke-width="2"/>
+    <rect x="-220" y="-130" width="440" height="260" rx="6" fill="#131120" stroke="#334155" stroke-width="1"/>
+    <!-- Stamp -->
+    <rect x="110" y="-110" width="100" height="36" rx="4" fill="none" stroke="#dc2626" stroke-width="2" stroke-dasharray="4,2"/>
+    <text x="160" y="-87" font-family="monospace" font-weight="900" font-size="12" fill="#ef4444" text-anchor="middle" letter-spacing="3">CLASSIFIED</text>
+  </g>
+
+  <!-- 5x5 Keycard Spymaster Grid -->
+  <g transform="translate(400, 225) scale(1.1)" filter="url(#matrixGlow)">
+    <rect x="-160" y="-100" width="320" height="200" rx="10" fill="#090d16" stroke="#38bdf8" stroke-width="2" stroke-opacity="0.4"/>
+
+    <!-- Keycard Tiles (Red, Blue, Neutral, Assassin) -->
+    <!-- Row 1 -->
+    <rect x="-144" y="-84" width="52" height="32" rx="4" fill="#3b82f6"/>
+    <rect x="-84" y="-84" width="52" height="32" rx="4" fill="#ef4444"/>
+    <rect x="-24" y="-84" width="52" height="32" rx="4" fill="#cbd5e1" opacity="0.75"/>
+    <rect x="36" y="-84" width="52" height="32" rx="4" fill="#3b82f6"/>
+    <rect x="96" y="-84" width="52" height="32" rx="4" fill="#ef4444"/>
+
+    <!-- Row 2 -->
+    <rect x="-144" y="-44" width="52" height="32" rx="4" fill="#cbd5e1" opacity="0.75"/>
+    <rect x="-84" y="-44" width="52" height="32" rx="4" fill="#3b82f6"/>
+    <rect x="-24" y="-44" width="52" height="32" rx="4" fill="#ef4444"/>
+    <rect x="36" y="-44" width="52" height="32" rx="4" fill="#cbd5e1" opacity="0.75"/>
+    <rect x="96" y="-44" width="52" height="32" rx="4" fill="#3b82f6"/>
+
+    <!-- Row 3 -->
+    <rect x="-144" y="-4" width="52" height="32" rx="4" fill="#ef4444"/>
+    <rect x="-84" y="-4" width="52" height="32" rx="4" fill="#cbd5e1" opacity="0.75"/>
+    <!-- Center Assassin Tile -->
+    <rect x="-24" y="-4" width="52" height="32" rx="4" fill="#0f172a" stroke="#dc2626" stroke-width="2"/>
+    <text x="2" y="17" font-family="sans-serif" font-weight="900" font-size="14" fill="#ef4444" text-anchor="middle">☠</text>
+    <rect x="36" y="-4" width="52" height="32" rx="4" fill="#ef4444"/>
+    <rect x="96" y="-4" width="52" height="32" rx="4" fill="#cbd5e1" opacity="0.75"/>
+
+    <!-- Row 4 -->
+    <rect x="-144" y="36" width="52" height="32" rx="4" fill="#3b82f6"/>
+    <rect x="-84" y="36" width="52" height="32" rx="4" fill="#ef4444"/>
+    <rect x="-24" y="36" width="52" height="32" rx="4" fill="#3b82f6"/>
+    <rect x="36" y="36" width="52" height="32" rx="4" fill="#cbd5e1" opacity="0.75"/>
+    <rect x="96" y="36" width="52" height="32" rx="4" fill="#ef4444"/>
+
+    <!-- Row 5 -->
+    <rect x="-144" y="76" width="52" height="32" rx="4" fill="#cbd5e1" opacity="0.75"/>
+    <rect x="-84" y="76" width="52" height="32" rx="4" fill="#3b82f6"/>
+    <rect x="-24" y="76" width="52" height="32" rx="4" fill="#ef4444"/>
+    <rect x="36" y="76" width="52" height="32" rx="4" fill="#3b82f6"/>
+    <rect x="96" y="76" width="52" height="32" rx="4" fill="#cbd5e1" opacity="0.75"/>
+  </g>
+
+  <!-- Spy Silhouette Reticle -->
+  <g transform="translate(560, 160)" stroke="#38bdf8" stroke-width="1.5" opacity="0.7">
+    <circle cx="0" cy="0" r="45" fill="none" stroke-dasharray="4,4"/>
+    <line x1="-55" y1="0" x2="55" y2="0"/>
+    <line x1="0" y1="-55" x2="0" y2="55"/>
+  </g>
+</svg>

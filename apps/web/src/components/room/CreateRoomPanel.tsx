@@ -2,10 +2,11 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, Plus } from "lucide-react";
+import { AlertCircle, Plus, Users } from "lucide-react";
 import { api } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getGameVisualMeta } from "@/config/game-thumbnails.config";
 
 interface GameSummary {
   id: string;
@@ -20,11 +21,11 @@ interface RoomResponse {
 
 interface CreateRoomPanelProps {
   /** Preselect a game when this form was opened from a game card. */
-  initialGameId?: string;
+  initialGameId?: string | undefined;
   /** When true, only show the preselected game, not the game picker. */
-  hideGameSelect?: boolean;
+  hideGameSelect?: boolean | undefined;
   /** Restrict the picker to these game IDs. Unknown IDs are ignored by the API catalogue. */
-  allowedGameIds?: string[];
+  allowedGameIds?: string[] | undefined;
 }
 
 const optionalWerewolfRoles = [
@@ -125,17 +126,46 @@ export function CreateRoomPanel({ initialGameId, hideGameSelect = false, allowed
       </CardHeader>
       <CardContent className="px-0 pb-0 pt-4">
         <form className="space-y-4" onSubmit={submit}>
+          {gameId ? (
+            <div className="relative overflow-hidden rounded-xl border border-white/10 bg-[#091214] shadow-md">
+              <div className="relative aspect-[21/9] w-full overflow-hidden bg-black/40">
+                <img
+                  src={getGameVisualMeta(gameId).thumbnailUrl}
+                  alt={getGameVisualMeta(gameId).displayName}
+                  className="h-full w-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#091214] via-[#091214]/60 to-transparent" />
+                <div className="absolute inset-x-3 bottom-2.5 flex items-center justify-between">
+                  <div>
+                    <span className="inline-block rounded bg-black/60 px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wider text-emerald-300">
+                      {getGameVisualMeta(gameId).categoryLabel}
+                    </span>
+                    <p className="mt-1 text-base font-black text-white">
+                      {getGameVisualMeta(gameId).displayName}
+                    </p>
+                  </div>
+                  {games.find((g) => g.id === gameId) ? (
+                    <span className="inline-flex items-center gap-1 rounded bg-black/60 px-2 py-1 text-xs font-semibold text-slate-300">
+                      <Users className="h-3.5 w-3.5 text-slate-400" />
+                      {games.find((g) => g.id === gameId)?.minPlayers}–{games.find((g) => g.id === gameId)?.maxPlayers}p
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+              <div className="p-3">
+                <p className="text-xs leading-relaxed text-slate-400">
+                  {getGameVisualMeta(gameId).tagline}
+                </p>
+              </div>
+            </div>
+          ) : null}
+
           {!hideGameSelect ? (
             <div>
               <label className="mb-1.5 block text-sm font-semibold text-slate-200" htmlFor="create-room-game">Game</label>
               <select id="create-room-game" value={gameId} onChange={(event) => setGameId(event.target.value)} disabled={loadingGames || noGamesAvailable} className="min-h-11 w-full rounded-lg border border-white/15 bg-[#08110f] px-3 text-sm font-semibold text-white outline-none focus:border-emerald-400">
                 {games.map((game) => <option key={game.id} value={game.id}>{game.displayName} ({game.minPlayers}–{game.maxPlayers})</option>)}
               </select>
-            </div>
-          ) : selectedGameLabel(games, gameId) ? (
-            <div className="rounded-lg border border-emerald-200/15 bg-emerald-200/[0.05] px-3 py-2.5">
-              <p className="text-xs font-bold uppercase tracking-wider text-emerald-200/70">Selected game</p>
-              <p className="mt-1 font-bold text-white">{selectedGameLabel(games, gameId)}</p>
             </div>
           ) : null}
 

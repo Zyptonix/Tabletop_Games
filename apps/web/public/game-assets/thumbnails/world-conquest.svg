@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450">
+  <defs>
+    <radialGradient id="worldGlow" cx="50%" cy="45%" r="70%">
+      <stop offset="0%" stop-color="#081e3a"/>
+      <stop offset="60%" stop-color="#060e1d"/>
+      <stop offset="100%" stop-color="#02050a"/>
+    </radialGradient>
+    <filter id="blueGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <rect width="800" height="450" fill="url(#worldGlow)"/>
+
+  <!-- Tactical Hex / Grid Overlay -->
+  <g opacity="0.12" stroke="#38bdf8" stroke-width="1">
+    <circle cx="400" cy="225" r="140" fill="none"/>
+    <circle cx="400" cy="225" r="240" fill="none"/>
+    <line x1="0" y1="225" x2="800" y2="225"/>
+    <line x1="400" y1="0" x2="400" y2="450"/>
+  </g>
+
+  <!-- Expanded World Vector Geometry -->
+  <g stroke="#38bdf8" stroke-width="2" fill="#0284c7" fill-opacity="0.15" filter="url(#blueGlow)">
+    <polygon points="110,80 250,70 300,110 270,170 190,200 160,170 100,120"/>
+    <polygon points="200,220 250,230 270,300 220,370 190,300 180,240"/>
+    <polygon points="350,80 430,70 450,120 400,150 340,130 330,100"/>
+    <polygon points="350,170 440,180 460,250 410,340 360,290 330,210"/>
+    <polygon points="470,60 670,50 710,140 650,190 540,210 470,140"/>
+    <polygon points="620,260 710,250 730,320 640,340 600,300"/>
+  </g>
+
+  <!-- Cyan Strategic Deployment Nodes -->
+  <g filter="url(#blueGlow)">
+    <circle cx="200" cy="130" r="15" fill="#0c4a6e" stroke="#38bdf8" stroke-width="2"/>
+    <text x="200" y="135" font-family="sans-serif" font-weight="900" font-size="12" fill="#e0f2fe" text-anchor="middle">10</text>
+
+    <circle cx="390" cy="110" r="15" fill="#0c4a6e" stroke="#38bdf8" stroke-width="2"/>
+    <text x="390" y="115" font-family="sans-serif" font-weight="900" font-size="12" fill="#e0f2fe" text-anchor="middle">14</text>
+
+    <circle cx="590" cy="130" r="18" fill="#0369a1" stroke="#7dd3fc" stroke-width="2.5"/>
+    <text x="590" y="136" font-family="sans-serif" font-weight="900" font-size="14" fill="#ffffff" text-anchor="middle">24</text>
+
+    <circle cx="400" cy="260" r="15" fill="#0c4a6e" stroke="#38bdf8" stroke-width="2"/>
+    <text x="400" y="265" font-family="sans-serif" font-weight="900" font-size="12" fill="#e0f2fe" text-anchor="middle">8</text>
+
+    <circle cx="660" cy="300" r="14" fill="#0c4a6e" stroke="#38bdf8" stroke-width="2"/>
+    <text x="660" y="305" font-family="sans-serif" font-weight="900" font-size="12" fill="#e0f2fe" text-anchor="middle">6</text>
+  </g>
+</svg>

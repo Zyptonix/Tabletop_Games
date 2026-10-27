@@ -10,7 +10,7 @@ export function setupBarricades(state: BoardGameState, players: GamePlayer[], rn
 
   players.forEach((player, index) => {
     state.pawns[player.userId] = starts[index] ?? { x: mid, y: 0 };
-    state.wallsRemaining[player.userId] = players.length > 2 ? 8 : 10;
+    state.wallsRemaining[player.userId] = players.length > 2 ? 5 : 10;
   });
   return rngState;
 }
