@@ -119,3 +119,4 @@ export function SunkShipModal({ event, currentUserId, onDismiss }: SunkShipModal
     </div>
   );
 }
+

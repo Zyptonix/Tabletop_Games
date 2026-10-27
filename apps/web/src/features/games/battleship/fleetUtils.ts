@@ -95,3 +95,4 @@ export function generateRandomFleet(): ClientPlacedShip[] {
 
   return fleet;
 }
+
