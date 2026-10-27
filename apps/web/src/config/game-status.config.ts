@@ -11,28 +11,26 @@
 export type GameStatus = "complete" | "prototype";
 
 export const GAME_STATUS: Record<string, GameStatus> = {
-  // Main menu: promote games only after they're verified and ready for regular play.
+  // Officially Completed Games (Verified & Ready for regular play in Main Collection)
   "uno-no-mercy": "complete",
-
-  // Existing / worked-on Tabletop Arena games awaiting main-menu approval.
   "classic-uno": "complete",
   "battleship": "complete",
-  "twenty-nine": "complete",
   "mafia-werewolf": "complete",
-  "connect-four": "complete",
-  "chess": "complete",
-  reversi: "complete",
+
+  // Prototyping Games (Test Games & Prototypes in development)
+  "twenty-nine": "prototype",
+  "connect-four": "prototype",
+  "chess": "prototype",
+  reversi: "prototype",
   poker: "prototype",
   barricades: "prototype",
-
-  // Other catalog entries / planned experiments from the project.
+  "strategic-shockwave": "prototype",
   "uno-flip": "prototype",
   monopoly: "prototype",
   codenames: "prototype",
   scribble: "prototype",
   spades: "prototype",
   polashi: "prototype",
-  "strategic-shockwave": "complete",
 };
 
 export const DEFAULT_GAME_STATUS: GameStatus = "prototype";
