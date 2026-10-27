@@ -158,7 +158,7 @@ export function TwentyNineTrickArea({
         <SlotCardContainer
           slot="south"
           data={playedBySlot.get("south")}
-          positionClass="bottom-4 left-1/2 -translate-x-1/2"
+          positionClass="bottom-6 left-1/2 -translate-x-1/2"
         />
 
         {/* West Card (Left Opponent) */}
@@ -229,7 +229,7 @@ function SlotCardContainer({
       <div className="relative">
         <TwentyNineCardFace card={entry.card} size="md" isWinning={isWinning} />
         {isWinning ? (
-          <div className="absolute -top-2.5 left-1/2 z-30 -translate-x-1/2 rounded-full border border-amber-300/80 bg-gradient-to-r from-amber-400 to-amber-500 px-2 py-0.5 text-[0.58rem] font-black uppercase tracking-widest text-amber-950 shadow-[0_0_15px_rgba(251,191,36,0.9)] ring-2 ring-amber-200">
+          <div className="absolute top-full mt-1.5 left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded-full border border-amber-300/80 bg-gradient-to-r from-amber-400 to-amber-500 px-2.5 py-0.5 text-[0.58rem] font-black uppercase tracking-widest text-amber-950 shadow-[0_0_15px_rgba(251,191,36,0.9)] ring-2 ring-amber-200">
             👑 WINNING
           </div>
         ) : null}
