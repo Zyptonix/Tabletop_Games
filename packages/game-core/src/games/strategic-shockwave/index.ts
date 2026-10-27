@@ -235,8 +235,8 @@ function blastReachesCell(state: StrategicShockwaveState, bomb: StrategicShockwa
   return false;
 }
 
-function isCellThreatened(state: StrategicShockwaveState, x: number, y: number, nowMs: number): boolean {
-  return state.bombs.some((bomb) => bomb.explodeAt - nowMs <= 1_600 && bomb.explodeAt >= nowMs && blastReachesCell(state, bomb, x, y));
+function isCellThreatened(state: StrategicShockwaveState, x: number, y: number, _nowMs?: number): boolean {
+  return state.bombs.some((bomb) => blastReachesCell(state, bomb, x, y));
 }
 
 function hasClearLineToPlayer(state: StrategicShockwaveState, from: StrategicShockwavePlayer, target: StrategicShockwavePlayer): boolean {
@@ -271,9 +271,14 @@ function hasClearLineToPlayer(state: StrategicShockwaveState, from: StrategicSho
 function thinkForBots(state: StrategicShockwaveState, nowMs: number, events: GameEvent[]): boolean {
   let changed = false;
   for (const bot of state.players) {
-    if (!bot.isBot || !bot.alive || nowMs - bot.lastBotThinkAt < 260) continue;
+    if (!bot.isBot || !bot.alive || nowMs - bot.lastBotThinkAt < 180) continue;
     bot.lastBotThinkAt = nowMs;
     changed = true;
+
+    const botTileX = Math.round(bot.x);
+    const botTileY = Math.round(bot.y);
+    const activeBotBombs = state.bombs.filter((b) => b.ownerId === bot.userId).length;
+    const canPlant = activeBotBombs < bot.bombsCapacity && !state.bombs.some((b) => b.x === botTileX && b.y === botTileY);
 
     const enemies = state.players.filter((player) => player.alive && player.userId !== bot.userId);
     const nearest = enemies.sort((left, right) => {
@@ -281,24 +286,110 @@ function thinkForBots(state: StrategicShockwaveState, nowMs: number, events: Gam
       const rightDistance = Math.abs(right.x - bot.x) + Math.abs(right.y - bot.y);
       return leftDistance - rightDistance;
     })[0];
-    if (nearest && hasClearLineToPlayer(state, bot, nearest) && Math.abs(nearest.x - bot.x) + Math.abs(nearest.y - bot.y) <= bot.blastRange + 0.5) {
+
+    // Count adjacent destructible blocks
+    let adjacentBlocks = 0;
+    for (const dir of DIRECTIONS) {
+      if (tileAt(state, botTileX + dir.x, botTileY + dir.y) === "block") {
+        adjacentBlocks += 1;
+      }
+    }
+
+    // Check safe retreat route if planting here
+    let hasSafeRetreat = false;
+    const hypotheticalBomb: StrategicShockwaveBomb = {
+      id: "hypo",
+      ownerId: bot.userId,
+      x: botTileX,
+      y: botTileY,
+      blastRange: bot.blastRange,
+      placedAt: nowMs,
+      explodeAt: nowMs + 3000,
+      ownerCanLeave: true
+    };
+
+    for (const dir of DIRECTIONS) {
+      const nX = botTileX + dir.x;
+      const nY = botTileY + dir.y;
+      if (tileAt(state, nX, nY) === "floor" && !state.bombs.some((b) => b.x === nX && b.y === nY)) {
+        for (const dir2 of DIRECTIONS) {
+          const escapeX = nX + dir2.x;
+          const escapeY = nY + dir2.y;
+          if (
+            tileAt(state, escapeX, escapeY) === "floor" &&
+            !blastReachesCell(state, hypotheticalBomb, escapeX, escapeY) &&
+            !isCellThreatened(state, escapeX, escapeY, nowMs)
+          ) {
+            hasSafeRetreat = true;
+            break;
+          }
+        }
+      }
+      if (hasSafeRetreat) break;
+    }
+
+    const hasEnemyInLine = nearest && hasClearLineToPlayer(state, bot, nearest) && Math.abs(nearest.x - bot.x) + Math.abs(nearest.y - bot.y) <= bot.blastRange + 0.5;
+    const shouldBreakWall = adjacentBlocks > 0 && hasSafeRetreat && !isCellThreatened(state, botTileX, botTileY, nowMs);
+
+    if (canPlant && (hasEnemyInLine || shouldBreakWall)) {
       makeBomb(state, bot, nowMs, events);
     }
 
     let best: ShockwaveCell = { x: 0, y: 0 };
     let bestScore = -Infinity;
+    const currentlyInDanger = isCellThreatened(state, botTileX, botTileY, nowMs);
+
+    const nearestPowerUp = state.powerUps.slice().sort((a, b) => {
+      const distA = Math.abs(a.x - bot.x) + Math.abs(a.y - bot.y);
+      const distB = Math.abs(b.x - bot.x) + Math.abs(b.y - bot.y);
+      return distA - distB;
+    })[0];
+
     for (const direction of BOT_DIRECTIONS) {
-      const testX = bot.x + direction.x * 0.65;
-      const testY = bot.y + direction.y * 0.65;
+      const testX = bot.x + direction.x * 0.7;
+      const testY = bot.y + direction.y * 0.7;
       if (!canOccupy(state, bot.userId, testX, testY)) continue;
-      const cellX = Math.floor(testX); const cellY = Math.floor(testY);
-      const dangerPenalty = isCellThreatened(state, cellX, cellY, nowMs) ? 100 : 0;
-      const nearestDistance = nearest ? Math.abs(nearest.x - testX) + Math.abs(nearest.y - testY) : 10;
-      let openNeighbors = 0;
-      for (const candidate of DIRECTIONS) if (tileAt(state, cellX + candidate.x, cellY + candidate.y) === "floor") openNeighbors += 1;
-      const score = -dangerPenalty - nearestDistance * 0.25 + openNeighbors * 0.18 + nextRandomValue(state) * 0.2;
-      if (score > bestScore) { bestScore = score; best = direction; }
+
+      const cellX = Math.round(testX);
+      const cellY = Math.round(testY);
+      const cellThreatened = isCellThreatened(state, cellX, cellY, nowMs);
+
+      let score = 0;
+
+      if (cellThreatened) {
+        score -= 500;
+      } else if (currentlyInDanger) {
+        score += 350;
+      }
+
+      if (nearest && !currentlyInDanger) {
+        const enemyDist = Math.abs(nearest.x - testX) + Math.abs(nearest.y - testY);
+        score -= enemyDist * 1.5;
+      }
+
+      if (nearestPowerUp && !currentlyInDanger) {
+        const puDist = Math.abs(nearestPowerUp.x - testX) + Math.abs(nearestPowerUp.y - testY);
+        score += Math.max(0, 10 - puDist) * 2.5;
+      }
+
+      let nearbyBlocks = 0;
+      for (const candidate of DIRECTIONS) {
+        if (tileAt(state, cellX + candidate.x, cellY + candidate.y) === "block") {
+          nearbyBlocks += 1;
+        }
+      }
+      if (!currentlyInDanger) {
+        score += nearbyBlocks * 0.9;
+      }
+
+      score += nextRandomValue(state) * 0.6;
+
+      if (score > bestScore) {
+        bestScore = score;
+        best = direction;
+      }
     }
+
     bot.inputX = best.x;
     bot.inputY = best.y;
     bot.inputUpdatedAt = nowMs;

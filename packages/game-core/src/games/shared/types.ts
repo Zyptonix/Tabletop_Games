@@ -75,6 +75,22 @@ export interface Territory { id: string; label: string; x: number; y: number; ne
 
 export interface WordCard { word: string; role: Team; revealed: boolean }
 
+export interface ChessMoveRecord {
+  ply: number;
+  moveNumber: number;
+  playerId: string;
+  side: "w" | "b";
+  from: number;
+  to: number;
+  san: string;
+  piece: string;
+  captured?: string | null | undefined;
+  promotion?: string | null | undefined;
+  isCheck?: boolean | undefined;
+  isCheckmate?: boolean | undefined;
+  clockRemainingMs?: number | undefined;
+}
+
 export interface BoardGameState {
   gameId: BoardGameId;
   version: string;
@@ -87,6 +103,8 @@ export interface BoardGameState {
   chessEnPassantTarget: number | null;
   chessHalfmoveClock: number;
   chessPositionHistory: string[];
+  chessMoveHistory?: ChessMoveRecord[] | undefined;
+  chessLastMove?: { from: number; to: number } | null | undefined;
   turnNumber: number;
   actionNumber: number;
   startedAt: string;
@@ -207,5 +225,9 @@ export interface PublicBoardGameState {
   pokerHandNumber: number;
   pokerLastAction: string;
   activityLog: ActivityItem[];
+  chessMoveHistory?: ChessMoveRecord[] | undefined;
+  chessLastMove?: { from: number; to: number } | null | undefined;
+  chessHalfmoveClock?: number | undefined;
+  chessCastlingRights?: string | undefined;
   gameNotice: string;
 }

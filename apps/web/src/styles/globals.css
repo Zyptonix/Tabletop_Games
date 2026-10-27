@@ -722,9 +722,15 @@ body:has(.uno-fullscreen) {
 }
 
 .connect-four-hole {
-  background: radial-gradient(circle at 50% 43%, #02162a 0%, #06294b 58%, #0b4e83 76%, #177fca 100%);
-  border: 2px solid rgb(0 48 93 / 0.8);
-  box-shadow: inset 0 6px 10px rgb(0 9 29 / 0.75), inset 0 -1px 2px rgb(255 255 255 / 0.08), 0 2px 0 rgb(107 202 255 / 0.22);
+  position: relative;
+  background: radial-gradient(circle at 50% 48%, #010c18 0%, #03182b 62%, #082d4f 85%, #0d4677 100%);
+  border: 2.5px solid rgb(2 38 72 / 0.95);
+  box-shadow:
+    inset 0 10px 16px rgba(0, 0, 0, 0.88),
+    inset 0 -3px 5px rgba(255, 255, 255, 0.28),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.5),
+    0 2px 4px rgba(0, 0, 0, 0.35),
+    0 -1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .connect-four-slot-hover {
@@ -732,18 +738,46 @@ body:has(.uno-fullscreen) {
 }
 
 .connect-four-slot-hover .connect-four-hole {
-  border-color: rgb(255 255 255 / 0.4);
-  box-shadow: inset 0 6px 11px rgb(0 9 29 / 0.65), 0 0 13px rgb(188 232 255 / 0.18);
+  border-color: rgb(255 255 255 / 0.55);
+  box-shadow:
+    inset 0 8px 14px rgba(0, 0, 0, 0.75),
+    inset 0 -3px 6px rgba(255, 255, 255, 0.4),
+    0 0 16px rgba(56, 189, 248, 0.35);
 }
 
 .connect-four-disc {
+  position: relative;
   will-change: transform;
   transform-origin: center;
   box-sizing: border-box;
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.45),
+    inset 0 3px 6px rgba(255, 255, 255, 0.65),
+    inset 0 -6px 10px rgba(0, 0, 0, 0.45);
+}
+
+.connect-four-disc::before {
+  content: "";
+  position: absolute;
+  inset: 13%;
+  border-radius: 9999px;
+  border: 2px solid rgba(255, 255, 255, 0.28);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(255, 255, 255, 0.2);
+  pointer-events: none;
+}
+
+.connect-four-disc::after {
+  content: "";
+  position: absolute;
+  inset: 33%;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.45) 0%, transparent 65%);
+  box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.25), inset 0 1px 3px rgba(255, 255, 255, 0.5);
+  pointer-events: none;
 }
 
 .connect-four-last-disc {
-  outline: 2px solid rgb(255 255 255 / 0.75);
+  outline: 2.5px solid rgb(255 255 255 / 0.9);
   outline-offset: 1px;
 }
 
@@ -753,25 +787,32 @@ body:has(.uno-fullscreen) {
 }
 
 .connect-four-winning-disc {
-  filter: saturate(1.12) brightness(1.08);
+  filter: saturate(1.2) brightness(1.12);
+  box-shadow:
+    0 0 24px rgba(251, 191, 36, 0.9),
+    inset 0 3px 6px rgba(255, 255, 255, 0.75) !important;
 }
 
-.connect-four-empty-preview { opacity: 0.8; box-shadow: inset 0 2px 6px rgb(0 0 0 / 0.24); }
+.connect-four-empty-preview {
+  opacity: 0.85;
+  box-shadow: inset 0 2px 6px rgb(0 0 0 / 0.35);
+  animation: pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
 
 .connect-four-leg {
   display: block;
-  width: clamp(16px, 2.2vw, 27px);
-  height: 22px;
+  width: clamp(18px, 2.4vw, 30px);
+  height: 24px;
   border: 2px solid #034a85;
   border-top: 0;
-  border-radius: 0 0 4px 4px;
+  border-radius: 0 0 6px 6px;
   background: linear-gradient(90deg, #0561a9, #1590de 54%, #0561a9);
-  box-shadow: inset 0 -2px 0 rgb(0 32 75 / 0.25);
+  box-shadow: inset 0 -3px 0 rgb(0 32 75 / 0.35);
 }
 
 @keyframes connect-four-winning-hole-pulse {
-  from { box-shadow: inset 0 6px 10px rgb(0 9 29 / 0.68), 0 0 3px rgb(255 240 150 / 0.28); }
-  to { box-shadow: inset 0 6px 10px rgb(0 9 29 / 0.55), 0 0 17px rgb(255 240 150 / 0.56); }
+  from { box-shadow: inset 0 8px 14px rgb(0 9 29 / 0.8), 0 0 6px rgb(255 240 150 / 0.4); }
+  to { box-shadow: inset 0 8px 14px rgb(0 9 29 / 0.65), 0 0 24px rgb(255 240 150 / 0.85); }
 }
 
 @media (prefers-reduced-motion: reduce) {

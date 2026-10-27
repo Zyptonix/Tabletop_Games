@@ -161,6 +161,36 @@ describe("chess rules continuation v3", () => {
     const moves = chessModule.getLegalActions({ state, playerId: "p1" }).filter((action) => action.type === "move_piece" && action.from === 8 && action.to === 0);
     expect(moves.map((action) => action.type === "move_piece" ? action.promotion : null).sort()).toEqual(["b", "n", "q", "r"]);
   });
+
+  it("generates correct Standard Algebraic Notation (SAN) and records move history", () => {
+    const state = start(chessModule);
+    // 1. e4 (from 52 to 36)
+    const r1 = chessModule.applyAction({ state, playerId: "p1", action: { type: "move_piece", from: 52, to: 36 }, now: "2026-10-25T00:01:00.000Z" });
+    const s1 = r1.state as BoardGameState;
+    expect(s1.chessMoveHistory).toBeDefined();
+    expect(s1.chessMoveHistory).toHaveLength(1);
+    expect(s1.chessMoveHistory![0]?.san).toBe("e4");
+    expect(s1.chessMoveHistory![0]?.side).toBe("w");
+    expect(s1.chessMoveHistory![0]?.moveNumber).toBe(1);
+
+    // 1... e5 (from 12 to 28)
+    const r2 = chessModule.applyAction({ state: s1, playerId: "p2", action: { type: "move_piece", from: 12, to: 28 }, now: "2026-10-25T00:01:10.000Z" });
+    const s2 = r2.state as BoardGameState;
+    expect(s2.chessMoveHistory).toHaveLength(2);
+    expect(s2.chessMoveHistory![1]?.san).toBe("e5");
+    expect(s2.chessMoveHistory![1]?.side).toBe("b");
+
+    // 2. Nf3 (from 62 to 45)
+    const r3 = chessModule.applyAction({ state: s2, playerId: "p1", action: { type: "move_piece", from: 62, to: 45 }, now: "2026-10-25T00:01:20.000Z" });
+    const s3 = r3.state as BoardGameState;
+    expect(s3.chessMoveHistory).toHaveLength(3);
+    expect(s3.chessMoveHistory![2]?.san).toBe("Nf3");
+
+    // Public state includes chessMoveHistory and chessLastMove
+    const publicState = chessModule.getPublicState({ state: s3, viewerId: "p1" }) as { chessMoveHistory: unknown[]; chessLastMove: { from: number; to: number } };
+    expect(publicState.chessMoveHistory).toHaveLength(3);
+    expect(publicState.chessLastMove).toEqual({ from: 62, to: 45 });
+  });
 });
 
 // V4: a completed hand is not a completed Poker tournament.

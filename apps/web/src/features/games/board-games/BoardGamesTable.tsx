@@ -317,9 +317,12 @@ export function BoardGamesTable({
                         const occupied = Boolean(cell);
                         return (
                           <button key={key} type="button" onClick={() => sendDrop(columnIndex)} onPointerEnter={() => { setHoverColumn(columnIndex); setKeyboardNavigationActive(false); }} disabled={!isMyTurn || state.phase !== "playing" || !legal} aria-label={cell ? `${state.players[playerIndex]?.displayName ?? "Player"} ${color.name.toLowerCase()} disc at row ${rowIndex + 1}, column ${columnIndex + 1}` : `Empty slot row ${rowIndex + 1}, column ${columnIndex + 1}${legal ? ", legal column" : ""}`} className={`${useBoardSprite ? "connect-four-sprite-cell" : "connect-four-cell relative grid min-h-0 min-w-0 place-items-center border-b border-r border-[#064c88]/90 p-0"} focus-visible:z-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/80 ${isHovered && isMyTurn && !occupied ? (useBoardSprite ? "connect-four-sprite-slot-hover" : "connect-four-slot-hover") : ""} ${isWinning ? "connect-four-winning-slot" : ""}`} style={{ zIndex: isLast ? 20 : 0 }}>
+                            {isHovered && isMyTurn && !useBoardSprite ? (
+                              <span className="pointer-events-none absolute inset-0 z-0 bg-sky-300/[0.08]" />
+                            ) : null}
                             <span className={useBoardSprite ? `connect-four-sprite-cell-content ${isWinning ? "connect-four-winning-hole" : ""}` : `connect-four-hole relative grid aspect-square w-[80%] place-items-center rounded-full ${isWinning ? "connect-four-winning-hole" : ""}`}>
                               {cell ? (
-                                <motion.span key={`${key}-${cell}`} initial={{ y: -((rowIndex + 1) * (useBoardSprite ? 68 : 100)), scale: 0.84, rotate: rowIndex % 2 ? 4 : -4 }} animate={{ y: 0, scale: isWinning ? [1, 1.055, 1] : 1, rotate: 0 }} transition={{ type: "spring", stiffness: 290, damping: 17, mass: 0.72, scale: { duration: 0.34, repeat: isWinning ? Infinity : 0, repeatType: "reverse" } }} className={`${useBoardSprite ? "connect-four-sprite-disc" : "connect-four-disc relative z-10 block h-[91%] w-[91%] rounded-full"} ${isLast ? "connect-four-last-disc" : ""} ${isWinning ? "connect-four-winning-disc" : ""}`} style={{ width: useBoardSprite ? "75%" : undefined, height: useBoardSprite ? "auto" : undefined, aspectRatio: useBoardSprite ? "1 / 1" : undefined, background: `radial-gradient(circle at 29% 21%,${color.light} 0%,${color.css} 32%,${color.dark} 100%)`, border: `2px solid ${color.light}bb`, boxShadow: `inset 0 3px 5px rgba(255,255,255,.46),inset 0 -7px 10px rgba(0,0,0,.25),0 3px 5px rgba(0,0,0,.32)` }}>
+                                <motion.span key={`${key}-${cell}`} initial={{ y: -((rowIndex + 1) * (useBoardSprite ? 68 : 96)), scale: 0.86 }} animate={{ y: 0, scale: isWinning ? [1, 1.06, 1] : 1 }} transition={{ type: "spring", stiffness: 320, damping: 18, mass: 0.72, scale: { duration: 0.35, repeat: isWinning ? Infinity : 0, repeatType: "reverse" } }} className={`${useBoardSprite ? "connect-four-sprite-disc" : "connect-four-disc relative z-10 block h-[91%] w-[91%] rounded-full"} ${isLast ? "connect-four-last-disc" : ""} ${isWinning ? "connect-four-winning-disc" : ""}`} style={{ width: useBoardSprite ? "75%" : undefined, height: useBoardSprite ? "auto" : undefined, aspectRatio: useBoardSprite ? "1 / 1" : undefined, background: `radial-gradient(circle at 29% 21%,${color.light} 0%,${color.css} 32%,${color.dark} 100%)`, border: `2px solid ${color.light}bb`, boxShadow: `inset 0 3px 5px rgba(255,255,255,.46),inset 0 -7px 10px rgba(0,0,0,.25),0 3px 5px rgba(0,0,0,.32)` }}>
                                   {!useBoardSprite ? <span className="pointer-events-none absolute left-[21%] top-[15%] h-[17%] w-[29%] rounded-full bg-white/55 blur-[0.5px]" /> : null}
                                   {state.gameId === "connect-four" && (playerIndex === 0 ? connectFourArt.redDisc : connectFourArt.yellowDisc) ? <img src={(playerIndex === 0 ? connectFourArt.redDisc : connectFourArt.yellowDisc) ?? undefined} alt="" aria-hidden="true" draggable={false} onError={(event) => { event.currentTarget.style.display = "none"; }} className={`connect-four-custom-disc pointer-events-none absolute z-10 select-none ${useBoardSprite ? "object-contain" : "inset-0 h-full w-full object-fill"}`} style={useBoardSprite ? { inset: "-6%", width: "100%", height: "100%" } : undefined} /> : null}
                                 </motion.span>
@@ -330,7 +333,22 @@ export function BoardGamesTable({
                         }))}
                     </div>
                     {useBoardSprite ? <img src={connectFourArt.boardOverlay ?? undefined} alt="" aria-hidden="true" draggable={false} onError={() => setConnectFourArt((currentArt) => ({ ...currentArt, boardOverlay: null }))} className="connect-four-board-overlay connect-four-board-sprite pointer-events-none absolute inset-0 z-20 h-full w-full select-none object-fill" /> : null}
-                    {!useBoardSprite ? <div className="pointer-events-none absolute -bottom-[18px] left-4 right-4 z-0 flex justify-between px-[4%]" aria-hidden="true"><span className="connect-four-leg" /><span className="connect-four-leg" /></div> : null}
+                    {!useBoardSprite ? (
+                      <div className="pointer-events-none absolute -bottom-7 left-2 right-2 z-0 flex justify-between px-2 sm:px-6" aria-hidden="true">
+                        {/* Left 3D Support Leg */}
+                        <div className="flex flex-col items-center">
+                          <div className="h-7 w-9 sm:w-12 rounded-t-md bg-gradient-to-b from-[#0e74be] to-[#043d6c] border-2 border-b-0 border-[#2399ec] shadow-md" />
+                          <div className="h-3.5 w-16 sm:w-22 rounded-full bg-gradient-to-r from-[#032038] via-[#095088] to-[#032038] border border-white/25 shadow-xl" />
+                          <div className="h-1.5 w-14 sm:w-18 rounded-full bg-black/60 blur-[2px] mt-0.5" />
+                        </div>
+                        {/* Right 3D Support Leg */}
+                        <div className="flex flex-col items-center">
+                          <div className="h-7 w-9 sm:w-12 rounded-t-md bg-gradient-to-b from-[#0e74be] to-[#043d6c] border-2 border-b-0 border-[#2399ec] shadow-md" />
+                          <div className="h-3.5 w-16 sm:w-22 rounded-full bg-gradient-to-r from-[#032038] via-[#095088] to-[#032038] border border-white/25 shadow-xl" />
+                          <div className="h-1.5 w-14 sm:w-18 rounded-full bg-black/60 blur-[2px] mt-0.5" />
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                   <div className={`flex w-full ${useBoardSprite ? "max-w-[1200px]" : "max-w-[920px]"} shrink-0 items-center justify-between gap-3 px-1 pt-2 text-xs`}>
                     <span className="truncate font-semibold text-white/50">{isFinished ? "Round complete" : isMyTurn ? "✨ Your move — pick a column" : isBotTurn ? "🤖 Opponent is thinking" : "👀 Watch for a winning line"}</span>
