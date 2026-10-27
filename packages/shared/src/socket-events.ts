@@ -34,6 +34,7 @@ export interface ClientToServerEvents {
   "room:join": (payload: unknown) => void;
   "room:leave": (payload: unknown) => void;
   "room:ready": (payload: unknown) => void;
+  "room:settings": (payload: unknown) => void;
   "room:start": (payload: unknown) => void;
   "room:pause": (payload: unknown) => void;
   "room:resume": (payload: unknown) => void;

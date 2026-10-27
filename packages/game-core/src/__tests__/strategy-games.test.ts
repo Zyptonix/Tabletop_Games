@@ -299,6 +299,74 @@ describe("Ludo and Battleships rule regressions v4", () => {
     expect((res2.state as BoardGameState).battleshipReady?.["p2"]).toBe(true);
     expect((res2.state as BoardGameState).battleshipPhase).toBe("battle");
   });
+
+  it("grants another turn on direct hit and switches player on miss", () => {
+    const state = start(battleshipModule);
+    const p2Ships = state.shipDetailsByPlayer!["p2"]!;
+    const hitCoord = p2Ships[0]!.cells[0]!.split(",").map(Number);
+    const hitX = hitCoord[0]!;
+    const hitY = hitCoord[1]!;
+
+    // P1 fires a hit
+    const hitResult = battleshipModule.applyAction({
+      state: { ...state, currentPlayerId: "p1", battleshipPhase: "battle" },
+      playerId: "p1",
+      action: { type: "fire", x: hitX, y: hitY },
+      now: "2026-10-25T00:05:00.000Z"
+    });
+    // P1 should retain their turn!
+    expect((hitResult.state as BoardGameState).currentPlayerId).toBe("p1");
+
+    // Find an empty cell for miss
+    const p2Cells = new Set(p2Ships.flatMap((s) => s.cells));
+    let missX = 0;
+    let missY = 0;
+    for (let r = 0; r < 10; r++) {
+      for (let c = 0; c < 10; c++) {
+        if (!p2Cells.has(`${c},${r}`)) {
+          missX = c;
+          missY = r;
+          break;
+        }
+      }
+    }
+
+    // P1 fires a miss
+    const missResult = battleshipModule.applyAction({
+      state: hitResult.state as BoardGameState,
+      playerId: "p1",
+      action: { type: "fire", x: missX, y: missY },
+      now: "2026-10-25T00:05:02.000Z"
+    });
+    // Turn should pass to P2!
+    expect((missResult.state as BoardGameState).currentPlayerId).toBe("p2");
+  });
+
+  it("supports battleship chess clock time deduction", () => {
+    const players: GamePlayer[] = [
+      { userId: "p1", username: "p1", displayName: "Commander 1", seat: 0 },
+      { userId: "p2", username: "p2", displayName: "Commander 2", seat: 1 }
+    ];
+    const state = battleshipModule.createInitialState({
+      players,
+      settings: { clockSeconds: 300, turnSeconds: null } as never,
+      seed: "battleship-clock",
+      now: "2026-10-25T00:00:00.000Z"
+    }) as BoardGameState;
+
+    expect(state.clockRemainingMsByPlayer?.["p1"]).toBe(300000);
+    expect(state.clockRemainingMsByPlayer?.["p2"]).toBe(300000);
+
+    // Apply action 5 seconds later
+    const result = battleshipModule.applyAction({
+      state: { ...state, battleshipPhase: "battle", currentPlayerId: "p1", turnStartedAt: "2026-10-25T00:00:00.000Z" },
+      playerId: "p1",
+      action: { type: "fire", x: 0, y: 0 },
+      now: "2026-10-25T00:00:05.000Z"
+    });
+
+    expect((result.state as BoardGameState).clockRemainingMsByPlayer?.["p1"]).toBe(295000);
+  });
 });
 
 // TABLETOP ARENA FULL PATCH V5 — CODENAMES RULES

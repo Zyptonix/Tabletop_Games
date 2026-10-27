@@ -131,8 +131,14 @@ export function reduceBattleshipAction(
     if (fleetDestroyed) {
       message += " — entire enemy fleet destroyed!";
       finish(state, playerId, now);
+    } else if (hit) {
+      // Direct hit grants another turn to the shooter!
+      state.currentPlayerId = playerId;
+      message += " — Direct hit! Take another shot!";
     } else {
+      // Miss passes turn to the target
       state.currentPlayerId = targetId;
+      state.turnNumber += 1;
     }
 
     return { accepted: true, message };

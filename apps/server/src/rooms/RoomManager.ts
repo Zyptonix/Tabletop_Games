@@ -498,6 +498,22 @@ export class RoomManager {
     return room;
   }
 
+  async updateRoomSettings(roomId: string, userId: string, settings: Record<string, unknown>): Promise<RoomRuntime> {
+    const room = this.requireRoom(roomId);
+    this.requireHost(room, userId);
+    if (room.status !== "lobby") {
+      throw new AppError(ERROR_CODES.INVALID_ACTION, "Settings can only be changed while in the lobby.");
+    }
+    const module = this.requireModule(room.gameId);
+    const parsed = module.settingsSchema.parse({
+      ...room.settings,
+      ...settings
+    });
+    room.settings = parsed as Record<string, unknown>;
+    await this.saveSnapshot(room);
+    return room;
+  }
+
   async handleGameAction(params: {
     userId: string;
     envelope: GameActionEnvelope;

@@ -47,6 +47,7 @@ export interface RoomSocketState {
   error: string | null;
   sendAction: (roomId: string, type: string, payload?: Record<string, unknown>) => void;
   sendReady: (roomId: string, ready: boolean) => void;
+  updateRoomSettings: (roomId: string, settings: Record<string, unknown>) => void;
   startRoom: (roomId: string) => void;
   pauseRoom: (roomId: string) => void;
   resumeRoom: (roomId: string) => void;
@@ -190,6 +191,7 @@ export function useRoomSocket(roomCode?: string): RoomSocketState {
         });
       },
       sendReady: (roomId: string, ready: boolean) => socket?.emit("room:ready", { roomId, ready }),
+      updateRoomSettings: (roomId: string, settings: Record<string, unknown>) => socket?.emit("room:settings", { roomId, settings }),
       startRoom: (roomId: string) => socket?.emit("room:start", { roomId }),
       pauseRoom: (roomId: string) => socket?.emit("room:pause", { roomId }),
       resumeRoom: (roomId: string) => socket?.emit("room:resume", { roomId }),

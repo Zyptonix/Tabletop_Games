@@ -4,10 +4,10 @@ import React from "react";
 
 interface ShipSpriteProps {
   id: string; // "carrier" | "battleship" | "cruiser" | "submarine" | "destroyer"
-  orientation?: "h" | "v";
-  sunk?: boolean;
-  className?: string;
-  silhouetteOnly?: boolean;
+  orientation?: "h" | "v" | undefined;
+  sunk?: boolean | undefined;
+  className?: string | undefined;
+  silhouetteOnly?: boolean | undefined;
 }
 
 export function ShipSprite({

@@ -269,6 +269,19 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
       }
     });
 
+    socket.on("room:settings", async (payload: unknown) => {
+      const data = payload as { roomId?: string; settings?: Record<string, unknown> } | null | undefined;
+      if (!data?.roomId || !data?.settings || typeof data.settings !== "object") {
+        emitError(socket, "room:error", new AppError(ERROR_CODES.INVALID_PAYLOAD, "Invalid settings payload."));
+        return;
+      }
+      try {
+        emitRoom(await manager.updateRoomSettings(data.roomId, user.id, data.settings));
+      } catch (error) {
+        emitError(socket, "room:error", error);
+      }
+    });
+
     socket.on("room:start", async (payload) => {
       const parsed = roomIdSchema.safeParse(payload);
       if (!parsed.success) {

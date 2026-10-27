@@ -96,11 +96,11 @@ export default function RoomPage() {
         onRemoveBots={socketState.removeBots}
       >
         {room.status === "lobby" ? (
-          <Card>
+          <Card className="border-white/10 bg-[#09141f]">
             <CardContent className="space-y-4 p-5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm font-bold text-zinc-600">Invite code</p>
+                  <p className="text-sm font-bold text-zinc-400">Invite code</p>
                   <p className="text-3xl font-black tracking-wide text-white">{room.code}</p>
                 </div>
                 <Button type="button" variant="outline" onClick={() => navigator.clipboard.writeText(room.code)}>
@@ -113,6 +113,57 @@ export default function RoomPage() {
                 <Badge tone="blue">{room.gameId}</Badge>
                 <Badge tone="neutral">{room.status}</Badge>
               </div>
+
+              {/* Lobby Game Settings (e.g. Battleship / Chess Clock) */}
+              {room.gameId === "battleship" || room.gameId === "chess" ? (
+                <div className="mt-4 rounded-xl border border-cyan-500/25 bg-[#051624] p-4 text-slate-200">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                    <span className="text-xs font-black uppercase tracking-wider text-cyan-300">
+                      ⏱️ {room.gameId === "battleship" ? "Naval Battle Clock" : "Chess Clock"}
+                    </span>
+                    <span className="text-[11px] font-semibold text-slate-400">
+                      {room.effectiveHostUserId === user.id ? "Host controls" : "Configured by host"}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-white">Timer per player</p>
+                      <p className="text-xs text-slate-400">
+                        {room.gameId === "battleship"
+                          ? "Each commander's clock counts down only during their turn."
+                          : "Each player's clock runs during their move."}
+                      </p>
+                    </div>
+
+                    {room.effectiveHostUserId === user.id ? (
+                      <select
+                        value={Number(room.settings?.clockSeconds ?? 300)}
+                        onChange={(e) =>
+                          socketState.updateRoomSettings(room.id, {
+                            clockSeconds: Number(e.target.value),
+                          })
+                        }
+                        className="min-h-10 rounded-lg border border-cyan-400/30 bg-[#081e30] px-3 text-xs font-bold text-cyan-100 outline-none hover:border-cyan-400"
+                      >
+                        <option value={60}>1 minute (Bullet)</option>
+                        <option value={180}>3 minutes (Blitz)</option>
+                        <option value={300}>5 minutes (Rapid - Recommended)</option>
+                        <option value={600}>10 minutes (Tactical)</option>
+                        <option value={900}>15 minutes (Long match)</option>
+                        <option value={1800}>30 minutes</option>
+                        <option value={0}>Unlimited (Casual)</option>
+                      </select>
+                    ) : (
+                      <span className="rounded-lg border border-white/10 bg-black/40 px-3 py-1.5 text-xs font-bold text-cyan-300">
+                        {Number(room.settings?.clockSeconds ?? 300) > 0
+                          ? `${Math.floor(Number(room.settings?.clockSeconds ?? 300) / 60)} minutes per player`
+                          : "Unlimited time"}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
         ) : werewolfState ? (
