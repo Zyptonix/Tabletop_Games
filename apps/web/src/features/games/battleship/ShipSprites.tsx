@@ -18,213 +18,199 @@ export function ShipSprite({
   silhouetteOnly = false,
 }: ShipSpriteProps) {
   const isVert = orientation === "v";
+  const uid = React.useId().replace(/:/g, "_");
 
-  // Base colors
-  const hullColor = silhouetteOnly
-    ? "#0f172a"
-    : sunk
-    ? "#334155"
-    : "#94a3b8";
+  const hullColor = silhouetteOnly ? "#0a1322" : sunk ? "#334155" : "#94a3b8";
+  const deckColor = silhouetteOnly ? "#070d17" : sunk ? "#1e293b" : "#cbd5e1";
+  const detailColor = silhouetteOnly ? "#152033" : sunk ? "#475569" : "#64748b";
+  const accentColor = silhouetteOnly ? "transparent" : sunk ? "#ef4444" : "#38bdf8";
 
-  const deckColor = silhouetteOnly
-    ? "#090d16"
-    : sunk
-    ? "#1e293b"
-    : "#cbd5e1";
+  // Helper to wrap rotated vertical content
+  function wrapSvg(width: number, content: React.ReactNode, gradDefs?: React.ReactNode) {
+    const viewBox = isVert ? `0 0 100 ${width}` : `0 0 ${width} 100`;
+    return (
+      <svg
+        viewBox={viewBox}
+        className={`h-full w-full select-none drop-shadow-md ${className}`}
+        preserveAspectRatio="none"
+      >
+        <defs>{gradDefs}</defs>
+        {isVert ? (
+          <g transform="translate(100, 0) rotate(90)">
+            {content}
+          </g>
+        ) : (
+          content
+        )}
+      </svg>
+    );
+  }
 
-  const detailColor = silhouetteOnly
-    ? "#1e293b"
-    : sunk
-    ? "#475569"
-    : "#64748b";
+  const gradId = `${uid}-${id.toLowerCase()}-hull`;
 
-  const accentColor = silhouetteOnly
-    ? "transparent"
-    : sunk
-    ? "#ef4444"
-    : "#38bdf8";
-
-  // Render specific ship designs
-  switch (id) {
-    case "carrier": // Size 5
-      return (
-        <svg
-          viewBox="0 0 500 100"
-          className={`h-full w-full select-none drop-shadow-md ${isVert ? "rotate-90 origin-top-left" : ""} ${className}`}
-          preserveAspectRatio="none"
-        >
-          <defs>
-            <linearGradient id="carrierHull" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stop-color={hullColor} />
-              <stop offset="50%" stop-color={deckColor} />
-              <stop offset="100%" stop-color={hullColor} />
-            </linearGradient>
-          </defs>
+  switch (id.toLowerCase()) {
+    case "carrier": {
+      const grad = (
+        <linearGradient id={gradId} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor={hullColor} />
+          <stop offset="50%" stopColor={deckColor} />
+          <stop offset="100%" stopColor={hullColor} />
+        </linearGradient>
+      );
+      const content = (
+        <g>
           {/* Main Angled Flight Deck */}
           <polygon
-            points="15,20 470,12 492,30 488,70 460,88 15,80 5,50"
-            fill="url(#carrierHull)"
+            points="12,18 472,10 494,28 490,72 462,90 12,82 4,50"
+            fill={`url(#${gradId})`}
             stroke={detailColor}
             strokeWidth="3"
           />
-          {/* Landing Runway Lines */}
-          <line x1="30" y1="50" x2="440" y2="50" stroke={detailColor} strokeWidth="3" strokeDasharray="14,10" />
-          <line x1="120" y1="28" x2="420" y2="65" stroke="#f1f5f9" strokeWidth="2" strokeDasharray="8,6" opacity="0.6" />
+          {/* Runway Lines */}
+          <line x1="25" y1="50" x2="445" y2="50" stroke={detailColor} strokeWidth="3" strokeDasharray="14,10" />
+          <line x1="110" y1="26" x2="425" y2="66" stroke="#f1f5f9" strokeWidth="2" strokeDasharray="8,6" opacity="0.6" />
           {/* Arrestor Wires */}
-          <line x1="50" y1="30" x2="50" y2="70" stroke={detailColor} strokeWidth="2" />
-          <line x1="70" y1="30" x2="70" y2="70" stroke={detailColor} strokeWidth="2" />
-          <line x1="90" y1="30" x2="90" y2="70" stroke={detailColor} strokeWidth="2" />
-          {/* Island / Conning Tower (Starboard side) */}
-          <rect x="250" y="72" width="80" height="20" rx="4" fill={detailColor} stroke={hullColor} strokeWidth="2" />
-          <rect x="280" y="76" width="30" height="12" rx="2" fill={deckColor} />
-          <circle cx="315" cy="82" r="3" fill={accentColor} />
+          <line x1="45" y1="28" x2="45" y2="72" stroke={detailColor} strokeWidth="2" />
+          <line x1="65" y1="28" x2="65" y2="72" stroke={detailColor} strokeWidth="2" />
+          <line x1="85" y1="28" x2="85" y2="72" stroke={detailColor} strokeWidth="2" />
+          {/* Island / Conning Tower */}
+          <rect x="245" y="72" width="85" height="22" rx="4" fill={detailColor} stroke={hullColor} strokeWidth="2" />
+          <rect x="275" y="76" width="32" height="13" rx="2" fill={deckColor} />
+          <circle cx="310" cy="82" r="3.5" fill={accentColor} />
           {/* Elevators */}
-          <rect x="180" y="16" width="35" height="24" fill={detailColor} opacity="0.5" />
-          <rect x="360" y="16" width="35" height="24" fill={detailColor} opacity="0.5" />
-        </svg>
+          <rect x="175" y="14" width="36" height="24" fill={detailColor} opacity="0.5" />
+          <rect x="355" y="14" width="36" height="24" fill={detailColor} opacity="0.5" />
+        </g>
       );
+      return wrapSvg(500, content, grad);
+    }
 
-    case "battleship": // Size 4
-      return (
-        <svg
-          viewBox="0 0 400 100"
-          className={`h-full w-full select-none drop-shadow-md ${isVert ? "rotate-90 origin-top-left" : ""} ${className}`}
-          preserveAspectRatio="none"
-        >
-          <defs>
-            <linearGradient id="bbHull" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stop-color={hullColor} />
-              <stop offset="50%" stop-color={deckColor} />
-              <stop offset="100%" stop-color={hullColor} />
-            </linearGradient>
-          </defs>
+    case "battleship": {
+      const grad = (
+        <linearGradient id={gradId} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor={hullColor} />
+          <stop offset="50%" stopColor={deckColor} />
+          <stop offset="100%" stopColor={hullColor} />
+        </linearGradient>
+      );
+      const content = (
+        <g>
           {/* Sharp Armored Warship Hull */}
           <path
-            d="M 15,35 Q 5,50 15,65 L 340,78 Q 385,50 395,50 Q 385,50 340,22 Z"
-            fill="url(#bbHull)"
+            d="M 12,34 Q 4,50 12,66 L 340,80 Q 388,50 396,50 Q 388,50 340,20 Z"
+            fill={`url(#${gradId})`}
             stroke={detailColor}
             strokeWidth="3"
           />
           {/* Deck Center Structure */}
-          <path d="M 100,32 L 280,32 Q 295,50 280,68 L 100,68 Z" fill={deckColor} stroke={detailColor} strokeWidth="2" />
+          <path d="M 95,30 L 285,30 Q 300,50 285,70 L 95,70 Z" fill={deckColor} stroke={detailColor} strokeWidth="2" />
           {/* Forward Triple Turrets */}
-          {/* Turret 1 */}
-          <circle cx="330" cy="50" r="14" fill={detailColor} />
-          <line x1="330" y1="45" x2="365" y2="45" stroke="#334155" strokeWidth="4" />
-          <line x1="330" y1="50" x2="368" y2="50" stroke="#334155" strokeWidth="4" />
-          <line x1="330" y1="55" x2="365" y2="55" stroke="#334155" strokeWidth="4" />
-          {/* Turret 2 */}
-          <circle cx="280" cy="50" r="14" fill={detailColor} />
-          <line x1="280" y1="45" x2="315" y2="45" stroke="#334155" strokeWidth="4" />
-          <line x1="280" y1="50" x2="318" y2="50" stroke="#334155" strokeWidth="4" />
-          <line x1="280" y1="55" x2="315" y2="55" stroke="#334155" strokeWidth="4" />
-          {/* Bridge Tower & Funnel */}
-          <rect x="180" y="38" width="55" height="24" rx="4" fill={detailColor} />
-          <circle cx="160" cy="50" r="8" fill="#1e293b" />
-          {/* Aft Turret */}
-          <circle cx="65" cy="50" r="14" fill={detailColor} />
-          <line x1="65" y1="46" x2="30" y2="46" stroke="#334155" strokeWidth="4" />
-          <line x1="65" y1="54" x2="30" y2="54" stroke="#334155" strokeWidth="4" />
-        </svg>
-      );
+          <circle cx="330" cy="50" r="15" fill={detailColor} />
+          <line x1="330" y1="44" x2="368" y2="44" stroke="#1e293b" strokeWidth="4" />
+          <line x1="330" y1="50" x2="372" y2="50" stroke="#1e293b" strokeWidth="4" />
+          <line x1="330" y1="56" x2="368" y2="56" stroke="#1e293b" strokeWidth="4" />
 
-    case "cruiser": // Size 3
-      return (
-        <svg
-          viewBox="0 0 300 100"
-          className={`h-full w-full select-none drop-shadow-md ${isVert ? "rotate-90 origin-top-left" : ""} ${className}`}
-          preserveAspectRatio="none"
-        >
-          <defs>
-            <linearGradient id="cruiserHull" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stop-color={hullColor} />
-              <stop offset="50%" stop-color={deckColor} />
-              <stop offset="100%" stop-color={hullColor} />
-            </linearGradient>
-          </defs>
-          {/* Sleek Warship Hull */}
+          <circle cx="278" cy="50" r="15" fill={detailColor} />
+          <line x1="278" y1="44" x2="316" y2="44" stroke="#1e293b" strokeWidth="4" />
+          <line x1="278" y1="50" x2="320" y2="50" stroke="#1e293b" strokeWidth="4" />
+          <line x1="278" y1="56" x2="316" y2="56" stroke="#1e293b" strokeWidth="4" />
+
+          {/* Bridge & Mast */}
+          <rect x="175" y="36" width="60" height="28" rx="4" fill={detailColor} />
+          <circle cx="155" cy="50" r="9" fill="#0f172a" />
+          {/* Aft Turret */}
+          <circle cx="60" cy="50" r="15" fill={detailColor} />
+          <line x1="60" y1="45" x2="22" y2="45" stroke="#1e293b" strokeWidth="4" />
+          <line x1="60" y1="55" x2="22" y2="55" stroke="#1e293b" strokeWidth="4" />
+        </g>
+      );
+      return wrapSvg(400, content, grad);
+    }
+
+    case "cruiser": {
+      const grad = (
+        <linearGradient id={gradId} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor={hullColor} />
+          <stop offset="50%" stopColor={deckColor} />
+          <stop offset="100%" stopColor={hullColor} />
+        </linearGradient>
+      );
+      const content = (
+        <g>
           <path
-            d="M 12,38 Q 4,50 12,62 L 250,72 Q 288,50 294,50 Q 288,50 250,28 Z"
-            fill="url(#cruiserHull)"
+            d="M 10,36 Q 3,50 10,64 L 250,74 Q 290,50 296,50 Q 290,50 250,26 Z"
+            fill={`url(#${gradId})`}
             stroke={detailColor}
             strokeWidth="3"
           />
           {/* Forward Turret */}
-          <circle cx="230" cy="50" r="11" fill={detailColor} />
-          <line x1="230" y1="47" x2="260" y2="47" stroke="#334155" strokeWidth="3" />
-          <line x1="230" y1="53" x2="260" y2="53" stroke="#334155" strokeWidth="3" />
-          {/* Bridge & Mast */}
-          <rect x="130" y="38" width="45" height="24" rx="3" fill={detailColor} />
-          <circle cx="110" cy="50" r="6" fill="#1e293b" />
-          {/* Aft Missile Mount */}
-          <rect x="55" y="42" width="24" height="16" rx="2" fill={detailColor} />
-          <line x1="60" y1="50" x2="74" y2="50" stroke={accentColor} strokeWidth="3" />
-        </svg>
+          <circle cx="230" cy="50" r="12" fill={detailColor} />
+          <line x1="230" y1="46" x2="264" y2="46" stroke="#1e293b" strokeWidth="3.5" />
+          <line x1="230" y1="54" x2="264" y2="54" stroke="#1e293b" strokeWidth="3.5" />
+          {/* Bridge Structure */}
+          <rect x="125" y="36" width="50" height="28" rx="3" fill={detailColor} />
+          <circle cx="105" cy="50" r="7" fill="#0f172a" />
+          {/* Aft Launcher */}
+          <rect x="50" y="40" width="28" height="20" rx="2" fill={detailColor} />
+          <line x1="56" y1="50" x2="72" y2="50" stroke={accentColor} strokeWidth="3.5" />
+        </g>
       );
+      return wrapSvg(300, content, grad);
+    }
 
-    case "submarine": // Size 3
-      return (
-        <svg
-          viewBox="0 0 300 100"
-          className={`h-full w-full select-none drop-shadow-md ${isVert ? "rotate-90 origin-top-left" : ""} ${className}`}
-          preserveAspectRatio="none"
-        >
-          <defs>
-            <linearGradient id="subHull" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stop-color={detailColor} />
-              <stop offset="50%" stop-color={hullColor} />
-              <stop offset="100%" stop-color={detailColor} />
-            </linearGradient>
-          </defs>
-          {/* Streamlined Submarine Hull */}
-          <path
-            d="M 18,50 Q 8,42 12,32 L 24,32 L 24,68 L 12,68 Q 8,58 18,50 Z"
-            fill={detailColor}
-          />
-          <ellipse cx="150" cy="50" rx="135" ry="24" fill="url(#subHull)" stroke={detailColor} strokeWidth="3" />
+    case "submarine": {
+      const grad = (
+        <linearGradient id={gradId} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor={detailColor} />
+          <stop offset="50%" stopColor={hullColor} />
+          <stop offset="100%" stopColor={detailColor} />
+        </linearGradient>
+      );
+      const content = (
+        <g>
+          <path d="M 14,50 Q 6,40 10,30 L 22,30 L 22,70 L 10,70 Q 6,60 14,50 Z" fill={detailColor} />
+          <ellipse cx="150" cy="50" rx="138" ry="26" fill={`url(#${gradId})`} stroke={detailColor} strokeWidth="3" />
           {/* Conning Tower (Fin) */}
-          <path d="M 130,50 L 165,50 L 160,32 L 138,32 Z" fill="#0f172a" />
-          <circle cx="148" cy="38" r="3" fill={accentColor} />
-          {/* Forward Sonar Dome */}
-          <ellipse cx="275" cy="50" rx="10" ry="18" fill="#1e293b" />
+          <path d="M 125,50 L 168,50 L 162,30 L 135,30 Z" fill="#090d16" />
+          <circle cx="148" cy="38" r="3.5" fill={accentColor} />
+          {/* Sonar Nose Dome */}
+          <ellipse cx="278" cy="50" rx="10" ry="20" fill="#0f172a" />
           {/* Tail Rudder Stabilizers */}
-          <polygon points="12,20 28,32 18,34" fill={detailColor} />
-          <polygon points="12,80 28,68 18,66" fill={detailColor} />
-        </svg>
+          <polygon points="10,18 26,30 16,32" fill={detailColor} />
+          <polygon points="10,82 26,70 16,68" fill={detailColor} />
+        </g>
       );
+      return wrapSvg(300, content, grad);
+    }
 
-    case "destroyer": // Size 2
-    default:
-      return (
-        <svg
-          viewBox="0 0 200 100"
-          className={`h-full w-full select-none drop-shadow-md ${isVert ? "rotate-90 origin-top-left" : ""} ${className}`}
-          preserveAspectRatio="none"
-        >
-          <defs>
-            <linearGradient id="destroyerHull" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stop-color={hullColor} />
-              <stop offset="50%" stop-color={deckColor} />
-              <stop offset="100%" stop-color={hullColor} />
-            </linearGradient>
-          </defs>
-          {/* Fast Patrol Cutter Hull */}
+    case "destroyer":
+    default: {
+      const grad = (
+        <linearGradient id={gradId} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor={hullColor} />
+          <stop offset="50%" stopColor={deckColor} />
+          <stop offset="100%" stopColor={hullColor} />
+        </linearGradient>
+      );
+      const content = (
+        <g>
           <path
-            d="M 12,38 Q 4,50 12,62 L 155,70 Q 192,50 196,50 Q 192,50 155,30 Z"
-            fill="url(#destroyerHull)"
+            d="M 10,36 Q 3,50 10,64 L 155,72 Q 194,50 197,50 Q 194,50 155,28 Z"
+            fill={`url(#${gradId})`}
             stroke={detailColor}
             strokeWidth="3"
           />
           {/* Forward Cannon */}
-          <circle cx="140" cy="50" r="9" fill={detailColor} />
-          <line x1="140" y1="50" x2="168" y2="50" stroke="#334155" strokeWidth="3.5" />
+          <circle cx="140" cy="50" r="10" fill={detailColor} />
+          <line x1="140" y1="50" x2="172" y2="50" stroke="#1e293b" strokeWidth="4" />
           {/* Cabin Superstructure */}
-          <rect x="75" y="38" width="38" height="24" rx="3" fill={detailColor} />
-          <rect x="85" y="43" width="18" height="14" rx="1" fill="#1e293b" />
+          <rect x="70" y="36" width="44" height="28" rx="3" fill={detailColor} />
+          <rect x="82" y="42" width="20" height="16" rx="2" fill="#0f172a" />
           {/* Depth Charge Racks */}
-          <rect x="25" y="44" width="14" height="12" rx="2" fill={detailColor} />
-        </svg>
+          <rect x="22" y="42" width="16" height="16" rx="2" fill={detailColor} />
+        </g>
       );
+      return wrapSvg(200, content, grad);
+    }
   }
 }
-

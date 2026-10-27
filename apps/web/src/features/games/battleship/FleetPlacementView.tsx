@@ -75,27 +75,22 @@ export function FleetPlacementView({
     }
 
     // Otherwise place active ship if one is selected
-    if (!activeShipConfig) {
-      // Pick first unplaced ship if available
-      if (unplacedConfigs[0]) {
-        setActiveShipConfig(unplacedConfigs[0]);
-      }
-      return;
-    }
+    const shipToPlace = activeShipConfig ?? unplacedConfigs[0];
+    if (!shipToPlace) return;
 
-    if (isValidPlacement(x, y, activeShipConfig.size, orientation, placedShips)) {
-      const cells = computeShipCells(x, y, activeShipConfig.size, orientation);
+    if (isValidPlacement(x, y, shipToPlace.size, orientation, placedShips)) {
+      const cells = computeShipCells(x, y, shipToPlace.size, orientation);
       const newShip: ClientPlacedShip = {
-        id: activeShipConfig.id,
-        name: activeShipConfig.name,
-        size: activeShipConfig.size,
+        id: shipToPlace.id,
+        name: shipToPlace.name,
+        size: shipToPlace.size,
         x,
         y,
         orientation,
         cells,
       };
 
-      const nextPlaced = [...placedShips.filter((s) => s.id !== activeShipConfig.id), newShip];
+      const nextPlaced = [...placedShips.filter((s) => s.id !== shipToPlace.id), newShip];
       setPlacedShips(nextPlaced);
 
       // Select next unplaced ship automatically
@@ -121,29 +116,32 @@ export function FleetPlacementView({
 
   const allPlaced = placedShips.length === 5;
 
+  // Active target ship config (explicitly selected or next unplaced)
+  const currentTargetShip = activeShipConfig ?? (!allPlaced ? unplacedConfigs[0] : null);
+
   // Calculate hover preview cells
-  const previewCells = hoverCell && activeShipConfig
-    ? computeShipCells(hoverCell.x, hoverCell.y, activeShipConfig.size, orientation)
+  const previewCells = hoverCell && currentTargetShip && !isLockedIn
+    ? computeShipCells(hoverCell.x, hoverCell.y, currentTargetShip.size, orientation)
     : [];
 
-  const isPreviewValid = hoverCell && activeShipConfig
-    ? isValidPlacement(hoverCell.x, hoverCell.y, activeShipConfig.size, orientation, placedShips)
+  const isPreviewValid = hoverCell && currentTargetShip && !isLockedIn
+    ? isValidPlacement(hoverCell.x, hoverCell.y, currentTargetShip.size, orientation, placedShips)
     : false;
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col justify-between gap-3 text-slate-100">
-      {/* Header bar */}
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-cyan-500/20 bg-[#07172e]/80 px-4 py-2.5 rounded-xl">
+    <div className="flex h-full min-h-0 w-full flex-col justify-between gap-2 overflow-hidden text-slate-100 select-none">
+      {/* Top Header Bar */}
+      <div className="flex shrink-0 items-center justify-between gap-2 rounded-xl border border-cyan-500/20 bg-[#07172e]/90 px-3 py-2 shadow-md">
         <div className="flex items-center gap-2">
           <Anchor className="h-5 w-5 text-cyan-400" />
           <div>
-            <h2 className="text-sm font-black tracking-wide text-white sm:text-base">
+            <h2 className="text-xs sm:text-sm font-black tracking-wide text-white">
               FLEET DEPLOYMENT PHASE
             </h2>
-            <p className="text-[11px] text-cyan-200/60">
+            <p className="text-[10px] sm:text-[11px] text-cyan-200/70">
               {isLockedIn
                 ? "Fleet locked in! Awaiting enemy fleet readiness."
-                : "Click or drag to place your 5 warships. Press [R] to rotate."}
+                : "Click grid to position warships. Press [R] to rotate."}
             </p>
           </div>
         </div>
@@ -151,122 +149,112 @@ export function FleetPlacementView({
         {/* Status Pill */}
         <div className="flex items-center gap-2">
           {isLockedIn ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-950/80 px-3 py-1 text-xs font-black text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/40 bg-emerald-950/90 px-3 py-1 text-xs font-black text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
               <ShieldCheck className="h-4 w-4" /> Ready for Battle
             </span>
           ) : (
-            <span className="rounded-full border border-cyan-400/30 bg-cyan-950/60 px-3 py-1 text-xs font-bold text-cyan-200">
+            <span className="rounded-full border border-cyan-400/30 bg-cyan-950/70 px-3 py-1 text-xs font-bold text-cyan-200">
               {placedShips.length}/5 Ships Placed
             </span>
           )}
         </div>
       </div>
 
-      {/* Main Placement Area */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 items-center justify-center gap-4 lg:grid-cols-[auto_320px]">
-        {/* Ocean Grid Container */}
-        <div className="flex min-h-0 items-center justify-center">
+      {/* Main Placement Arena: Ocean Grid on Left/Center, Controls Dock on Right */}
+      <div className="grid min-h-0 flex-1 grid-cols-1 items-center justify-center gap-3 lg:grid-cols-[1fr_320px] xl:grid-cols-[1fr_340px]">
+        {/* Ocean Grid Frame */}
+        <div className="flex h-full min-h-0 w-full items-center justify-center p-1">
           <div
-            className="relative aspect-square w-full max-w-[min(48vw,48vh)] overflow-hidden rounded-xl border-2 border-cyan-400/30 bg-[#061426] p-2 shadow-[0_0_35px_rgba(6,182,212,0.15)]"
-            style={{
-              backgroundImage: "radial-gradient(ellipse at 50% 50%, #0a254c 0%, #041022 100%)",
-            }}
+            className="flex flex-col h-full max-h-[calc(100dvh-130px)] aspect-square w-auto max-w-[min(65vw,calc(100dvh-130px))]"
             onMouseLeave={() => setHoverCell(null)}
           >
-            {/* Coordinates Grid */}
-            <div
-              className="grid h-full w-full gap-[2px]"
-              style={{
-                gridTemplateColumns: "1.2rem repeat(10, minmax(0, 1fr))",
-                gridTemplateRows: "1.2rem repeat(10, minmax(0, 1fr))",
-              }}
-            >
-              {/* Corner */}
-              <div />
-
-              {/* Top A-J Headers */}
-              {letters.split("").map((letter) => (
-                <div
-                  key={letter}
-                  className="flex items-center justify-center text-[10px] font-black text-cyan-200/60"
-                >
-                  {letter}
-                </div>
-              ))}
-
-              {/* 100 Cells + 1-10 Row Labels */}
-              {Array.from({ length: 10 }, (_, row) => (
-                <div
-                  key={`row-${row}`}
-                  className="contents"
-                >
-                  {/* Row Number */}
-                  <div className="flex items-center justify-center text-[10px] font-black text-cyan-200/60">
-                    {row + 1}
+            {/* Top Coordinate Letters (A-J) */}
+            <div className="flex shrink-0 items-center pl-6 sm:pl-7 pr-1 pb-1">
+              <div className="grid w-full grid-cols-10 gap-[2px]">
+                {letters.split("").map((letter) => (
+                  <div
+                    key={letter}
+                    className="flex items-center justify-center text-[10px] sm:text-xs font-black text-cyan-300/70"
+                  >
+                    {letter}
                   </div>
+                ))}
+              </div>
+            </div>
 
-                  {/* 10 Row Cells */}
-                  {Array.from({ length: 10 }, (_, col) => {
-                    const cellKey = `${col},${row}`;
-                    const shipOnCell = placedShips.find((s) => s.cells.includes(cellKey));
-                    const isPreview = previewCells.includes(cellKey);
+            {/* Ocean Body: Left 1-10 labels + Pure 10x10 Grid */}
+            <div className="flex min-h-0 flex-1 items-stretch gap-1">
+              {/* Row Numbers 1-10 */}
+              <div className="grid w-5 sm:w-6 shrink-0 grid-rows-10 gap-[2px] py-1">
+                {Array.from({ length: 10 }, (_, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-center text-[10px] sm:text-xs font-black text-cyan-300/70"
+                  >
+                    {i + 1}
+                  </div>
+                ))}
+              </div>
 
-                    let cellBg = "bg-[#0b2447]/60 border border-cyan-400/10 hover:border-cyan-300/40 hover:bg-[#103366]/70";
+              {/* The 10x10 Pure Ocean Grid */}
+              <div
+                className="relative flex-1 aspect-square rounded-xl border-2 border-cyan-500/30 overflow-hidden shadow-[0_0_35px_rgba(6,182,212,0.15)] bg-[#05162b]"
+                style={{
+                  backgroundImage: "radial-gradient(ellipse at 50% 50%, #082850 0%, #031024 100%)",
+                }}
+              >
+                {/* 100 interactive water cell tiles */}
+                <div className="grid h-full w-full grid-cols-10 grid-rows-10 gap-[2px] p-[2px]">
+                  {Array.from({ length: 10 }, (_, row) =>
+                    Array.from({ length: 10 }, (_, col) => {
+                      const cellKey = `${col},${row}`;
+                      const shipOnCell = placedShips.find((s) => s.cells.includes(cellKey));
+                      const isPreview = previewCells.includes(cellKey);
 
-                    if (isPreview) {
-                      cellBg = isPreviewValid
-                        ? "bg-emerald-500/40 border-2 border-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]"
-                        : "bg-red-500/40 border-2 border-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]";
-                    } else if (shipOnCell) {
-                      cellBg = "bg-slate-700/80 border border-slate-400/40";
-                    }
+                      let cellBg = "bg-[#0b274c]/55 hover:bg-[#11396e]/70 border border-cyan-400/10 hover:border-cyan-400/40";
 
+                      if (isPreview) {
+                        cellBg = isPreviewValid
+                          ? "bg-emerald-500/40 border-2 border-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]"
+                          : "bg-red-500/40 border-2 border-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]";
+                      } else if (shipOnCell) {
+                        cellBg = "bg-cyan-950/30 border border-cyan-400/20";
+                      }
+
+                      return (
+                        <button
+                          key={cellKey}
+                          type="button"
+                          disabled={isLockedIn}
+                          onClick={() => handleCellClick(col, row)}
+                          onMouseEnter={() => setHoverCell({ x: col, y: row })}
+                          className={`relative flex aspect-square items-center justify-center rounded-[2px] transition-colors ${cellBg}`}
+                          title={shipOnCell ? `${shipOnCell.name} (Click to move)` : `${letters[col]}${row + 1}`}
+                        />
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Pixel-Perfect Ships Overlay (10x10 Grid aligned with cells) */}
+                <div className="pointer-events-none absolute inset-0 grid h-full w-full grid-cols-10 grid-rows-10 gap-[2px] p-[2px]">
+                  {placedShips.map((ship) => {
+                    const colSpan = ship.orientation === "h" ? ship.size : 1;
+                    const rowSpan = ship.orientation === "v" ? ship.size : 1;
                     return (
-                      <button
-                        key={cellKey}
-                        type="button"
-                        disabled={isLockedIn}
-                        onClick={() => handleCellClick(col, row)}
-                        onMouseEnter={() => setHoverCell({ x: col, y: row })}
-                        className={`relative flex aspect-square items-center justify-center rounded-[2px] transition-colors ${cellBg}`}
-                        title={shipOnCell ? `${shipOnCell.name} (Click to move)` : `${letters[col]}${row + 1}`}
+                      <div
+                        key={ship.id}
+                        className="relative z-10 flex h-full w-full items-center justify-center p-0.5"
+                        style={{
+                          gridColumn: `${ship.x + 1} / span ${colSpan}`,
+                          gridRow: `${ship.y + 1} / span ${rowSpan}`,
+                        }}
                       >
-                        {/* Dot indicator for ship parts */}
-                        {shipOnCell ? (
-                          <div className="h-2 w-2 rounded-full bg-slate-300 shadow-[0_0_4px_white]" />
-                        ) : null}
-                      </button>
+                        <ShipSprite id={ship.id} orientation={ship.orientation} />
+                      </div>
                     );
                   })}
                 </div>
-              ))}
-            </div>
-
-            {/* Render Placed Ships As Overlay Graphics */}
-            <div className="pointer-events-none absolute inset-2">
-              <div
-                className="grid h-full w-full gap-[2px]"
-                style={{
-                  gridTemplateColumns: "1.2rem repeat(10, minmax(0, 1fr))",
-                  gridTemplateRows: "1.2rem repeat(10, minmax(0, 1fr))",
-                }}
-              >
-                {placedShips.map((ship) => {
-                  const colSpan = ship.orientation === "h" ? ship.size : 1;
-                  const rowSpan = ship.orientation === "v" ? ship.size : 1;
-                  return (
-                    <div
-                      key={ship.id}
-                      className="relative p-0.5"
-                      style={{
-                        gridColumn: `${ship.x + 2} / span ${colSpan}`,
-                        gridRow: `${ship.y + 2} / span ${rowSpan}`,
-                      }}
-                    >
-                      <ShipSprite id={ship.id} orientation={ship.orientation} />
-                    </div>
-                  );
-                })}
               </div>
             </div>
           </div>
@@ -284,10 +272,10 @@ export function FleetPlacementView({
               size="sm"
               disabled={isLockedIn}
               onClick={() => setOrientation((prev) => (prev === "h" ? "v" : "h"))}
-              className="h-8 gap-1 border-cyan-400/30 text-xs text-cyan-100 hover:bg-cyan-500/20"
+              className="h-8 gap-1.5 border-cyan-400/30 text-xs text-cyan-100 hover:bg-cyan-500/20"
             >
               <RotateCw className="h-3.5 w-3.5" />
-              {orientation === "h" ? "Horizontal" : "Vertical"}
+              {orientation === "h" ? "Horizontal [R]" : "Vertical [R]"}
             </Button>
           </div>
 

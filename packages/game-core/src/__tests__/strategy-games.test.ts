@@ -274,6 +274,13 @@ describe("Ludo and Battleships rule regressions v4", () => {
     const p1Ships = state.shipDetailsByPlayer!["p1"]!;
     const p2Ships = state.shipDetailsByPlayer!["p2"]!;
 
+    const validation1 = battleshipModule.validateAction({
+      state,
+      playerId: "p1",
+      action: { type: "place_fleet", ships: p1Ships }
+    });
+    expect(validation1.ok).toBe(true);
+
     const res1 = battleshipModule.applyAction({
       state,
       playerId: "p1",

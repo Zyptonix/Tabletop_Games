@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Anchor, Crosshair, Shield, Users, AlertTriangle } from "lucide-react";
+import { Crosshair, Shield } from "lucide-react";
 import type { BoardGameTableProps } from "../board-games/shared/types";
 import { owns } from "../board-games/shared/ui-utils";
 import { FLEET_CONFIG, ClientPlacedShip } from "./fleetUtils";
@@ -54,21 +54,21 @@ export function BattleshipTable(props: BoardGameTableProps) {
     onAction("fire", { x, y });
   }
 
-  // Peg Marker Component
-  function PegMarker({ hit, sunk }: { hit: boolean; sunk?: boolean }) {
+  // Peg Marker Component matching user reference
+  function PegMarker({ hit }: { hit: boolean; sunk?: boolean }) {
     if (hit) {
       return (
-        <div className="relative flex items-center justify-center">
-          <span className="absolute h-6 w-6 rounded-full border border-red-400 opacity-60 animate-ping" />
-          <div className="flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full border-2 border-white bg-red-600 shadow-[0_0_12px_#ef4444]">
-            <div className="h-1.5 w-1.5 rounded-full bg-white" />
+        <div className="relative z-20 flex items-center justify-center">
+          <span className="absolute h-4 w-4 sm:h-5 sm:w-5 rounded-full border border-red-400 opacity-60 animate-ping" />
+          <div className="flex h-3.5 w-3.5 sm:h-4 sm:w-4 items-center justify-center rounded-full border-2 border-white bg-red-600 shadow-[0_0_10px_#ef4444]">
+            <div className="h-1 w-1 rounded-full bg-white" />
           </div>
         </div>
       );
     }
     return (
-      <div className="flex h-3.5 w-3.5 sm:h-4 sm:w-4 items-center justify-center rounded-full border border-white/60 bg-white/40 shadow-[0_0_6px_rgba(255,255,255,0.6)]">
-        <span className="text-[9px] font-black text-white">✕</span>
+      <div className="relative z-20 flex h-3 w-3 sm:h-3.5 sm:w-3.5 items-center justify-center rounded-full border border-white/60 bg-white/40 shadow-[0_0_6px_rgba(255,255,255,0.6)]">
+        <span className="text-[8px] sm:text-[9px] font-black leading-none text-white">✕</span>
       </div>
     );
   }
@@ -111,13 +111,13 @@ export function BattleshipTable(props: BoardGameTableProps) {
       />
 
       {/* TOP TACTICAL COMMAND BAR */}
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-cyan-500/20 bg-[#07172e]/90 px-3 py-2 shadow-md">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-cyan-500/20 bg-[#07172e]/90 px-3 py-1.5 shadow-md">
         {/* Friendly Fleet Health Icons */}
         <div className="flex items-center gap-2">
           <Shield className="h-4 w-4 text-cyan-400" />
           <div className="hidden sm:block">
             <p className="text-[10px] font-black uppercase tracking-wider text-cyan-300">Defense Fleet</p>
-            <p className="text-[9px] text-slate-400">{myCellsRemaining}/17 Cells Intact</p>
+            <p className="text-[9px] text-slate-400">{myCellsRemaining}/17 Cells</p>
           </div>
           <div className="flex items-center gap-1.5 ml-1">
             {FLEET_CONFIG.map((ship) => {
@@ -164,7 +164,7 @@ export function BattleshipTable(props: BoardGameTableProps) {
             }`}
           >
             <Crosshair className="h-4 w-4" />
-            {isMyTurn ? "YOUR TURN: TARGET ENEMY WATERS" : `ENEMY'S TURN: BRACING FOR IMPACT`}
+            {isMyTurn ? "YOUR TURN: TARGET ENEMY WATERS" : "ENEMY'S TURN: BRACING FOR IMPACT"}
           </div>
 
           {timer?.remainingMs !== null && timer?.remainingMs !== undefined ? (
@@ -207,205 +207,204 @@ export function BattleshipTable(props: BoardGameTableProps) {
           </div>
           <div className="hidden sm:block text-right">
             <p className="text-[10px] font-black uppercase tracking-wider text-rose-300">Enemy Fleet</p>
-            <p className="text-[9px] text-slate-400">{enemyCellsRemaining}/17 Remaining</p>
+            <p className="text-[9px] text-slate-400">{enemyCellsRemaining}/17 Cells</p>
           </div>
         </div>
       </div>
 
       {/* DUAL SCREEN OCEAN GRIDS: LEFT (MY FLEET) & RIGHT (TARGET RADAR) */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 items-center justify-center gap-3 sm:grid-cols-2 lg:gap-6">
+      <div className="grid min-h-0 flex-1 grid-cols-1 items-center justify-center gap-3 sm:grid-cols-2 lg:gap-4 xl:gap-6">
         {/* LEFT: DEFENSE WATERS (MY FLEET) */}
-        <section className="flex flex-col items-center justify-center min-h-0">
-          <div className="mb-1 flex w-full max-w-[min(42vw,44vh)] items-center justify-between px-1">
-            <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wide text-cyan-200">
-              <Shield className="h-3.5 w-3.5 text-cyan-400" /> Defense Waters (Your Fleet)
-            </span>
-            <span className="text-[10px] font-bold text-slate-400">
-              {incoming.length} shots received · {myTotalHitsReceived} hits
-            </span>
-          </div>
+        <section className="flex flex-col items-center justify-center min-h-0 h-full w-full">
+          <div className="flex flex-col h-full max-h-[calc(100dvh-140px)] aspect-square w-auto max-w-[min(48vw,calc(100dvh-140px))]">
+            {/* Header with Title and Stats */}
+            <div className="mb-1 flex shrink-0 items-center justify-between px-1">
+              <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wide text-cyan-200">
+                <Shield className="h-3.5 w-3.5 text-cyan-400" /> Defense Waters (Your Fleet)
+              </span>
+              <span className="text-[10px] font-bold text-slate-400">
+                {incoming.length} shots received · {myTotalHitsReceived} hits
+              </span>
+            </div>
 
-          <div
-            className="relative aspect-square w-full max-w-[min(42vw,44vh)] overflow-hidden rounded-xl border-2 border-cyan-500/30 bg-[#061426] p-1.5 shadow-[0_0_30px_rgba(6,182,212,0.12)]"
-            style={{
-              backgroundImage: "radial-gradient(ellipse at 50% 50%, #0a254c 0%, #041022 100%)",
-            }}
-          >
-            {/* Grid Cells */}
-            <div
-              className="grid h-full w-full gap-[2px]"
-              style={{
-                gridTemplateColumns: "1.1rem repeat(10, minmax(0, 1fr))",
-                gridTemplateRows: "1.1rem repeat(10, minmax(0, 1fr))",
-              }}
-            >
-              {/* Corner */}
-              <div />
-              {letters.split("").map((letter) => (
-                <div key={letter} className="flex items-center justify-center text-[9px] font-black text-cyan-200/60">
-                  {letter}
-                </div>
-              ))}
-
-              {Array.from({ length: 10 }, (_, row) => (
-                <div key={`def-row-${row}`} className="contents">
-                  <div className="flex items-center justify-center text-[9px] font-black text-cyan-200/60">
-                    {row + 1}
+            {/* Coordinates letters A-J */}
+            <div className="flex shrink-0 items-center pl-6 sm:pl-7 pr-1 pb-1">
+              <div className="grid w-full grid-cols-10 gap-[2px]">
+                {letters.split("").map((letter) => (
+                  <div key={letter} className="flex items-center justify-center text-[10px] sm:text-xs font-black text-cyan-300/70">
+                    {letter}
                   </div>
-                  {Array.from({ length: 10 }, (_, col) => {
-                    const key = `${col},${row}`;
-                    const shot = incomingAt(col, row);
-                    const isShip = ownFleetCells.has(key);
+                ))}
+              </div>
+            </div>
 
+            {/* Ocean Body: 1-10 on left, 10x10 Ocean Grid on right */}
+            <div className="flex min-h-0 flex-1 items-stretch gap-1">
+              <div className="grid w-5 sm:w-6 shrink-0 grid-rows-10 gap-[2px] py-1">
+                {Array.from({ length: 10 }, (_, i) => (
+                  <div key={i} className="flex items-center justify-center text-[10px] sm:text-xs font-black text-cyan-300/70">
+                    {i + 1}
+                  </div>
+                ))}
+              </div>
+
+              {/* Pure 10x10 Ocean Grid */}
+              <div
+                className="relative flex-1 aspect-square rounded-xl border-2 border-cyan-500/30 overflow-hidden shadow-[0_0_30px_rgba(6,182,212,0.15)] bg-[#05162b]"
+                style={{
+                  backgroundImage: "radial-gradient(ellipse at 50% 50%, #082850 0%, #031024 100%)",
+                }}
+              >
+                {/* 100 Cell Tiles */}
+                <div className="grid h-full w-full grid-cols-10 grid-rows-10 gap-[2px] p-[2px]">
+                  {Array.from({ length: 10 }, (_, row) =>
+                    Array.from({ length: 10 }, (_, col) => {
+                      const key = `${col},${row}`;
+                      const shot = incomingAt(col, row);
+                      const isShip = ownFleetCells.has(key);
+
+                      return (
+                        <div
+                          key={`def-${key}`}
+                          className={`relative flex aspect-square items-center justify-center rounded-[2px] border ${
+                            shot
+                              ? shot.hit
+                                ? "border-red-500/50 bg-red-950/60"
+                                : "border-sky-300/25 bg-[#081e3d]"
+                              : isShip
+                              ? "border-cyan-400/20 bg-cyan-950/30"
+                              : "border-cyan-400/10 bg-[#0b274c]/55"
+                          }`}
+                        >
+                          {shot ? <PegMarker hit={shot.hit} sunk={shot.sunk} /> : null}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Pixel-Perfect Overlay of My Ships */}
+                <div className="pointer-events-none absolute inset-0 grid h-full w-full grid-cols-10 grid-rows-10 gap-[2px] p-[2px]">
+                  {state.ownShips?.map((ship) => {
+                    const colSpan = ship.orientation === "h" ? ship.size : 1;
+                    const rowSpan = ship.orientation === "v" ? ship.size : 1;
                     return (
                       <div
-                        key={`def-${key}`}
-                        className={`relative flex aspect-square items-center justify-center rounded-[2px] border ${
-                          shot
-                            ? shot.hit
-                              ? "border-red-500/40 bg-red-950/50"
-                              : "border-sky-300/20 bg-[#081e3d]"
-                            : isShip
-                            ? "border-slate-500/30 bg-slate-800/60"
-                            : "border-cyan-400/10 bg-[#0b2447]/60"
-                        }`}
+                        key={ship.id}
+                        className="relative z-10 flex h-full w-full items-center justify-center p-0.5"
+                        style={{
+                          gridColumn: `${ship.x + 1} / span ${colSpan}`,
+                          gridRow: `${ship.y + 1} / span ${rowSpan}`,
+                        }}
                       >
-                        {shot ? <PegMarker hit={shot.hit} sunk={shot.sunk} /> : null}
+                        <ShipSprite id={ship.id} orientation={ship.orientation} sunk={ship.sunk} />
                       </div>
                     );
                   })}
                 </div>
-              ))}
-            </div>
-
-            {/* Overlay My Ships Graphics */}
-            <div className="pointer-events-none absolute inset-1.5">
-              <div
-                className="grid h-full w-full gap-[2px]"
-                style={{
-                  gridTemplateColumns: "1.1rem repeat(10, minmax(0, 1fr))",
-                  gridTemplateRows: "1.1rem repeat(10, minmax(0, 1fr))",
-                }}
-              >
-                {state.ownShips?.map((ship) => {
-                  const colSpan = ship.orientation === "h" ? ship.size : 1;
-                  const rowSpan = ship.orientation === "v" ? ship.size : 1;
-                  return (
-                    <div
-                      key={ship.id}
-                      className="relative p-0.5"
-                      style={{
-                        gridColumn: `${ship.x + 2} / span ${colSpan}`,
-                        gridRow: `${ship.y + 2} / span ${rowSpan}`,
-                      }}
-                    >
-                      <ShipSprite id={ship.id} orientation={ship.orientation} sunk={ship.sunk} />
-                    </div>
-                  );
-                })}
               </div>
             </div>
           </div>
         </section>
 
         {/* RIGHT: ATTACK RADAR (ENEMY WATERS) */}
-        <section className="flex flex-col items-center justify-center min-h-0">
-          <div className="mb-1 flex w-full max-w-[min(42vw,44vh)] items-center justify-between px-1">
-            <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wide text-emerald-300">
-              <Crosshair className="h-3.5 w-3.5 text-emerald-400" /> Attack Radar ({opponent?.displayName ?? "Enemy"})
-            </span>
-            <span className="text-[10px] font-bold text-slate-400">
-              {hoverTarget ? `Target: [${letters[hoverTarget.x]}${hoverTarget.y + 1}]` : "Select coordinate to fire"}
-            </span>
-          </div>
-
+        <section className="flex flex-col items-center justify-center min-h-0 h-full w-full">
           <div
-            className={`relative aspect-square w-full max-w-[min(42vw,44vh)] overflow-hidden rounded-xl border-2 p-1.5 transition-all shadow-[0_0_30px_rgba(16,185,129,0.12)] ${
-              isMyTurn
-                ? "border-emerald-400/50 bg-[#041624] shadow-[0_0_35px_rgba(52,211,153,0.2)]"
-                : "border-slate-700/40 bg-[#06121d]"
-            }`}
-            style={{
-              backgroundImage: "radial-gradient(ellipse at 50% 50%, #07283c 0%, #030e17 100%)",
-            }}
+            className="flex flex-col h-full max-h-[calc(100dvh-140px)] aspect-square w-auto max-w-[min(48vw,calc(100dvh-140px))]"
             onMouseLeave={() => setHoverTarget(null)}
           >
-            {/* Grid Cells */}
-            <div
-              className="grid h-full w-full gap-[2px]"
-              style={{
-                gridTemplateColumns: "1.1rem repeat(10, minmax(0, 1fr))",
-                gridTemplateRows: "1.1rem repeat(10, minmax(0, 1fr))",
-              }}
-            >
-              <div />
-              {letters.split("").map((letter) => (
-                <div key={letter} className="flex items-center justify-center text-[9px] font-black text-emerald-200/60">
-                  {letter}
-                </div>
-              ))}
+            {/* Header with Title and Hover Coordinates */}
+            <div className="mb-1 flex shrink-0 items-center justify-between px-1">
+              <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wide text-emerald-300">
+                <Crosshair className="h-3.5 w-3.5 text-emerald-400" /> Attack Radar ({opponent?.displayName ?? "Enemy"})
+              </span>
+              <span className="text-[10px] font-bold text-slate-400">
+                {hoverTarget ? `Target: [${letters[hoverTarget.x]}${hoverTarget.y + 1}]` : "Select coordinate to fire"}
+              </span>
+            </div>
 
-              {Array.from({ length: 10 }, (_, row) => (
-                <div key={`atk-row-${row}`} className="contents">
-                  <div className="flex items-center justify-center text-[9px] font-black text-emerald-200/60">
-                    {row + 1}
+            {/* Coordinates letters A-J */}
+            <div className="flex shrink-0 items-center pl-6 sm:pl-7 pr-1 pb-1">
+              <div className="grid w-full grid-cols-10 gap-[2px]">
+                {letters.split("").map((letter) => (
+                  <div key={letter} className="flex items-center justify-center text-[10px] sm:text-xs font-black text-emerald-300/70">
+                    {letter}
                   </div>
-                  {Array.from({ length: 10 }, (_, col) => {
-                    const key = `${col},${row}`;
-                    const shot = outgoingAt(col, row);
-                    const canFire = isMyTurn && !shot;
+                ))}
+              </div>
+            </div>
 
+            {/* Ocean Body: 1-10 on left, 10x10 Attack Ocean Grid on right */}
+            <div className="flex min-h-0 flex-1 items-stretch gap-1">
+              <div className="grid w-5 sm:w-6 shrink-0 grid-rows-10 gap-[2px] py-1">
+                {Array.from({ length: 10 }, (_, i) => (
+                  <div key={i} className="flex items-center justify-center text-[10px] sm:text-xs font-black text-emerald-300/70">
+                    {i + 1}
+                  </div>
+                ))}
+              </div>
+
+              {/* Pure 10x10 Attack Ocean Grid */}
+              <div
+                className={`relative flex-1 aspect-square rounded-xl border-2 overflow-hidden transition-all shadow-[0_0_30px_rgba(16,185,129,0.15)] bg-[#041624] ${
+                  isMyTurn ? "border-emerald-400/60 shadow-[0_0_35px_rgba(52,211,153,0.25)]" : "border-slate-700/40"
+                }`}
+                style={{
+                  backgroundImage: "radial-gradient(ellipse at 50% 50%, #06263b 0%, #020c15 100%)",
+                }}
+              >
+                {/* 100 Interactive Attack Cell Tiles */}
+                <div className="grid h-full w-full grid-cols-10 grid-rows-10 gap-[2px] p-[2px]">
+                  {Array.from({ length: 10 }, (_, row) =>
+                    Array.from({ length: 10 }, (_, col) => {
+                      const key = `${col},${row}`;
+                      const shot = outgoingAt(col, row);
+                      const canFire = isMyTurn && !shot;
+
+                      return (
+                        <button
+                          key={`atk-${key}`}
+                          type="button"
+                          disabled={!canFire}
+                          onClick={() => handleFire(col, row)}
+                          onMouseEnter={() => setHoverTarget({ x: col, y: row })}
+                          className={`relative flex aspect-square items-center justify-center rounded-[2px] border transition-colors ${
+                            shot
+                              ? shot.hit
+                                ? "border-red-500/60 bg-red-950/60"
+                                : "border-sky-300/20 bg-[#081e3d]"
+                              : canFire
+                              ? "border-emerald-400/20 bg-[#062438]/70 hover:border-emerald-300 hover:bg-emerald-500/25 cursor-crosshair"
+                              : "border-slate-800 bg-[#061824]/50 cursor-default"
+                          }`}
+                          title={`${letters[col]}${row + 1}${shot ? (shot.hit ? " (HIT)" : " (MISS)") : ""}`}
+                        >
+                          {shot ? <PegMarker hit={shot.hit} sunk={shot.sunk} /> : null}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Pixel-Perfect Overlay of Sunk Enemy Ships (Silhouette Revealed!) */}
+                <div className="pointer-events-none absolute inset-0 grid h-full w-full grid-cols-10 grid-rows-10 gap-[2px] p-[2px]">
+                  {state.enemySunkShips?.map((ship) => {
+                    const colSpan = ship.orientation === "h" ? ship.size : 1;
+                    const rowSpan = ship.orientation === "v" ? ship.size : 1;
                     return (
-                      <button
-                        key={`atk-${key}`}
-                        type="button"
-                        disabled={!canFire}
-                        onClick={() => handleFire(col, row)}
-                        onMouseEnter={() => setHoverTarget({ x: col, y: row })}
-                        className={`relative flex aspect-square items-center justify-center rounded-[2px] border transition-colors ${
-                          shot
-                            ? shot.hit
-                              ? "border-red-500/60 bg-red-950/60"
-                              : "border-sky-300/20 bg-[#081e3d]"
-                            : canFire
-                            ? "border-emerald-400/15 bg-[#062438]/70 hover:border-emerald-300 hover:bg-emerald-500/20 cursor-crosshair"
-                            : "border-slate-800 bg-[#061824]/50 cursor-default"
-                        }`}
-                        title={`${letters[col]}${row + 1}${shot ? (shot.hit ? " (HIT)" : " (MISS)") : ""}`}
+                      <div
+                        key={`sunk-${ship.id}`}
+                        className="relative z-10 flex h-full w-full items-center justify-center p-0.5 opacity-60"
+                        style={{
+                          gridColumn: `${ship.x + 1} / span ${colSpan}`,
+                          gridRow: `${ship.y + 1} / span ${rowSpan}`,
+                        }}
                       >
-                        {shot ? <PegMarker hit={shot.hit} sunk={shot.sunk} /> : null}
-                      </button>
+                        <ShipSprite id={ship.id} orientation={ship.orientation} sunk silhouetteOnly />
+                      </div>
                     );
                   })}
                 </div>
-              ))}
-            </div>
-
-            {/* Overlay Sunk Enemy Ships (Silhouette Revealed!) */}
-            <div className="pointer-events-none absolute inset-1.5">
-              <div
-                className="grid h-full w-full gap-[2px]"
-                style={{
-                  gridTemplateColumns: "1.1rem repeat(10, minmax(0, 1fr))",
-                  gridTemplateRows: "1.1rem repeat(10, minmax(0, 1fr))",
-                }}
-              >
-                {state.enemySunkShips?.map((ship) => {
-                  const colSpan = ship.orientation === "h" ? ship.size : 1;
-                  const rowSpan = ship.orientation === "v" ? ship.size : 1;
-                  return (
-                    <div
-                      key={`sunk-${ship.id}`}
-                      className="relative p-0.5 opacity-60"
-                      style={{
-                        gridColumn: `${ship.x + 2} / span ${colSpan}`,
-                        gridRow: `${ship.y + 2} / span ${rowSpan}`,
-                      }}
-                    >
-                      <ShipSprite id={ship.id} orientation={ship.orientation} sunk silhouetteOnly />
-                    </div>
-                  );
-                })}
               </div>
             </div>
           </div>
