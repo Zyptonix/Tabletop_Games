@@ -1,73 +1,91 @@
-/* TABLETOP GAME ENGINE CONTINUATION V3 */
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { BookOpen, Copy, Crown, Eye, Flag, LogOut, Shield, Sparkles, Swords, Trophy } from "lucide-react";
-import type { GameEvent, PublicTwentyNineState, TwentyNineAction, TwentyNineCard, TwentyNineSuit } from "@tabletop/game-core";
+import {
+  BookOpen,
+  Copy,
+  Crown,
+  Eye,
+  Flag,
+  LogOut,
+  MessageSquare,
+  Shield,
+  Sparkles,
+  Swords,
+  Trophy,
+  X,
+  Volume2,
+  VolumeX
+} from "lucide-react";
+import type {
+  GameEvent,
+  PublicTwentyNinePlayer,
+  PublicTwentyNineState,
+  TwentyNineAction,
+  TwentyNineCard,
+  TwentyNineSuit
+} from "@tabletop/game-core";
 import type { RoomStateView } from "@tabletop/shared";
 import { RoomChat } from "@/features/game-shell/RoomChat";
 import { cn } from "@/lib/utils/cn";
+import {
+  SuitMark,
+  TwentyNineCardFace,
+  TwentyNineCardBack,
+  TWENTY_NINE_SUITS_INFO
+} from "./TwentyNineCard";
+import { TwentyNineSeat } from "./TwentyNineSeat";
+import { TwentyNineTrickArea } from "./TwentyNineTrickArea";
+import { TwentyNineHUD } from "./TwentyNineHUD";
+import { TwentyNineEventOverlay } from "./TwentyNineEventOverlay";
 
-type Position = "top" | "left" | "right" | "bottom";
 type Point = { x: number; y: number };
-type Flight = { id: string; card: TwentyNineCard; from: Point; to: Point; kind: "play" | "collect"; playerName: string; delay?: number };
-
-type EventSpotlight = {
+type Flight = {
   id: string;
-  title: string;
-  detail: string;
-  emoji: string;
-  tone: "amber" | "rose" | "emerald" | "violet" | "sky";
-  visual: "trump" | "trick" | "hand-result" | "match-result" | "auction" | "stakes" | "single-hand" | "pair" | "pass" | "deal-cancelled" | "notice";
-  suit?: TwentyNineSuit;
-  team?: number | null;
-  value?: string;
-  durationMs?: number;
+  card: TwentyNineCard;
+  from: Point;
+  to: Point;
+  kind: "play" | "collect";
+  playerName: string;
+  delay?: number;
 };
-
-
-const SUITS: Array<{ suit: TwentyNineSuit; color: string; label: string }> = [
-  { suit: "spades", color: "#111b18", label: "Spades" },
-  { suit: "hearts", color: "#d83f58", label: "Hearts" },
-  { suit: "diamonds", color: "#d83f58", label: "Diamonds" },
-  { suit: "clubs", color: "#111b18", label: "Clubs" }
-];
-
-function suitInfo(suit: TwentyNineSuit) {
-  return SUITS.find((item) => item.suit === suit) ?? SUITS[0]!;
-}
-
-/** Inline vector suit marks avoid missing font-glyph fallbacks on clubs/spades. */
-function SuitMark({ suit, color, size = 24 }: { suit: TwentyNineSuit; color: string; size?: number }) {
-  const paths: Record<TwentyNineSuit, string> = {
-    spades: "M24 3 C19 11 5 17 5 28 C5 37 14 40 21 33 C20 39 18 43 14 45 H34 C30 43 28 39 27 33 C34 40 43 37 43 28 C43 17 29 11 24 3 Z",
-    hearts: "M24 43 C20 39 5 27 5 16 C5 7 16 4 24 14 C32 4 43 7 43 16 C43 27 28 39 24 43 Z",
-    diamonds: "M24 3 C30 13 39 22 43 24 C36 31 29 39 24 45 C19 39 12 31 5 24 C12 17 19 9 24 3 Z",
-    clubs: "M24 5 C15 5 11 16 18 22 C8 17 3 23 3 29 C3 38 15 40 22 32 C21 39 18 43 14 45 H34 C30 43 27 39 26 32 C33 40 45 38 45 29 C45 23 40 17 30 22 C37 16 33 5 24 5 Z"
-  };
-  return <svg aria-hidden="true" focusable="false" viewBox="0 0 48 48" width={size} height={size} className="inline-block shrink-0" style={{ color }}><path d={paths[suit]} fill="currentColor" /></svg>;
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function positionFor(playerId: string, state: PublicTwentyNineState, currentUserId: string | null): Position {
-  if (playerId === currentUserId) return "bottom";
-  const me = state.players.find((player) => player.userId === currentUserId);
-  const player = state.players.find((item) => item.userId === playerId);
-  if (!me || !player) return "top";
-  if (me.team === player.team) return "top";
-  const delta = (player.seat - me.seat + 4) % 4;
-  return delta === 1 ? "right" : "left";
+function actionsOfType(
+  legalActions: unknown[],
+  type: TwentyNineAction["type"]
+): TwentyNineAction[] {
+  return legalActions.filter(
+    (item): item is TwentyNineAction => isRecord(item) && item.type === type
+  );
+}
+
+function hasAction(legalActions: unknown[], type: TwentyNineAction["type"]): boolean {
+  return actionsOfType(legalActions, type).length > 0;
+}
+
+function playerName(
+  state: PublicTwentyNineState,
+  playerId: string | null | undefined,
+  currentUserId: string | null
+): string {
+  if (!playerId) return "Player";
+  if (playerId === currentUserId) return "You";
+  return state.players.find((p) => p.userId === playerId)?.displayName ?? "Player";
 }
 
 function getCenter(element: HTMLElement | null, container: HTMLElement): Point | null {
   if (!element) return null;
   const rect = element.getBoundingClientRect();
   const bounds = container.getBoundingClientRect();
-  return { x: rect.left - bounds.left + rect.width / 2, y: rect.top - bounds.top + rect.height / 2 };
+  return {
+    x: rect.left - bounds.left + rect.width / 2,
+    y: rect.top - bounds.top + rect.height / 2
+  };
 }
 
 function centerOf(container: HTMLElement): Point {
@@ -75,413 +93,105 @@ function centerOf(container: HTMLElement): Point {
   return { x: rect.width / 2, y: rect.height / 2 };
 }
 
-function actionsOfType(legalActions: unknown[], type: TwentyNineAction["type"]): TwentyNineAction[] {
-  return legalActions.filter((item): item is TwentyNineAction => isRecord(item) && item.type === type);
-}
+const CARD_SUIT_ORDER: Record<TwentyNineSuit, number> = {
+  spades: 0,
+  clubs: 1,
+  hearts: 2,
+  diamonds: 3
+};
 
-function hasAction(legalActions: unknown[], type: TwentyNineAction["type"]): boolean {
-  return actionsOfType(legalActions, type).length > 0;
-}
+const CARD_RANK_ORDER: Record<string, number> = {
+  J: 0,
+  "9": 1,
+  A: 2,
+  "10": 3,
+  K: 4,
+  Q: 5,
+  "8": 6,
+  "7": 7
+};
 
-function playerName(state: PublicTwentyNineState, playerId: string | null | undefined, currentUserId: string | null): string {
-  if (!playerId) return "Player";
-  if (playerId === currentUserId) return "You";
-  return state.players.find((player) => player.userId === playerId)?.displayName ?? "Player";
-}
-
-const CARD_SUIT_ORDER: Record<TwentyNineSuit, number> = { spades: 0, clubs: 1, hearts: 2, diamonds: 3 };
-const CARD_RANK_ORDER: Record<string, number> = { J: 0, "9": 1, A: 2, "10": 3, K: 4, Q: 5, "8": 6, "7": 7 };
-const CARD_TRICK_STRENGTH: Record<string, number> = { J: 8, "9": 7, A: 6, "10": 5, K: 4, Q: 3, "8": 2, "7": 1 };
-
-function currentWinningCardId(state: PublicTwentyNineState): string | null {
-  if (state.currentTrick.length === 0) return null;
-  const ledSuit = state.currentTrick[0]!.card.suit;
-  const trumpSuit = state.trumpRevealed ? state.trumpSuit : null;
-  let best = state.currentTrick[0]!;
-  const strength = (entry: (typeof state.currentTrick)[number]) => {
-    if (trumpSuit && entry.card.suit === trumpSuit) return 100 + (CARD_TRICK_STRENGTH[entry.card.rank] ?? 0);
-    if (entry.card.suit === ledSuit) return 50 + (CARD_TRICK_STRENGTH[entry.card.rank] ?? 0);
-    return 0;
-  };
-  for (const candidate of state.currentTrick.slice(1)) {
-    if (strength(candidate) > strength(best)) best = candidate;
-  }
-  return best.card.id;
-}
-
-function spotlightForEvent(event: GameEvent, state: PublicTwentyNineState, currentUserId: string | null): EventSpotlight | null {
+function formatEventLog(
+  event: GameEvent,
+  state: PublicTwentyNineState,
+  currentUserId: string | null
+): { label: string; tone: "emerald" | "sky" | "amber" | "violet" | "rose" | "muted" } | null {
   const payload = isRecord(event.payload) ? event.payload : {};
-  const actorId = typeof payload.playerId === "string" ? payload.playerId : null;
-  const actor = playerName(state, actorId, currentUserId);
-  const value = typeof payload.value === "number" ? payload.value : null;
-  const titleFor = (title: string, detail: string, emoji: string, tone: EventSpotlight["tone"], durationMs = 2450, visual: EventSpotlight["visual"] = "notice", extra: { suit?: TwentyNineSuit; team?: number | null; value?: string } = {}): EventSpotlight => ({ id: event.id, title, detail, emoji, tone, durationMs, visual, ...(extra.suit ? { suit: extra.suit } : {}), ...(extra.team !== undefined ? { team: extra.team } : {}), ...(extra.value !== undefined ? { value: extra.value } : {}) });
 
-  switch (event.type) {
-    case "twenty-nine:bid":
-      return titleFor(`BID ${value ?? "PLACED"}`, `${actor} raised the auction${value !== null ? ` to ${value}` : ""}.`, "🎯", "amber", 2850, "auction", { value: String(value ?? "") });
-    case "twenty-nine:ditto":
-      return titleFor("DITTO!", event.message || `${actor} called Ditto${value !== null ? ` at ${value}` : ""}.`, "🤝", "violet", 2500, "auction", { value: String(value ?? "DITTO") });
-    case "twenty-nine:pass_bid":
-      return titleFor("PASS", `${actor} passed the bid.`, "✋", "sky", 2000, "pass");
-    case "twenty-nine:double":
-      return titleFor("CONTRACT DOUBLED", event.message || `${actor} doubled the stakes to ×2.`, "⚔️", "rose", 3000, "stakes", { value: "×2" });
-    case "twenty-nine:redouble":
-      return titleFor("REDOUBLE! ×4", event.message || `${actor} redoubled the contract.`, "🔥", "rose", 3400, "stakes", { value: "×4" });
-    case "twenty-nine:trick_won": {
-      const winnerId = typeof payload.winnerPlayerId === "string" ? payload.winnerPlayerId : null;
-      const winner = state.players.find((player) => player.userId === winnerId);
-      const teamName = winner?.team === 0 ? "RED" : winner?.team === 1 ? "BLUE" : "A TEAM";
-      const number = typeof payload.trickNumber === "number" ? payload.trickNumber : state.completedTricks.length;
-      const points = typeof payload.points === "number" ? payload.points : 0;
-      return titleFor(`${teamName} TAKES THE TRICK`, `${playerName(state, winnerId, currentUserId)} wins trick ${number} · +${points} card points`, "🏆", winner?.team === 0 ? "rose" : "sky", 3200, "trick", { team: winner?.team ?? null, value: `+${points}` });
-    }
-    case "twenty-nine:trump_revealed": {
-      const rawSuit = typeof payload.trumpSuit === "string" ? payload.trumpSuit : state.trumpSuit;
-      const revealedSuit = SUITS.find((item) => item.suit === rawSuit)?.suit;
-      return titleFor("TRUMP REVEALED", `Trump is ${revealedSuit ? suitInfo(revealedSuit).label : "now revealed"}.`, "🃏", "emerald", 4200, "trump", revealedSuit ? { suit: revealedSuit } : {});
-    }
-    case "twenty-nine:pair":
-      return titleFor("PAIR DECLARED", event.message || "The King–Queen pair changes the contract.", "👑", "violet", 3000, "pair", { team: typeof payload.team === "number" ? payload.team : null, ...(state.trumpSuit ? { suit: state.trumpSuit } : {}) });
-    case "twenty-nine:single_hand_declared":
-      return titleFor("SINGLE HAND!", event.message || `${actor} is playing alone.`, "🗡️", "violet", 3400, "single-hand", { team: state.players.find((player) => player.userId === actorId)?.team ?? null });
-    case "twenty-nine:single_hand_scored":
-      return titleFor(payload.succeeded === true ? "SINGLE HAND WON" : "SINGLE HAND LOST", event.message || "Single Hand contract scored.", payload.succeeded === true ? "🏆" : "💥", payload.succeeded === true ? "emerald" : "rose", 3800, "hand-result", { team: state.lastHandResult ? (state.lastHandResult.succeeded ? state.lastHandResult.declarerTeam : state.lastHandResult.declarerTeam === 0 ? 1 : 0) : null, value: payload.succeeded === true ? "+3" : "−3" });
-    case "twenty-nine:hand_scored": {
-      const result = state.lastHandResult;
-      if (!result) return titleFor("HAND COMPLETE", event.message || "The eight tricks are complete.", "📊", "amber", 3600);
-      const biddingTeamKey = String(result.declarerTeam) as "0" | "1";
-      const biddingTeamName = result.declarerTeam === 0 ? "RED" : "BLUE";
-      const winnerTeam = result.succeeded ? result.declarerTeam : (result.declarerTeam === 0 ? 1 : 0);
-      const winnerName = winnerTeam === 0 ? "RED" : "BLUE";
-      const actualPoints = result.teamPoints[biddingTeamKey] ?? 0;
-      const before = state.teamGamePoints[biddingTeamKey] - result.scoreChange;
-      const after = state.teamGamePoints[biddingTeamKey];
-      const signed = (number: number) => number > 0 ? `+${number}` : String(number);
-      const detail = `Team ${biddingTeamName} needed ${result.contractTarget} card points and took ${actualPoints}. ${result.succeeded ? `Team ${winnerName} made the contract` : `Team ${winnerName} won because the contract failed`}. Game points ${signed(before)} → ${signed(after)} (${signed(result.scoreChange)} · ×${result.multiplier}).`;
-      return titleFor(result.succeeded ? `TEAM ${winnerName} WINS THE HAND` : `TEAM ${winnerName} TAKES THE HAND`, detail, result.succeeded ? "🏆" : "⚔️", winnerTeam === 0 ? "rose" : "sky", 4600, "hand-result", { team: winnerTeam, value: signed(result.scoreChange) });
-    }
-    case "twenty-nine:game_over":
-      return titleFor(state.winnerTeam === null ? "MATCH DRAW" : `TEAM ${state.winnerTeam === 0 ? "RED" : "BLUE"} WINS THE MATCH`, event.message || (state.winnerTeam === null ? "The match ended in a draw." : `Team ${state.winnerTeam === 0 ? "Red" : "Blue"} wins the match.`), state.winnerTeam === null ? "🤝" : "🏆", state.winnerTeam === 0 ? "rose" : state.winnerTeam === 1 ? "sky" : "amber", 5200, "match-result", { team: state.winnerTeam });
-    case "twenty-nine:deal_cancelled":
-      return titleFor("DEAL CANCELLED", event.message || "The auction ended without a contract.", "🔄", "sky", 2800, "deal-cancelled");
-    default:
-      return null;
-  }
-}
-
-function SpotlightHero({ spotlight, reduceMotion }: { spotlight: EventSpotlight; reduceMotion: boolean }) {
-  const team = spotlight.team;
-  const teamLabel = team === 0 ? "TEAM RED" : team === 1 ? "TEAM BLUE" : "BOTH TEAMS";
-  const teamTone = team === 0 ? "rose" : team === 1 ? "sky" : "emerald";
-
-  if (spotlight.visual === "trump" && spotlight.suit) {
-    const suit = suitInfo(spotlight.suit);
-    const ink = spotlight.suit === "hearts" || spotlight.suit === "diamonds" ? "#ff637b" : "#b9ffe4";
-    return (
-      <motion.div className="twenty-nine-spotlight-hero twenty-nine-spotlight-trump" initial={reduceMotion ? false : { opacity: 0, scale: 0.78, rotateY: -18 }} animate={{ opacity: 1, scale: 1, rotateY: 0 }} transition={{ type: "spring", stiffness: 240, damping: 20 }}>
-        <motion.div className="twenty-nine-trump-sigil" animate={reduceMotion ? false : { rotate: [0, 3, 0, -3, 0], scale: [0.96, 1.04, 0.98, 1.02, 1] }} transition={{ duration: 2.2, ease: "easeInOut" }}>
-          <SuitMark suit={spotlight.suit} color={ink} size={150} />
-        </motion.div>
-        <div className="twenty-nine-trump-wordmark"><span>TRUMP SUIT</span><strong>{suit.label.toUpperCase()}</strong><small>NOW IN PLAY</small></div>
-      </motion.div>
-    );
-  }
-
-  if (spotlight.visual === "match-result") {
-    return (
-      <div className={cn("twenty-nine-spotlight-hero twenty-nine-spotlight-victory", `twenty-nine-spotlight-${teamTone}`)}>
-        <div className="twenty-nine-victory-rays" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /><i /></div>
-        <motion.div className="twenty-nine-victory-medal" initial={reduceMotion ? false : { scale: 0.5, rotate: -24 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: "spring", stiffness: 270, damping: 17 }}><Trophy className="h-16 w-16" /></motion.div>
-        <strong className="twenty-nine-hero-value">{team === null ? "DRAW" : teamLabel}</strong>
-        <span className="twenty-nine-hero-kicker">MATCH VICTORY</span>
-      </div>
-    );
-  }
-
-  if (spotlight.visual === "hand-result" || spotlight.visual === "trick") {
-    return (
-      <div className={cn("twenty-nine-spotlight-hero twenty-nine-spotlight-result", `twenty-nine-spotlight-${teamTone}`)}>
-        <div className="twenty-nine-result-icon"><Trophy className="h-10 w-10" /></div>
-        <div className="min-w-0"><span className="twenty-nine-hero-kicker">{spotlight.visual === "trick" ? "TRICK CAPTURED" : "HAND SCORE"}</span><strong className="twenty-nine-hero-value">{spotlight.value ?? (spotlight.visual === "trick" ? "+0" : "SCORED")}</strong><span className="twenty-nine-hero-team">{teamLabel}</span></div>
-        <div className="twenty-nine-result-mini-cards" aria-hidden="true"><CardBack small /><CardBack small /></div>
-      </div>
-    );
-  }
-
-  if (spotlight.visual === "stakes") {
-    return <div className="twenty-nine-spotlight-hero twenty-nine-spotlight-stakes"><Swords className="h-10 w-10 text-rose-100" /><strong className="twenty-nine-hero-value">{spotlight.value ?? "×2"}</strong><span className="twenty-nine-hero-kicker">STAKES RAISED</span></div>;
-  }
-
-  if (spotlight.visual === "single-hand") {
-    return <div className="twenty-nine-spotlight-hero twenty-nine-spotlight-solo"><div className="twenty-nine-solo-cards"><CardBack small /><CardBack small /></div><div><span className="twenty-nine-hero-kicker">ONE PLAYER · ALL EIGHT TRICKS</span><strong className="twenty-nine-hero-value">SINGLE HAND</strong></div><Swords className="h-8 w-8 text-violet-100" /></div>;
-  }
-
-  if (spotlight.visual === "pair") {
-    return <div className="twenty-nine-spotlight-hero twenty-nine-spotlight-pair"><div className="twenty-nine-pair-card"><strong>K</strong>{spotlight.suit ? <SuitMark suit={spotlight.suit} color={spotlight.suit === "hearts" || spotlight.suit === "diamonds" ? "#d83f58" : "#14533d"} size={25} /> : null}</div><span className="twenty-nine-pair-plus">+</span><div className="twenty-nine-pair-card"><strong>Q</strong>{spotlight.suit ? <SuitMark suit={spotlight.suit} color={spotlight.suit === "hearts" || spotlight.suit === "diamonds" ? "#d83f58" : "#14533d"} size={25} /> : null}</div><div className="min-w-0 text-left"><span className="twenty-nine-hero-kicker">KING + QUEEN</span><strong className="twenty-nine-hero-value">PAIR</strong></div></div>;
-  }
-
-  if (spotlight.visual === "auction") {
-    return <div className="twenty-nine-spotlight-hero twenty-nine-spotlight-auction"><div className="twenty-nine-auction-cards"><CardBack small /><CardBack small /><CardBack small /></div><div><span className="twenty-nine-hero-kicker">AUCTION TABLE</span><strong className="twenty-nine-hero-value">{spotlight.value || "DITTO"}</strong></div><Sparkles className="h-8 w-8 text-amber-100" /></div>;
-  }
-
-  if (spotlight.visual === "pass") {
-    return <div className="twenty-nine-spotlight-hero twenty-nine-spotlight-pass"><div className="twenty-nine-pass-mark">{spotlight.emoji}</div><div><span className="twenty-nine-hero-kicker">AUCTION MOVE</span><strong className="twenty-nine-hero-value">PASS</strong><span className="twenty-nine-hero-team">The bid moves to the next player</span></div></div>;
-  }
-
-  if (spotlight.visual === "deal-cancelled") {
-    return <div className="twenty-nine-spotlight-hero twenty-nine-spotlight-deal-cancelled"><div className="twenty-nine-deal-cards"><CardBack small /><CardBack small /><CardBack small /></div><div><span className="twenty-nine-hero-kicker">NO CONTRACT</span><strong className="twenty-nine-hero-value">REDEAL</strong></div><Sparkles className="h-8 w-8 text-sky-100" /></div>;
-  }
-
-  return <div className="twenty-nine-spotlight-hero twenty-nine-spotlight-notice"><div className="twenty-nine-notice-emoji">{spotlight.emoji}</div><span className="twenty-nine-hero-kicker">TABLE EVENT</span></div>;
-}
-
-function formatEvent(event: GameEvent, state: PublicTwentyNineState, currentUserId: string | null): { label: string; tone: string } | null {
-  const payload = isRecord(event.payload) ? event.payload : {};
   if (event.type === "twenty-nine:card_played") {
     const card = isRecord(payload.card) ? payload.card : {};
-    const cardText = `${String(card.rank ?? "card")} of ${String(card.suit ?? "unknown")}`;
-    return { label: `${playerName(state, String(payload.playerId ?? ""), currentUserId)} played ${cardText}`, tone: "sky" };
+    const cardText = `${String(card.rank ?? "")} of ${String(card.suit ?? "")}`;
+    return {
+      label: `${playerName(state, String(payload.playerId ?? ""), currentUserId)} played ${cardText}`,
+      tone: "sky"
+    };
   }
-  if (event.type === "twenty-nine:bid") return { label: `${playerName(state, String(payload.playerId ?? ""), currentUserId)} bid ${String(payload.value ?? "")}`, tone: "amber" };
-  if (event.type === "twenty-nine:ditto") return { label: `${playerName(state, String(payload.playerId ?? ""), currentUserId)} said Ditto at ${String(payload.value ?? "")}`, tone: "violet" };
-  if (event.type === "twenty-nine:pass_bid") return { label: `${playerName(state, String(payload.playerId ?? ""), currentUserId)} passed the bid`, tone: "muted" };
-  if (event.type === "twenty-nine:trump_revealed") return { label: `Trump revealed: ${String(payload.trumpSuit ?? "unknown")}`, tone: "emerald" };
-  if (event.type === "twenty-nine:pair") return { label: `Team ${Number(payload.team) + 1} declared the pair · target ${String(payload.contractTarget ?? "")}`, tone: "violet" };
+  if (event.type === "twenty-nine:bid") {
+    return {
+      label: `${playerName(state, String(payload.playerId ?? ""), currentUserId)} bid ${String(payload.value ?? "")}`,
+      tone: "amber"
+    };
+  }
+  if (event.type === "twenty-nine:ditto") {
+    return {
+      label: `${playerName(state, String(payload.playerId ?? ""), currentUserId)} called Ditto (${String(payload.value ?? "")})`,
+      tone: "violet"
+    };
+  }
+  if (event.type === "twenty-nine:pass_bid") {
+    return {
+      label: `${playerName(state, String(payload.playerId ?? ""), currentUserId)} passed the bid`,
+      tone: "muted"
+    };
+  }
+  if (event.type === "twenty-nine:trump_revealed") {
+    return {
+      label: `Trump revealed: ${String(payload.trumpSuit ?? state.trumpSuit ?? "revealed")}`,
+      tone: "emerald"
+    };
+  }
+  if (event.type === "twenty-nine:pair") {
+    return {
+      label: `Pair declared! Target adjusted by 4`,
+      tone: "violet"
+    };
+  }
   if (event.type === "twenty-nine:trick_won") {
     const winnerId = String(payload.winnerPlayerId ?? "");
-    const winnerTeam = state.players.find((player) => player.userId === winnerId)?.team;
-    return { label: `${playerName(state, winnerId, currentUserId)} won trick ${String(payload.trickNumber ?? "")} (+${String(payload.points ?? 0)})`, tone: winnerTeam === 0 ? "rose" : winnerTeam === 1 ? "sky" : "muted" };
+    const winnerTeam = state.players.find((p) => p.userId === winnerId)?.team;
+    return {
+      label: `${playerName(state, winnerId, currentUserId)} captured trick ${String(payload.trickNumber ?? "")} (+${String(payload.points ?? 0)} pts)`,
+      tone: winnerTeam === 0 ? "rose" : "sky"
+    };
   }
-  if (event.type === "twenty-nine:single_hand_declared") return { label: event.message ?? `${playerName(state, String(payload.playerId ?? ""), currentUserId)} declared Single Hand`, tone: "violet" };
-  if (event.type === "twenty-nine:single_hand_scored") return { label: event.message ?? "Single Hand result", tone: payload.succeeded === true ? "emerald" : "rose" };
-  if (event.type === "twenty-nine:hand_scored") return { label: event.message ?? "Hand scored", tone: "amber" };
-  if (event.type === "twenty-nine:double" || event.type === "twenty-nine:redouble") return { label: event.message ?? "Contract stakes changed", tone: "rose" };
-  if (event.type === "twenty-nine:deal_cancelled") return { label: event.message ?? "Deal cancelled", tone: "rose" };
-  if (event.type === "twenty-nine:game_over") return { label: event.message ?? "Match finished", tone: "amber" };
-  if (event.type.startsWith("twenty-nine:")) return event.message ? { label: event.message, tone: "muted" } : null;
+  if (event.type === "twenty-nine:single_hand_declared") {
+    return {
+      label: `${playerName(state, String(payload.playerId ?? ""), currentUserId)} declared Single Hand (±3)`,
+      tone: "violet"
+    };
+  }
+  if (event.type === "twenty-nine:double" || event.type === "twenty-nine:redouble") {
+    return {
+      label: `Stakes multiplied to ×${state.multiplier}!`,
+      tone: "rose"
+    };
+  }
+  if (event.type === "twenty-nine:hand_scored") {
+    return {
+      label: `Hand #${state.handNumber} concluded and scored.`,
+      tone: "amber"
+    };
+  }
+  if (event.type === "twenty-nine:game_over") {
+    return {
+      label: event.message ?? "Match finished!",
+      tone: "amber"
+    };
+  }
+  if (event.type.startsWith("twenty-nine:") && event.message) {
+    return { label: event.message, tone: "muted" };
+  }
   return null;
-}
-
-/* twenty-nine-card-sprite-polish-v1 */
-function cardSpriteCandidates(rank: string, suit: TwentyNineSuit): string[] {
-  const filename = `${rank}_of_${suit}.png`;
-  // Support the canonical folder plus common existing Twenty-Nine/29 sprite folder layouts.
-  return [
-    `/game-assets/twenty-nine/cards/${filename}`,
-    `/game-assets/twenty-nine/${filename}`,
-    `/game-assets/twenty-nine/sprites/${filename}`,
-    `/game-assets/29/cards/${filename}`,
-    `/game-assets/29/${filename}`
-  ];
-}
-
-function CardSprite({ rank, suit, className = "" }: { rank: string; suit: TwentyNineSuit; className?: string }) {
-  const filename = `${rank}_of_${suit}.png`;
-  const candidates = useMemo(() => cardSpriteCandidates(rank, suit), [rank, suit]);
-  const [candidateIndex, setCandidateIndex] = useState(0);
-
-  useEffect(() => {
-    setCandidateIndex(0);
-  }, [filename]);
-
-  if (candidateIndex >= candidates.length) return null;
-  return (
-    <img
-      src={candidates[candidateIndex]}
-      alt=""
-      aria-hidden="true"
-      draggable={false}
-      className={cn("pointer-events-none select-none", className)}
-      onError={() => setCandidateIndex((current) => current + 1)}
-    />
-  );
-}
-
-function CardFace({ card, small = false, muted = false, hand = false }: { card: TwentyNineCard; small?: boolean; muted?: boolean; hand?: boolean }) {
-  const suit = suitInfo(card.suit);
-  return (
-    <div className={cn(
-      "twenty-nine-playing-card relative flex shrink-0 select-none flex-col justify-between overflow-hidden rounded-[0.62rem] border font-black",
-      small ? "h-[6.1rem] w-[4.35rem] p-1.5" : hand ? "h-[6.7rem] w-[4.8rem] p-1.5" : "h-[9.3rem] w-[6.65rem] p-2.5",
-      muted ? "border-white/15 bg-[#0c1618]" : "border-[#d9e4dc] bg-[linear-gradient(145deg,#fffef8,#dce8df)] text-[#101a18]"
-    )}>
-      {!muted ? <span className="pointer-events-none absolute -right-3 -top-4 h-14 w-14 rounded-full border border-black/5" /> : null}
-      <div className="relative z-10 flex items-start justify-between gap-1">
-        <span className={cn(small ? "text-sm" : hand ? "text-base" : "text-xl", muted && "text-white")}>{card.rank}</span>
-        <SuitMark suit={card.suit} color={muted ? "#8ac8b2" : suit.color} size={small ? 16 : hand ? 18 : 23} />
-      </div>
-      <div className="relative z-10 grid flex-1 place-items-center">
-        <SuitMark suit={card.suit} color={muted ? "#8ac8b2" : suit.color} size={small ? 31 : hand ? 34 : 48} />
-      </div>
-      <div className="relative z-10 flex items-end justify-between">
-        <span className={cn(small ? "text-[0.62rem]" : hand ? "text-[0.68rem]" : "text-xs", muted ? "text-white/60" : "text-zinc-500")}>{card.points ? `${card.points} PT` : ""}</span>
-        <span className={cn(small ? "text-sm" : hand ? "text-base" : "text-xl", muted && "text-white")}>{card.rank}</span>
-      </div>
-      {/* Sprite is layered over the procedural face; a missing image transparently falls back. */}
-      <CardSprite rank={card.rank} suit={card.suit} className="absolute inset-0 z-20 h-full w-full object-cover object-center" />
-    </div>
-  );
-}
-
-function CardBackArtwork({ className = "" }: { className?: string }) {
-  const candidates = [
-    "/game-assets/twenty-nine/cards/back.png",
-    "/game-assets/twenty-nine/sprites/back.png",
-    "/game-assets/twenty-nine/back.png",
-    "/game-assets/29/cards/back.png",
-    "/game-assets/29/back.png"
-  ];
-  const [candidateIndex, setCandidateIndex] = useState(0);
-  const failed = candidateIndex >= candidates.length;
-  return (
-    <div className={cn("relative isolate overflow-hidden rounded-[0.62rem] border border-emerald-100/35 bg-[linear-gradient(145deg,#14533d,#06251d_54%,#03130f)] shadow-[0_8px_18px_rgba(0,0,0,.34)]", className)}>
-      {!failed ? (
-        <img
-          src={candidates[candidateIndex]}
-          alt=""
-          aria-hidden="true"
-          draggable={false}
-          onError={() => setCandidateIndex((current) => current + 1)}
-          className="twenty-nine-card-back-sprite absolute inset-0 z-10 h-full w-full select-none object-cover object-center"
-        />
-      ) : (
-        <>
-          <div className="absolute inset-[5%] rounded-[0.48rem] border border-emerald-100/35" />
-          <div className="absolute inset-[18%] rotate-45 rounded-[0.5rem] border border-emerald-100/55 bg-emerald-200/[0.07]" />
-          <div className="absolute inset-[27%] rotate-45 rounded-[0.35rem] border border-emerald-100/35" />
-          <div className="absolute inset-0 grid place-items-center text-emerald-50/85"><span className="text-lg font-black tracking-tight">29</span></div>
-        </>
-      )}
-    </div>
-  );
-}
-
-function CardBack({ small = false }: { small?: boolean }) {
-  return <CardBackArtwork className={small ? "h-[3.85rem] w-[2.75rem]" : "h-[5rem] w-[3.55rem]"} />;
-}
-
-function ScoreCardBack() {
-  return <CardBackArtwork className="twenty-nine-score-card-back h-full w-full" />;
-}
-
-function ScoreCardFace({ suit, points, positive }: { suit: TwentyNineSuit; points: number; positive: boolean }) {
-  const ink = positive ? "#bf1735" : "#121923";
-  const scoreText = points > 0 ? `+${points}` : points < 0 ? `−${Math.abs(points)}` : "";
-  return (
-    <div className="twenty-nine-score-card-face relative h-full w-full overflow-hidden rounded-[0.62rem] border border-white/80 bg-[#fffdf6] shadow-[0_8px_22px_rgba(0,0,0,.38)]" style={{ color: ink }}>
-      <CardSprite rank="6" suit={suit} className="absolute inset-0 z-0 h-full w-full object-cover object-center" />
-      <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(145deg,rgba(255,255,255,.08),transparent_44%,rgba(0,0,0,.06))]" />
-    </div>
-  );
-}
-
-function TeamScore({ team, points, caption }: { team: number; points: number; caption: string }) {
-  const redTeam = team === 0;
-  const [displayPoints, setDisplayPoints] = useState(points);
-  const absolute = Math.min(6, Math.abs(displayPoints));
-  const positive = displayPoints > 0;
-  const negative = displayPoints < 0;
-  const revealedSuit: TwentyNineSuit = negative ? "spades" : "hearts";
-  const accent = redTeam ? "#fb7185" : "#60a5fa";
-
-  useEffect(() => {
-    if (displayPoints === points) return;
-    const timeout = window.setTimeout(() => {
-      setDisplayPoints((current) => current + Math.sign(points - current));
-    }, 150);
-    return () => window.clearTimeout(timeout);
-  }, [displayPoints, points]);
-
-  return (
-    <div className={cn(
-      "twenty-nine-team-score flex min-w-0 items-center gap-2 rounded-xl border px-2 py-1.5",
-      redTeam ? "border-rose-200/30 bg-rose-950/45" : "border-sky-200/30 bg-sky-950/45"
-    )}>
-      <div className="twenty-nine-score-stack relative h-[4.65rem] w-[3.3rem] shrink-0" aria-label={`${caption}: ${displayPoints} game points`}>
-        <motion.div
-          className="absolute inset-0 z-0"
-          animate={{
-            x: positive ? -5 : negative ? 5 : 0,
-            y: displayPoints === 0 ? 0 : 7,
-            rotate: positive ? -8 : negative ? 8 : 0,
-            opacity: displayPoints === 0 ? 0.12 : 1,
-            scale: absolute === 6 ? 1.04 : 1
-          }}
-          transition={{ type: "spring", stiffness: 280, damping: 24 }}
-        >
-          <ScoreCardFace suit={revealedSuit} points={displayPoints} positive={positive} />
-        </motion.div>
-        <motion.div
-          className="absolute inset-0 z-20"
-          animate={{
-            x: displayPoints === 0 ? 0 : absolute === 6 ? (positive ? 78 : -78) : positive ? 17 : negative ? -17 : 0,
-            y: displayPoints === 0 ? 0 : absolute === 6 ? -12 : -2,
-            rotate: displayPoints === 0 ? 0 : positive ? 7 : -7,
-            opacity: absolute === 6 ? 0 : 1,
-            scale: displayPoints === 0 ? 1 : 0.985
-          }}
-          transition={{ type: "spring", stiffness: 250, damping: 22 }}
-          aria-hidden="true"
-        >
-          <ScoreCardBack />
-        </motion.div>
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className={cn("truncate text-[0.58rem] font-black uppercase tracking-[0.12em]", redTeam ? "text-rose-100/80" : "text-sky-100/80")}>{caption}</p>
-        <div className="mt-1 flex items-baseline gap-1">
-          <AnimatePresence mode="popLayout" initial={false}>
-            <motion.strong
-              key={displayPoints}
-              initial={{ opacity: 0, y: displayPoints >= 0 ? 10 : -10, scale: 0.75 }}
-              animate={{ opacity: 1, y: 0, scale: displayPoints === points ? 1.08 : 1 }}
-              exit={{ opacity: 0, y: displayPoints >= 0 ? -8 : 8, scale: 0.8 }}
-              transition={{ type: "spring", stiffness: 360, damping: 23 }}
-              className="text-xl font-black leading-none tabular-nums text-white"
-            >{displayPoints > 0 ? `+${displayPoints}` : displayPoints}</motion.strong>
-          </AnimatePresence>
-          <span className="text-[0.6rem] font-bold text-white/45">/ 6</span>
-        </div>
-        <div className="mt-2 flex items-center gap-1" aria-label={`${absolute} of 6 points`}>
-          {Array.from({ length: 6 }, (_, index) => (
-            <motion.span key={index} className="h-1.5 flex-1 rounded-full" animate={{ backgroundColor: index < absolute ? accent : "rgba(255,255,255,.15)" }} transition={{ duration: 0.18 }} />
-          ))}
-        </div>
-        <p className={cn("mt-1 text-[0.53rem] font-bold", redTeam ? "text-rose-100/65" : "text-sky-100/65")}>
-          {displayPoints === 0 ? "🂠 Hidden" : positive ? (absolute === 6 ? "🏆 +6 · WIN" : `❤️ +${absolute}`) : (absolute === 6 ? "♠ −6 · LOSS" : `♠ −${absolute}`)}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function TrickProgress({ team, count, caption }: { team: number; count: number; caption: string }) {
-  const clampedCount = Math.max(0, Math.min(8, count));
-  const redTeam = team === 0;
-  return (
-    <div className={cn("twenty-nine-trick-progress min-w-0 rounded-xl border px-2 py-1.5", redTeam ? "border-rose-200/25 bg-rose-950/50" : "border-sky-200/25 bg-sky-950/50")}>
-      <div className="mb-1 flex items-center justify-between gap-1">
-        <span className={cn("truncate text-[0.56rem] font-black uppercase tracking-[0.1em]", redTeam ? "text-rose-100/80" : "text-sky-100/80")}>{caption}</span>
-        <strong className="shrink-0 text-sm font-black tabular-nums text-white">{clampedCount}<span className="text-[0.58rem] text-white/40">/8</span></strong>
-      </div>
-      <div className="grid grid-cols-8 gap-1" aria-label={`${caption}: ${clampedCount} tricks won out of 8`}>
-        {Array.from({ length: 8 }, (_, index) => {
-          const earned = index < clampedCount;
-          return (
-            <motion.div
-              key={`${team}-trick-${index}`}
-              layout
-              initial={false}
-              animate={{ opacity: earned ? 1 : 0.22, y: earned ? 0 : 1, scale: earned ? 1 : 0.96 }}
-              transition={{ type: "spring", stiffness: 320, damping: 24 }}
-              className={cn("twenty-nine-trick-slot relative aspect-[0.715] min-w-0 overflow-hidden rounded-[0.2rem]", earned ? (redTeam ? "ring-1 ring-rose-200/45 shadow-[0_0_9px_rgba(251,113,133,.16)]" : "ring-1 ring-sky-200/45 shadow-[0_0_9px_rgba(96,165,250,.16)]") : "border border-dashed border-white/20 bg-white/[0.025]")}
-            >
-              {earned ? <CardBackArtwork className="h-full w-full rounded-[0.2rem] border-0 shadow-none" /> : null}
-            </motion.div>
-          );
-        })}
-      </div>
-    </div>
-  );
 }
 
 export function TwentyNineTable({
@@ -509,87 +219,146 @@ export function TwentyNineTable({
   const seatRefs = useRef<Map<string, HTMLElement>>(new Map());
   const processedEvents = useRef<Set<string>>(new Set());
   const timeoutRefs = useRef<number[]>([]);
-  const [flights, setFlights] = useState<Flight[]>([]);
-  const [logCollapsed, setLogCollapsed] = useState(false);
-  const [rulesOpen, setRulesOpen] = useState(false);
-  const [selectedBid, setSelectedBid] = useState<number | null>(null);
-  const [eventSpotlight, setEventSpotlight] = useState<EventSpotlight | null>(null);
-  const spotlightTimeoutRef = useRef<number | null>(null);
-  const processedSpotlightIds = useRef<Set<string>>(new Set(gameEvents.map((event) => event.id)));
 
-  const me = state.players.find((player) => player.userId === currentUserId);
-  const sortedHand = useMemo(() => (me?.hand ?? []).slice().sort((left, right) => {
-    const suitDelta = CARD_SUIT_ORDER[left.suit] - CARD_SUIT_ORDER[right.suit];
-    if (suitDelta !== 0) return suitDelta;
-    const rankDelta = (CARD_RANK_ORDER[left.rank] ?? 99) - (CARD_RANK_ORDER[right.rank] ?? 99);
-    if (rankDelta !== 0) return rankDelta;
-    return left.id.localeCompare(right.id);
-  }), [me?.hand]);
-  const opponents = useMemo(() => state.players.filter((player) => player.userId !== currentUserId), [state.players, currentUserId]);
-  const partner = opponents.find((player) => me && player.team === me.team);
-  const enemyPlayers = opponents.filter((player) => !me || player.team !== me.team);
-  const selfIsDeclarer = state.declarerId === currentUserId;
+  const [flights, setFlights] = useState<Flight[]>([]);
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const [sidePanelOpen, setSidePanelOpen] = useState(false);
+  const [selectedBid, setSelectedBid] = useState<number | null>(null);
+
+  // Player identity and relative seats
+  const me = state.players.find((p) => p.userId === currentUserId);
+  const opponents = useMemo(
+    () => state.players.filter((p) => p.userId !== currentUserId),
+    [state.players, currentUserId]
+  );
+  const partner = opponents.find((p) => me && p.team === me.team);
+
+  // Compass seating: North = partner, West = left, East = right
+  const westPlayer = useMemo(() => {
+    if (!me) return null;
+    return opponents.find((p) => p.team !== me.team && (p.seat - me.seat + 4) % 4 === 3) ?? null;
+  }, [opponents, me]);
+
+  const eastPlayer = useMemo(() => {
+    if (!me) return null;
+    return opponents.find((p) => p.team !== me.team && (p.seat - me.seat + 4) % 4 === 1) ?? null;
+  }, [opponents, me]);
+
   const isMyTurn = state.currentPlayerId === currentUserId;
-  const singleHandCaller = state.players.find((player) => player.userId === state.singleHandPlayerId) ?? null;
-  const sittingOutSingleHand = Boolean(singleHandCaller && me && me.userId !== singleHandCaller.userId && me.team === singleHandCaller.team);
   const currentTurnName = playerName(state, state.currentPlayerId, currentUserId);
-  const legalPlayIds = useMemo(() => new Set(actionsOfType(legalActions, "play_card").map((action) => action.type === "play_card" ? action.cardId : "")), [legalActions]);
+
+  const singleHandCaller = state.players.find((p) => p.userId === state.singleHandPlayerId) ?? null;
+  const sittingOutSingleHand = Boolean(
+    singleHandCaller && me && me.userId !== singleHandCaller.userId && me.team === singleHandCaller.team
+  );
+
+  // Hand cards sorted cleanly
+  const sortedHand = useMemo(() => {
+    return (me?.hand ?? []).slice().sort((a, b) => {
+      const suitDiff = CARD_SUIT_ORDER[a.suit] - CARD_SUIT_ORDER[b.suit];
+      if (suitDiff !== 0) return suitDiff;
+      const rankDiff = (CARD_RANK_ORDER[a.rank] ?? 99) - (CARD_RANK_ORDER[b.rank] ?? 99);
+      if (rankDiff !== 0) return rankDiff;
+      return a.id.localeCompare(b.id);
+    });
+  }, [me?.hand]);
+
+  // Legal actions
+  const legalPlayIds = useMemo(
+    () =>
+      new Set(
+        actionsOfType(legalActions, "play_card").map((a) =>
+          a.type === "play_card" ? a.cardId : ""
+        )
+      ),
+    [legalActions]
+  );
+
   const legalBidValues = useMemo(
-    () => actionsOfType(legalActions, "bid").flatMap((action) => action.type === "bid" ? [action.value] : []).sort((a, b) => a - b),
+    () =>
+      actionsOfType(legalActions, "bid")
+        .flatMap((a) => (a.type === "bid" ? [a.value] : []))
+        .sort((a, b) => a - b),
     [legalActions]
   );
   const lowestLegalBid = legalBidValues[0] ?? null;
   const highestLegalBid = legalBidValues[legalBidValues.length - 1] ?? null;
-  const selectedBidValue = lowestLegalBid !== null && highestLegalBid !== null
-    ? Math.min(highestLegalBid, Math.max(lowestLegalBid, selectedBid ?? lowestLegalBid))
-    : null;
-  const formattedLog = useMemo(() => gameEvents.map((event) => ({ event, row: formatEvent(event, state, currentUserId) })).filter((entry) => entry.row).slice(-28).reverse(), [gameEvents, state, currentUserId]);
-  const onlineCount = room.players.filter((player) => player.connected).length;
-  const currentTrickByPlayer = new Map(state.currentTrick.map((entry) => [entry.playerId, entry.card]));
-  const turnIndex = state.completedTricks.length + 1;
-  const activeWinningCardId = useMemo(() => currentWinningCardId(state), [state.currentTrick, state.trumpRevealed, state.trumpSuit]);
-  const ledSuit = state.currentTrick[0]?.card.suit ?? null;
 
-  useEffect(() => () => {
-    for (const timeout of timeoutRefs.current) window.clearTimeout(timeout);
-    timeoutRefs.current = [];
-    if (spotlightTimeoutRef.current !== null) window.clearTimeout(spotlightTimeoutRef.current);
-  }, []);
+  const selectedBidValue =
+    lowestLegalBid !== null && highestLegalBid !== null
+      ? Math.min(highestLegalBid, Math.max(lowestLegalBid, selectedBid ?? lowestLegalBid))
+      : null;
 
   useEffect(() => {
     if (lowestLegalBid === null || highestLegalBid === null) {
       setSelectedBid(null);
       return;
     }
-    setSelectedBid((current) => current === null
-      ? lowestLegalBid
-      : Math.min(highestLegalBid, Math.max(lowestLegalBid, current)));
+    setSelectedBid((curr) =>
+      curr === null ? lowestLegalBid : Math.min(highestLegalBid, Math.max(lowestLegalBid, curr))
+    );
   }, [lowestLegalBid, highestLegalBid]);
 
+  // Activity log rows
+  const formattedLog = useMemo(
+    () =>
+      gameEvents
+        .map((event) => ({ event, row: formatEventLog(event, state, currentUserId) }))
+        .filter((entry): entry is { event: GameEvent; row: NonNullable<ReturnType<typeof formatEventLog>> } => entry.row !== null)
+        .slice(-30)
+        .reverse(),
+    [gameEvents, state, currentUserId]
+  );
+
+  // Clean up timeouts
+  useEffect(() => {
+    return () => {
+      for (const t of timeoutRefs.current) window.clearTimeout(t);
+      timeoutRefs.current = [];
+    };
+  }, []);
+
+  // Card Flight Animations
   useEffect(() => {
     const container = tableRef.current;
     if (!container) return;
+
     for (const event of gameEvents) {
       if (processedEvents.current.has(event.id)) continue;
       processedEvents.current.add(event.id);
-      if (Date.now() - new Date(event.createdAt).getTime() > 10_000) continue;
+
+      if (Date.now() - new Date(event.createdAt).getTime() > 10000) continue;
       const payload = isRecord(event.payload) ? event.payload : {};
 
       if (event.type.endsWith(":card_played")) {
         const cardData = isRecord(payload.card) ? payload.card : null;
         const playerId = typeof payload.playerId === "string" ? payload.playerId : null;
-        if (!cardData || !playerId || typeof cardData.id !== "string" || typeof cardData.suit !== "string" || typeof cardData.rank !== "string") continue;
+        if (!cardData || !playerId || typeof cardData.id !== "string") continue;
+
         const card = cardData as unknown as TwentyNineCard;
-        const fromElement = playerId === currentUserId ? handRef.current : seatRefs.current.get(playerId) ?? null;
+        const fromElement =
+          playerId === currentUserId ? handRef.current : seatRefs.current.get(playerId) ?? null;
         const from = getCenter(fromElement, container) ?? centerOf(container);
         const to = centerOf(container);
         const name = playerName(state, playerId, currentUserId);
-        const flight: Flight = { id: event.id, card, from, to, kind: "play", playerName: name };
-        setFlights((current) => [...current, flight].slice(-8));
-        const timeout = window.setTimeout(() => {
-          setFlights((current) => current.filter((item) => item.id !== flight.id));
-          timeoutRefs.current = timeoutRefs.current.filter((item) => item !== timeout);
-        }, reduceMotion ? 360 : 850);
+
+        const flight: Flight = {
+          id: event.id,
+          card,
+          from,
+          to,
+          kind: "play",
+          playerName: name
+        };
+
+        setFlights((curr) => [...curr, flight].slice(-8));
+        const timeout = window.setTimeout(
+          () => {
+            setFlights((curr) => curr.filter((item) => item.id !== flight.id));
+            timeoutRefs.current = timeoutRefs.current.filter((item) => item !== timeout);
+          },
+          reduceMotion ? 350 : 800
+        );
         timeoutRefs.current.push(timeout);
         continue;
       }
@@ -598,69 +367,49 @@ export function TwentyNineTable({
         const winnerId = typeof payload.winnerPlayerId === "string" ? payload.winnerPlayerId : null;
         const playedCards = Array.isArray(payload.cards) ? payload.cards : [];
         if (!winnerId || playedCards.length === 0) continue;
+
         const from = centerOf(container);
-        const to = getCenter(seatRefs.current.get(winnerId) ?? null, container) ?? centerOf(container);
+        const to =
+          getCenter(seatRefs.current.get(winnerId) ?? null, container) ?? centerOf(container);
+
         const arrivals: Flight[] = playedCards.slice(0, 4).flatMap((played, index) => {
           if (!isRecord(played) || !isRecord(played.card)) return [];
           const cardData = played.card;
-          if (typeof cardData.id !== "string" || typeof cardData.suit !== "string" || typeof cardData.rank !== "string") return [];
-          return [{
-            id: `${event.id}-${index}-${cardData.id}`,
-            card: cardData as unknown as TwentyNineCard,
-            from: { x: from.x + (index - 1.5) * 10, y: from.y + (index % 2 === 0 ? 3 : -3) },
-            to: { x: to.x + (index - 1.5) * 5, y: to.y },
-            kind: "collect" as const,
-            playerName: playerName(state, winnerId, currentUserId),
-            delay: reduceMotion ? 0 : 0.56
-          }];
+          if (typeof cardData.id !== "string") return [];
+          return [
+            {
+              id: `${event.id}-${index}-${cardData.id}`,
+              card: cardData as unknown as TwentyNineCard,
+              from: {
+                x: from.x + (index - 1.5) * 12,
+                y: from.y + (index % 2 === 0 ? 4 : -4)
+              },
+              to: { x: to.x + (index - 1.5) * 6, y: to.y },
+              kind: "collect" as const,
+              playerName: playerName(state, winnerId, currentUserId),
+              delay: reduceMotion ? 0 : 0.5
+            }
+          ];
         });
+
         if (arrivals.length === 0) continue;
-        const arrivalIds = new Set(arrivals.map((flight) => flight.id));
-        setFlights((current) => [...current, ...arrivals].slice(-8));
-        const timeout = window.setTimeout(() => {
-          setFlights((current) => current.filter((item) => !arrivalIds.has(item.id)));
-          timeoutRefs.current = timeoutRefs.current.filter((item) => item !== timeout);
-        }, reduceMotion ? 400 : 1500);
+        const arrivalIds = new Set(arrivals.map((f) => f.id));
+        setFlights((curr) => [...curr, ...arrivals].slice(-8));
+
+        const timeout = window.setTimeout(
+          () => {
+            setFlights((curr) => curr.filter((item) => !arrivalIds.has(item.id)));
+            timeoutRefs.current = timeoutRefs.current.filter((item) => item !== timeout);
+          },
+          reduceMotion ? 400 : 1400
+        );
         timeoutRefs.current.push(timeout);
       }
     }
-    if (processedEvents.current.size > 700) {
-      const currentIds = new Set(gameEvents.map((event) => event.id));
-      processedEvents.current = new Set([...processedEvents.current].filter((id) => currentIds.has(id)));
-    }
-  }, [currentUserId, gameEvents, reduceMotion, state]);
+  }, [gameEvents, currentUserId, reduceMotion, state]);
 
-  useEffect(() => {
-    const unseen = gameEvents.filter((event) => !processedSpotlightIds.current.has(event.id));
-    if (unseen.length === 0) return;
-    for (const event of unseen) processedSpotlightIds.current.add(event.id);
-
-    const now = Date.now();
-    const spotlightCandidates = unseen
-      .filter((event) => {
-        const createdAt = new Date(event.createdAt).getTime();
-        return Number.isFinite(createdAt) && now - createdAt >= -1_000 && now - createdAt <= 12_000;
-      })
-      .map((event) => spotlightForEvent(event, state, currentUserId))
-      .filter((event): event is EventSpotlight => event !== null);
-    const newestSpotlight = spotlightCandidates[spotlightCandidates.length - 1];
-
-    if (processedSpotlightIds.current.size > 800) {
-      const currentIds = new Set(gameEvents.map((event) => event.id));
-      processedSpotlightIds.current = new Set([...processedSpotlightIds.current].filter((id) => currentIds.has(id)));
-    }
-    if (!newestSpotlight) return;
-
-    setEventSpotlight(newestSpotlight);
-    if (spotlightTimeoutRef.current !== null) window.clearTimeout(spotlightTimeoutRef.current);
-    spotlightTimeoutRef.current = window.setTimeout(() => {
-      setEventSpotlight((current) => current?.id === newestSpotlight.id ? null : current);
-      spotlightTimeoutRef.current = null;
-    }, newestSpotlight.durationMs ?? 2_450);
-  }, [gameEvents, currentUserId, state.players, state.winnerTeam]);
-
-  function registerSeat(playerId: string, element: HTMLDivElement | null) {
-    if (element) seatRefs.current.set(playerId, element);
+  function registerSeat(playerId: string, el: HTMLDivElement | null) {
+    if (el) seatRefs.current.set(playerId, el);
     else seatRefs.current.delete(playerId);
   }
 
@@ -669,381 +418,748 @@ export function TwentyNineTable({
     onAction("play_card", { cardId: card.id });
   }
 
-  function renderCardSlot(playerId: string, playIndex: number) {
-      const card = currentTrickByPlayer.get(playerId);
-      if (!card) return null;
-      const player = state.players.find((item) => item.userId === playerId);
-      const isTakingTrick = card.id === activeWinningCardId;
-      const isActive = state.currentPlayerId === playerId;
-      return (
-        <motion.div
-          key={`${playerId}-${card.id}`}
-          layout
-          initial={reduceMotion ? false : { opacity: 0, x: 18, y: -8, scale: 0.86, rotate: playIndex % 2 === 0 ? -2 : 2 }}
-          animate={{ opacity: 1, x: 0, y: 0, scale: 1, rotate: 0 }}
-          transition={{ type: "spring", stiffness: 320, damping: 25, delay: reduceMotion ? 0 : playIndex * 0.045 }}
-          className={cn("twenty-nine-played-card relative flex shrink-0 flex-col items-center gap-1", isTakingTrick && "twenty-nine-winning-play")}
-        >
-          <div className={cn(
-            "max-w-[7.8rem] truncate rounded-full border px-2.5 py-1 text-[0.64rem] font-black shadow-md",
-            isActive ? "border-emerald-100/45 bg-emerald-200/15 text-emerald-50" : player?.team === 0 ? "border-emerald-200/15 bg-emerald-950/65 text-emerald-100/75" : "border-sky-200/15 bg-sky-950/65 text-sky-100/75"
-          )}>{player?.displayName ?? "Player"}{playerId === currentUserId ? " · You" : ""}</div>
-          <div className={cn("twenty-nine-trick-card-frame relative flex items-center justify-center rounded-xl", isTakingTrick && "ring-2 ring-amber-200/85 shadow-[0_0_28px_rgba(252,211,77,.25)]")}>
-            <motion.div
-              key={card.id}
-              initial={reduceMotion ? false : { opacity: 0, y: -28, rotate: playIndex % 2 === 0 ? -3 : 3, scale: 0.78 }}
-              animate={{ opacity: 1, y: 0, rotate: 0, scale: 1 }}
-              transition={{ type: "spring", stiffness: 320, damping: 23, delay: reduceMotion ? 0 : playIndex * 0.045 }}
-              className="relative"
-            >
-              <CardFace card={card} />
-            </motion.div>
-          </div>
-          <span className={cn("rounded-full px-2.5 py-0.5 text-[0.56rem] font-black uppercase tracking-[0.12em]", isTakingTrick ? "border border-amber-100/45 bg-amber-200/12 text-amber-100" : "text-white/35")}>
-            {isTakingTrick ? "👑 Taking trick" : "Played"}
-          </span>
-        </motion.div>
-      );
-    }
-
+  const onlineCount = room.players.filter((p) => p.connected).length;
 
   return (
-    <div data-ui-patch="twenty-nine-full-felt-hero-events-v1" className="twenty-nine-shell tt-game-viewport fixed inset-0 z-10 h-[100dvh] min-h-0 w-screen overflow-hidden text-white">
-      <div className="twenty-nine-grain pointer-events-none absolute inset-0" />
-      <div className="relative z-10 flex h-full min-h-0 w-full flex-col gap-2 p-2">
-        <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-[#04110f]/45 px-3 py-2 shadow-[0_10px_34px_rgba(0,0,0,.2)]">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-emerald-100/20 bg-emerald-300/10 text-emerald-100"><span className="text-lg font-black">29</span></div>
-            <div className="min-w-0"><p className="text-[0.58rem] font-black uppercase tracking-[0.3em] text-emerald-200/45">Bangladesh card table</p><h1 className="truncate text-lg font-black tracking-tight">Twenty-Nine <span className="text-emerald-200/50">/ Hand {state.handNumber}</span></h1></div>
+    <div className="twenty-nine-shell tt-game-viewport fixed inset-0 z-10 h-[100dvh] w-screen overflow-hidden text-white select-none">
+      {/* Background Ambience & Grain */}
+      <div className="twenty-nine-grain pointer-events-none absolute inset-0 z-0" />
+
+      {/* Rotating Background Orbits Behind Table */}
+      <div className="twenty-nine-orbit-outer z-0" />
+      <div className="twenty-nine-orbit-inner z-0" />
+
+      {/* Main Flex App Container */}
+      <div className="relative z-10 flex h-full w-full flex-col justify-between p-2.5 sm:p-3">
+        {/* TOP HEADER */}
+        <header className="flex shrink-0 items-center justify-between gap-2 rounded-2xl border border-white/10 bg-black/60 px-3 py-2 shadow-2xl backdrop-blur-xl">
+          {/* Logo & Game Title */}
+          <div className="flex items-center gap-2.5">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-emerald-400/40 bg-emerald-500/15 shadow-[0_0_16px_rgba(52,211,153,0.3)]">
+              <span className="text-base font-black text-emerald-300">29</span>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-black tracking-tight text-white sm:text-lg">
+                  Twenty-Nine
+                </h1>
+                <span className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-0.5 text-[0.62rem] font-black text-emerald-300">
+                  Hand #{state.handNumber}
+                </span>
+              </div>
+              <p className="text-[0.6rem] font-bold uppercase tracking-wider text-white/40">
+                Bangladesh Arena · 4 Players
+              </p>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button type="button" onClick={() => setRulesOpen((value) => !value)} className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-white/70 transition hover:bg-white/10 hover:text-white" aria-label="Rules"><BookOpen className="h-4 w-4" /></button>
-            <button type="button" onClick={() => navigator.clipboard.writeText(room.code)} className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-white/70 transition hover:bg-white/10 hover:text-white" aria-label="Copy room code"><Copy className="h-4 w-4" /></button>
-            <button type="button" onClick={() => globalThis.location.assign("/dashboard")} className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-white/60 transition hover:bg-white/10 hover:text-white" aria-label="Leave match" title="Leave match"><LogOut className="h-4 w-4" /></button>
-            {onEndMatch && room.effectiveHostUserId === currentUserId ? <button type="button" onClick={() => onEndMatch(room.id)} className="grid h-10 w-10 place-items-center rounded-xl border border-rose-300/15 bg-rose-400/[0.07] text-rose-100/65 transition hover:bg-rose-400/15 hover:text-rose-50" aria-label="End match" title="End match"><Flag className="h-4 w-4" /></button> : null}
+
+          {/* Header Action Tools */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <button
+              type="button"
+              onClick={() => setRulesOpen(true)}
+              className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.05] text-white/70 transition hover:bg-white/15 hover:text-white"
+              title="Rules & Point Values"
+            >
+              <BookOpen className="h-4 w-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigator.clipboard.writeText(room.code)}
+              className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.05] text-white/70 transition hover:bg-white/15 hover:text-white"
+              title="Copy Room Code"
+            >
+              <Copy className="h-4 w-4" />
+            </button>
+
+            {/* Toggle Side Drawer (Chat & Log) */}
+            <button
+              type="button"
+              onClick={() => setSidePanelOpen((v) => !v)}
+              className={cn(
+                "relative grid h-9 w-9 place-items-center rounded-xl border transition",
+                sidePanelOpen
+                  ? "border-emerald-400/60 bg-emerald-500/20 text-emerald-300"
+                  : "border-white/10 bg-white/[0.05] text-white/70 hover:bg-white/15 hover:text-white"
+              )}
+              title="Activity Log & Chat"
+            >
+              <MessageSquare className="h-4 w-4" />
+              {formattedLog.length > 0 ? (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-400 text-[0.55rem] font-black text-black">
+                  {Math.min(formattedLog.length, 9)}
+                </span>
+              ) : null}
+            </button>
+
+            {/* End Match (Host only) */}
+            {onEndMatch && room.effectiveHostUserId === currentUserId ? (
+              <button
+                type="button"
+                onClick={() => onEndMatch(room.id)}
+                className="grid h-9 w-9 place-items-center rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-300 transition hover:bg-rose-500/20"
+                title="End Match"
+              >
+                <Flag className="h-4 w-4" />
+              </button>
+            ) : null}
+
+            {/* Leave Room */}
+            <button
+              type="button"
+              onClick={() => globalThis.location.assign("/dashboard")}
+              className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/[0.05] text-white/50 transition hover:bg-white/15 hover:text-white"
+              title="Leave Room"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
           </div>
         </header>
 
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_320px]">
-          <main className="flex min-h-0 flex-col gap-2">
-            <section ref={tableRef} className="twenty-nine-table relative min-h-0 flex-1 overflow-hidden">
-              <div className="twenty-nine-orbit twenty-nine-orbit-outer pointer-events-none absolute left-1/2 top-1/2 h-[min(75%,34rem)] aspect-[1.72/1] -translate-x-1/2 -translate-y-1/2 rounded-[50%] border border-emerald-200/10" />
-              <div className="twenty-nine-orbit twenty-nine-orbit-inner pointer-events-none absolute left-1/2 top-1/2 h-[min(61%,28rem)] aspect-[1.72/1] -translate-x-1/2 -translate-y-1/2 rounded-[50%] border border-cyan-200/[0.09]" />
-              <div className="pointer-events-none absolute left-1/2 top-1/2 h-64 w-[27rem] max-w-[80%] -translate-x-1/2 -translate-y-1/2 rounded-[50%] bg-emerald-400/[0.035] blur-2xl" />
+        {/* TOP HUD SCOREBOARD */}
+        <div className="mt-1.5 shrink-0">
+          <TwentyNineHUD state={state} currentUserId={currentUserId} />
+        </div>
 
-              <div className="twenty-nine-board-telemetry absolute left-[1.25%] top-[1.5%] z-40">
-                <div className="grid grid-cols-2 gap-2">
-                  <TeamScore team={0} points={state.teamGamePoints["0"]} caption="Team Red" />
-                  <TeamScore team={1} points={state.teamGamePoints["1"]} caption="Team Blue" />
-                </div>
-              </div>
+        {/* CENTER ARENA: FELT STADIUM TABLE */}
+        <main
+          ref={tableRef}
+          className="twenty-nine-stadium-table relative my-1.5 flex min-h-0 flex-1 flex-col items-center justify-center rounded-[2.5rem] p-4 overflow-hidden"
+        >
+          {/* North Partner Seat */}
+          {partner ? (
+            <div
+              ref={(el) => registerSeat(partner.userId, el)}
+              className="absolute top-3 left-1/2 -translate-x-1/2 z-20"
+            >
+              <TwentyNineSeat
+                player={partner}
+                roomPlayer={room.players.find((p) => p.userId === partner.userId)}
+                isDealer={state.dealerPlayerId === partner.userId}
+                isDeclarer={state.declarerId === partner.userId}
+                isSingleHand={state.singleHandPlayerId === partner.userId}
+                isSittingOut={
+                  singleHandCaller !== null &&
+                  singleHandCaller.userId !== partner.userId &&
+                  singleHandCaller.team === partner.team
+                }
+                compact
+              />
+            </div>
+          ) : null}
 
-              {partner ? (
-                <div ref={(el) => registerSeat(partner.userId, el)} className={cn("twenty-nine-partner-seat absolute left-1/2 top-[1%] z-10 -translate-x-1/2", partner.isCurrentTurn && "z-20")}>
-                  <Seat playerName={partner.displayName} team={partner.team} count={partner.handCount} active={partner.isCurrentTurn} dealer={state.dealerPlayerId === partner.userId} seat={partner.seat} />
-                  {singleHandCaller && partner.userId !== singleHandCaller.userId && partner.team === singleHandCaller.team ? <span className="mt-1 block rounded-full border border-violet-200/20 bg-violet-300/10 px-2 py-1 text-center text-[0.5rem] font-black uppercase tracking-[0.2em] text-violet-100/70">Sitting out</span> : null}
-                </div>
-              ) : null}
-              {enemyPlayers.map((player) => {
-                const pos = positionFor(player.userId, state, currentUserId);
-                return (
-                  <div key={player.userId} ref={(el) => registerSeat(player.userId, el)} className={cn("twenty-nine-opponent-seat absolute z-10", pos === "left" ? "left-[2.5%] top-[45%] -translate-y-1/2" : "right-[2.5%] top-[45%] -translate-y-1/2", player.isCurrentTurn && "z-20")}>
-                    <Seat playerName={player.displayName} team={player.team} count={player.handCount} active={player.isCurrentTurn} dealer={state.dealerPlayerId === player.userId} seat={player.seat} vertical />
-                  </div>
-                );
-              })}
+          {/* West Left Opponent Seat */}
+          {westPlayer ? (
+            <div
+              ref={(el) => registerSeat(westPlayer.userId, el)}
+              className="absolute left-3 top-1/2 -translate-y-1/2 z-20 hidden sm:block"
+            >
+              <TwentyNineSeat
+                player={westPlayer}
+                roomPlayer={room.players.find((p) => p.userId === westPlayer.userId)}
+                isDealer={state.dealerPlayerId === westPlayer.userId}
+                isDeclarer={state.declarerId === westPlayer.userId}
+                isSingleHand={state.singleHandPlayerId === westPlayer.userId}
+                compact
+              />
+            </div>
+          ) : null}
 
-              <div className="twenty-nine-current-trick absolute right-[2.5%] top-[2.8%] z-30 flex items-center gap-2 rounded-xl border border-emerald-100/15 bg-[#02110d]/95 px-3 py-2 shadow-lg">
-                <div className="grid h-8 w-8 place-items-center rounded-lg border border-emerald-100/15 bg-emerald-300/[0.08] text-emerald-100">🃏</div>
-                <div><span className="block text-[0.5rem] font-black uppercase tracking-[0.22em] text-emerald-100/45">Current trick</span><strong className="text-sm font-black text-white">{String(turnIndex).padStart(2, "0")} <span className="text-[0.6rem] text-white/35">/ 08</span></strong></div>
-              </div>
+          {/* East Right Opponent Seat */}
+          {eastPlayer ? (
+            <div
+              ref={(el) => registerSeat(eastPlayer.userId, el)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 z-20 hidden sm:block"
+            >
+              <TwentyNineSeat
+                player={eastPlayer}
+                roomPlayer={room.players.find((p) => p.userId === eastPlayer.userId)}
+                isDealer={state.dealerPlayerId === eastPlayer.userId}
+                isDeclarer={state.declarerId === eastPlayer.userId}
+                isSingleHand={state.singleHandPlayerId === eastPlayer.userId}
+                compact
+              />
+            </div>
+          ) : null}
 
-              <div className="twenty-nine-trick-stage absolute z-20">
-                <div className="twenty-nine-trick-meta mb-2 flex flex-wrap items-center gap-2 rounded-xl border border-white/[0.11] bg-[#03100f]/96 px-2.5 py-1.5 shadow-lg">
-                  <span className="text-[0.56rem] font-black uppercase tracking-[0.2em] text-emerald-100/45">Trick {String(turnIndex).padStart(2, "0")} / 08</span>
-                  {ledSuit ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.045] px-2.5 py-1 text-xs font-black text-white/90">
-                      <SuitMark suit={ledSuit} color={suitInfo(ledSuit).color} size={17} /> Lead suit · {suitInfo(ledSuit).label}
-                    </span>
-                  ) : <span className="text-xs font-semibold text-white/40">The first card establishes the lead suit</span>}
-                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.035] px-2.5 py-1 text-[0.62rem] font-black text-white/70">{state.singleHandPlayerId ? "Single Hand · ±3" : `Contract ${state.contractTarget ?? state.currentBid ?? "—"} · ×${state.multiplier}`}</span>
-                  <span className="ml-auto inline-flex items-center gap-1.5 text-[0.62rem] font-bold text-white/55">
-                    {state.trumpRevealed && state.trumpSuit ? <><span>Trump</span><SuitMark suit={state.trumpSuit} color={suitInfo(state.trumpSuit).color} size={15} /><span>{suitInfo(state.trumpSuit).label}</span></> : state.singleHandPlayerId ? "No trump" : "Trump concealed"}
-                  </span>
-                </div>
-                <div className="twenty-nine-trick-rail flex min-h-[12.2rem] w-full items-start justify-start gap-2.5 overflow-visible px-1 pt-1">
-                  {state.currentTrick.map((entry, index) => renderCardSlot(entry.playerId, index))}
-                  {state.currentTrick.length === 0 ? (
-                    <div className="grid min-h-[10rem] w-full place-items-center rounded-2xl border border-dashed border-emerald-100/15 bg-black/[0.08] px-4 text-center">
-                      <div><div className="text-3xl">🃏</div><p className="mt-2 text-sm font-black text-white/65">{state.phase === "playing" ? "Waiting for the first card" : phaseLabel(state.phase)}</p><p className="mt-1 text-xs font-semibold text-white/35">Cards will appear from left to right as they are played.</p></div>
+          {/* Center Trick Arena (Compass Cards & Points) */}
+          <div className="relative z-10">
+            <TwentyNineTrickArea
+              trick={state.currentTrick}
+              state={state}
+              currentUserId={currentUserId}
+            />
+          </div>
+
+          {/* Flight Animations Overlay */}
+          <AnimatePresence initial={false}>
+            {flights.map((flight) => {
+              const midX = (flight.from.x + flight.to.x) / 2;
+              const midY =
+                Math.min(flight.from.y, flight.to.y) - (flight.kind === "collect" ? 40 : 60);
+
+              return (
+                <motion.div
+                  key={flight.id}
+                  className="pointer-events-none absolute left-0 top-0 z-[60] drop-shadow-[0_10px_25px_rgba(0,0,0,0.6)]"
+                  initial={{
+                    x: flight.from.x - 28,
+                    y: flight.from.y - 40,
+                    scale: 0.75,
+                    opacity: 0,
+                    rotate: -10
+                  }}
+                  animate={
+                    reduceMotion
+                      ? { opacity: [0, 1, 0] }
+                      : {
+                          x: [flight.from.x - 28, midX - 28, flight.to.x - 28],
+                          y: [flight.from.y - 40, midY - 40, flight.to.y - 40],
+                          scale: [0.75, 1.05, 0.7],
+                          rotate: [-10, 8, 0],
+                          opacity: [0, 1, 1, 0]
+                        }
+                  }
+                  exit={{ opacity: 0 }}
+                  transition={{
+                    delay: flight.delay ?? 0,
+                    duration: reduceMotion ? 0.3 : 0.75,
+                    ease: [0.18, 0.86, 0.24, 1]
+                  }}
+                >
+                  <TwentyNineCardFace card={flight.card} size="sm" />
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </main>
+
+        {/* BOTTOM DOCK: ACTIONS & PLAYER'S HAND */}
+        <footer className="shrink-0 flex flex-col items-center gap-1.5">
+          {/* CONTEXTUAL ACTION BAR */}
+          <div className="z-30 flex flex-wrap items-center justify-center gap-2">
+            {/* AUCTION BIDDING BUTTONS */}
+            {state.phase === "bidding" && isMyTurn && !sittingOutSingleHand ? (
+              <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-amber-400/30 bg-black/80 px-3 py-1.5 shadow-2xl backdrop-blur-xl">
+                {selectedBidValue !== null && lowestLegalBid !== null && highestLegalBid !== null ? (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      disabled={selectedBidValue <= lowestLegalBid}
+                      onClick={() => setSelectedBid(Math.max(lowestLegalBid, selectedBidValue - 1))}
+                      className="grid h-8 w-8 place-items-center rounded-xl border border-white/15 bg-white/10 text-base font-black text-white hover:bg-white/20 disabled:opacity-30"
+                    >
+                      −
+                    </button>
+
+                    <div className="px-2 text-center">
+                      <span className="block text-[0.55rem] font-black uppercase tracking-widest text-amber-300/60">
+                        Bid
+                      </span>
+                      <span className="text-lg font-black text-amber-300">{selectedBidValue}</span>
                     </div>
-                  ) : null}
-                </div>
+
+                    <button
+                      type="button"
+                      disabled={selectedBidValue >= highestLegalBid}
+                      onClick={() => setSelectedBid(Math.min(highestLegalBid, selectedBidValue + 1))}
+                      className="grid h-8 w-8 place-items-center rounded-xl border border-white/15 bg-white/10 text-base font-black text-white hover:bg-white/20 disabled:opacity-30"
+                    >
+                      +
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => onAction("bid", { value: selectedBidValue })}
+                      className="rounded-xl border border-amber-400/60 bg-gradient-to-r from-amber-500 to-amber-600 px-4 py-1.5 text-xs font-black text-black shadow-[0_0_18px_rgba(245,158,11,0.5)] transition hover:scale-105 active:scale-95"
+                    >
+                      Bid {selectedBidValue}
+                    </button>
+                  </div>
+                ) : null}
+
+                {hasAction(legalActions, "ditto") ? (
+                  <button
+                    type="button"
+                    onClick={() => onAction("ditto")}
+                    className="rounded-xl border border-violet-400/50 bg-violet-600/30 px-3.5 py-1.5 text-xs font-black text-violet-200 shadow-[0_0_15px_rgba(168,85,247,0.4)] transition hover:bg-violet-600/50 active:scale-95"
+                  >
+                    Ditto
+                  </button>
+                ) : null}
+
+                {hasAction(legalActions, "pass_bid") ? (
+                  <button
+                    type="button"
+                    onClick={() => onAction("pass_bid")}
+                    className="rounded-xl border border-white/15 bg-white/10 px-3.5 py-1.5 text-xs font-black text-white/80 transition hover:bg-white/20 active:scale-95"
+                  >
+                    Pass
+                  </button>
+                ) : null}
               </div>
+            ) : null}
 
-
-              <AnimatePresence initial={false}>
-                {flights.map((flight) => {
-                  const midX = (flight.from.x + flight.to.x) / 2;
-                  const midY = Math.min(flight.from.y, flight.to.y) - (flight.kind === "collect" ? 42 : 62);
+            {/* TRUMP SELECTION BUTTONS */}
+            {state.phase === "trump" && isMyTurn ? (
+              <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-400/40 bg-black/80 px-3 py-2 shadow-2xl backdrop-blur-xl">
+                <span className="text-xs font-black uppercase tracking-wider text-emerald-300 mr-1">
+                  Choose Trump:
+                </span>
+                {(["spades", "hearts", "diamonds", "clubs"] as TwentyNineSuit[]).map((suit) => {
+                  const info = TWENTY_NINE_SUITS_INFO[suit];
                   return (
-                    <motion.div key={flight.id} className={cn("pointer-events-none absolute left-0 top-0 z-[50]", flight.kind === "collect" && "drop-shadow-[0_0_15px_rgba(52,211,153,0.32)]")} initial={{ x: flight.from.x - 25, y: flight.from.y - 36, rotate: -12, scale: 0.74, opacity: 0 }} animate={reduceMotion ? { opacity: [0, 1, 0] } : { x: [flight.from.x - 25, midX - 25, flight.to.x - 25], y: [flight.from.y - 36, midY - 36, flight.to.y - 36], rotate: [-12, 11, 0], scale: [0.74, 1, 0.66], opacity: [0, 1, 1, 0] }} exit={{ opacity: 0 }} transition={{ delay: flight.delay ?? 0, duration: reduceMotion ? 0.26 : 0.72, ease: [0.18, 0.86, 0.24, 1] }}>
-                      <CardFace card={flight.card} small />
-                    </motion.div>
+                    <button
+                      key={suit}
+                      type="button"
+                      onClick={() => onAction("choose_trump_suit", { suit })}
+                      className="flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.08] px-3 py-1.5 text-xs font-black text-white transition hover:border-emerald-400/50 hover:bg-emerald-500/20 active:scale-95"
+                    >
+                      <SuitMark suit={suit} size={16} />
+                      <span>{info?.label}</span>
+                    </button>
                   );
                 })}
-              </AnimatePresence>
-            </section>
 
-            
-
-            <div className="twenty-nine-bottom-dock">
-              <section className="twenty-nine-trick-dock" aria-label="Tricks won">
-                <p className="twenty-nine-trick-dock-title">Tricks won</p>
-                <TrickProgress team={0} count={state.tricksWonByTeam["0"]} caption="Red" />
-                <TrickProgress team={1} count={state.tricksWonByTeam["1"]} caption="Blue" />
-              </section>
-              <div className="twenty-nine-play-dock">
-                <section className="twenty-nine-action-panel relative z-30 shrink-0 rounded-xl border px-3 py-2 shadow-lg">
-                  <AnimatePresence initial={false}>
-                    {state.phase === "bidding" && isMyTurn && !sittingOutSingleHand ? (
-                      <motion.div
-                        key={`bid-prompt-${state.handNumber}-${state.currentBid ?? "open"}`}
-                        className="twenty-nine-bid-prompt relative mb-2 flex w-full items-center gap-2.5 rounded-xl border border-amber-100/40 bg-[linear-gradient(105deg,rgba(92,54,8,.96),rgba(28,21,9,.98)_55%,rgba(10,13,12,.98))] px-3 py-2 shadow-[0_8px_26px_rgba(0,0,0,.32)]"
-                        initial={{ opacity: 0, y: 12, scale: 0.98 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 8, scale: 0.98 }}
-                        transition={{ type: "spring", stiffness: 340, damping: 28 }}
-                        role="status"
-                        aria-live="polite"
-                      >
-                        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-amber-100/30 bg-amber-200/10 text-amber-100 text-lg">🎯</div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[0.67rem] font-black uppercase tracking-[0.23em] text-amber-100/75">Your turn to bid</p>
-                          <p className="mt-0.5 text-sm font-black text-white">{state.currentBid === null ? `Opening bid · minimum ${lowestLegalBid ?? 16}` : `Bid ${state.currentBid} · ${state.highestBidderId ? playerName(state, state.highestBidderId, currentUserId) : "No bidder yet"}`}</p>
-                          <p className="hidden text-[0.65rem] font-semibold text-white/55 sm:block">Range 16–28 · Ditto or Pass when available</p>
-                        </div>
-                      </motion.div>
-                    ) : null}
-                  </AnimatePresence>
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div><p className="text-[0.58rem] font-black uppercase tracking-[0.24em] text-white/35">Your move</p><p className="mt-1 text-sm font-black text-white">{isMyTurn ? phaseLabel(state.phase) : `${currentTurnName} is acting`}</p></div>
-                    <div className="flex flex-wrap items-center justify-end gap-2">
-                      {state.phase === "bidding" && isMyTurn ? <>
-                        {selectedBidValue !== null && lowestLegalBid !== null && highestLegalBid !== null ? (
-                          <div className="flex items-center gap-1 rounded-xl border border-amber-100/15 bg-amber-200/[0.045] p-1">
-                            <button type="button" aria-label="Lower bid" disabled={selectedBidValue <= lowestLegalBid} onClick={() => setSelectedBid(Math.max(lowestLegalBid, selectedBidValue - 1))} className="grid h-8 w-8 place-items-center rounded-lg border border-white/[0.08] bg-white/[0.035] text-sm font-black text-white/65 disabled:opacity-25">−</button>
-                            <div className="min-w-[3rem] px-1 text-center"><p className="text-[0.5rem] font-black uppercase tracking-[0.17em] text-amber-100/40">Bid</p><p className="text-lg font-black leading-tight text-amber-100">{selectedBidValue}</p></div>
-                            <button type="button" aria-label="Raise bid" disabled={selectedBidValue >= highestLegalBid} onClick={() => setSelectedBid(Math.min(highestLegalBid, selectedBidValue + 1))} className="grid h-8 w-8 place-items-center rounded-lg border border-white/[0.08] bg-white/[0.035] text-sm font-black text-white/65 disabled:opacity-25">+</button>
-                            <ActionButton label={`Bid ${selectedBidValue}`} tone="gold" onClick={() => onAction("bid", { value: selectedBidValue })} />
-                          </div>
-                        ) : null}
-                        {hasAction(legalActions, "ditto") ? <ActionButton label="Ditto" tone="violet" onClick={() => onAction("ditto")} /> : null}
-                        {hasAction(legalActions, "pass_bid") ? <ActionButton label="Pass" tone="neutral" onClick={() => onAction("pass_bid")} /> : null}
-                      </> : null}
-                      {state.phase === "trump" && isMyTurn ? <>
-                        {SUITS.map((item) => <button key={item.suit} type="button" onClick={() => onAction("choose_trump_suit", { suit: item.suit })} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.045] px-3 py-2 text-sm font-black text-white/80 transition hover:border-emerald-200/35 hover:bg-emerald-300/10"><SuitMark suit={item.suit} color={item.suit === "spades" || item.suit === "clubs" ? "#a7f3d0" : item.color} size={18} /><span className="hidden sm:inline">{item.label}</span></button>)}
-                        {hasAction(legalActions, "choose_seventh_trump") ? <ActionButton label="Seventh card" tone="violet" icon={<Sparkles className="h-3.5 w-3.5" />} onClick={() => onAction("choose_seventh_trump")} /> : null}
-                      </> : null}
-                      {state.phase === "doubling" && isMyTurn && !state.doubleByPlayerId ? <><ActionButton label="Pass" tone="neutral" onClick={() => onAction("pass_double")} /><ActionButton label="Double" tone="rose" icon={<Swords className="h-3.5 w-3.5" />} onClick={() => onAction("double")} /></> : null}
-                      {state.phase === "doubling" && isMyTurn && state.doubleByPlayerId ? <><ActionButton label="Continue ×2" tone="neutral" onClick={() => onAction("continue_contract")} /><ActionButton label="Redouble ×4" tone="rose" icon={<Swords className="h-3.5 w-3.5" />} onClick={() => onAction("redouble")} /></> : null}
-                      {state.phase === "playing" && hasAction(legalActions, "declare_single_hand") ? <ActionButton label="Declare Single Hand · ±3" tone="violet" icon={<Crown className="h-3.5 w-3.5" />} onClick={() => onAction("declare_single_hand")} /> : null}
-                      {state.phase === "playing" && isMyTurn && hasAction(legalActions, "reveal_trump") ? <ActionButton label="Reveal trump" tone="violet" icon={<Eye className="h-3.5 w-3.5" />} onClick={() => onAction("reveal_trump")} /> : null}
-                      {state.phase === "playing" && hasAction(legalActions, "declare_pair") ? <ActionButton label="Declare pair" tone="gold" icon={<Crown className="h-3.5 w-3.5" />} onClick={() => onAction("declare_pair")} /> : null}
-                      {state.phase === "finished" ? <ActionButton label="Match complete" tone="gold" icon={<Trophy className="h-3.5 w-3.5" />} onClick={() => {}} disabled /> : null}
-                      {!isMyTurn && state.phase !== "finished" && !hasAction(legalActions, "declare_single_hand") ? <span className="rounded-full border border-white/10 bg-white/[0.035] px-4 py-2 text-xs font-bold text-white/45">Waiting for {currentTurnName}…</span> : null}
-                    </div>
-                  </div>
-                </section>
-                <section ref={handRef} className="twenty-nine-hand-panel relative z-40 min-w-0 shrink-0 overflow-visible rounded-xl border border-white/[0.07] bg-[#04120f]/35 px-3 pb-1.5 pt-2 shadow-none">
-                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-emerald-100/15 bg-emerald-300/[0.08] text-emerald-100"><Crown className="h-4 w-4" /></div>
-                    <div className="min-w-0"><p className="truncate text-sm font-black">{me?.displayName ?? "Your hand"}</p><p className="text-[0.58rem] font-bold uppercase tracking-[0.17em] text-white/35">{sittingOutSingleHand ? "Partner playing alone" : me?.team === 0 ? "Team Red" : "Team Blue"} · {(me?.hand?.length ?? 0) + (state.privateSeventhCard ? 1 : 0)} cards</p></div>
-                  </div>
-                  <div className="flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.035] px-3 py-1.5 text-[0.63rem] font-bold text-white/48"><Shield className="h-3.5 w-3.5" /> Follow suit when possible</div>
-                </div>
-                {sittingOutSingleHand ? <div className="flex min-h-[7.7rem] flex-col items-center justify-center gap-2 rounded-xl border border-violet-200/10 bg-violet-300/[0.035] px-4 py-3 text-center"><div className="flex -space-x-3">{Array.from({ length: Math.min(me?.hand?.length ?? 0, 8) }).map((_, index) => <div key={index} className="origin-bottom" style={{ transform: `rotate(${(index - 3.5) * 2}deg)` }}><CardBack small /></div>)}</div><p className="text-xs font-black text-violet-100">You're sitting out this hand.</p><p className="max-w-md text-[0.68rem] font-semibold text-white/45">Your teammate must win all eight tricks alone. Your cards stay out of play.</p></div> : <div className="twenty-nine-hand-row relative z-50 mt-0 flex min-h-[8.25rem] items-end justify-center gap-0 overflow-visible px-1 pb-1 pt-3">
-                  {sortedHand.map((card, index) => {
-                    const canPlay = legalPlayIds.has(card.id) && isMyTurn && state.phase === "playing";
-                    const fanOffset = index - (sortedHand.length - 1) / 2;
-                    const fanRotate = fanOffset * (sortedHand.length >= 7 ? 1.25 : 0.9);
-                    const fanLift = Math.abs(fanOffset) * 1.15;
-                    const hoverMotion = canPlay && !reduceMotion ? { y: -31, rotate: fanRotate + (fanOffset < 0 ? -1.6 : 1.6), scale: 1.14, zIndex: 100 } : null;
-                    return (
-                      <motion.button
-                        key={card.id}
-                        type="button"
-                        disabled={!canPlay}
-                        onClick={() => play(card)}
-                        initial={reduceMotion ? false : { opacity: 0, y: 12 }}
-                        animate={{ opacity: 1, y: canPlay ? -10 - fanLift : -fanLift, rotate: fanRotate, scale: canPlay ? 1.035 : 1 }}
-                        {...(hoverMotion ? { whileHover: hoverMotion } : {})}
-                        {...(canPlay ? { whileTap: { scale: 0.96 } } : {})}
-                        transition={{ duration: reduceMotion ? 0.1 : 0.2 }}
-                        className={cn("twenty-nine-hand-card relative shrink-0 rounded-xl text-left outline-none transition", canPlay ? "cursor-pointer ring-2 ring-emerald-100/90 shadow-[0_0_30px_rgba(52,211,153,.3)]" : "cursor-default opacity-100")}
-                        style={{ marginLeft: index === 0 ? 0 : sortedHand.length >= 8 ? "-0.9rem" : sortedHand.length >= 7 ? "-0.62rem" : "-0.35rem", transformOrigin: "50% 100%", zIndex: 10 + index }}
-                        title={canPlay ? "Play this card" : "Your card"}
-                      >
-                        <CardFace card={card} hand />
-                        {canPlay ? <span className="absolute -bottom-1 left-1/2 h-1 w-8 -translate-x-1/2 rounded-full bg-emerald-200 shadow-[0_0_10px_rgba(110,231,183,.65)]" /> : null}
-                      </motion.button>
-                    );
-                  })}
-                  {state.privateSeventhCard && state.phase === "playing" && state.completedTricks.length === 7 && (me?.hand?.length ?? 0) === 0 ? (
-                    <motion.button type="button" onClick={() => play(state.privateSeventhCard!)} className="relative rounded-xl ring-2 ring-amber-200/60 shadow-[0_0_18px_rgba(251,191,36,.2)]"><CardFace card={state.privateSeventhCard} hand /><span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full border border-amber-200/25 bg-[#211807] px-2 py-0.5 text-[0.53rem] font-black uppercase tracking-widest text-amber-100">Seventh</span></motion.button>
-                  ) : null}
-                  {!me?.hand?.length && state.phase !== "finished" ? <div className="px-6 py-5 text-xs font-bold text-white/35">Your cards appear here.</div> : null}
-                </div>}
-                </section>
+                {hasAction(legalActions, "choose_seventh_trump") ? (
+                  <button
+                    type="button"
+                    onClick={() => onAction("choose_seventh_trump")}
+                    className="flex items-center gap-1.5 rounded-xl border border-amber-400/50 bg-amber-500/20 px-3.5 py-1.5 text-xs font-black text-amber-200 transition hover:bg-amber-500/30 active:scale-95"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    <span>7th Card Trump</span>
+                  </button>
+                ) : null}
               </div>
-              
+            ) : null}
+
+            {/* DOUBLING & REDOUBLING */}
+            {state.phase === "doubling" && isMyTurn ? (
+              <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-rose-500/40 bg-black/80 px-3 py-2 shadow-2xl backdrop-blur-xl">
+                {!state.doubleByPlayerId ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => onAction("pass_double")}
+                      className="rounded-xl border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-black text-white hover:bg-white/20"
+                    >
+                      Pass Double
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onAction("double")}
+                      className="flex items-center gap-1.5 rounded-xl border border-rose-400/60 bg-gradient-to-r from-rose-600 to-rose-700 px-4 py-1.5 text-xs font-black text-white shadow-[0_0_20px_rgba(244,63,94,0.6)] hover:scale-105 active:scale-95"
+                    >
+                      <Swords className="h-3.5 w-3.5" />
+                      Double Stakes (×2)
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => onAction("continue_contract")}
+                      className="rounded-xl border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-black text-white hover:bg-white/20"
+                    >
+                      Continue ×2
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onAction("redouble")}
+                      className="flex items-center gap-1.5 rounded-xl border border-rose-400/60 bg-gradient-to-r from-rose-600 to-rose-700 px-4 py-1.5 text-xs font-black text-white shadow-[0_0_20px_rgba(244,63,94,0.6)] hover:scale-105 active:scale-95"
+                    >
+                      <Swords className="h-3.5 w-3.5" />
+                      Redouble (×4)
+                    </button>
+                  </>
+                )}
+              </div>
+            ) : null}
+
+            {/* IN-GAME PLAYING ACTIONS: REVEAL TRUMP, DECLARE PAIR, SINGLE HAND */}
+            {state.phase === "playing" ? (
+              <div className="flex flex-wrap items-center gap-2">
+                {hasAction(legalActions, "reveal_trump") && isMyTurn ? (
+                  <button
+                    type="button"
+                    onClick={() => onAction("reveal_trump")}
+                    className="flex items-center gap-1.5 rounded-xl border border-emerald-400/60 bg-emerald-600/30 px-3.5 py-1.5 text-xs font-black text-emerald-200 shadow-[0_0_18px_rgba(52,211,153,0.4)] transition hover:bg-emerald-600/50 active:scale-95"
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                    Reveal Trump
+                  </button>
+                ) : null}
+
+                {hasAction(legalActions, "declare_pair") ? (
+                  <button
+                    type="button"
+                    onClick={() => onAction("declare_pair")}
+                    className="flex items-center gap-1.5 rounded-xl border border-amber-400/60 bg-amber-600/30 px-3.5 py-1.5 text-xs font-black text-amber-200 shadow-[0_0_18px_rgba(245,158,11,0.4)] transition hover:bg-amber-600/50 active:scale-95"
+                  >
+                    <Crown className="h-3.5 w-3.5" />
+                    Declare Pair (±4)
+                  </button>
+                ) : null}
+
+                {hasAction(legalActions, "declare_single_hand") ? (
+                  <button
+                    type="button"
+                    onClick={() => onAction("declare_single_hand")}
+                    className="flex items-center gap-1.5 rounded-xl border border-violet-400/60 bg-violet-600/30 px-3.5 py-1.5 text-xs font-black text-violet-200 shadow-[0_0_18px_rgba(168,85,247,0.4)] transition hover:bg-violet-600/50 active:scale-95"
+                  >
+                    <Crown className="h-3.5 w-3.5" />
+                    Single Hand (±3)
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+
+            {/* WAITING FOR ANOTHER PLAYER INDICATOR */}
+            {!isMyTurn && state.phase !== "finished" && !hasAction(legalActions, "declare_single_hand") ? (
+              <div className="flex items-center gap-2 rounded-full border border-white/10 bg-black/60 px-4 py-1 text-xs font-bold text-white/50 backdrop-blur-md">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Waiting for {currentTurnName}…</span>
+              </div>
+            ) : null}
+          </div>
+
+          {/* LOCAL PLAYER HAND FAN */}
+          <section
+            ref={handRef}
+            className="relative z-40 flex w-full max-w-4xl flex-col items-center justify-center rounded-2xl border border-white/10 bg-black/60 px-3 py-2 shadow-2xl backdrop-blur-xl"
+          >
+            {/* Local Player Info Bar */}
+            <div className="mb-1 flex w-full items-center justify-between px-2 text-[0.68rem]">
+              <div className="flex items-center gap-2">
+                <div
+                  className={cn(
+                    "h-2.5 w-2.5 rounded-full shadow-md",
+                    me?.team === 0 ? "bg-rose-400 shadow-rose-500/50" : "bg-sky-400 shadow-sky-500/50"
+                  )}
+                />
+                <span className="font-black text-white">{me?.displayName ?? "Your Hand"}</span>
+                <span className="text-white/40">·</span>
+                <span className="text-white/50">
+                  {(me?.hand?.length ?? 0) + (state.privateSeventhCard ? 1 : 0)} cards
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1 text-white/40">
+                <Shield className="h-3 w-3" />
+                <span>Follow lead suit if held</span>
+              </div>
             </div>
-          </main>
 
-          <aside className="flex min-h-[25rem] flex-col gap-3 xl:max-h-[calc(100dvh-7.5rem)]">
-            <section className="shrink-0 overflow-hidden rounded-[1.5rem] border border-white/[0.09] bg-[#04120f]/85 shadow-[0_16px_44px_rgba(0,0,0,.2)]">
-              <button type="button" onClick={() => setLogCollapsed((value) => !value)} className="flex w-full items-center justify-between gap-3 border-b border-white/[0.07] px-4 py-3 text-left"><div className="flex items-center gap-2"><span className="grid h-8 w-8 place-items-center rounded-lg border border-emerald-200/15 bg-emerald-300/[0.08] text-emerald-100"><Flag className="h-3.5 w-3.5" /></span><div><p className="text-sm font-black">Hand activity</p><p className="text-[0.58rem] font-bold uppercase tracking-[0.18em] text-white/35">Bidding · tricks · score</p></div></div><span className="rounded-full border border-white/10 px-2 py-0.5 text-[0.6rem] font-black text-white/45">{formattedLog.length}</span></button>
-              {!logCollapsed ? <div className="max-h-[7rem] space-y-1 overflow-hidden p-2 [scrollbar-color:rgba(110,231,183,.2)_transparent] [scrollbar-width:thin]">{formattedLog.length ? formattedLog.map(({ event, row }) => <div key={event.id} className="flex gap-2 rounded-xl border border-white/[0.045] bg-white/[0.02] px-2.5 py-2"><span className={cn("mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full", toneDot(row!.tone))} /><p className="min-w-0 text-[0.68rem] font-semibold leading-relaxed text-white/70">{row!.label}</p><time className="ml-auto shrink-0 pt-0.5 text-[0.52rem] font-bold tabular-nums text-white/25">{new Date(event.createdAt).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</time></div>) : <div className="px-3 py-6 text-center text-xs font-semibold text-white/32">The auction and trick history will appear here.</div>}</div> : null}
-            </section>
+            {/* Cards Fan or Sitting Out */}
+            {sittingOutSingleHand ? (
+              <div className="flex min-h-[6.5rem] flex-col items-center justify-center p-3 text-center">
+                <p className="text-xs font-black text-violet-200">
+                  Sitting out — Partner is playing Single Hand alone!
+                </p>
+                <p className="mt-0.5 text-[0.68rem] text-white/50">
+                  Partner must win all 8 tricks. Your hand remains idle.
+                </p>
+              </div>
+            ) : (
+              <div className="relative flex min-h-[7.2rem] items-end justify-center overflow-visible pb-1 pt-2">
+                {sortedHand.map((card, index) => {
+                  const canPlay = legalPlayIds.has(card.id) && isMyTurn && state.phase === "playing";
+                  const offset = index - (sortedHand.length - 1) / 2;
+                  const rotateDeg = offset * 2.2;
+                  const translateY = Math.abs(offset) * 2;
 
-            <section className="grid shrink-0 grid-cols-2 gap-2 rounded-[1.4rem] border border-white/[0.09] bg-[#04120f]/80 p-3">
-              <MiniStat label="Red card points" value={String(state.capturedPointsByTeam["0"])} tint="rose" />
-              <MiniStat label="Blue card points" value={String(state.capturedPointsByTeam["1"])} tint="sky" />
-              <MiniStat label="Contract" value={String(state.contractTarget ?? state.currentBid ?? "—")} tint="amber" />
-              <MiniStat label="Multiplier" value={`×${state.multiplier}`} tint="amber" />
+                  return (
+                    <motion.button
+                      key={card.id}
+                      type="button"
+                      disabled={!canPlay}
+                      onClick={() => play(card)}
+                      initial={reduceMotion ? false : { opacity: 0, y: 15 }}
+                      animate={{
+                        opacity: 1,
+                        y: canPlay ? -12 - translateY : -translateY,
+                        rotate: rotateDeg,
+                        scale: canPlay ? 1.05 : 1
+                      }}
+                      {...(canPlay && !reduceMotion
+                        ? { whileHover: { y: -32, scale: 1.16, rotate: 0, zIndex: 120 } }
+                        : {})}
+                      {...(canPlay ? { whileTap: { scale: 0.95 } } : {})}
+                      transition={{ duration: 0.2 }}
+                      className={cn(
+                        "relative shrink-0 text-left outline-none transition-shadow",
+                        canPlay ? "cursor-pointer" : "cursor-default"
+                      )}
+                      style={{
+                        marginLeft: index === 0 ? 0 : "-1.4rem",
+                        zIndex: 10 + index
+                      }}
+                      title={canPlay ? `Play ${card.rank} of ${card.suit}` : `${card.rank} of ${card.suit}`}
+                    >
+                      <TwentyNineCardFace
+                        card={card}
+                        size="md"
+                        playable={canPlay}
+                        muted={!canPlay && state.phase === "playing" && isMyTurn}
+                      />
+                    </motion.button>
+                  );
+                })}
 
-            </section>
+                {/* 7th Trump Hidden Card */}
+                {state.privateSeventhCard &&
+                state.phase === "playing" &&
+                state.completedTricks.length === 7 &&
+                (me?.hand?.length ?? 0) === 0 ? (
+                  <motion.button
+                    type="button"
+                    onClick={() => play(state.privateSeventhCard!)}
+                    className="relative cursor-pointer ring-2 ring-amber-400 rounded-xl"
+                  >
+                    <TwentyNineCardFace card={state.privateSeventhCard} size="md" playable />
+                    <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-amber-400 px-2 py-0.5 text-[0.55rem] font-black text-black">
+                      7TH TRUMP
+                    </span>
+                  </motion.button>
+                ) : null}
 
-            <div className="min-h-[17rem] flex-1 overflow-hidden rounded-[1.5rem] border border-white/[0.09] bg-[#04120f]/85 shadow-[0_16px_44px_rgba(0,0,0,.2)]">{onChat ? <RoomChat roomId={room.id} messages={room.chat} onSend={onChat} onlineCount={onlineCount} /> : <div className="p-4 text-sm text-white/40">Chat is unavailable.</div>}</div>
-          </aside>
-        </div>
+                {!sortedHand.length && state.phase !== "finished" && !sittingOutSingleHand ? (
+                  <div className="py-6 text-xs font-bold text-white/40">
+                    Your cards will appear here after the deal.
+                  </div>
+                ) : null}
+              </div>
+            )}
+          </section>
+        </footer>
       </div>
 
-      <AnimatePresence mode="wait">
-        {eventSpotlight ? (
+      {/* CINEMATIC FULL-SCREEN EVENT OVERLAY (BIDS, DITTO, TRUMP, PAIR, TRICK, HAND, MATCH) */}
+      <TwentyNineEventOverlay
+        gameEvents={gameEvents}
+        state={state}
+        currentUserId={currentUserId}
+      />
+
+      {/* COLLAPSIBLE SIDE PANEL: ACTIVITY LOG & CHAT */}
+      <AnimatePresence>
+        {sidePanelOpen ? (
           <motion.div
-            key={eventSpotlight.id}
-            className="pointer-events-none fixed inset-0 z-[140] grid place-items-center overflow-hidden px-4 pb-4 pt-16"
+            className="fixed inset-y-0 right-0 z-[120] flex w-full max-w-sm flex-col border-l border-white/10 bg-slate-950/90 shadow-2xl backdrop-blur-2xl"
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ type: "spring", stiffness: 320, damping: 28 }}
+          >
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between border-b border-white/10 p-3.5">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-emerald-400" />
+                <h3 className="text-sm font-black text-white">Match Activity & Chat</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSidePanelOpen(false)}
+                className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 text-white/60 hover:bg-white/10 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Hand Activity Feed */}
+            <div className="flex flex-col border-b border-white/10 p-3 max-h-[14rem] overflow-y-auto">
+              <span className="text-[0.6rem] font-black uppercase tracking-wider text-white/40 mb-2">
+                Hand Log
+              </span>
+              <div className="space-y-1.5">
+                {formattedLog.length ? (
+                  formattedLog.map(({ event, row }) => (
+                    <div
+                      key={event.id}
+                      className="flex items-center gap-2 rounded-xl border border-white/5 bg-white/[0.02] px-2.5 py-1.5 text-[0.68rem]"
+                    >
+                      <span
+                        className={cn(
+                          "h-1.5 w-1.5 shrink-0 rounded-full",
+                          row.tone === "emerald"
+                            ? "bg-emerald-400"
+                            : row.tone === "amber"
+                            ? "bg-amber-400"
+                            : row.tone === "violet"
+                            ? "bg-violet-400"
+                            : row.tone === "rose"
+                            ? "bg-rose-400"
+                            : row.tone === "sky"
+                            ? "bg-sky-400"
+                            : "bg-white/30"
+                        )}
+                      />
+                      <span className="min-w-0 flex-1 truncate font-medium text-white/80">
+                        {row.label}
+                      </span>
+                      <time className="shrink-0 text-[0.55rem] text-white/30">
+                        {new Date(event.createdAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit"
+                        })}
+                      </time>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-white/30 py-2">No activity recorded yet.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Chat Box */}
+            <div className="flex-1 overflow-hidden">
+              {onChat ? (
+                <RoomChat
+                  roomId={room.id}
+                  messages={room.chat}
+                  onSend={onChat}
+                  onlineCount={onlineCount}
+                />
+              ) : (
+                <div className="p-4 text-xs text-white/40">Chat is offline.</div>
+              )}
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      {/* RULES MODAL */}
+      <AnimatePresence>
+        {rulesOpen ? (
+          <motion.div
+            className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: reduceMotion ? 0.1 : 0.2 }}
-            aria-live="assertive"
-            role="status"
+            onClick={() => setRulesOpen(false)}
           >
-            <motion.div className="absolute inset-0 bg-black/68 backdrop-blur-[4px]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
             <motion.div
-              className={cn(
-                "twenty-nine-event-spotlight relative flex flex-col items-center overflow-y-auto overflow-x-hidden rounded-[1.5rem] border px-5 py-5 text-center shadow-[0_28px_90px_rgba(0,0,0,.62)]",
-                eventSpotlight.visual === "trump" || eventSpotlight.visual === "match-result" ? "w-[min(92vw,50rem)]" : "w-[min(92vw,42rem)]",
-                `twenty-nine-event-spotlight--${eventSpotlight.visual}`,
-                eventSpotlight.tone === "amber" ? "border-amber-100/45 bg-[linear-gradient(145deg,rgba(64,43,10,.995),rgba(10,16,14,.995))]" :
-                eventSpotlight.tone === "rose" ? "border-rose-100/40 bg-[linear-gradient(145deg,rgba(65,15,28,.995),rgba(10,12,16,.995))]" :
-                eventSpotlight.tone === "emerald" ? "border-emerald-100/40 bg-[linear-gradient(145deg,rgba(6,59,41,.995),rgba(5,16,14,.995))]" :
-                eventSpotlight.tone === "sky" ? "border-sky-100/40 bg-[linear-gradient(145deg,rgba(8,42,72,.995),rgba(5,13,20,.995))]" :
-                "border-violet-100/40 bg-[linear-gradient(145deg,rgba(46,23,72,.995),rgba(10,12,18,.995))]"
-              )}
-              initial={{ opacity: 0, y: 30, scale: 0.84, rotateX: 8 }}
-              animate={{ opacity: 1, y: 0, scale: 1, rotateX: 0 }}
-              exit={{ opacity: 0, y: -12, scale: 0.96 }}
-              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              className="max-h-[85dvh] w-full max-w-xl overflow-y-auto rounded-3xl border border-emerald-400/30 bg-[linear-gradient(145deg,#031d16,#01110c)] p-6 shadow-2xl text-white"
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
             >
-              <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white/65 to-transparent" />
-              <SpotlightHero spotlight={eventSpotlight} reduceMotion={Boolean(reduceMotion)} />
-              <p className="mt-2 text-[0.58rem] font-black uppercase tracking-[0.26em] text-white/45">Twenty-Nine · {eventSpotlight.visual === "trump" ? "Trump revealed" : eventSpotlight.visual === "match-result" ? "Match complete" : eventSpotlight.visual === "hand-result" ? "Hand resolution" : eventSpotlight.visual === "trick" ? "Trick result" : eventSpotlight.visual === "auction" ? "Auction update" : eventSpotlight.visual === "stakes" ? "Contract stakes" : eventSpotlight.visual === "single-hand" ? "Solo challenge" : eventSpotlight.visual === "pair" ? "Pair declared" : eventSpotlight.visual === "pass" ? "Auction pass" : eventSpotlight.visual === "deal-cancelled" ? "Deal cancelled" : "Table event"}</p>
-              <h2 className="mt-1 text-[clamp(1.45rem,3.2vw,2.7rem)] font-black leading-tight tracking-tight text-white">{eventSpotlight.title}</h2>
-              <p className="mt-2 max-w-2xl text-sm font-semibold leading-relaxed text-white/78">{eventSpotlight.detail}</p>
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <BookOpen className="h-5 w-5 text-emerald-400" />
+                  <h2 className="text-lg font-black">Twenty-Nine (29) Rules</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setRulesOpen(false)}
+                  className="grid h-8 w-8 place-items-center rounded-xl border border-white/10 text-white/60 hover:bg-white/10 hover:text-white"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 text-xs">
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                  <h4 className="font-black text-emerald-300">Card Strengths & Points</h4>
+                  <p className="mt-1 text-white/70">
+                    J (3 pts) &gt; 9 (2 pts) &gt; A (1 pt) &gt; 10 (1 pt) &gt; K (0) &gt; Q (0) &gt; 8 (0) &gt; 7 (0). Total in deck = 28 card points.
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                  <h4 className="font-black text-amber-300">Bidding Auction</h4>
+                  <p className="mt-1 text-white/70">
+                    Bids range from 16 to 28. Players can raise, call Ditto to match, or pass. Highest bidder sets the contract.
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                  <h4 className="font-black text-sky-300">Trump Selection & Reveal</h4>
+                  <p className="mt-1 text-white/70">
+                    Declarer secretly chooses a trump suit or requests the 7th card. When unable to follow suit, players can reveal trump before playing.
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                  <h4 className="font-black text-violet-300">Pairs & Single Hand</h4>
+                  <p className="mt-1 text-white/70">
+                    King + Queen of trump adjusts the contract by 4. Single Hand caller must win all 8 tricks alone without trump for ±3 game points.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setRulesOpen(false)}
+                  className="rounded-xl border border-emerald-400/40 bg-emerald-500/20 px-4 py-2 text-xs font-black text-emerald-200 transition hover:bg-emerald-500/30"
+                >
+                  Got It
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         ) : null}
       </AnimatePresence>
 
-      <AnimatePresence>{rulesOpen ? <motion.div className="fixed inset-0 z-[100] grid place-items-center bg-black/55 p-4 backdrop-blur-[2px]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setRulesOpen(false)}><motion.div className="max-h-[85dvh] w-full max-w-2xl overflow-y-auto rounded-[1.8rem] border border-emerald-100/15 bg-[#061510] p-5 shadow-2xl" initial={{ y: 12, scale: 0.98 }} animate={{ y: 0, scale: 1 }} exit={{ y: 8, scale: 0.98 }} onClick={(event) => event.stopPropagation()}><div className="flex items-center gap-3"><BookOpen className="h-5 w-5 text-emerald-200" /><h2 className="text-xl font-black">29 — Quick rules</h2></div><div className="mt-4 grid gap-3 sm:grid-cols-2"><RuleTile title="Rank" body="J > 9 > A > 10 > K > Q > 8 > 7. The deck contains exactly 28 card points." /><RuleTile title="Partnerships" body="Four players, partners opposite. Play proceeds counterclockwise." /><RuleTile title="Auction" body="Deal four cards each; bid from 16 to 28. Raise, Ditto or Pass; partners can take over. Three passes end the auction." /><RuleTile title="Trump" body="Declarer chooses a hidden suit or calls for the seventh card. If unable to follow suit, reveal trump before discarding." /><RuleTile title="Pair" body="After trump is revealed, King + Queen of trump can adjust the target by four. Bids 16–18 are not reduced for your team." /><RuleTile title="Single Hand" body="Before the first card, any player may declare Single Hand. No trump is used; their partner sits out and the caller must win all eight tricks for +3, otherwise −3." /><RuleTile title="Contract" body="After eight tricks, the bidding team gains or loses 1, 2 or 4 game points. First to +6 wins; reaching −6 loses." /></div><p className="mt-4 text-xs font-semibold leading-relaxed text-white/35">House rules: 28 card points only (no last-trick bonus). Double/Redouble and seventh-card trump are enabled; Set is not used.</p><button type="button" onClick={() => setRulesOpen(false)} className="mt-4 rounded-xl border border-emerald-200/20 bg-emerald-200/10 px-4 py-2 text-sm font-black text-emerald-100">Got it</button></motion.div></motion.div> : null}</AnimatePresence>
-
+      {/* FINAL MATCH FINISH CARD */}
       {state.phase === "finished" && state.winnerTeam !== null ? (
-        <div className="twenty-nine-match-finish pointer-events-none fixed inset-0 z-[90] grid place-items-center p-4">
-          <motion.div initial={{ opacity: 0, y: 24, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: "spring", stiffness: 220, damping: 22 }} className={cn("twenty-nine-match-finish-card pointer-events-auto", state.winnerTeam === 0 ? "twenty-nine-match-finish-card--red" : "twenty-nine-match-finish-card--blue")}>
-            <div className="twenty-nine-match-finish-medal"><Trophy className="h-12 w-12" /></div>
-            <p className="twenty-nine-match-finish-kicker">Match complete · Twenty-Nine</p>
-            <h2>{state.winnerTeam === 0 ? "TEAM RED WINS" : "TEAM BLUE WINS"}</h2>
-            <div className="twenty-nine-match-score"><div><span>TEAM RED</span><strong>{state.teamGamePoints["0"]}</strong></div><span className="twenty-nine-match-score-divider">VS</span><div><span>TEAM BLUE</span><strong>{state.teamGamePoints["1"]}</strong></div></div>
-            <p className="twenty-nine-match-finish-note">The match is over. Start a new room to play again.</p>
+        <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.85, y: 30 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className={cn(
+              "relative flex w-full max-w-md flex-col items-center rounded-3xl border p-6 text-center shadow-2xl backdrop-blur-2xl",
+              state.winnerTeam === 0
+                ? "border-rose-400/60 bg-[linear-gradient(145deg,#2e0513,#0e0207)] shadow-[0_0_80px_rgba(244,63,94,0.4)]"
+                : "border-sky-400/60 bg-[linear-gradient(145deg,#051e36,#020a14)] shadow-[0_0_80px_rgba(56,189,248,0.4)]"
+            )}
+          >
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-300/40 bg-amber-400/10 text-amber-300 shadow-[0_0_30px_rgba(251,191,36,0.3)]">
+              <Trophy className="h-8 w-8" />
+            </div>
+
+            <span className="mt-3 text-[0.68rem] font-black uppercase tracking-[0.22em] text-white/50">
+              Match Complete
+            </span>
+
+            <h2 className="mt-1 text-3xl font-black text-white">
+              {state.winnerTeam === 0 ? "TEAM RED WINS!" : "TEAM BLUE WINS!"}
+            </h2>
+
+            <div className="mt-4 flex w-full items-center justify-around rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-sm">
+              <div>
+                <span className="block text-[0.6rem] font-black uppercase tracking-wider text-rose-300">
+                  Team Red
+                </span>
+                <span className="text-2xl font-black text-white">
+                  {state.teamGamePoints["0"]}
+                </span>
+              </div>
+              <span className="font-bold text-white/20">VS</span>
+              <div>
+                <span className="block text-[0.6rem] font-black uppercase tracking-wider text-sky-300">
+                  Team Blue
+                </span>
+                <span className="text-2xl font-black text-white">
+                  {state.teamGamePoints["1"]}
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => globalThis.location.assign("/dashboard")}
+              className="mt-5 w-full rounded-xl border border-white/20 bg-white/10 py-2.5 text-xs font-black text-white transition hover:bg-white/20"
+            >
+              Back to Dashboard
+            </button>
           </motion.div>
         </div>
       ) : null}
     </div>
   );
-}
-
-const SEAT_CHARACTERS = ["🦊", "🐉", "🦁", "🦅"] as const;
-
-function Seat({ playerName: name, team, count, active, dealer, seat, vertical = false }: { playerName: string; team: number; count: number; active: boolean; dealer: boolean; seat: number; vertical?: boolean }) {
-  const character = SEAT_CHARACTERS[((seat % SEAT_CHARACTERS.length) + SEAT_CHARACTERS.length) % SEAT_CHARACTERS.length] ?? "🃏";
-  const redTeam = team === 0;
-  return (
-    <div className={cn(
-      "twenty-nine-player-seat relative rounded-[1.2rem] border px-2.5 py-2.5 shadow-[0_12px_28px_rgba(0,0,0,.28)] transition-all duration-300",
-      vertical ? "w-[clamp(10rem,14vw,14rem)]" : "w-[min(14rem,21vw)]",
-      active
-        ? (redTeam ? "border-rose-200/70 bg-[linear-gradient(145deg,rgba(74,14,30,.97),rgba(28,7,15,.97))] shadow-[0_0_28px_rgba(251,113,133,.2)]" : "border-sky-200/70 bg-[linear-gradient(145deg,rgba(9,47,81,.97),rgba(4,20,40,.97))] shadow-[0_0_28px_rgba(96,165,250,.2)]")
-        : (redTeam ? "border-rose-200/25 bg-[linear-gradient(145deg,rgba(46,12,23,.94),rgba(17,8,14,.94))]" : "border-sky-200/25 bg-[linear-gradient(145deg,rgba(8,29,49,.94),rgba(5,13,24,.94))]")
-    )}>
-      <div className="flex min-w-0 items-center gap-2.5">
-        <div className={cn(
-          "twenty-nine-seat-character relative grid h-[2.8rem] w-[2.8rem] shrink-0 place-items-center rounded-xl border text-[1.55rem]",
-          redTeam ? "border-rose-200/35 bg-rose-300/[0.15]" : "border-sky-200/35 bg-sky-300/[0.15]"
-        )}>
-          <span aria-hidden="true">{character}</span>
-          {dealer ? <span className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full border border-amber-100/40 bg-amber-300 text-[0.6rem] font-black text-amber-950">D</span> : null}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[0.8rem] font-black text-white">{name}</p>
-          <p className={cn("mt-0.5 truncate text-[0.56rem] font-black uppercase tracking-[0.1em]", redTeam ? "text-rose-100/80" : "text-sky-100/80")}>{redTeam ? "Team Red" : "Team Blue"}</p>
-          <p className="mt-1 text-[0.55rem] font-bold text-white/45">{active ? (redTeam ? "🔴 Acting now" : "🔵 Acting now") : dealer ? "🃏 Dealer" : "Ready"}{dealer && active ? " · Dealer" : ""}</p>
-        </div>
-        {active ? <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", redTeam ? "bg-rose-300 shadow-[0_0_12px_rgba(251,113,133,.85)]" : "bg-sky-300 shadow-[0_0_12px_rgba(96,165,250,.85)]")} aria-label="Active player" /> : null}
-      </div>
-      <div className="mt-2.5 flex min-w-0 items-end justify-between gap-2 border-t border-white/[0.07] pt-2">
-        <div className="flex min-w-0 items-end -space-x-5 overflow-visible pl-1">
-          {Array.from({ length: Math.min(count, vertical ? 4 : 5) }).map((_, index) => (
-            <motion.div key={index} className="origin-bottom" initial={false} animate={{ rotate: (index - 2) * 4, y: active ? -2 : 0 }} transition={{ type: "spring", stiffness: 320, damping: 26 }} style={{ zIndex: index }}>
-              <CardBack small />
-            </motion.div>
-          ))}
-        </div>
-        <span className="shrink-0 rounded-lg border border-white/10 bg-black/25 px-1.5 py-1 text-[0.59rem] font-black text-white/75">{count} 🂠</span>
-      </div>
-    </div>
-  );
-}
-
-function ActionButton({ label, tone, onClick, disabled = false, icon }: { label: string; tone: "gold" | "violet" | "neutral" | "rose"; onClick: () => void; disabled?: boolean; icon?: React.ReactNode }) {
-  const color = tone === "gold" ? "border-amber-200/30 bg-amber-200/10 text-amber-100 hover:bg-amber-200/20" : tone === "violet" ? "border-violet-200/25 bg-violet-300/10 text-violet-100 hover:bg-violet-300/20" : tone === "rose" ? "border-rose-200/25 bg-rose-300/10 text-rose-100 hover:bg-rose-300/20" : "border-white/10 bg-white/[0.045] text-white/70 hover:bg-white/10";
-  return <button type="button" disabled={disabled} onClick={onClick} className={cn("inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-black transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40", color)}>{icon}{label}</button>;
-}
-
-function MiniStat({ label, value, tint }: { label: string; value: string; tint: "rose" | "sky" | "amber" }) {
-  return <div className="rounded-xl border border-white/[0.06] bg-black/15 px-3 py-2"><p className="truncate text-[0.55rem] font-black uppercase tracking-[0.15em] text-white/35">{label}</p><p className={cn("mt-1 text-xl font-black", tint === "rose" ? "text-rose-100" : tint === "sky" ? "text-sky-100" : "text-amber-100")}>{value}</p></div>;
-}
-
-function RuleTile({ title, body }: { title: string; body: string }) {
-  return <div className="rounded-xl border border-white/[0.08] bg-white/[0.025] p-3"><p className="text-xs font-black uppercase tracking-[0.16em] text-emerald-100/70">{title}</p><p className="mt-1 text-sm font-medium leading-relaxed text-white/65">{body}</p></div>;
-}
-
-function toneDot(tone: string): string {
-  if (tone === "emerald") return "bg-emerald-300";
-  if (tone === "sky") return "bg-sky-300";
-  if (tone === "amber") return "bg-amber-200";
-  if (tone === "violet") return "bg-violet-300";
-  if (tone === "rose") return "bg-rose-300";
-  return "bg-white/25";
-}
-
-function phaseLabel(phase: PublicTwentyNineState["phase"]): string {
-  if (phase === "bidding") return "Auction";
-  if (phase === "trump") return "Choose trump";
-  if (phase === "doubling") return "Double or continue";
-  if (phase === "playing") return "Play a card";
-  return "Match finished";
 }
