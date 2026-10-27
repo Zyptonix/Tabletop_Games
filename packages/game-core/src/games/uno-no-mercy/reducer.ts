@@ -155,7 +155,7 @@ function swapHands(params: {
   return { ...params.state, players };
 }
 
-function passHands(state: NoMercyState, events: GameEvent[]): NoMercyState {
+function passHands(state: NoMercyState, events: GameEvent[], playerId?: string): NoMercyState {
   const activePlayers = getActivePlayers(state);
   if (activePlayers.length <= 1) {
     return state;
@@ -188,7 +188,7 @@ function passHands(state: NoMercyState, events: GameEvent[]): NoMercyState {
   events.push(
     createGameEvent("uno-no-mercy:zero_pass", {
       message: "All hands passed in the current direction.",
-      payload: { direction: state.direction, directionLabel: state.direction === 1 ? "clockwise" : "counterclockwise", transfers }
+      payload: { playerId, direction: state.direction, directionLabel: state.direction === 1 ? "clockwise" : "counterclockwise", transfers }
     })
   );
 
@@ -770,7 +770,7 @@ export function applyNoMercyAction(params: {
   }
 
   if (playedCard.value === "0") {
-    state = passHands(state, events);
+    state = passHands(state, events, playerId);
   }
 
   if (playedCard.value === "discard_all") {

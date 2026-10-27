@@ -481,10 +481,12 @@ function normalizePowerEvent(
   if (type.endsWith(":zero_pass")) {
     const dirVal = getNumber(payload.direction);
     const directionWord = dirVal === -1 ? "Anti-Clockwise" : "Clockwise";
+    const passerId = getString(payload.playerId) ?? getString(payload.actorPlayerId);
+    const passerName = passerId ? playerName(passerId, players, currentUserId) : "A player";
     return {
       id: event.id,
       hugeTitle: "PASS ALL",
-      subtitle: `All cards switched ${directionWord}!`,
+      subtitle: `${passerName} played 0 · All cards switched ${directionWord}!`,
       tone: "zero_pass",
       createdAt: event.createdAt
     };
