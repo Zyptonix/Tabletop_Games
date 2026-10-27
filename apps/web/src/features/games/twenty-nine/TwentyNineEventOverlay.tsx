@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { Crown, Sparkles, Swords, Trophy, Flame } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { GameEvent, PublicTwentyNineState, TwentyNineSuit } from "@tabletop/game-core";
-import { cn } from "@/lib/utils/cn";
 import { SuitMark, TWENTY_NINE_SUITS_INFO } from "./TwentyNineCard";
 
 interface NormalizedEvent {
@@ -19,7 +17,11 @@ interface NormalizedEvent {
   durationMs: number;
 }
 
-function playerName(state: PublicTwentyNineState, playerId: string | null | undefined, currentUserId: string | null): string {
+function playerName(
+  state: PublicTwentyNineState,
+  playerId: string | null | undefined,
+  currentUserId: string | null
+): string {
   if (!playerId) return "Player";
   if (playerId === currentUserId) return "You";
   return state.players.find((player) => player.userId === playerId)?.displayName ?? "Player";
@@ -47,7 +49,7 @@ function normalizeTwentyNineEvent(
         hugeTitle: `BID ${value ?? "PLACED"}`,
         subtitle: `${actor} raised the contract to ${value}!`,
         tone: "amber",
-        durationMs: 2800
+        durationMs: 2400
       };
 
     case "twenty-nine:ditto":
@@ -55,9 +57,9 @@ function normalizeTwentyNineEvent(
         id: event.id,
         badge: "AUCTION DITTO",
         hugeTitle: `DITTO ${value ?? ""}!`,
-        subtitle: `${actor} called Ditto, matching the bid!`,
+        subtitle: `${actor} matched the bid with Ditto!`,
         tone: "violet",
-        durationMs: 2800
+        durationMs: 2400
       };
 
     case "twenty-nine:pass_bid":
@@ -67,29 +69,29 @@ function normalizeTwentyNineEvent(
         hugeTitle: "PASS",
         subtitle: `${actor} passed the bid to the next player.`,
         tone: "sky",
-        durationMs: 2200
+        durationMs: 1900
       };
 
     case "twenty-nine:double":
       return {
         id: event.id,
         badge: "STAKES RAISED",
-        hugeTitle: "CONTRACT DOUBLED (×2)",
+        hugeTitle: "DOUBLE! ×2",
         subtitle: `${actor} doubled the contract stakes!`,
         tone: "rose",
         multiplier: 2,
-        durationMs: 3200
+        durationMs: 2800
       };
 
     case "twenty-nine:redouble":
       return {
         id: event.id,
         badge: "HIGH STAKES",
-        hugeTitle: "REDOUBLE! (×4)",
-        subtitle: `${actor} redoubled the contract to ×4 stakes!`,
+        hugeTitle: "REDOUBLE! ×4",
+        subtitle: `${actor} redoubled to ×4 contract stakes!`,
         tone: "rose",
         multiplier: 4,
-        durationMs: 3400
+        durationMs: 3000
       };
 
     case "twenty-nine:trump_revealed": {
@@ -99,10 +101,10 @@ function normalizeTwentyNineEvent(
         id: event.id,
         badge: "TRUMP REVEALED",
         hugeTitle: `${suitName.toUpperCase()} TRUMP`,
-        subtitle: `Trump has been revealed! You may now play trump cards.`,
+        subtitle: `${actor} revealed the trump suit!`,
         tone: "emerald",
         suit: rawSuit ?? undefined,
-        durationMs: 3800
+        durationMs: 3200
       };
     }
 
@@ -112,9 +114,9 @@ function normalizeTwentyNineEvent(
         id: event.id,
         badge: "ROYAL PAIR",
         hugeTitle: "PAIR DECLARED",
-        subtitle: `Team ${team} showed the King & Queen! Target adjusted by 4.`,
+        subtitle: `Team ${team} showed King & Queen! Target adjusted by 4.`,
         tone: "violet",
-        durationMs: 3200
+        durationMs: 2800
       };
     }
 
@@ -123,9 +125,9 @@ function normalizeTwentyNineEvent(
         id: event.id,
         badge: "SOLO CHALLENGE",
         hugeTitle: "SINGLE HAND!",
-        subtitle: `${actor} declared Single Hand and must win all 8 tricks alone!`,
+        subtitle: `${actor} declared Single Hand and plays alone!`,
         tone: "violet",
-        durationMs: 3500
+        durationMs: 3200
       };
 
     case "twenty-nine:trick_won": {
@@ -137,10 +139,10 @@ function normalizeTwentyNineEvent(
       return {
         id: event.id,
         badge: `TRICK ${number} OF 8`,
-        hugeTitle: `${teamName} WINS TRICK`,
-        subtitle: `${playerName(state, winnerId, currentUserId)} captured trick ${number} (+${points} card pts)!`,
+        hugeTitle: `${teamName} TAKES TRICK`,
+        subtitle: `${playerName(state, winnerId, currentUserId)} captured trick ${number} (+${points} pts)`,
         tone: winner?.team === 0 ? "rose" : "sky",
-        durationMs: 2900
+        durationMs: 2400
       };
     }
 
@@ -156,11 +158,11 @@ function normalizeTwentyNineEvent(
 
       return {
         id: event.id,
-        badge: "HAND RESOLUTION",
+        badge: "HAND SCORED",
         hugeTitle: `${winnerTeamName} WINS HAND`,
-        subtitle: `Team ${biddingTeamName} needed ${target} pts and captured ${points} pts · Game points: ${change}`,
+        subtitle: `Team ${biddingTeamName} needed ${target} pts, took ${points} pts · Game pts: ${change}`,
         tone: winnerTeam === 0 ? "rose" : "sky",
-        durationMs: 4200
+        durationMs: 3600
       };
     }
 
@@ -171,9 +173,9 @@ function normalizeTwentyNineEvent(
         id: event.id,
         badge: "MATCH RESULT",
         hugeTitle: `${winnerLabel} WINS!`,
-        subtitle: winner !== null ? `${winnerLabel} has reached the target victory score!` : "Match ended in a tie.",
+        subtitle: winner !== null ? `${winnerLabel} reached the victory score!` : "Match ended in a tie.",
         tone: winner === 0 ? "rose" : winner === 1 ? "sky" : "amber",
-        durationMs: 5000
+        durationMs: 4400
       };
     }
 
@@ -181,6 +183,34 @@ function normalizeTwentyNineEvent(
       return null;
   }
 }
+
+const TONE_CONFIGS = {
+  amber: {
+    color: "#fbbf24",
+    glow: "rgba(245, 158, 11, 0.8)",
+    soft: "rgba(245, 158, 11, 0.25)"
+  },
+  rose: {
+    color: "#f43f5e",
+    glow: "rgba(244, 63, 94, 0.85)",
+    soft: "rgba(244, 63, 94, 0.25)"
+  },
+  emerald: {
+    color: "#34d399",
+    glow: "rgba(52, 211, 153, 0.85)",
+    soft: "rgba(52, 211, 153, 0.25)"
+  },
+  sky: {
+    color: "#38bdf8",
+    glow: "rgba(56, 189, 248, 0.8)",
+    soft: "rgba(56, 189, 248, 0.25)"
+  },
+  violet: {
+    color: "#c084fc",
+    glow: "rgba(168, 85, 247, 0.85)",
+    soft: "rgba(168, 85, 247, 0.25)"
+  }
+};
 
 export function TwentyNineEventOverlay({
   gameEvents,
@@ -191,6 +221,7 @@ export function TwentyNineEventOverlay({
   state: PublicTwentyNineState;
   currentUserId: string | null;
 }) {
+  const reduceMotion = useReducedMotion();
   const [currentSpotlight, setCurrentSpotlight] = useState<NormalizedEvent | null>(null);
   const processedIdsRef = useRef<Set<string>>(new Set(gameEvents.map((e) => e.id)));
   const timeoutRef = useRef<number | null>(null);
@@ -235,74 +266,48 @@ export function TwentyNineEventOverlay({
     }, newest.durationMs);
   }, [gameEvents, state, currentUserId]);
 
-  const toneVisuals = {
-    amber: {
-      border: "border-amber-400/50",
-      glow: "shadow-[0_0_80px_rgba(245,158,11,0.35)]",
-      badge: "border-amber-400/60 bg-amber-500/20 text-amber-200",
-      halo: "bg-amber-400/20"
-    },
-    rose: {
-      border: "border-rose-400/50",
-      glow: "shadow-[0_0_80px_rgba(244,63,94,0.35)]",
-      badge: "border-rose-400/60 bg-rose-500/20 text-rose-200",
-      halo: "bg-rose-400/20"
-    },
-    emerald: {
-      border: "border-emerald-400/50",
-      glow: "shadow-[0_0_80px_rgba(52,211,153,0.35)]",
-      badge: "border-emerald-400/60 bg-emerald-500/20 text-emerald-200",
-      halo: "bg-emerald-400/20"
-    },
-    sky: {
-      border: "border-sky-400/50",
-      glow: "shadow-[0_0_80px_rgba(56,189,248,0.35)]",
-      badge: "border-sky-400/60 bg-sky-500/20 text-sky-200",
-      halo: "bg-sky-400/20"
-    },
-    violet: {
-      border: "border-violet-400/50",
-      glow: "shadow-[0_0_80px_rgba(168,85,247,0.35)]",
-      badge: "border-violet-400/60 bg-violet-500/20 text-violet-200",
-      halo: "bg-violet-400/20"
-    }
-  };
+  const tone = currentSpotlight ? TONE_CONFIGS[currentSpotlight.tone] ?? TONE_CONFIGS.amber : TONE_CONFIGS.amber;
 
   return (
-    <AnimatePresence>
-      {currentSpotlight ? (
-        <motion.div
-          key={currentSpotlight.id}
-          className="pointer-events-none fixed inset-0 z-[140] flex items-center justify-center p-4 backdrop-blur-[6px] bg-black/60"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        >
+    <div className="pointer-events-none fixed inset-0 z-[70] grid place-items-center overflow-hidden">
+      <AnimatePresence mode="popLayout">
+        {currentSpotlight ? (
           <motion.div
-            className={cn(
-              "relative flex max-w-xl flex-col items-center overflow-hidden rounded-[2.5rem] border bg-[linear-gradient(145deg,rgba(18,12,28,0.98),rgba(10,13,24,0.98)_55%,rgba(5,6,10,0.99))] px-8 py-8 text-center text-white shadow-2xl",
-              toneVisuals[currentSpotlight.tone].border,
-              toneVisuals[currentSpotlight.tone].glow
-            )}
-            initial={{ opacity: 0, scale: 0.85, y: 30 }}
+            key={currentSpotlight.id}
+            initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.8, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.88, y: -20 }}
-            transition={{ type: "spring", stiffness: 360, damping: 28 }}
+            exit={{ opacity: 0, scale: reduceMotion ? 1 : 1.12, filter: "blur(12px)" }}
+            transition={{ duration: reduceMotion ? 0.15 : 0.32, ease: [0.16, 1, 0.3, 1] }}
+            className="relative flex flex-col items-center justify-center p-6 text-center select-none"
           >
-            {/* Ambient Background Aura */}
+            {/* Soft Radial Glow Halo - NO dark opaque rectangular box blocking the table */}
             <div
-              className={cn(
-                "pointer-events-none absolute -inset-10 rounded-full blur-3xl opacity-50",
-                toneVisuals[currentSpotlight.tone].halo
-              )}
+              className="pointer-events-none absolute -inset-24"
+              style={{
+                background: `radial-gradient(ellipse at 50% 50%, ${tone.soft} 0%, rgba(0, 0, 0, 0.4) 45%, transparent 75%)`,
+                filter: "blur(24px)"
+              }}
             />
 
-            {/* Badge */}
+            {/* Expanding Shockwave Ripple across table */}
+            {!reduceMotion ? (
+              <motion.div
+                className="pointer-events-none absolute rounded-full border-2"
+                style={{ borderColor: tone.color }}
+                initial={{ width: 60, height: 60, opacity: 0.9, scale: 0.4 }}
+                animate={{ width: 440, height: 440, opacity: 0, scale: 1.5 }}
+                transition={{ duration: 0.85, ease: "easeOut" }}
+              />
+            ) : null}
+
+            {/* Badge Pill */}
             <span
-              className={cn(
-                "rounded-full border px-3 py-1 text-[0.68rem] font-black uppercase tracking-[0.22em] shadow-md",
-                toneVisuals[currentSpotlight.tone].badge
-              )}
+              className="relative z-10 mb-2 rounded-full border px-3 py-0.5 text-[0.62rem] font-black uppercase tracking-[0.24em] shadow-lg backdrop-blur-md"
+              style={{
+                borderColor: tone.color,
+                backgroundColor: tone.soft,
+                color: "#fff"
+              }}
             >
               {currentSpotlight.badge}
             </span>
@@ -310,10 +315,10 @@ export function TwentyNineEventOverlay({
             {/* Huge Suit Emblem (if trump revealed) */}
             {currentSpotlight.suit ? (
               <motion.div
-                className="my-3 flex items-center justify-center"
-                initial={{ scale: 0.5, rotate: -15 }}
-                animate={{ scale: 1, rotate: 0 }}
-                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                className="relative z-10 my-1 flex items-center justify-center"
+                initial={{ scale: 0.6, rotate: -12 }}
+                animate={{ scale: [0.75, 1.18, 1], rotate: 0 }}
+                transition={{ duration: 0.4 }}
               >
                 <SuitMark
                   suit={currentSpotlight.suit}
@@ -322,23 +327,28 @@ export function TwentyNineEventOverlay({
                       ? "#fb7185"
                       : "#34d399"
                   }
-                  size={76}
+                  size={68}
                 />
               </motion.div>
             ) : null}
 
-            {/* Huge Title */}
-            <h2 className="mt-3 text-3xl font-black tracking-tight text-white sm:text-4xl drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
+            {/* Massive Glowing Title (Like UNO No Mercy) */}
+            <h1
+              className="relative z-10 text-4xl sm:text-5xl md:text-6xl font-black tracking-tight leading-none text-white drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]"
+              style={{
+                textShadow: `0 0 28px ${tone.glow}, 0 0 55px ${tone.glow}`
+              }}
+            >
               {currentSpotlight.hugeTitle}
-            </h2>
+            </h1>
 
-            {/* Subtitle / Details */}
-            <p className="mt-2.5 max-w-md text-sm font-semibold leading-relaxed text-slate-200">
+            {/* Subtitle Details */}
+            <p className="relative z-10 mt-2 max-w-md text-xs sm:text-sm font-black uppercase tracking-[0.2em] text-white/90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
               {currentSpotlight.subtitle}
             </p>
           </motion.div>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>
+        ) : null}
+      </AnimatePresence>
+    </div>
   );
 }

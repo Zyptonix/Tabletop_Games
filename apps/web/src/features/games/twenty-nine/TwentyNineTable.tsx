@@ -14,9 +14,7 @@ import {
   Sparkles,
   Swords,
   Trophy,
-  X,
-  Volume2,
-  VolumeX
+  X
 } from "lucide-react";
 import type {
   GameEvent,
@@ -194,6 +192,66 @@ function formatEventLog(
   return null;
 }
 
+function TrickProgressWidget({
+  team,
+  count,
+  caption
+}: {
+  team: number;
+  count: number;
+  caption: string;
+}) {
+  const clampedCount = Math.max(0, Math.min(8, count));
+  const redTeam = team === 0;
+
+  return (
+    <div
+      className={cn(
+        "rounded-xl border px-2.5 py-1.5 backdrop-blur-md shadow-lg",
+        redTeam ? "border-rose-400/30 bg-rose-950/70" : "border-sky-400/30 bg-sky-950/70"
+      )}
+    >
+      <div className="mb-1 flex items-center justify-between gap-1">
+        <span
+          className={cn(
+            "text-[0.62rem] font-black uppercase tracking-wider",
+            redTeam ? "text-rose-200" : "text-sky-200"
+          )}
+        >
+          {caption}
+        </span>
+        <strong className="text-xs font-black tabular-nums text-white">
+          {clampedCount}
+          <span className="text-[0.58rem] text-white/40">/8</span>
+        </strong>
+      </div>
+
+      <div className="grid grid-cols-8 gap-1 w-36 sm:w-40">
+        {Array.from({ length: 8 }, (_, index) => {
+          const earned = index < clampedCount;
+          return (
+            <div
+              key={`${team}-trick-${index}`}
+              className={cn(
+                "relative aspect-[0.715] min-w-0 overflow-hidden rounded-[0.2rem] transition-all",
+                earned
+                  ? redTeam
+                    ? "ring-1 ring-rose-300 shadow-[0_0_8px_rgba(244,63,94,0.4)]"
+                    : "ring-1 ring-sky-300 shadow-[0_0_8px_rgba(56,189,248,0.4)]"
+                  : "border border-dashed border-white/20 bg-white/[0.04]"
+              )}
+            >
+              {earned ? (
+                <TwentyNineCardBack small className="h-full w-full rounded-[0.2rem] border-0 shadow-none" />
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function TwentyNineTable({
   room,
   state,
@@ -225,7 +283,7 @@ export function TwentyNineTable({
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [selectedBid, setSelectedBid] = useState<number | null>(null);
 
-  // Player identity and relative seats
+  // 4 Players: Always exactly 4
   const me = state.players.find((p) => p.userId === currentUserId);
   const opponents = useMemo(
     () => state.players.filter((p) => p.userId !== currentUserId),
@@ -233,7 +291,7 @@ export function TwentyNineTable({
   );
   const partner = opponents.find((p) => me && p.team === me.team);
 
-  // Compass seating: North = partner, West = left, East = right
+  // Relative seating: 0 = local, 1 = right, 2 = partner, 3 = left
   const westPlayer = useMemo(() => {
     if (!me) return null;
     return opponents.find((p) => p.team !== me.team && (p.seat - me.seat + 4) % 4 === 3) ?? null;
@@ -310,7 +368,6 @@ export function TwentyNineTable({
     [gameEvents, state, currentUserId]
   );
 
-  // Clean up timeouts
   useEffect(() => {
     return () => {
       for (const t of timeoutRefs.current) window.clearTimeout(t);
@@ -419,18 +476,17 @@ export function TwentyNineTable({
   }
 
   const onlineCount = room.players.filter((p) => p.connected).length;
+  const isDittoLegal = hasAction(legalActions, "ditto");
 
   return (
-    <div className="twenty-nine-shell tt-game-viewport fixed inset-0 z-10 h-[100dvh] w-screen overflow-hidden text-white select-none">
+    <div className="twenty-nine-shell tt-game-viewport fixed inset-0 z-10 flex h-[100dvh] w-screen overflow-hidden text-white select-none">
       {/* Background Ambience & Grain */}
       <div className="twenty-nine-grain pointer-events-none absolute inset-0 z-0" />
-
-      {/* Rotating Background Orbits Behind Table */}
       <div className="twenty-nine-orbit-outer z-0" />
       <div className="twenty-nine-orbit-inner z-0" />
 
-      {/* Main Flex App Container */}
-      <div className="relative z-10 flex h-full w-full flex-col justify-between p-2.5 sm:p-3">
+      {/* MAIN ARENA COLUMN - Resizes smoothly when chat panel opens */}
+      <div className="relative z-10 flex flex-1 min-w-0 flex-col justify-between p-2.5 sm:p-3 transition-all duration-300">
         {/* TOP HEADER */}
         <header className="flex shrink-0 items-center justify-between gap-2 rounded-2xl border border-white/10 bg-black/60 px-3 py-2 shadow-2xl backdrop-blur-xl">
           {/* Logo & Game Title */}
@@ -525,17 +581,18 @@ export function TwentyNineTable({
         {/* CENTER ARENA: FELT STADIUM TABLE */}
         <main
           ref={tableRef}
-          className="twenty-nine-stadium-table relative my-1.5 flex min-h-0 flex-1 flex-col items-center justify-center rounded-[2.5rem] p-4 overflow-hidden"
+          className="twenty-nine-stadium-table relative my-1.5 flex min-h-0 flex-1 flex-col items-center justify-center rounded-[2.5rem] p-3 overflow-hidden"
         >
-          {/* North Partner Seat */}
+          {/* North Partner Seat - Placed at Top-Left to ensure zero overlap with center trick area */}
           {partner ? (
             <div
               ref={(el) => registerSeat(partner.userId, el)}
-              className="absolute top-3 left-1/2 -translate-x-1/2 z-20"
+              className="absolute top-3 left-6 sm:left-8 z-20"
             >
               <TwentyNineSeat
                 player={partner}
                 roomPlayer={room.players.find((p) => p.userId === partner.userId)}
+                roleLabel="🤝 Teammate"
                 isDealer={state.dealerPlayerId === partner.userId}
                 isDeclarer={state.declarerId === partner.userId}
                 isSingleHand={state.singleHandPlayerId === partner.userId}
@@ -544,7 +601,6 @@ export function TwentyNineTable({
                   singleHandCaller.userId !== partner.userId &&
                   singleHandCaller.team === partner.team
                 }
-                compact
               />
             </div>
           ) : null}
@@ -553,15 +609,15 @@ export function TwentyNineTable({
           {westPlayer ? (
             <div
               ref={(el) => registerSeat(westPlayer.userId, el)}
-              className="absolute left-3 top-1/2 -translate-y-1/2 z-20 hidden sm:block"
+              className="absolute left-6 sm:left-8 top-1/2 -translate-y-1/2 z-20"
             >
               <TwentyNineSeat
                 player={westPlayer}
                 roomPlayer={room.players.find((p) => p.userId === westPlayer.userId)}
+                roleLabel="⚔️ Opponent"
                 isDealer={state.dealerPlayerId === westPlayer.userId}
                 isDeclarer={state.declarerId === westPlayer.userId}
                 isSingleHand={state.singleHandPlayerId === westPlayer.userId}
-                compact
               />
             </div>
           ) : null}
@@ -570,20 +626,54 @@ export function TwentyNineTable({
           {eastPlayer ? (
             <div
               ref={(el) => registerSeat(eastPlayer.userId, el)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 z-20 hidden sm:block"
+              className="absolute right-6 sm:right-8 top-1/2 -translate-y-1/2 z-20"
             >
               <TwentyNineSeat
                 player={eastPlayer}
                 roomPlayer={room.players.find((p) => p.userId === eastPlayer.userId)}
+                roleLabel="⚔️ Opponent"
                 isDealer={state.dealerPlayerId === eastPlayer.userId}
                 isDeclarer={state.declarerId === eastPlayer.userId}
                 isSingleHand={state.singleHandPlayerId === eastPlayer.userId}
-                compact
               />
             </div>
           ) : null}
 
-          {/* Center Trick Arena (Compass Cards & Points) */}
+          {/* Bottom-Left Space: Dedicated Tricks Won Panel (Red & Blue 8 Slots) */}
+          <div className="absolute bottom-3 left-6 sm:left-8 z-20 flex flex-col gap-1.5">
+            <span className="text-[0.6rem] font-black uppercase tracking-wider text-white/50">
+              Tricks Won Tracker
+            </span>
+            <TrickProgressWidget team={0} count={state.tricksWonByTeam["0"]} caption="Team Red" />
+            <TrickProgressWidget team={1} count={state.tricksWonByTeam["1"]} caption="Team Blue" />
+          </div>
+
+          {/* Bottom-Right Space: Card Points Telemetry Panel */}
+          <div className="absolute bottom-3 right-6 sm:right-8 z-20 flex flex-col gap-1.5 rounded-xl border border-white/10 bg-black/60 p-2.5 backdrop-blur-md shadow-lg">
+            <span className="text-[0.6rem] font-black uppercase tracking-wider text-white/50">
+              Card Points (28 Total)
+            </span>
+            <div className="flex items-center gap-3 text-xs font-black">
+              <div className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-rose-400" />
+                <span className="text-rose-200">
+                  Red: {state.capturedPointsByTeam["0"]}/28
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-sky-400" />
+                <span className="text-sky-200">
+                  Blue: {state.capturedPointsByTeam["1"]}/28
+                </span>
+              </div>
+            </div>
+            <div className="mt-0.5 flex items-center justify-between text-[0.62rem] text-white/50 border-t border-white/10 pt-1">
+              <span>Contract: {state.contractTarget ?? state.currentBid ?? "—"}</span>
+              <span className="font-extrabold text-amber-300">×{state.multiplier}</span>
+            </div>
+          </div>
+
+          {/* CENTER TRICK ARENA (Enlarged Compass Cards, Points & Crown) */}
           <div className="relative z-10">
             <TwentyNineTrickArea
               trick={state.currentTrick}
@@ -636,35 +726,37 @@ export function TwentyNineTable({
         </main>
 
         {/* BOTTOM DOCK: ACTIONS & PLAYER'S HAND */}
-        <footer className="shrink-0 flex flex-col items-center gap-1.5">
+        <footer className="shrink-0 flex flex-col items-center gap-2">
           {/* CONTEXTUAL ACTION BAR */}
           <div className="z-30 flex flex-wrap items-center justify-center gap-2">
-            {/* AUCTION BIDDING BUTTONS */}
+            {/* AUCTION BIDDING BAR */}
             {state.phase === "bidding" && isMyTurn && !sittingOutSingleHand ? (
-              <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-amber-400/30 bg-black/80 px-3 py-1.5 shadow-2xl backdrop-blur-xl">
+              <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-amber-400/40 bg-black/85 px-4 py-2 shadow-2xl backdrop-blur-xl">
                 {selectedBidValue !== null && lowestLegalBid !== null && highestLegalBid !== null ? (
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
                       disabled={selectedBidValue <= lowestLegalBid}
                       onClick={() => setSelectedBid(Math.max(lowestLegalBid, selectedBidValue - 1))}
-                      className="grid h-8 w-8 place-items-center rounded-xl border border-white/15 bg-white/10 text-base font-black text-white hover:bg-white/20 disabled:opacity-30"
+                      className="grid h-9 w-9 place-items-center rounded-xl border border-white/20 bg-white/10 text-lg font-black text-white hover:bg-white/20 disabled:opacity-30"
                     >
                       −
                     </button>
 
-                    <div className="px-2 text-center">
-                      <span className="block text-[0.55rem] font-black uppercase tracking-widest text-amber-300/60">
-                        Bid
+                    <div className="px-3 text-center">
+                      <span className="block text-[0.6rem] font-black uppercase tracking-widest text-amber-300/70">
+                        Bid Value
                       </span>
-                      <span className="text-lg font-black text-amber-300">{selectedBidValue}</span>
+                      <span className="text-xl font-black text-amber-300 leading-tight">
+                        {selectedBidValue}
+                      </span>
                     </div>
 
                     <button
                       type="button"
                       disabled={selectedBidValue >= highestLegalBid}
                       onClick={() => setSelectedBid(Math.min(highestLegalBid, selectedBidValue + 1))}
-                      className="grid h-8 w-8 place-items-center rounded-xl border border-white/15 bg-white/10 text-base font-black text-white hover:bg-white/20 disabled:opacity-30"
+                      className="grid h-9 w-9 place-items-center rounded-xl border border-white/20 bg-white/10 text-lg font-black text-white hover:bg-white/20 disabled:opacity-30"
                     >
                       +
                     </button>
@@ -672,38 +764,52 @@ export function TwentyNineTable({
                     <button
                       type="button"
                       onClick={() => onAction("bid", { value: selectedBidValue })}
-                      className="rounded-xl border border-amber-400/60 bg-gradient-to-r from-amber-500 to-amber-600 px-4 py-1.5 text-xs font-black text-black shadow-[0_0_18px_rgba(245,158,11,0.5)] transition hover:scale-105 active:scale-95"
+                      className="rounded-xl border border-amber-400/60 bg-gradient-to-r from-amber-500 to-amber-600 px-5 py-2 text-sm font-black text-black shadow-[0_0_20px_rgba(245,158,11,0.5)] transition hover:scale-105 active:scale-95"
                     >
                       Bid {selectedBidValue}
                     </button>
                   </div>
                 ) : null}
 
-                {hasAction(legalActions, "ditto") ? (
-                  <button
-                    type="button"
-                    onClick={() => onAction("ditto")}
-                    className="rounded-xl border border-violet-400/50 bg-violet-600/30 px-3.5 py-1.5 text-xs font-black text-violet-200 shadow-[0_0_15px_rgba(168,85,247,0.4)] transition hover:bg-violet-600/50 active:scale-95"
-                  >
-                    Ditto
-                  </button>
-                ) : null}
+                {/* PROMINENT DITTO BUTTON (Always visible; enabled when legal) */}
+                <button
+                  type="button"
+                  disabled={!isDittoLegal}
+                  onClick={() => onAction("ditto")}
+                  title={
+                    isDittoLegal
+                      ? `Call Ditto to match the current bid (${state.currentBid})`
+                      : state.currentBid === null
+                      ? "Ditto is only available to match an opponent's existing bid"
+                      : "Ditto is only available for the opening team to match an opposing bid"
+                  }
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-xl border px-4 py-2 text-xs font-black transition",
+                    isDittoLegal
+                      ? "border-violet-400/60 bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-[0_0_20px_rgba(168,85,247,0.55)] hover:scale-105 active:scale-95 cursor-pointer"
+                      : "border-white/10 bg-white/[0.04] text-white/35 cursor-not-allowed"
+                  )}
+                >
+                  <span>🤝 Ditto</span>
+                  {state.currentBid !== null ? (
+                    <span className="text-[0.68rem] opacity-80">({state.currentBid})</span>
+                  ) : null}
+                </button>
 
-                {hasAction(legalActions, "pass_bid") ? (
-                  <button
-                    type="button"
-                    onClick={() => onAction("pass_bid")}
-                    className="rounded-xl border border-white/15 bg-white/10 px-3.5 py-1.5 text-xs font-black text-white/80 transition hover:bg-white/20 active:scale-95"
-                  >
-                    Pass
-                  </button>
-                ) : null}
+                {/* PASS BUTTON */}
+                <button
+                  type="button"
+                  onClick={() => onAction("pass_bid")}
+                  className="rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-xs font-black text-white/80 transition hover:bg-white/20 active:scale-95"
+                >
+                  Pass
+                </button>
               </div>
             ) : null}
 
             {/* TRUMP SELECTION BUTTONS */}
             {state.phase === "trump" && isMyTurn ? (
-              <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-400/40 bg-black/80 px-3 py-2 shadow-2xl backdrop-blur-xl">
+              <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-400/40 bg-black/85 px-4 py-2 shadow-2xl backdrop-blur-xl">
                 <span className="text-xs font-black uppercase tracking-wider text-emerald-300 mr-1">
                   Choose Trump:
                 </span>
@@ -714,9 +820,9 @@ export function TwentyNineTable({
                       key={suit}
                       type="button"
                       onClick={() => onAction("choose_trump_suit", { suit })}
-                      className="flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.08] px-3 py-1.5 text-xs font-black text-white transition hover:border-emerald-400/50 hover:bg-emerald-500/20 active:scale-95"
+                      className="flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/[0.08] px-3.5 py-2 text-xs font-black text-white transition hover:border-emerald-400/50 hover:bg-emerald-500/20 active:scale-95"
                     >
-                      <SuitMark suit={suit} size={16} />
+                      <SuitMark suit={suit} size={18} />
                       <span>{info?.label}</span>
                     </button>
                   );
@@ -726,9 +832,9 @@ export function TwentyNineTable({
                   <button
                     type="button"
                     onClick={() => onAction("choose_seventh_trump")}
-                    className="flex items-center gap-1.5 rounded-xl border border-amber-400/50 bg-amber-500/20 px-3.5 py-1.5 text-xs font-black text-amber-200 transition hover:bg-amber-500/30 active:scale-95"
+                    className="flex items-center gap-1.5 rounded-xl border border-amber-400/50 bg-amber-500/20 px-4 py-2 text-xs font-black text-amber-200 transition hover:bg-amber-500/30 active:scale-95"
                   >
-                    <Sparkles className="h-3.5 w-3.5" />
+                    <Sparkles className="h-4 w-4" />
                     <span>7th Card Trump</span>
                   </button>
                 ) : null}
@@ -737,22 +843,22 @@ export function TwentyNineTable({
 
             {/* DOUBLING & REDOUBLING */}
             {state.phase === "doubling" && isMyTurn ? (
-              <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-rose-500/40 bg-black/80 px-3 py-2 shadow-2xl backdrop-blur-xl">
+              <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-rose-500/40 bg-black/85 px-4 py-2 shadow-2xl backdrop-blur-xl">
                 {!state.doubleByPlayerId ? (
                   <>
                     <button
                       type="button"
                       onClick={() => onAction("pass_double")}
-                      className="rounded-xl border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-black text-white hover:bg-white/20"
+                      className="rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-xs font-black text-white hover:bg-white/20"
                     >
                       Pass Double
                     </button>
                     <button
                       type="button"
                       onClick={() => onAction("double")}
-                      className="flex items-center gap-1.5 rounded-xl border border-rose-400/60 bg-gradient-to-r from-rose-600 to-rose-700 px-4 py-1.5 text-xs font-black text-white shadow-[0_0_20px_rgba(244,63,94,0.6)] hover:scale-105 active:scale-95"
+                      className="flex items-center gap-1.5 rounded-xl border border-rose-400/60 bg-gradient-to-r from-rose-600 to-rose-700 px-4 py-2 text-xs font-black text-white shadow-[0_0_20px_rgba(244,63,94,0.6)] hover:scale-105 active:scale-95"
                     >
-                      <Swords className="h-3.5 w-3.5" />
+                      <Swords className="h-4 w-4" />
                       Double Stakes (×2)
                     </button>
                   </>
@@ -761,16 +867,16 @@ export function TwentyNineTable({
                     <button
                       type="button"
                       onClick={() => onAction("continue_contract")}
-                      className="rounded-xl border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-black text-white hover:bg-white/20"
+                      className="rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-xs font-black text-white hover:bg-white/20"
                     >
                       Continue ×2
                     </button>
                     <button
                       type="button"
                       onClick={() => onAction("redouble")}
-                      className="flex items-center gap-1.5 rounded-xl border border-rose-400/60 bg-gradient-to-r from-rose-600 to-rose-700 px-4 py-1.5 text-xs font-black text-white shadow-[0_0_20px_rgba(244,63,94,0.6)] hover:scale-105 active:scale-95"
+                      className="flex items-center gap-1.5 rounded-xl border border-rose-400/60 bg-gradient-to-r from-rose-600 to-rose-700 px-4 py-2 text-xs font-black text-white shadow-[0_0_20px_rgba(244,63,94,0.6)] hover:scale-105 active:scale-95"
                     >
-                      <Swords className="h-3.5 w-3.5" />
+                      <Swords className="h-4 w-4" />
                       Redouble (×4)
                     </button>
                   </>
@@ -778,16 +884,16 @@ export function TwentyNineTable({
               </div>
             ) : null}
 
-            {/* IN-GAME PLAYING ACTIONS: REVEAL TRUMP, DECLARE PAIR, SINGLE HAND */}
+            {/* IN-GAME PLAYING ACTIONS */}
             {state.phase === "playing" ? (
               <div className="flex flex-wrap items-center gap-2">
                 {hasAction(legalActions, "reveal_trump") && isMyTurn ? (
                   <button
                     type="button"
                     onClick={() => onAction("reveal_trump")}
-                    className="flex items-center gap-1.5 rounded-xl border border-emerald-400/60 bg-emerald-600/30 px-3.5 py-1.5 text-xs font-black text-emerald-200 shadow-[0_0_18px_rgba(52,211,153,0.4)] transition hover:bg-emerald-600/50 active:scale-95"
+                    className="flex items-center gap-1.5 rounded-xl border border-emerald-400/60 bg-emerald-600/30 px-4 py-2 text-xs font-black text-emerald-200 shadow-[0_0_18px_rgba(52,211,153,0.4)] transition hover:bg-emerald-600/50 active:scale-95"
                   >
-                    <Eye className="h-3.5 w-3.5" />
+                    <Eye className="h-4 w-4" />
                     Reveal Trump
                   </button>
                 ) : null}
@@ -796,9 +902,9 @@ export function TwentyNineTable({
                   <button
                     type="button"
                     onClick={() => onAction("declare_pair")}
-                    className="flex items-center gap-1.5 rounded-xl border border-amber-400/60 bg-amber-600/30 px-3.5 py-1.5 text-xs font-black text-amber-200 shadow-[0_0_18px_rgba(245,158,11,0.4)] transition hover:bg-amber-600/50 active:scale-95"
+                    className="flex items-center gap-1.5 rounded-xl border border-amber-400/60 bg-amber-600/30 px-4 py-2 text-xs font-black text-amber-200 shadow-[0_0_18px_rgba(245,158,11,0.4)] transition hover:bg-amber-600/50 active:scale-95"
                   >
-                    <Crown className="h-3.5 w-3.5" />
+                    <Crown className="h-4 w-4" />
                     Declare Pair (±4)
                   </button>
                 ) : null}
@@ -807,9 +913,9 @@ export function TwentyNineTable({
                   <button
                     type="button"
                     onClick={() => onAction("declare_single_hand")}
-                    className="flex items-center gap-1.5 rounded-xl border border-violet-400/60 bg-violet-600/30 px-3.5 py-1.5 text-xs font-black text-violet-200 shadow-[0_0_18px_rgba(168,85,247,0.4)] transition hover:bg-violet-600/50 active:scale-95"
+                    className="flex items-center gap-1.5 rounded-xl border border-violet-400/60 bg-violet-600/30 px-4 py-2 text-xs font-black text-violet-200 shadow-[0_0_18px_rgba(168,85,247,0.4)] transition hover:bg-violet-600/50 active:scale-95"
                   >
-                    <Crown className="h-3.5 w-3.5" />
+                    <Crown className="h-4 w-4" />
                     Single Hand (±3)
                   </button>
                 ) : null}
@@ -825,50 +931,50 @@ export function TwentyNineTable({
             ) : null}
           </div>
 
-          {/* LOCAL PLAYER HAND FAN */}
+          {/* LOCAL PLAYER HAND FAN (Enlarged Cards) */}
           <section
             ref={handRef}
-            className="relative z-40 flex w-full max-w-4xl flex-col items-center justify-center rounded-2xl border border-white/10 bg-black/60 px-3 py-2 shadow-2xl backdrop-blur-xl"
+            className="relative z-40 flex w-full max-w-5xl flex-col items-center justify-center rounded-2xl border border-white/10 bg-black/60 px-4 py-2.5 shadow-2xl backdrop-blur-xl"
           >
             {/* Local Player Info Bar */}
-            <div className="mb-1 flex w-full items-center justify-between px-2 text-[0.68rem]">
+            <div className="mb-1 flex w-full items-center justify-between px-2 text-xs">
               <div className="flex items-center gap-2">
                 <div
                   className={cn(
-                    "h-2.5 w-2.5 rounded-full shadow-md",
+                    "h-3 w-3 rounded-full shadow-md",
                     me?.team === 0 ? "bg-rose-400 shadow-rose-500/50" : "bg-sky-400 shadow-sky-500/50"
                   )}
                 />
                 <span className="font-black text-white">{me?.displayName ?? "Your Hand"}</span>
                 <span className="text-white/40">·</span>
-                <span className="text-white/50">
-                  {(me?.hand?.length ?? 0) + (state.privateSeventhCard ? 1 : 0)} cards
+                <span className="text-white/60">
+                  {(me?.hand?.length ?? 0) + (state.privateSeventhCard ? 1 : 0)} cards in hand
                 </span>
               </div>
 
-              <div className="flex items-center gap-1 text-white/40">
-                <Shield className="h-3 w-3" />
-                <span>Follow lead suit if held</span>
+              <div className="flex items-center gap-1.5 text-white/50 text-[0.68rem]">
+                <Shield className="h-3.5 w-3.5" />
+                <span>Follow lead suit when possible</span>
               </div>
             </div>
 
             {/* Cards Fan or Sitting Out */}
             {sittingOutSingleHand ? (
-              <div className="flex min-h-[6.5rem] flex-col items-center justify-center p-3 text-center">
-                <p className="text-xs font-black text-violet-200">
+              <div className="flex min-h-[7rem] flex-col items-center justify-center p-3 text-center">
+                <p className="text-sm font-black text-violet-200">
                   Sitting out — Partner is playing Single Hand alone!
                 </p>
-                <p className="mt-0.5 text-[0.68rem] text-white/50">
-                  Partner must win all 8 tricks. Your hand remains idle.
+                <p className="mt-1 text-xs text-white/50">
+                  Teammate must win all 8 tricks alone. Your hand stays out of play.
                 </p>
               </div>
             ) : (
-              <div className="relative flex min-h-[7.2rem] items-end justify-center overflow-visible pb-1 pt-2">
+              <div className="relative flex min-h-[10.5rem] items-end justify-center overflow-visible pb-1 pt-3">
                 {sortedHand.map((card, index) => {
                   const canPlay = legalPlayIds.has(card.id) && isMyTurn && state.phase === "playing";
                   const offset = index - (sortedHand.length - 1) / 2;
-                  const rotateDeg = offset * 2.2;
-                  const translateY = Math.abs(offset) * 2;
+                  const rotateDeg = offset * 2.5;
+                  const translateY = Math.abs(offset) * 3;
 
                   return (
                     <motion.button
@@ -876,15 +982,15 @@ export function TwentyNineTable({
                       type="button"
                       disabled={!canPlay}
                       onClick={() => play(card)}
-                      initial={reduceMotion ? false : { opacity: 0, y: 15 }}
+                      initial={reduceMotion ? false : { opacity: 0, y: 20 }}
                       animate={{
                         opacity: 1,
-                        y: canPlay ? -12 - translateY : -translateY,
+                        y: canPlay ? -15 - translateY : -translateY,
                         rotate: rotateDeg,
                         scale: canPlay ? 1.05 : 1
                       }}
                       {...(canPlay && !reduceMotion
-                        ? { whileHover: { y: -32, scale: 1.16, rotate: 0, zIndex: 120 } }
+                        ? { whileHover: { y: -38, scale: 1.15, rotate: 0, zIndex: 120 } }
                         : {})}
                       {...(canPlay ? { whileTap: { scale: 0.95 } } : {})}
                       transition={{ duration: 0.2 }}
@@ -893,14 +999,14 @@ export function TwentyNineTable({
                         canPlay ? "cursor-pointer" : "cursor-default"
                       )}
                       style={{
-                        marginLeft: index === 0 ? 0 : "-1.4rem",
+                        marginLeft: index === 0 ? 0 : "-2.2rem",
                         zIndex: 10 + index
                       }}
                       title={canPlay ? `Play ${card.rank} of ${card.suit}` : `${card.rank} of ${card.suit}`}
                     >
                       <TwentyNineCardFace
                         card={card}
-                        size="md"
+                        size="lg"
                         playable={canPlay}
                         muted={!canPlay && state.phase === "playing" && isMyTurn}
                       />
@@ -916,17 +1022,17 @@ export function TwentyNineTable({
                   <motion.button
                     type="button"
                     onClick={() => play(state.privateSeventhCard!)}
-                    className="relative cursor-pointer ring-2 ring-amber-400 rounded-xl"
+                    className="relative cursor-pointer ring-2 ring-amber-400 rounded-2xl ml-2"
                   >
-                    <TwentyNineCardFace card={state.privateSeventhCard} size="md" playable />
-                    <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-amber-400 px-2 py-0.5 text-[0.55rem] font-black text-black">
+                    <TwentyNineCardFace card={state.privateSeventhCard} size="lg" playable />
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-amber-400 px-2.5 py-0.5 text-[0.62rem] font-black text-black shadow-lg">
                       7TH TRUMP
                     </span>
                   </motion.button>
                 ) : null}
 
                 {!sortedHand.length && state.phase !== "finished" && !sittingOutSingleHand ? (
-                  <div className="py-6 text-xs font-bold text-white/40">
+                  <div className="py-8 text-xs font-bold text-white/40">
                     Your cards will appear here after the deal.
                   </div>
                 ) : null}
@@ -936,22 +1042,15 @@ export function TwentyNineTable({
         </footer>
       </div>
 
-      {/* CINEMATIC FULL-SCREEN EVENT OVERLAY (BIDS, DITTO, TRUMP, PAIR, TRICK, HAND, MATCH) */}
-      <TwentyNineEventOverlay
-        gameEvents={gameEvents}
-        state={state}
-        currentUserId={currentUserId}
-      />
-
-      {/* COLLAPSIBLE SIDE PANEL: ACTIVITY LOG & CHAT */}
-      <AnimatePresence>
+      {/* RESIZING CHAT & ACTIVITY SIDEBAR (Flex child so board resizes!) */}
+      <AnimatePresence initial={false}>
         {sidePanelOpen ? (
-          <motion.div
-            className="fixed inset-y-0 right-0 z-[120] flex w-full max-w-sm flex-col border-l border-white/10 bg-slate-950/90 shadow-2xl backdrop-blur-2xl"
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
+          <motion.aside
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 330, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
             transition={{ type: "spring", stiffness: 320, damping: 28 }}
+            className="relative z-20 flex h-full shrink-0 flex-col border-l border-white/10 bg-slate-950/95 shadow-2xl backdrop-blur-2xl overflow-hidden"
           >
             {/* Drawer Header */}
             <div className="flex items-center justify-between border-b border-white/10 p-3.5">
@@ -1026,9 +1125,16 @@ export function TwentyNineTable({
                 <div className="p-4 text-xs text-white/40">Chat is offline.</div>
               )}
             </div>
-          </motion.div>
+          </motion.aside>
         ) : null}
       </AnimatePresence>
+
+      {/* CINEMATIC ORGANIC EVENT OVERLAY (UNO No Mercy Style, non-blocking) */}
+      <TwentyNineEventOverlay
+        gameEvents={gameEvents}
+        state={state}
+        currentUserId={currentUserId}
+      />
 
       {/* RULES MODAL */}
       <AnimatePresence>
@@ -1070,9 +1176,9 @@ export function TwentyNineTable({
                 </div>
 
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                  <h4 className="font-black text-amber-300">Bidding Auction</h4>
+                  <h4 className="font-black text-amber-300">Bidding Auction & Ditto</h4>
                   <p className="mt-1 text-white/70">
-                    Bids range from 16 to 28. Players can raise, call Ditto to match, or pass. Highest bidder sets the contract.
+                    Bids range 16 to 28. Opening team has priority to match an opponent's bid using Ditto. Highest bidder sets contract.
                   </p>
                 </div>
 

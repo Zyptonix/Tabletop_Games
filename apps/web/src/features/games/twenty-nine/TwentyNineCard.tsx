@@ -134,7 +134,7 @@ export function TwentyNineCardFace({
   className
 }: {
   card: CardType;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
   playable?: boolean;
   muted?: boolean;
   isWinning?: boolean;
@@ -144,9 +144,10 @@ export function TwentyNineCardFace({
   const isRed = card.suit === "hearts" || card.suit === "diamonds";
 
   const sizeClasses = {
-    sm: "h-[4.8rem] w-[3.4rem] rounded-lg",
-    md: "h-[6.6rem] w-[4.7rem] rounded-xl",
-    lg: "h-[8.8rem] w-[6.2rem] rounded-2xl"
+    sm: "h-[5.2rem] w-[3.7rem] rounded-lg",
+    md: "h-[7.2rem] w-[5.1rem] rounded-xl",
+    lg: "h-[9.6rem] w-[6.8rem] rounded-2xl",
+    xl: "h-[11.2rem] w-[8.0rem] rounded-2xl"
   };
 
   return (
