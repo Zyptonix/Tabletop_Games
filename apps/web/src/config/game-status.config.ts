@@ -16,12 +16,13 @@ export const GAME_STATUS: Record<string, GameStatus> = {
   "classic-uno": "complete",
   "battleship": "complete",
   "mafia-werewolf": "complete",
+  "twenty-nine": "complete",
+  "29": "complete",
+  "reversi": "complete",
 
   // Prototyping Games (Test Games & Prototypes in development)
-  "twenty-nine": "prototype",
   "connect-four": "prototype",
   "chess": "prototype",
-  reversi: "prototype",
   poker: "prototype",
   barricades: "prototype",
   "strategic-shockwave": "prototype",
