@@ -136,3 +136,4 @@ export function setupBattleship(state: BoardGameState, players: GamePlayer[], rn
 
   return rngState;
 }
+
