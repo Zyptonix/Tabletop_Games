@@ -1,18 +1,23 @@
 import type { GamePlayer } from "../../engine/GameTypes";
-import type { BoardGameState } from "../shared/types";
+import type { BattleshipPlacedShip, BoardGameState } from "../shared/types";
 
-const BATTLESHIP_LENGTHS = [5, 4, 3, 3, 2];
+export const BATTLESHIP_SHIP_CONFIGS = [
+  { id: "carrier", name: "Carrier", size: 5 },
+  { id: "battleship", name: "Battleship", size: 4 },
+  { id: "cruiser", name: "Cruiser", size: 3 },
+  { id: "submarine", name: "Submarine", size: 3 },
+  { id: "destroyer", name: "Destroyer", size: 2 },
+] as const;
 
 export function fleetForSeat(
   seat: number,
   seed: number
-): { cells: string[]; ships: string[][]; rngState: number } {
-  // Generate a deterministic fleet while keeping its positions private
-  // in the server-side game state.
+): { cells: string[]; ships: string[][]; shipDetails: BattleshipPlacedShip[]; rngState: number } {
   let localRng = (seed ^ Math.imul(seat + 1, 0x9e3779b1)) >>> 0 || 1;
 
   const occupied = new Set<string>();
   const ships: string[][] = [];
+  const shipDetails: BattleshipPlacedShip[] = [];
 
   const nextInt = (max: number) => {
     localRng = (Math.imul(localRng, 1664525) + 1013904223) >>> 0;
@@ -45,25 +50,35 @@ export function fleetForSeat(
     return cells;
   };
 
-  for (const length of BATTLESHIP_LENGTHS) {
+  for (const shipConfig of BATTLESHIP_SHIP_CONFIGS) {
     let placed: string[] | null = null;
+    let placedX = 0;
+    let placedY = 0;
+    let placedHorizontal = true;
 
     for (let attempt = 0; attempt < 500 && !placed; attempt += 1) {
-      placed = canPlace(
-        nextInt(10),
-        nextInt(10),
-        length,
-        nextInt(2) === 0
-      );
+      const x = nextInt(10);
+      const y = nextInt(10);
+      const horizontal = nextInt(2) === 0;
+      placed = canPlace(x, y, shipConfig.size, horizontal);
+      if (placed) {
+        placedX = x;
+        placedY = y;
+        placedHorizontal = horizontal;
+      }
     }
 
     if (!placed) {
-      // Deterministic fallback in case the random attempts fail.
       for (let y = 0; y < 10 && !placed; y += 1) {
         for (let x = 0; x < 10 && !placed; x += 1) {
           for (const horizontal of [true, false]) {
-            placed = canPlace(x, y, length, horizontal);
-            if (placed) break;
+            placed = canPlace(x, y, shipConfig.size, horizontal);
+            if (placed) {
+              placedX = x;
+              placedY = y;
+              placedHorizontal = horizontal;
+              break;
+            }
           }
         }
       }
@@ -75,13 +90,49 @@ export function fleetForSeat(
 
     ships.push(placed);
     placed.forEach((cell) => occupied.add(cell));
+    shipDetails.push({
+      id: shipConfig.id,
+      name: shipConfig.name,
+      size: shipConfig.size,
+      x: placedX,
+      y: placedY,
+      orientation: placedHorizontal ? "h" : "v",
+      cells: placed,
+    });
   }
 
   return {
     cells: ships.flat(),
     ships,
+    shipDetails,
     rngState: localRng,
   };
 }
 
-export function setupBattleship(state:BoardGameState,players:GamePlayer[],rngState:number):number { for(const player of players){const fleet=fleetForSeat(player.seat,rngState);state.shipCellsByPlayer[player.userId]=fleet.cells;state.shipGroupsByPlayer[player.userId]=fleet.ships;rngState=fleet.rngState;} return rngState; }
+export function setupBattleship(state: BoardGameState, players: GamePlayer[], rngState: number): number {
+  state.shipCellsByPlayer = {};
+  state.shipGroupsByPlayer = {};
+  state.shipDetailsByPlayer = {};
+  state.battleshipReady = {};
+  state.battleshipPhase = "placement";
+  state.lastSunkShip = null;
+
+  for (const player of players) {
+    const fleet = fleetForSeat(player.seat, rngState);
+    state.shipCellsByPlayer[player.userId] = fleet.cells;
+    state.shipGroupsByPlayer[player.userId] = fleet.ships;
+    state.shipDetailsByPlayer[player.userId] = fleet.shipDetails;
+    rngState = fleet.rngState;
+
+    if (player.isBot) {
+      state.battleshipReady[player.userId] = true;
+    }
+  }
+
+  // If all players are bots, immediately start battle
+  if (players.every((p) => state.battleshipReady?.[p.userId])) {
+    state.battleshipPhase = "battle";
+  }
+
+  return rngState;
+}

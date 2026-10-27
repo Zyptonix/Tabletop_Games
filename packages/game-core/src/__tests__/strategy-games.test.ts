@@ -267,6 +267,31 @@ describe("Ludo and Battleships rule regressions v4", () => {
     expect(latest?.sunk).toBe(true);
     expect((result.state as BoardGameState).phase).toBe("playing");
   });
+
+  it("allows custom fleet placement and transitions to battle when both players lock in", () => {
+    const state = start(battleshipModule);
+    expect(state.battleshipPhase).toBe("placement");
+    const p1Ships = state.shipDetailsByPlayer!["p1"]!;
+    const p2Ships = state.shipDetailsByPlayer!["p2"]!;
+
+    const res1 = battleshipModule.applyAction({
+      state,
+      playerId: "p1",
+      action: { type: "place_fleet", ships: p1Ships },
+      now: "2026-10-25T00:05:00.000Z"
+    });
+    expect((res1.state as BoardGameState).battleshipReady?.["p1"]).toBe(true);
+    expect((res1.state as BoardGameState).battleshipPhase).toBe("placement");
+
+    const res2 = battleshipModule.applyAction({
+      state: res1.state as BoardGameState,
+      playerId: "p2",
+      action: { type: "place_fleet", ships: p2Ships },
+      now: "2026-10-25T00:05:01.000Z"
+    });
+    expect((res2.state as BoardGameState).battleshipReady?.["p2"]).toBe(true);
+    expect((res2.state as BoardGameState).battleshipPhase).toBe("battle");
+  });
 });
 
 // TABLETOP ARENA FULL PATCH V5 — CODENAMES RULES

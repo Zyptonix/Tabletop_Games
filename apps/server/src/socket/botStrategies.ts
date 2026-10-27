@@ -255,6 +255,40 @@ export function chooseBotAction(legalActions: unknown[], gameId: string, gameSta
   } else if (["chess", "battleship", "ludo", "barricades", "monopoly", "risk", "world-conquest", "codenames", "poker"].includes(gameId)) {
     if (gameId === "ludo") {
       preferred = actions.find((action) => action.type === "roll_dice") ?? actions.find((action) => action.type === "move_token") ?? actions.find((action) => action.type === "end_turn");
+    } else if (gameId === "battleship") {
+      const placeAction = actions.find((action) => action.type === "place_fleet");
+      if (placeAction) {
+        preferred = placeAction;
+      } else {
+        const fireActions = actions.filter((action) => action.type === "fire" && typeof action.x === "number" && typeof action.y === "number");
+        if (fireActions.length > 0) {
+          const stateObj = isRecord(gameState) ? gameState : null;
+          const shots = Array.isArray(stateObj?.shots) ? (stateObj.shots as Array<Record<string, unknown>>) : [];
+          const myHits = shots.filter((s) => s.shooterId === playerId && s.hit && !s.sunk);
+
+          let targetShot: RecordValue | undefined;
+          for (const hit of myHits.slice().reverse()) {
+            const hx = Number(hit.x);
+            const hy = Number(hit.y);
+            const neighbors = [
+              { x: hx + 1, y: hy },
+              { x: hx - 1, y: hy },
+              { x: hx, y: hy + 1 },
+              { x: hx, y: hy - 1 },
+            ];
+            const candidate = fireActions.find((a) => neighbors.some((n) => n.x === a.x && n.y === a.y));
+            if (candidate) {
+              targetShot = candidate;
+              break;
+            }
+          }
+          if (!targetShot) {
+            const parityShots = fireActions.filter((a) => (Number(a.x) + Number(a.y)) % 2 === 0);
+            targetShot = parityShots.length ? parityShots[Math.floor(Math.random() * parityShots.length)] : undefined;
+          }
+          preferred = targetShot ?? fireActions[Math.floor(Math.random() * fireActions.length)];
+        }
+      }
     } else if (gameId === "monopoly") {
       preferred = actions.find((action) => action.type === "roll_dice") ?? actions.find((action) => action.type === "buy_property") ?? actions.find((action) => action.type === "end_turn");
     } else if (gameId === "barricades") {

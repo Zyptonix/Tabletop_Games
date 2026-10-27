@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <radialGradient id="waterGrad" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#113366"/>
+      <stop offset="60%" stop-color="#0a224a"/>
+      <stop offset="100%" stop-color="#061633"/>
+    </radialGradient>
+  </defs>
+  <rect width="200" height="200" fill="url(#waterGrad)"/>
+  <!-- Faceted subtle ocean contours -->
+  <path d="M 0,40 Q 60,35 120,48 T 200,42 L 200,110 Q 140,118 80,105 T 0,112 Z" fill="#0d2a5a" opacity="0.45"/>
+  <path d="M 0,120 Q 70,128 140,115 T 200,124 L 200,185 Q 130,175 60,190 T 0,180 Z" fill="#143c78" opacity="0.3"/>
+  <path d="M 20,0 Q 30,80 15,160 T 25,200 L 95,200 Q 80,130 90,60 T 85,0 Z" fill="#0c2550" opacity="0.35"/>
+  <path d="M 120,0 Q 110,70 125,140 T 118,200 L 175,200 Q 185,120 170,50 T 180,0 Z" fill="#164282" opacity="0.25"/>
+</svg>

@@ -26,6 +26,7 @@ export type BoardGameAction =
   | { type: "move_piece"; from: number; to: number;promotion?: "q" | "r" | "b" | "n" | undefined; }
   | { type: "claim_chess_draw" }
   | { type: "fire"; x: number; y: number }
+  | { type: "place_fleet"; ships: Array<{ id: string; name: string; size: number; x: number; y: number; orientation: "h" | "v"; cells: string[] }> }
   | { type: "roll_dice" }
   | { type: "move_token"; tokenIndex: number }
   | { type: "move_pawn"; x: number; y: number }
@@ -40,6 +41,24 @@ export type BoardGameAction =
   | { type: "end_codenames_turn" }
   | { type: "poker_action"; choice: "fold" | "check" | "call" | "raise" | "all_in" };
 
+export interface BattleshipPlacedShip {
+  id: string;
+  name: string;
+  size: number;
+  x: number;
+  y: number;
+  orientation: "h" | "v";
+  cells: string[];
+}
+
+export interface BattleshipShipStatus {
+  id: string;
+  name: string;
+  size: number;
+  sunk: boolean;
+  hits?: number;
+}
+
 export interface ActivityItem {
   id: string;
   type: string;
@@ -50,7 +69,7 @@ export interface ActivityItem {
 
 export interface Wall { x: number; y: number; orientation: "h" | "v"; playerId: string }
 
-export interface Shot { shooterId: string; targetId: string; x: number; y: number; hit: boolean; sunk: boolean }
+export interface Shot { shooterId: string; targetId: string; x: number; y: number; hit: boolean; sunk: boolean; sunkShipName?: string | undefined }
 
 export interface Territory { id: string; label: string; x: number; y: number; neighbors: string[] }
 
@@ -92,6 +111,10 @@ export interface BoardGameState {
   reinforcedThisTurn: boolean;
   shipCellsByPlayer: Record<string, string[]>;
   shipGroupsByPlayer: Record<string, string[][]>;
+  shipDetailsByPlayer?: Record<string, BattleshipPlacedShip[]>;
+  battleshipPhase?: "placement" | "battle";
+  battleshipReady?: Record<string, boolean>;
+  lastSunkShip?: { shooterId: string; ownerId: string; name: string; size: number; cells: string[] } | null;
   /** Per-player clock remaining at the beginning of their latest turn. */
   clockRemainingMsByPlayer?: Record<string, number>;
   shots: Shot[];
@@ -156,6 +179,13 @@ export interface PublicBoardGameState {
   territoryTroops: Record<string, number>;
   reinforcedThisTurn: boolean;
   ownShipCells: string[];
+  ownShips?: Array<BattleshipPlacedShip & { hits: number; sunk: boolean }>;
+  enemySunkShips?: BattleshipPlacedShip[];
+  enemyFleetStatus?: BattleshipShipStatus[];
+  myFleetStatus?: BattleshipShipStatus[];
+  battleshipPhase?: "placement" | "battle";
+  battleshipReady?: Record<string, boolean>;
+  lastSunkShip?: { shooterId: string; ownerId: string; name: string; size: number; cells: string[] } | null;
   /** Clock values are public in timed games; the active countdown is streamed separately. */
   clockRemainingMsByPlayer?: Record<string, number>;
   shots: Shot[];
