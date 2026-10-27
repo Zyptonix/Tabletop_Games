@@ -28,7 +28,14 @@ import { chooseBotAction } from "./botStrategies";
 type IOServer = Server<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData>;
 type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData>;
 type BotTimer = { userId: string; timeout: ReturnType<typeof setTimeout> };
-const UNO_NO_MERCY_BOT_DELAY_MS = 5_000;
+
+function getBotTurnDelay(gameId: string): number {
+  if (gameId === "uno-no-mercy") {
+    // Fast, responsive 1.0s - 1.8s bot turns as requested
+    return 1000 + Math.floor(Math.random() * 800);
+  }
+  return 700 + Math.floor(Math.random() * 800);
+}
 
 function socketError(error: unknown) {
   if (error instanceof AppError) {
@@ -138,7 +145,7 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
           console.warn(`[bot] failed room=${latestRoom.code} user=${currentPlayerId}: ${socketError(error).message}`);
         }
       })();
-    }, room.gameId === "uno-no-mercy" ? UNO_NO_MERCY_BOT_DELAY_MS : 700 + Math.floor(Math.random() * 800));
+    }, getBotTurnDelay(room.gameId));
 
     botTimers.set(room.id, { userId: currentPlayerId, timeout });
   }
