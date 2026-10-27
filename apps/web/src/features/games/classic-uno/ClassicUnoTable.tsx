@@ -332,6 +332,25 @@ export function ClassicUnoTable({
   const activeAccent = playAreaAccent[state.currentColor] ?? playAreaAccent.blue!;
   const isNoMercy = state.gameId === "uno-no-mercy";
 
+  const targetPlayerList = useMemo(() => {
+    return state.players
+      .filter((player) => player.userId !== currentUserId)
+      .map((player) => {
+        const roomP = roomPlayerById.get(player.userId);
+        return {
+          userId: player.userId,
+          displayName: player.displayName,
+          handCount: player.handCount,
+          unoCalled: player.unoCalled,
+          eliminated: "eliminated" in player ? Boolean(player.eliminated) : false,
+          avatarUrl: roomP?.avatarUrl ?? null,
+          isBot: Boolean(roomP?.isBot),
+          connected: roomP?.connected ?? true,
+          seat: player.seat
+        };
+      });
+  }, [state.players, currentUserId, roomPlayerById]);
+
   const activeSeatAngle = useMemo(() => {
     if (!state.currentPlayerId) return undefined;
     if (state.currentPlayerId === currentUserId) {
@@ -879,9 +898,11 @@ export function ClassicUnoTable({
                         hand={me.hand as RenderableCard[]}
                         legalActions={legalActions}
                         theme={cardTheme}
-                        targetPlayers={state.players.filter((player) => player.userId !== currentUserId)}
+                        targetPlayers={targetPlayerList}
                         onPlay={playCard}
                         isMyTurn={Boolean(me?.isCurrentTurn)}
+                        myHandCount={me?.hand?.length ?? me?.handCount ?? 0}
+                        isNoMercy={isNoMercy}
                       />
                     ) : null}
                   </div>
