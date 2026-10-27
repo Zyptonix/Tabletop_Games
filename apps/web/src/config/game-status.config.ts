@@ -16,6 +16,7 @@ export const GAME_STATUS: Record<string, GameStatus> = {
 
   // Existing / worked-on Tabletop Arena games awaiting main-menu approval.
   "classic-uno": "complete",
+  "battleship": "complete",
   "twenty-nine": "complete",
   "mafia-werewolf": "complete",
   "connect-four": "complete",

@@ -330,6 +330,19 @@ export function ClassicUnoTable({
     : null;
 
   const activeAccent = playAreaAccent[state.currentColor] ?? playAreaAccent.blue!;
+  const isNoMercy = state.gameId === "uno-no-mercy";
+
+  const activeSeatAngle = useMemo(() => {
+    if (!state.currentPlayerId) return undefined;
+    if (state.currentPlayerId === currentUserId) {
+      return 90; // Bottom seat (local player)
+    }
+    const slot = opponentSlots.find((s) => s.player.userId === state.currentPlayerId);
+    if (!slot) return undefined;
+    const dx = slot.left - 50;
+    const dy = slot.top - 50;
+    return Math.atan2(dy, dx) * (180 / Math.PI);
+  }, [currentUserId, opponentSlots, state.currentPlayerId]);
 
   const reactionMessages = useMemo(
     () =>
@@ -501,9 +514,14 @@ export function ClassicUnoTable({
   return (
     <MotionConfig reducedMotion="user">
       <LayoutGroup id={`uno-${room.id}`}>
-      <div className="uno-fullscreen tt-game-viewport relative h-[100dvh] w-screen overflow-hidden text-white">
-        <div className="pointer-events-none absolute inset-0 uno-fullscreen-grid" />
-        <div className="pointer-events-none absolute inset-0 uno-perspective-grid" />
+      <div
+        className={cn(
+          isNoMercy ? "uno-no-mercy-fullscreen" : "uno-fullscreen",
+          "tt-game-viewport relative h-[100dvh] w-screen overflow-hidden text-white"
+        )}
+      >
+        <div className={cn("pointer-events-none absolute inset-0", isNoMercy ? "uno-no-mercy-grid" : "uno-fullscreen-grid")} />
+        <div className={cn("pointer-events-none absolute inset-0", isNoMercy ? "uno-no-mercy-perspective-grid" : "uno-perspective-grid")} />
         <div className="pointer-events-none absolute inset-0 uno-fullscreen-glow" />
         <ReactionOverlay messages={reactionMessages} />
 
@@ -652,7 +670,7 @@ export function ClassicUnoTable({
               />
 
               <section className="relative z-10 grid h-full min-h-0 grid-rows-[minmax(0,1fr)_15rem] gap-2 px-3 pb-3">
-                <div className="classic-uno-table relative min-h-0 overflow-hidden rounded-[2.25rem] bg-transparent shadow-none">
+                <div className={cn(isNoMercy ? "uno-no-mercy-table" : "classic-uno-table", "relative min-h-0 overflow-hidden rounded-[2.25rem] bg-transparent shadow-none")}>
                   <div
                     className="pointer-events-none absolute left-1/2 top-[calc(50%+2rem)] aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border"
                     style={{
@@ -668,7 +686,12 @@ export function ClassicUnoTable({
                     }}
                   />
 
-                  <DirectionIndicator direction={state.direction} currentColor={state.currentColor} />
+                  <DirectionIndicator
+                    direction={state.direction}
+                    currentColor={state.currentColor}
+                    activeSeatAngle={activeSeatAngle}
+                    isNoMercy={isNoMercy}
+                  />
 
                   {opponentSlots.map(({ player, left, top, side }) => (
                     <div
@@ -695,6 +718,7 @@ export function ClassicUnoTable({
                         stackHitAmount={stackHitNotice?.playerId === player.userId ? stackHitNotice.amount : undefined}
                         powerEffect={seatPowerEffects[player.userId]}
                         turnProgress={player.isCurrentTurn ? turnProgress : undefined}
+                        isNoMercy={isNoMercy}
                       />
                     </div>
                   ))}
@@ -705,8 +729,9 @@ export function ClassicUnoTable({
                       className="relative z-10 translate-y-8 flex items-center justify-center gap-10 rounded-[3rem] px-8 py-7 backdrop-blur-xl sm:gap-16 sm:px-12"
                       style={{
                         border: `1px solid ${activeAccent.border}`,
-                        background:
-                          "radial-gradient(ellipse at 50% 18%, rgba(13,62,48,0.76), rgba(3,16,12,0.82) 72%, rgba(0,0,0,0.62) 100%)",
+                        background: isNoMercy
+                          ? "radial-gradient(ellipse at 50% 18%, rgba(55,8,22,0.82), rgba(18,2,7,0.88) 72%, rgba(0,0,0,0.72) 100%)"
+                          : "radial-gradient(ellipse at 50% 18%, rgba(13,62,48,0.76), rgba(3,16,12,0.82) 72%, rgba(0,0,0,0.62) 100%)",
                         boxShadow: `
                           0 30px 90px rgba(0,0,0,0.68),
                           0 0 44px ${activeAccent.glow},
@@ -836,6 +861,7 @@ export function ClassicUnoTable({
                             stackHitAmount={stackHitNotice?.playerId === me.userId ? stackHitNotice.amount : undefined}
                             powerEffect={seatPowerEffects[me.userId]}
                             turnProgress={me.isCurrentTurn ? turnProgress : undefined}
+                            isNoMercy={isNoMercy}
                           />
                         </div>
                       </div>

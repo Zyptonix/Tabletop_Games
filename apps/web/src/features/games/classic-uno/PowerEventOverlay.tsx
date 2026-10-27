@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion, type MotionStyle } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { GameEvent } from "@tabletop/game-core";
 
 interface PublicPlayerLabel {
@@ -18,15 +18,145 @@ export interface PowerSeatEffect {
   detail?: string | undefined;
 }
 
+export type PowerNoticeTone =
+  | "plus_10"
+  | "plus_6"
+  | "plus_4"
+  | "plus_2"
+  | "reverse_plus_4"
+  | "reverse"
+  | "skip"
+  | "skip_all"
+  | "discard_all"
+  | "roulette"
+  | "seven_swap"
+  | "zero_pass"
+  | "eliminated"
+  | "uno"
+  | "draw"
+  | "special";
+
 interface PowerNotice {
   id: string;
-  title: string;
-  subtitle?: string | undefined;
-  tone: "skip" | "reverse" | "draw" | "roulette" | "special" | "swap" | "pass" | "discard" | "elimination";
+  hugeTitle: string;
+  subtitle: string;
+  tone: PowerNoticeTone;
   targetPlayerId?: string | undefined;
   seatEffect?: PowerSeatEffect | undefined;
   createdAt: string;
 }
+
+interface ToneConfig {
+  color: string;
+  glow: string;
+  soft: string;
+  asset: string;
+  isCustomCardImg?: boolean;
+}
+
+const TONE_CONFIGS: Record<PowerNoticeTone, ToneConfig> = {
+  plus_10: {
+    color: "#ff1744",
+    glow: "rgba(255, 23, 68, 0.85)",
+    soft: "rgba(255, 23, 68, 0.35)",
+    asset: "/assets/uno/cards/no_mercy/wild/wild_plus10.png",
+    isCustomCardImg: true
+  },
+  plus_6: {
+    color: "#ff6d00",
+    glow: "rgba(255, 109, 0, 0.85)",
+    soft: "rgba(255, 109, 0, 0.35)",
+    asset: "/assets/uno/cards/no_mercy/wild/wild_plus6.png",
+    isCustomCardImg: true
+  },
+  plus_4: {
+    color: "#ffab00",
+    glow: "rgba(255, 171, 0, 0.82)",
+    soft: "rgba(255, 171, 0, 0.32)",
+    asset: "/uno-assets/draw-penalty.svg"
+  },
+  plus_2: {
+    color: "#00e5ff",
+    glow: "rgba(0, 229, 255, 0.82)",
+    soft: "rgba(0, 229, 255, 0.3)",
+    asset: "/uno-assets/draw-penalty.svg"
+  },
+  reverse_plus_4: {
+    color: "#d500f9",
+    glow: "rgba(213, 0, 249, 0.85)",
+    soft: "rgba(213, 0, 249, 0.35)",
+    asset: "/assets/uno/cards/no_mercy/wild/wild_reverse_plus4.png",
+    isCustomCardImg: true
+  },
+  reverse: {
+    color: "#2979ff",
+    glow: "rgba(41, 121, 255, 0.82)",
+    soft: "rgba(41, 121, 255, 0.32)",
+    asset: "/uno-assets/reverse.svg"
+  },
+  skip: {
+    color: "#ff5252",
+    glow: "rgba(255, 82, 82, 0.82)",
+    soft: "rgba(255, 82, 82, 0.32)",
+    asset: "/uno-assets/skip.svg"
+  },
+  skip_all: {
+    color: "#ff1744",
+    glow: "rgba(255, 23, 68, 0.88)",
+    soft: "rgba(255, 23, 68, 0.35)",
+    asset: "/assets/uno/cards/no_mercy/wild/wild_skip_all.png",
+    isCustomCardImg: true
+  },
+  discard_all: {
+    color: "#ff9100",
+    glow: "rgba(255, 145, 0, 0.82)",
+    soft: "rgba(255, 145, 0, 0.32)",
+    asset: "/uno-assets/discard-all.svg"
+  },
+  roulette: {
+    color: "#aa00ff",
+    glow: "rgba(170, 0, 255, 0.85)",
+    soft: "rgba(170, 0, 255, 0.35)",
+    asset: "/assets/uno/cards/no_mercy/wild/wild_roulette.png",
+    isCustomCardImg: true
+  },
+  seven_swap: {
+    color: "#00e676",
+    glow: "rgba(0, 230, 118, 0.82)",
+    soft: "rgba(0, 230, 118, 0.32)",
+    asset: "/uno-assets/hand-swap.svg"
+  },
+  zero_pass: {
+    color: "#1de9b6",
+    glow: "rgba(29, 233, 182, 0.82)",
+    soft: "rgba(29, 233, 182, 0.32)",
+    asset: "/uno-assets/hand-pass.svg"
+  },
+  eliminated: {
+    color: "#ff1744",
+    glow: "rgba(255, 23, 68, 0.92)",
+    soft: "rgba(255, 23, 68, 0.42)",
+    asset: "/uno-assets/elimination.svg"
+  },
+  uno: {
+    color: "#ffd600",
+    glow: "rgba(255, 214, 0, 0.9)",
+    soft: "rgba(255, 214, 0, 0.4)",
+    asset: "/uno-assets/cards-swirl.svg"
+  },
+  draw: {
+    color: "#ffab00",
+    glow: "rgba(255, 171, 0, 0.8)",
+    soft: "rgba(255, 171, 0, 0.3)",
+    asset: "/uno-assets/draw-penalty.svg"
+  },
+  special: {
+    color: "#30d158",
+    glow: "rgba(48, 209, 88, 0.8)",
+    soft: "rgba(48, 209, 88, 0.3)",
+    asset: "/uno-assets/cards-swirl.svg"
+  }
+};
 
 const EVENT_MAX_AGE_MS = 12_000;
 
@@ -63,14 +193,15 @@ export function PowerEventOverlay({
       const notice = normalizePowerEvent(event, players, currentUserId);
       if (!notice || isTooOld(notice.createdAt)) continue;
 
-      setNotices((current) => [...current, notice].slice(-3));
+      setNotices((current) => [...current, notice].slice(-2));
       if (notice.targetPlayerId && notice.seatEffect) {
         onSeatEffect?.(notice.targetPlayerId, notice.seatEffect);
       }
 
+      const duration = notice.tone.includes("plus") || notice.tone === "roulette" ? 2200 : 1850;
       const timeout = window.setTimeout(
         () => setNotices((current) => current.filter((item) => item.id !== notice.id)),
-        notice.tone === "draw" ? 2400 : 1900
+        duration
       );
       timeoutRef.current.push(timeout);
     }
@@ -78,83 +209,198 @@ export function PowerEventOverlay({
 
   return (
     <div className="pointer-events-none absolute inset-0 z-[52] grid place-items-center overflow-hidden">
-      <div className="relative flex -translate-y-10 flex-col items-center gap-3">
+      <div className="relative flex -translate-y-8 flex-col items-center">
         <AnimatePresence mode="popLayout">
-          {notices.map((notice) => (
-            <motion.div
-              key={notice.id}
-              layout
-              initial={{ opacity: 0, y: 12, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.97 }}
-              transition={{ duration: reduceMotion ? 0.12 : 0.26, ease: [0.18, 0.9, 0.22, 1] }}
-              className="relative min-w-[min(82vw,28rem)] overflow-hidden rounded-[1.75rem] border px-7 py-5 text-center shadow-[0_18px_50px_rgba(0,0,0,0.5)] backdrop-blur-xl"
-              style={noticeStyle(notice.tone)}
-            >
+          {notices.map((notice) => {
+            const config = TONE_CONFIGS[notice.tone] ?? TONE_CONFIGS.special;
+
+            return (
               <motion.div
-                className="absolute inset-0 opacity-60"
-                {...(reduceMotion
-                  ? {}
-                  : {
-                      animate: { opacity: [0.25, 0.52, 0.25] },
-                      transition: { duration: 0.65, ease: "easeInOut" as const }
-                    })}
-                style={noticeGlowStyle(notice.tone)}
-              />
-              <div className="relative z-10">
+                key={notice.id}
+                layout
+                initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.82, y: 16 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: reduceMotion ? 1 : 1.12, filter: "blur(12px)" }}
+                transition={{ duration: reduceMotion ? 0.14 : 0.32, ease: [0.16, 1, 0.3, 1] }}
+                className="relative flex flex-col items-center justify-center p-6 text-center select-none"
+              >
+                {/* Seamless Radial Lens Vignette - Zero hard rectangular box edges */}
+                <div
+                  className="pointer-events-none absolute -inset-24 uno-organic-callout"
+                  style={{
+                    background: `radial-gradient(ellipse at 50% 50%, ${config.soft} 0%, rgba(0, 0, 0, 0.45) 45%, transparent 75%)`,
+                    filter: "blur(22px)"
+                  }}
+                />
+
+                {/* Expanding Color-Coded Shockwave Ripple across table canvas */}
+                {!reduceMotion ? (
+                  <motion.div
+                    className="pointer-events-none absolute rounded-full border-2"
+                    style={{ borderColor: config.color }}
+                    initial={{ width: 60, height: 60, opacity: 0.85, scale: 0.4 }}
+                    animate={{ width: 440, height: 440, opacity: 0, scale: 1.5 }}
+                    transition={{ duration: 0.85, ease: "easeOut" }}
+                  />
+                ) : null}
+
+                {/* Animated Holographic Icon / Card Emblem */}
                 <motion.div
-                  key={`${notice.id}-symbol`}
-                  aria-hidden="true"
-                  initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.62, rotate: reduceMotion ? 0 : -12 }}
-                  animate={reduceMotion ? { opacity: 1 } : { opacity: 1, scale: [0.82, 1.08, 1], rotate: notice.tone === "reverse" ? [-75, 16, 0] : notice.tone === "roulette" ? [0, 150, 360] : [0, 7, 0] }}
-                  transition={{ duration: reduceMotion ? 0.12 : 0.44, ease: "easeOut" }}
-                  className="mx-auto mb-2 grid h-12 w-12 place-items-center rounded-2xl border border-white/15 bg-black/25 text-3xl font-black text-white shadow-lg sm:h-14 sm:w-14 sm:text-4xl"
+                  initial={reduceMotion ? { opacity: 1 } : { scale: 0.65, rotate: -12, opacity: 0 }}
+                  animate={
+                    reduceMotion
+                      ? { opacity: 1 }
+                      : {
+                          scale: [0.75, 1.18, 1],
+                          rotate: notice.tone === "reverse" ? [-90, 15, 0] : [ -12, 6, 0 ],
+                          opacity: 1
+                        }
+                  }
+                  transition={{ duration: 0.42, ease: "easeOut" }}
+                  className="relative z-10 mb-2 flex items-center justify-center"
                 >
-                  <img src={`/uno-assets/${noticeAsset(notice.tone)}.svg`} alt="" width={56} height={56} className="h-11 w-11 object-contain sm:h-14 sm:w-14" />
+                  {config.isCustomCardImg ? (
+                    <img
+                      src={config.asset}
+                      alt=""
+                      className="h-16 w-auto object-contain drop-shadow-[0_0_24px_rgba(255,255,255,0.45)] sm:h-20"
+                    />
+                  ) : (
+                    <div
+                      className="grid h-14 w-14 place-items-center rounded-2xl border border-white/15 bg-black/45 p-2.5 shadow-2xl backdrop-blur-md sm:h-16 sm:w-16"
+                      style={{ boxShadow: `0 0 34px ${config.glow}` }}
+                    >
+                      <img
+                        src={config.asset}
+                        alt=""
+                        className="h-full w-full object-contain filter drop-shadow-md"
+                      />
+                    </div>
+                  )}
                 </motion.div>
-                <p className="text-[0.68rem] font-black uppercase tracking-[0.32em] text-white/55">Table event</p>
-                <p className="mt-1 text-3xl font-black uppercase leading-none tracking-wide text-white drop-shadow-[0_0_16px_rgba(255,255,255,0.28)] sm:text-5xl">
-                  {notice.title}
+
+                {/* Massive Primary Typography (e.g. +10, REVERSE, SKIP ALL, ROULETTE) */}
+                <h1
+                  className="relative z-10 font-black tracking-tight leading-none text-white text-5xl sm:text-6xl md:text-7xl lg:text-8xl drop-shadow-[0_4px_16px_rgba(0,0,0,0.9)]"
+                  style={{
+                    textShadow: `0 0 28px ${config.glow}, 0 0 55px ${config.glow}`
+                  }}
+                >
+                  {notice.hugeTitle}
+                </h1>
+
+                {/* Sleek Subtitle (e.g. to (PlayerName) / Turn Direction Inverted) */}
+                <p
+                  className="relative z-10 mt-2.5 text-xs sm:text-sm md:text-base font-black uppercase tracking-[0.24em] text-white/90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)]"
+                >
+                  {notice.subtitle}
                 </p>
-                {notice.subtitle ? <p className="mt-2 text-sm font-bold text-white/70 sm:text-base">{notice.subtitle}</p> : null}
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            );
+          })}
         </AnimatePresence>
       </div>
     </div>
   );
 }
 
-function normalizePowerEvent(event: GameEvent, players: PublicPlayerLabel[], currentUserId: string | null): PowerNotice | null {
+function normalizePowerEvent(
+  event: GameEvent,
+  players: PublicPlayerLabel[],
+  currentUserId: string | null
+): PowerNotice | null {
   const payload = isRecord(event.payload) ? event.payload : {};
   const type = event.type;
-  const source = getString(payload.source);
   const playerId = getString(payload.playerId);
   const targetPlayerId = getString(payload.targetPlayerId);
   const skippedPlayerId = getString(payload.skippedPlayerId) ?? targetPlayerId ?? playerId;
-  const count = getNumber(payload.actuallyDrawn) ?? getNumber(payload.count) ?? getNumber(payload.amount);
   const amount = getNumber(payload.pendingAmount) ?? getNumber(payload.amount);
   const addedAmount = getNumber(payload.addedAmount);
+  const source = getString(payload.source);
+  const targetName = playerName(targetPlayerId ?? skippedPlayerId, players, currentUserId);
+  const actorName = playerName(playerId, players, currentUserId);
 
-  if (type.endsWith(":offline_skip")) {
-    const name = playerName(skippedPlayerId, players, currentUserId);
+  // Wild Draw 4 Reverse / Penalty stack
+  if (type.endsWith(":penalty_stack")) {
+    const penaltyAmount = addedAmount ?? amount ?? 4;
+
+    if (source === "wild_draw_four_reverse") {
+      return {
+        id: event.id,
+        hugeTitle: "REVERSE +4",
+        subtitle: `to ${targetName} · Direction Inverted`,
+        tone: "reverse_plus_4",
+        targetPlayerId,
+        seatEffect: targetPlayerId ? { id: event.id, kind: "draw", label: "+4", detail: "Reverse" } : undefined,
+        createdAt: event.createdAt
+      };
+    }
+
+    if (penaltyAmount >= 10 || source === "wild_draw_ten") {
+      return {
+        id: event.id,
+        hugeTitle: "+10",
+        subtitle: `to ${targetName}`,
+        tone: "plus_10",
+        targetPlayerId,
+        seatEffect: targetPlayerId ? { id: event.id, kind: "draw", label: "+10", detail: "Stack" } : undefined,
+        createdAt: event.createdAt
+      };
+    }
+
+    if (penaltyAmount === 6 || source === "wild_draw_six") {
+      return {
+        id: event.id,
+        hugeTitle: "+6",
+        subtitle: `to ${targetName}`,
+        tone: "plus_6",
+        targetPlayerId,
+        seatEffect: targetPlayerId ? { id: event.id, kind: "draw", label: "+6", detail: "Stack" } : undefined,
+        createdAt: event.createdAt
+      };
+    }
+
+    if (penaltyAmount === 4 || source === "wild_draw_four" || source === "draw_four") {
+      return {
+        id: event.id,
+        hugeTitle: "+4",
+        subtitle: `to ${targetName}`,
+        tone: "plus_4",
+        targetPlayerId,
+        seatEffect: targetPlayerId ? { id: event.id, kind: "draw", label: "+4", detail: "Stack" } : undefined,
+        createdAt: event.createdAt
+      };
+    }
+
+    if (penaltyAmount === 2 || source === "draw_two") {
+      return {
+        id: event.id,
+        hugeTitle: "+2",
+        subtitle: `to ${targetName}`,
+        tone: "plus_2",
+        targetPlayerId,
+        seatEffect: targetPlayerId ? { id: event.id, kind: "draw", label: "+2", detail: "Stack" } : undefined,
+        createdAt: event.createdAt
+      };
+    }
+
     return {
       id: event.id,
-      title: `${name} skipped offline`,
-      subtitle: "Seat reserved. Turn moved on.",
-      tone: "skip",
-      targetPlayerId: skippedPlayerId,
-      seatEffect: { id: event.id, kind: "offline", label: "SKIP", detail: "Offline" },
+      hugeTitle: `+${penaltyAmount}`,
+      subtitle: `to ${targetName}${amount && amount > penaltyAmount ? ` · Total +${amount}` : ""}`,
+      tone: "draw",
+      targetPlayerId,
+      seatEffect: targetPlayerId ? { id: event.id, kind: "draw", label: `+${penaltyAmount}` } : undefined,
       createdAt: event.createdAt
     };
   }
 
-  if (type.endsWith(":skip")) {
-    const name = playerName(skippedPlayerId, players, currentUserId);
+  // Skip
+  if (type.endsWith(":skip") || type.endsWith(":offline_skip") || type.endsWith(":timeout_skip")) {
     return {
       id: event.id,
-      title: `${name} skipped`,
+      hugeTitle: "SKIPPED",
+      subtitle: `${targetName}'s turn passed`,
       tone: "skip",
       targetPlayerId: skippedPlayerId,
       seatEffect: { id: event.id, kind: "skip", label: "SKIP" },
@@ -162,47 +408,53 @@ function normalizePowerEvent(event: GameEvent, players: PublicPlayerLabel[], cur
     };
   }
 
+  // Skip All (Comeback card)
+  if (type.endsWith(":comeback")) {
+    return {
+      id: event.id,
+      hugeTitle: "SKIP ALL",
+      subtitle: `${actorName} keeps the turn`,
+      tone: "skip_all",
+      createdAt: event.createdAt
+    };
+  }
+
+  // Reverse
   if (type.endsWith(":reverse")) {
     return {
       id: event.id,
-      title: "Reversed",
-      subtitle: "Turn direction changed",
+      hugeTitle: "REVERSE",
+      subtitle: "Turn Direction Inverted",
       tone: "reverse",
       createdAt: event.createdAt
     };
   }
 
-  if (type.endsWith(":penalty_stack") && amount && amount > 0) {
+  // Discard All
+  if (type.endsWith(":discard_all")) {
+    const color = getString(payload.color) ?? "matching";
+    const discarded = getNumber(payload.count);
     return {
       id: event.id,
-      title: `Draw ${amount}`,
-      subtitle: addedAmount && addedAmount > 0 ? `+${addedAmount} stacked` : "Draw stack active",
-      tone: "draw",
-      targetPlayerId,
-      seatEffect: targetPlayerId ? { id: event.id, kind: "draw", label: `+${amount}`, detail: "Stack" } : undefined,
+      hugeTitle: "DISCARD ALL",
+      subtitle: `${actorName} dumped ${discarded ?? "all"} ${color} cards`,
+      tone: "discard_all",
       createdAt: event.createdAt
     };
   }
 
-  if (type.endsWith(":cards_drawn") && count && (count >= 4 || source === "stack_penalty" || source === "roulette")) {
-    const name = playerName(playerId ?? targetPlayerId, players, currentUserId);
-    return {
-      id: event.id,
-      title: `${name} drew ${count}`,
-      subtitle: source === "roulette" ? "Roulette draw" : "Cards drawn",
-      tone: source === "roulette" ? "roulette" : "draw",
-      targetPlayerId: playerId ?? targetPlayerId,
-      seatEffect: playerId || targetPlayerId ? { id: event.id, kind: source === "roulette" ? "roulette" : "draw", label: `+${count}` } : undefined,
-      createdAt: event.createdAt
-    };
-  }
-
+  // Color Roulette
   if (type.endsWith(":roulette") || type.endsWith(":roulette_pending")) {
-    const name = playerName(targetPlayerId, players, currentUserId);
+    const color = getString(payload.chosenColor);
+    const count = getNumber(payload.cardsDrawn) ?? getNumber(payload.actuallyDrawn);
     return {
       id: event.id,
-      title: "Roulette",
-      subtitle: count && count > 0 ? `${name} drew ${count} card${count === 1 ? "" : "s"}` : `${name} is targeted`,
+      hugeTitle: "ROULETTE",
+      subtitle: color
+        ? `${targetName} drawing until ${color}`
+        : count
+          ? `${targetName} drew ${count} cards`
+          : `${targetName} targeted`,
       tone: "roulette",
       targetPlayerId,
       seatEffect: targetPlayerId ? { id: event.id, kind: "roulette", label: "ROULETTE" } : undefined,
@@ -210,113 +462,68 @@ function normalizePowerEvent(event: GameEvent, players: PublicPlayerLabel[], cur
     };
   }
 
-  if (type.endsWith(":zero_pass")) {
-    const direction = getString(payload.directionLabel) ?? (payload.direction === -1 ? "counterclockwise" : "clockwise");
-    const transferCount = Array.isArray(payload.transfers) ? payload.transfers.length : players.length;
-    return { id: event.id, title: "Hands passed", subtitle: `Everyone passed ${direction} · ${transferCount} transfers`, tone: "pass", createdAt: event.createdAt };
-  }
-
+  // 7-Swap
   if (type.endsWith(":seven_swap")) {
     const fromId = getString(payload.fromPlayerId);
     const toId = getString(payload.toPlayerId);
-    const fromCount = getNumber(payload.fromCount);
-    const toCount = getNumber(payload.toCount);
     const fromName = playerName(fromId, players, currentUserId);
     const toName = playerName(toId, players, currentUserId);
-    const counts = fromCount !== undefined && toCount !== undefined ? ` · ${fromCount} ⇄ ${toCount} cards` : "";
-    return { id: event.id, title: "Hand swap", subtitle: `${fromName} ⇄ ${toName}${counts}`, tone: "swap", createdAt: event.createdAt };
+    return {
+      id: event.id,
+      hugeTitle: "HAND SWAP",
+      subtitle: `${fromName} ⇄ ${toName}`,
+      tone: "seven_swap",
+      createdAt: event.createdAt
+    };
   }
 
-  if (type.endsWith(":discard_all")) {
-    const name = playerName(playerId, players, currentUserId);
-    const color = getString(payload.color) ?? "matching";
-    const discarded = getNumber(payload.count);
-    return { id: event.id, title: "Discard all", subtitle: `${name} cleared ${discarded ?? "matching"} ${color} card${discarded === 1 ? "" : "s"}`, tone: "discard", createdAt: event.createdAt };
+  // 0-Pass
+  if (type.endsWith(":zero_pass")) {
+    const direction = getString(payload.directionLabel) ?? (payload.direction === -1 ? "Counter-Clockwise" : "Clockwise");
+    return {
+      id: event.id,
+      hugeTitle: "PASS ALL",
+      subtitle: `Everyone passed hands ${direction}`,
+      tone: "zero_pass",
+      createdAt: event.createdAt
+    };
   }
 
+  // Elimination (Mercy Rule KO at 25 cards)
   if (type.endsWith(":eliminated")) {
-    const name = playerName(playerId, players, currentUserId);
     const countAtElimination = getNumber(payload.handCount);
-    return { id: event.id, title: `${name} eliminated`, subtitle: countAtElimination !== undefined ? `Reached ${countAtElimination} cards` : "Out of the match", tone: "elimination", createdAt: event.createdAt };
+    return {
+      id: event.id,
+      hugeTitle: "MERCY KO!",
+      subtitle: countAtElimination !== undefined ? `${actorName} reached ${countAtElimination} cards` : `${actorName} is eliminated`,
+      tone: "eliminated",
+      targetPlayerId: playerId,
+      createdAt: event.createdAt
+    };
   }
 
-  if (type.endsWith(":comeback")) {
-    const name = playerName(playerId, players, currentUserId);
-    return { id: event.id, title: "Skip all", subtitle: `${name} keeps the turn`, tone: "skip", createdAt: event.createdAt };
+  // UNO Call
+  if (type.endsWith(":called")) {
+    return {
+      id: event.id,
+      hugeTitle: "UNO!",
+      subtitle: `${actorName} down to 1 card!`,
+      tone: "uno",
+      createdAt: event.createdAt
+    };
   }
 
   return null;
 }
 
-function playerName(userId: string | undefined, players: PublicPlayerLabel[], currentUserId: string | null): string {
+function playerName(
+  userId: string | undefined,
+  players: PublicPlayerLabel[],
+  currentUserId: string | null
+): string {
   if (!userId) return "Player";
   if (userId === currentUserId) return "You";
   return players.find((player) => player.userId === userId)?.displayName ?? "Player";
-}
-
-function noticeAsset(tone: PowerNotice["tone"]): string {
-  const assets: Record<PowerNotice["tone"], string> = {
-    skip: "skip",
-    reverse: "reverse",
-    draw: "draw-penalty",
-    roulette: "roulette-hit",
-    special: "cards-swirl",
-    swap: "hand-swap",
-    pass: "hand-pass",
-    discard: "discard-all",
-    elimination: "elimination"
-  };
-  return assets[tone];
-}
-
-function noticeStyle(tone: PowerNotice["tone"]): MotionStyle {
-  const styles: Record<PowerNotice["tone"], MotionStyle> = {
-    skip: {
-      borderColor: "rgba(248,113,113,0.42)",
-      background: "linear-gradient(135deg,rgba(45,12,18,0.92),rgba(8,7,9,0.86))",
-      boxShadow: "0 0 58px rgba(239,68,68,0.30),0 28px 90px rgba(0,0,0,0.68)"
-    },
-    reverse: {
-      borderColor: "rgba(45,140,255,0.46)",
-      background: "linear-gradient(135deg,rgba(6,21,45,0.94),rgba(4,8,15,0.86))",
-      boxShadow: "0 0 68px rgba(45,140,255,0.36),0 28px 90px rgba(0,0,0,0.68)"
-    },
-    draw: {
-      borderColor: "rgba(251,191,36,0.48)",
-      background: "linear-gradient(135deg,rgba(49,29,5,0.94),rgba(10,8,4,0.88))",
-      boxShadow: "0 0 68px rgba(245,158,11,0.34),0 28px 90px rgba(0,0,0,0.68)"
-    },
-    roulette: {
-      borderColor: "rgba(168,85,247,0.48)",
-      background: "linear-gradient(135deg,rgba(40,16,70,0.94),rgba(3,8,18,0.88))",
-      boxShadow: "0 0 72px rgba(168,85,247,0.32),0 28px 90px rgba(0,0,0,0.68)"
-    },
-    special: {
-      borderColor: "rgba(52,211,153,0.42)",
-      background: "linear-gradient(135deg,rgba(7,43,31,0.94),rgba(4,10,8,0.88))",
-      boxShadow: "0 0 62px rgba(16,185,129,0.30),0 28px 90px rgba(0,0,0,0.68)"
-    },
-    swap: { borderColor: "rgba(192,132,252,0.5)", background: "linear-gradient(135deg,rgba(42,19,68,0.95),rgba(5,7,14,0.9))", boxShadow: "0 0 58px rgba(192,132,252,0.28),0 28px 90px rgba(0,0,0,0.68)" },
-    pass: { borderColor: "rgba(45,212,191,0.45)", background: "linear-gradient(135deg,rgba(6,45,43,0.94),rgba(4,8,15,0.9))", boxShadow: "0 0 58px rgba(45,212,191,0.27),0 28px 90px rgba(0,0,0,0.68)" },
-    discard: { borderColor: "rgba(251,146,60,0.48)", background: "linear-gradient(135deg,rgba(61,29,9,0.94),rgba(8,8,12,0.9))", boxShadow: "0 0 58px rgba(251,146,60,0.28),0 28px 90px rgba(0,0,0,0.68)" },
-    elimination: { borderColor: "rgba(251,113,133,0.5)", background: "linear-gradient(135deg,rgba(65,10,24,0.96),rgba(8,7,12,0.9))", boxShadow: "0 0 62px rgba(251,113,133,0.3),0 28px 90px rgba(0,0,0,0.68)" }
-  };
-  return styles[tone];
-}
-
-function noticeGlowStyle(tone: PowerNotice["tone"]): MotionStyle {
-  const colors: Record<PowerNotice["tone"], string> = {
-    skip: "radial-gradient(circle at 50% 50%,rgba(248,113,113,0.28),transparent 62%)",
-    reverse: "radial-gradient(circle at 50% 50%,rgba(45,140,255,0.30),transparent 64%)",
-    draw: "radial-gradient(circle at 50% 50%,rgba(251,191,36,0.28),transparent 64%)",
-    roulette: "radial-gradient(circle at 50% 50%,rgba(168,85,247,0.30),transparent 64%)",
-    special: "radial-gradient(circle at 50% 50%,rgba(52,211,153,0.26),transparent 64%)",
-    swap: "radial-gradient(circle at 50% 50%,rgba(192,132,252,0.30),transparent 64%)",
-    pass: "radial-gradient(circle at 50% 50%,rgba(45,212,191,0.28),transparent 64%)",
-    discard: "radial-gradient(circle at 50% 50%,rgba(251,146,60,0.30),transparent 64%)",
-    elimination: "radial-gradient(circle at 50% 50%,rgba(251,113,133,0.30),transparent 64%)"
-  };
-  return { background: colors[tone] };
 }
 
 function isTooOld(createdAt: string): boolean {

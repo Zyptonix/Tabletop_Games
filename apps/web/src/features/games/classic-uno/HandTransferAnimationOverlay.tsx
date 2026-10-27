@@ -141,31 +141,38 @@ export function HandTransferAnimationOverlay({
                 : {
                     x: [animation.from.x - 36, midX + sideNudge - 36, animation.to.x - 36],
                     y: [animation.from.y - 34, midY - 34, animation.to.y - 34],
-                    rotate: [animation.direction * -8, animation.direction * 10, animation.direction * 4],
-                    scale: [0.78, 0.98, 0.84],
+                    rotate: [animation.direction * -8, animation.direction * 12, animation.direction * 4],
+                    scale: [0.78, 1.05, 0.8],
                     opacity: [0, 1, 1, 0]
                   }}
               exit={{ opacity: 0, scale: 0.8 }}
-              transition={{ duration: reduceMotion ? 0.72 : 1.12, ease: [0.2, 0.8, 0.2, 1] }}
+              transition={{ duration: reduceMotion ? 0.72 : 1.15, ease: [0.2, 0.8, 0.2, 1] }}
             >
-              <div className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-white/20 bg-black/85 px-2 py-1 text-[9px] font-black text-white shadow-lg">
-                {animation.fromPlayerName} <span className="text-emerald-300">→</span> {animation.toPlayerName}
+              {/* Organic borderless transfer indicator */}
+              <div className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap px-3 py-1 text-[11px] font-black uppercase tracking-wider text-white select-none drop-shadow-lg">
+                <span className="text-white/80">{animation.fromPlayerName}</span>{" "}
+                <span className={animation.kind === "seven_swap" ? "text-fuchsia-300 font-black text-sm" : "text-emerald-300 font-black text-sm"}>
+                  {animation.kind === "seven_swap" ? "⇄" : "→"}
+                </span>{" "}
+                <span className="text-white/80">{animation.toPlayerName}</span>
               </div>
               <div
                 className="relative h-24 w-[4.5rem]"
-                style={{ boxShadow: animation.kind === "seven_swap" ? "0 0 16px rgba(168,85,247,0.30)" : "0 0 14px rgba(45,140,255,0.24)" }}
+                style={{
+                  filter: animation.kind === "seven_swap" ? "drop-shadow(0 0 20px rgba(168,85,247,0.5))" : "drop-shadow(0 0 16px rgba(45,140,255,0.4))"
+                }}
               >
-                <div className="absolute left-0 top-2 rotate-[-10deg] opacity-90">
-                  <UnoCard faceDown compact theme={theme} liftOnHover={false} className="h-20 w-[3.4rem] rounded-lg" />
+                <div className="absolute left-0 top-2 rotate-[-12deg] opacity-85">
+                  <UnoCard faceDown compact theme={theme} liftOnHover={false} className="h-20 w-[3.4rem] rounded-xl ring-1 ring-white/20" />
                 </div>
-                <div className="absolute left-2 top-1 rotate-[1deg] opacity-95">
-                  <UnoCard faceDown compact theme={theme} liftOnHover={false} className="h-20 w-[3.4rem] rounded-lg" />
+                <div className="absolute left-2 top-1 rotate-[0deg] opacity-95">
+                  <UnoCard faceDown compact theme={theme} liftOnHover={false} className="h-20 w-[3.4rem] rounded-xl ring-1 ring-white/20" />
                 </div>
-                <div className="absolute left-4 top-0 rotate-[10deg]">
-                  <UnoCard faceDown compact theme={theme} liftOnHover={false} className="h-20 w-[3.4rem] rounded-lg" />
+                <div className="absolute left-4 top-0 rotate-[12deg]">
+                  <UnoCard faceDown compact theme={theme} liftOnHover={false} className="h-20 w-[3.4rem] rounded-xl ring-1 ring-white/20" />
                 </div>
 
-                <div className="absolute -bottom-1 right-0 rounded-full border border-white/25 bg-black/82 px-2 py-1 text-[0.66rem] font-black text-white shadow-[0_8px_18px_rgb(0_0_0_/_0.45)] backdrop-blur-md">
+                <div className="absolute -bottom-1 right-0 rounded-full bg-black/85 px-2 py-0.5 text-[0.66rem] font-black text-amber-200 shadow-md">
                   {animation.cardCount}
                 </div>
               </div>

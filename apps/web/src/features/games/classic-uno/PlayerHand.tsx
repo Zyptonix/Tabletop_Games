@@ -217,8 +217,8 @@ export function PlayerHand({
                   animate={{
                     opacity: 1,
                     x: 0,
-                    y: baseLift,
-                    scale: playable ? 1.05 : density.scale,
+                    y: isMyTurn && playable ? baseLift - 6 : baseLift,
+                    scale: playable ? (isMyTurn ? 1.07 : 1.05) : density.scale,
                     rotate: 0
                   }}
                   exit={{
@@ -229,7 +229,7 @@ export function PlayerHand({
                   }}
                   whileHover={{
                     y: hoverLift,
-                    scale: playable ? (density.compact ? 1.22 : 1.18) : density.compact ? 1.12 : 1.08,
+                    scale: playable ? (density.compact ? 1.24 : 1.2) : density.compact ? 1.12 : 1.08,
                     rotate: playable ? -2 : 0,
                     zIndex: 300
                   }}
@@ -238,7 +238,8 @@ export function PlayerHand({
                   style={{
                     marginLeft,
                     transformOrigin: "50% 100%",
-                    zIndex: hoveredIndex === index ? 300 : playable ? 80 + index : index
+                    zIndex: hoveredIndex === index ? 300 : playable ? 80 + index : index,
+                    filter: playable && isMyTurn ? "drop-shadow(0 -4px 14px rgba(74, 222, 128, 0.45))" : undefined
                   }}
                   onHoverStart={() => setHoveredIndex(index)}
                   onHoverEnd={() => setHoveredIndex((current) => (current === index ? null : current))}

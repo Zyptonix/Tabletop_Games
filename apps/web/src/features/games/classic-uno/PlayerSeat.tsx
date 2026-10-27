@@ -45,7 +45,8 @@ export function PlayerSeat({
   seatSide = "top",
   stackHitAmount,
   powerEffect,
-  turnProgress
+  turnProgress,
+  isNoMercy = false
 }: {
   player: PublicSeatPlayer;
   roomPlayer?: RoomPlayerView | undefined;
@@ -57,6 +58,7 @@ export function PlayerSeat({
   stackHitAmount?: number | undefined;
   powerEffect?: PowerSeatEffect | undefined;
   turnProgress?: number | undefined;
+  isNoMercy?: boolean | undefined;
 }) {
   const connected = roomPlayer?.connected ?? false;
   const avatarUrl = player.avatarUrl ?? roomPlayer?.avatarUrl ?? null;
@@ -68,18 +70,35 @@ export function PlayerSeat({
         "relative isolate overflow-visible rounded-[1.55rem] border text-white backdrop-blur-xl transition-all duration-200",
         compact ? "min-h-[5.25rem]" : "min-h-[6.05rem]",
         player.isCurrentTurn
-          ? "border-lime-200/90 bg-[linear-gradient(135deg,rgba(18,255,118,0.95),rgba(34,197,94,0.96)_30%,rgba(8,31,18,0.98)_100%)] scale-[1.015]"
+          ? isNoMercy
+            ? "border-amber-400/90 bg-[linear-gradient(135deg,rgba(245,158,11,0.32),rgba(225,29,72,0.22)_40%,rgba(10,5,12,0.95))] scale-[1.02]"
+            : "border-lime-200/90 bg-[linear-gradient(135deg,rgba(18,255,118,0.95),rgba(34,197,94,0.96)_30%,rgba(8,31,18,0.98)_100%)] scale-[1.02]"
           : "border-emerald-300/12 bg-[linear-gradient(135deg,rgba(7,22,14,0.88),rgba(5,15,12,0.76)_42%,rgba(0,0,0,0.66)_100%)]",
         player.isCurrentTurn
-          ? "shadow-[0_0_0_1px_rgba(190,242,100,0.7),0_0_58px_rgba(74,222,128,0.9),0_18px_68px_rgba(0,0,0,0.7)]"
+          ? isNoMercy
+            ? "shadow-[0_0_0_1px_rgba(251,191,36,0.8),0_0_65px_rgba(245,158,11,0.85),0_18px_68px_rgba(0,0,0,0.7)] ring-2 ring-amber-300/80"
+            : "shadow-[0_0_0_1px_rgba(190,242,100,0.7),0_0_58px_rgba(74,222,128,0.9),0_18px_68px_rgba(0,0,0,0.7)] ring-2 ring-lime-200/80"
           : "shadow-[0_18px_44px_rgba(0,0,0,0.66),0_0_24px_rgba(34,197,94,0.07)]",
         inactive && "opacity-60 grayscale",
-        player.isCurrentTurn && "ring-2 ring-lime-200/80",
         isSelf ? "p-4" : compact ? "p-3" : "p-3.5"
       )}
     >
       {player.isCurrentTurn ? (
         <>
+          {/* Animated Sweeping Border Beam */}
+          <div className="pointer-events-none absolute -inset-[1px] overflow-hidden rounded-[inherit]">
+            <motion.div
+              className={cn(
+                "absolute -inset-[100%]",
+                isNoMercy
+                  ? "bg-[conic-gradient(from_0deg,transparent_0_310deg,rgba(251,191,36,0.9)_340deg,white_360deg)]"
+                  : "bg-[conic-gradient(from_0deg,transparent_0_310deg,rgba(190,242,100,0.9)_340deg,white_360deg)]"
+              )}
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2.8, repeat: Infinity, ease: "linear" }}
+            />
+          </div>
+
           <motion.div
             className="pointer-events-none absolute inset-0 rounded-[inherit] bg-[linear-gradient(135deg,rgba(190,242,100,0.22),rgba(132,204,22,0.14)_42%,rgba(0,0,0,0)_78%)]"
             animate={{ opacity: [0.62, 1, 0.62] }}
@@ -87,7 +106,10 @@ export function PlayerSeat({
           />
 
           <motion.div
-            className="pointer-events-none absolute -inset-3 rounded-[2rem] bg-lime-400/18 blur-2xl"
+            className={cn(
+              "pointer-events-none absolute -inset-3 rounded-[2rem] blur-2xl",
+              isNoMercy ? "bg-amber-400/22" : "bg-lime-400/18"
+            )}
             animate={{ opacity: [0.35, 0.82, 0.35], scale: [0.98, 1.04, 0.98] }}
             transition={{ duration: 2.1, repeat: Infinity, ease: "easeInOut" }}
           />
@@ -178,9 +200,40 @@ export function PlayerSeat({
                 fanSide === "left" && "justify-end"
               )}
             >
-              {player.isCurrentTurn ? <Badge tone="turn">Turn</Badge> : null}
+              {player.isCurrentTurn ? (
+                <div
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[0.62rem] font-black uppercase tracking-wider",
+                    isNoMercy
+                      ? "border-amber-300/80 bg-amber-400/25 text-amber-50 shadow-[0_0_16px_rgba(245,158,11,0.65)]"
+                      : "border-lime-300/80 bg-lime-400/25 text-lime-50 shadow-[0_0_16px_rgba(163,230,53,0.65)]"
+                  )}
+                >
+                  <span className="relative flex h-2 w-2">
+                    <span
+                      className={cn(
+                        "animate-ping absolute inline-flex h-full w-full rounded-full opacity-80",
+                        isNoMercy ? "bg-amber-300" : "bg-lime-400"
+                      )}
+                    />
+                    <span
+                      className={cn(
+                        "relative inline-flex rounded-full h-2 w-2",
+                        isNoMercy ? "bg-amber-200" : "bg-lime-200"
+                      )}
+                    />
+                  </span>
+                  <span>Turn</span>
+                </div>
+              ) : null}
+              {isNoMercy && player.handCount >= 18 && !player.eliminated ? (
+                <div className="inline-flex items-center gap-1 rounded-full border border-rose-400/80 bg-rose-500/25 px-2 py-0.5 text-[0.58rem] font-black uppercase tracking-wider text-rose-200 shadow-[0_0_14px_rgba(244,63,94,0.45)] animate-pulse">
+                  <Skull className="h-2.5 w-2.5" />
+                  <span>{player.handCount}/25 Danger</span>
+                </div>
+              ) : null}
               {player.unoCalled ? <Badge tone="uno">UNO</Badge> : null}
-              {player.eliminated ? <Badge tone="out">Out</Badge> : null}
+              {player.eliminated ? <Badge tone="out">Eliminated</Badge> : null}
               {!connected ? <Badge tone="out">Offline</Badge> : null}
             </div>
           </div>
