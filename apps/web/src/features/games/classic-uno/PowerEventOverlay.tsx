@@ -320,77 +320,61 @@ function normalizePowerEvent(
   const targetName = playerName(targetPlayerId ?? skippedPlayerId, players, currentUserId);
   const actorName = playerName(playerId, players, currentUserId);
 
-  // Wild Draw 4 Reverse / Penalty stack
+  // Wild Draw 4 Reverse / Penalty stack - always show the TOTAL accumulated stack hit!
   if (type.endsWith(":penalty_stack")) {
-    const penaltyAmount = addedAmount ?? amount ?? 4;
+    const totalStackAmount = amount ?? addedAmount ?? 4;
+    const added = addedAmount ?? totalStackAmount;
+
+    const tone: PowerNoticeTone =
+      totalStackAmount >= 10
+        ? "plus_10"
+        : totalStackAmount >= 6
+          ? "plus_6"
+          : totalStackAmount >= 4
+            ? "plus_4"
+            : "plus_2";
 
     if (source === "wild_draw_four_reverse") {
       return {
         id: event.id,
-        hugeTitle: "REVERSE +4",
+        hugeTitle: `REVERSE +${totalStackAmount}`,
         subtitle: `to ${targetName} · Direction Inverted`,
         tone: "reverse_plus_4",
         targetPlayerId,
-        seatEffect: targetPlayerId ? { id: event.id, kind: "draw", label: "+4", detail: "Reverse" } : undefined,
+        seatEffect: targetPlayerId ? { id: event.id, kind: "draw", label: `+${totalStackAmount}`, detail: "Reverse" } : undefined,
         createdAt: event.createdAt
       };
     }
 
-    if (penaltyAmount >= 10 || source === "wild_draw_ten") {
-      return {
-        id: event.id,
-        hugeTitle: "+10",
-        subtitle: `to ${targetName}`,
-        tone: "plus_10",
-        targetPlayerId,
-        seatEffect: targetPlayerId ? { id: event.id, kind: "draw", label: "+10", detail: "Stack" } : undefined,
-        createdAt: event.createdAt
-      };
-    }
-
-    if (penaltyAmount === 6 || source === "wild_draw_six") {
-      return {
-        id: event.id,
-        hugeTitle: "+6",
-        subtitle: `to ${targetName}`,
-        tone: "plus_6",
-        targetPlayerId,
-        seatEffect: targetPlayerId ? { id: event.id, kind: "draw", label: "+6", detail: "Stack" } : undefined,
-        createdAt: event.createdAt
-      };
-    }
-
-    if (penaltyAmount === 4 || source === "wild_draw_four" || source === "draw_four") {
-      return {
-        id: event.id,
-        hugeTitle: "+4",
-        subtitle: `to ${targetName}`,
-        tone: "plus_4",
-        targetPlayerId,
-        seatEffect: targetPlayerId ? { id: event.id, kind: "draw", label: "+4", detail: "Stack" } : undefined,
-        createdAt: event.createdAt
-      };
-    }
-
-    if (penaltyAmount === 2 || source === "draw_two") {
-      return {
-        id: event.id,
-        hugeTitle: "+2",
-        subtitle: `to ${targetName}`,
-        tone: "plus_2",
-        targetPlayerId,
-        seatEffect: targetPlayerId ? { id: event.id, kind: "draw", label: "+2", detail: "Stack" } : undefined,
-        createdAt: event.createdAt
-      };
-    }
+    const isStackedHit = totalStackAmount > added;
+    const subtitle = isStackedHit
+      ? `to ${targetName} · (+${added} added to +${totalStackAmount} stack)`
+      : `to ${targetName}`;
 
     return {
       id: event.id,
-      hugeTitle: `+${penaltyAmount}`,
-      subtitle: `to ${targetName}${amount && amount > penaltyAmount ? ` · Total +${amount}` : ""}`,
-      tone: "draw",
+      hugeTitle: `+${totalStackAmount}`,
+      subtitle,
+      tone,
       targetPlayerId,
-      seatEffect: targetPlayerId ? { id: event.id, kind: "draw", label: `+${penaltyAmount}` } : undefined,
+      seatEffect: targetPlayerId ? { id: event.id, kind: "draw", label: `+${totalStackAmount}`, detail: "Stack" } : undefined,
+      createdAt: event.createdAt
+    };
+  }
+
+  // Cards drawn from penalty stack
+  if (type.endsWith(":cards_drawn") && (source === "stack_penalty" || (amount && amount >= 2))) {
+    const count = getNumber(payload.actuallyDrawn) ?? getNumber(payload.count) ?? amount ?? 2;
+    const tone: PowerNoticeTone =
+      count >= 10 ? "plus_10" : count >= 6 ? "plus_6" : count >= 4 ? "plus_4" : "plus_2";
+
+    return {
+      id: event.id,
+      hugeTitle: `+${count}`,
+      subtitle: `${targetName} took the +${count} stack penalty`,
+      tone,
+      targetPlayerId: playerId ?? targetPlayerId,
+      seatEffect: targetPlayerId ? { id: event.id, kind: "draw", label: `+${count}` } : undefined,
       createdAt: event.createdAt
     };
   }
@@ -443,21 +427,32 @@ function normalizePowerEvent(
     };
   }
 
-  // Color Roulette
-  if (type.endsWith(":roulette") || type.endsWith(":roulette_pending")) {
+  // Color Roulette - Prominently display the exact card count drawn!
+  if (type.endsWith(":roulette") || type.endsWith(":roulette_pending") || (type.endsWith(":cards_drawn") && source === "roulette")) {
     const color = getString(payload.chosenColor);
-    const count = getNumber(payload.cardsDrawn) ?? getNumber(payload.actuallyDrawn);
+    const count = getNumber(payload.cardsDrawn) ?? getNumber(payload.actuallyDrawn) ?? getNumber(payload.count);
+
+    if (count !== undefined && count > 0) {
+      return {
+        id: event.id,
+        hugeTitle: `+${count} CARDS`,
+        subtitle: `${targetName} drew ${count} card${count === 1 ? "" : "s"}${color ? ` until ${color.toUpperCase()}` : ""}`,
+        tone: "roulette",
+        targetPlayerId: targetPlayerId ?? playerId,
+        seatEffect: (targetPlayerId ?? playerId) ? { id: event.id, kind: "roulette", label: `+${count}` } : undefined,
+        createdAt: event.createdAt
+      };
+    }
+
     return {
       id: event.id,
       hugeTitle: "ROULETTE",
       subtitle: color
-        ? `${targetName} drawing until ${color}`
-        : count
-          ? `${targetName} drew ${count} cards`
-          : `${targetName} targeted`,
+        ? `${targetName} drawing until ${color.toUpperCase()}`
+        : `${targetName} targeted by Roulette`,
       tone: "roulette",
-      targetPlayerId,
-      seatEffect: targetPlayerId ? { id: event.id, kind: "roulette", label: "ROULETTE" } : undefined,
+      targetPlayerId: targetPlayerId ?? playerId,
+      seatEffect: (targetPlayerId ?? playerId) ? { id: event.id, kind: "roulette", label: "ROULETTE" } : undefined,
       createdAt: event.createdAt
     };
   }

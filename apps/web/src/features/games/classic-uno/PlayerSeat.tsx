@@ -70,54 +70,39 @@ export function PlayerSeat({
         "relative isolate overflow-visible rounded-[1.55rem] border text-white backdrop-blur-xl transition-all duration-200",
         compact ? "min-h-[5.25rem]" : "min-h-[6.05rem]",
         player.isCurrentTurn
-          ? isNoMercy
-            ? "border-amber-400/90 bg-[linear-gradient(135deg,rgba(245,158,11,0.32),rgba(225,29,72,0.22)_40%,rgba(10,5,12,0.95))] scale-[1.02]"
-            : "border-lime-200/90 bg-[linear-gradient(135deg,rgba(18,255,118,0.95),rgba(34,197,94,0.96)_30%,rgba(8,31,18,0.98)_100%)] scale-[1.02]"
-          : "border-emerald-300/12 bg-[linear-gradient(135deg,rgba(7,22,14,0.88),rgba(5,15,12,0.76)_42%,rgba(0,0,0,0.66)_100%)]",
-        player.isCurrentTurn
-          ? isNoMercy
-            ? "shadow-[0_0_0_1px_rgba(251,191,36,0.8),0_0_65px_rgba(245,158,11,0.85),0_18px_68px_rgba(0,0,0,0.7)] ring-2 ring-amber-300/80"
-            : "shadow-[0_0_0_1px_rgba(190,242,100,0.7),0_0_58px_rgba(74,222,128,0.9),0_18px_68px_rgba(0,0,0,0.7)] ring-2 ring-lime-200/80"
-          : "shadow-[0_18px_44px_rgba(0,0,0,0.66),0_0_24px_rgba(34,197,94,0.07)]",
+          ? "border-2 border-[#22c55e] bg-[linear-gradient(135deg,rgba(34,197,94,0.42),rgba(16,185,129,0.28)_38%,rgba(4,24,14,0.96))] scale-[1.03] ring-2 ring-[#4ade80] shadow-[0_0_0_2px_rgba(74,222,128,0.9),0_0_35px_rgba(34,197,94,0.95),0_0_75px_rgba(34,197,94,0.5),0_18px_60px_rgba(0,0,0,0.8)]"
+          : "border-emerald-300/12 bg-[linear-gradient(135deg,rgba(7,22,14,0.88),rgba(5,15,12,0.76)_42%,rgba(0,0,0,0.66)_100%)] shadow-[0_18px_44px_rgba(0,0,0,0.66),0_0_24px_rgba(34,197,94,0.07)]",
         inactive && "opacity-60 grayscale",
         isSelf ? "p-4" : compact ? "p-3" : "p-3.5"
       )}
     >
       {player.isCurrentTurn ? (
         <>
-          {/* Animated Sweeping Border Beam */}
+          {/* Animated Sweeping Neon Green Border Beam */}
           <div className="pointer-events-none absolute -inset-[1px] overflow-hidden rounded-[inherit]">
             <motion.div
-              className={cn(
-                "absolute -inset-[100%]",
-                isNoMercy
-                  ? "bg-[conic-gradient(from_0deg,transparent_0_310deg,rgba(251,191,36,0.9)_340deg,white_360deg)]"
-                  : "bg-[conic-gradient(from_0deg,transparent_0_310deg,rgba(190,242,100,0.9)_340deg,white_360deg)]"
-              )}
+              className="absolute -inset-[100%] bg-[conic-gradient(from_0deg,transparent_0_280deg,rgba(74,222,128,0.95)_330deg,white_360deg)]"
               animate={{ rotate: 360 }}
-              transition={{ duration: 2.8, repeat: Infinity, ease: "linear" }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
             />
           </div>
 
           <motion.div
-            className="pointer-events-none absolute inset-0 rounded-[inherit] bg-[linear-gradient(135deg,rgba(190,242,100,0.22),rgba(132,204,22,0.14)_42%,rgba(0,0,0,0)_78%)]"
-            animate={{ opacity: [0.62, 1, 0.62] }}
-            transition={{ duration: 2.1, repeat: Infinity, ease: "easeInOut" }}
+            className="pointer-events-none absolute inset-0 rounded-[inherit] bg-[linear-gradient(135deg,rgba(74,222,128,0.28),rgba(34,197,94,0.18)_42%,rgba(0,0,0,0)_78%)]"
+            animate={{ opacity: [0.7, 1, 0.7] }}
+            transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
           />
 
           <motion.div
-            className={cn(
-              "pointer-events-none absolute -inset-3 rounded-[2rem] blur-2xl",
-              isNoMercy ? "bg-amber-400/22" : "bg-lime-400/18"
-            )}
-            animate={{ opacity: [0.35, 0.82, 0.35], scale: [0.98, 1.04, 0.98] }}
-            transition={{ duration: 2.1, repeat: Infinity, ease: "easeInOut" }}
+            className="pointer-events-none absolute -inset-3 rounded-[2rem] bg-[#22c55e]/28 blur-2xl"
+            animate={{ opacity: [0.45, 0.9, 0.45], scale: [0.98, 1.05, 0.98] }}
+            transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
           />
 
           <motion.div
-            className="pointer-events-none absolute inset-0 rounded-[inherit] border border-lime-200/45"
-            animate={{ opacity: [0.4, 0.95, 0.4] }}
-            transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+            className="pointer-events-none absolute inset-0 rounded-[inherit] border border-[#86efac]/60"
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
           />
         </>
       ) : null}
@@ -151,7 +136,7 @@ export function PlayerSeat({
                 "grid place-items-center rounded-full border text-sm font-black",
                 compact ? "h-11 w-11" : "h-12 w-12",
                 player.isCurrentTurn
-                  ? "border-lime-200/70 bg-lime-300/20 text-lime-50 shadow-[0_0_24px_rgba(190,242,100,0.38)]"
+                  ? "border-2 border-[#22c55e] bg-emerald-400/25 text-emerald-50 shadow-[0_0_24px_rgba(34,197,94,0.85)] ring-2 ring-[#4ade80]"
                   : "border-emerald-200/14 bg-black/58 text-white"
               )}
             >
@@ -202,26 +187,11 @@ export function PlayerSeat({
             >
               {player.isCurrentTurn ? (
                 <div
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[0.62rem] font-black uppercase tracking-wider",
-                    isNoMercy
-                      ? "border-amber-300/80 bg-amber-400/25 text-amber-50 shadow-[0_0_16px_rgba(245,158,11,0.65)]"
-                      : "border-lime-300/80 bg-lime-400/25 text-lime-50 shadow-[0_0_16px_rgba(163,230,53,0.65)]"
-                  )}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[#86efac] bg-[#22c55e]/35 px-2.5 py-0.5 text-[0.62rem] font-black uppercase tracking-wider text-emerald-50 shadow-[0_0_20px_rgba(34,197,94,0.9)]"
                 >
                   <span className="relative flex h-2 w-2">
-                    <span
-                      className={cn(
-                        "animate-ping absolute inline-flex h-full w-full rounded-full opacity-80",
-                        isNoMercy ? "bg-amber-300" : "bg-lime-400"
-                      )}
-                    />
-                    <span
-                      className={cn(
-                        "relative inline-flex rounded-full h-2 w-2",
-                        isNoMercy ? "bg-amber-200" : "bg-lime-200"
-                      )}
-                    />
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-85 bg-[#4ade80]" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-[#86efac]" />
                   </span>
                   <span>Turn</span>
                 </div>

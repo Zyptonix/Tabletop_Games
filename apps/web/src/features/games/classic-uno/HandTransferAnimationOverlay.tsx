@@ -111,7 +111,7 @@ export function HandTransferAnimationOverlay({
           const ids = new Set(nextAnimations.map((animation) => animation.id));
           setAnimations((current) => current.filter((item) => !ids.has(item.id)));
         },
-        reduceMotion ? 900 : 1450
+        reduceMotion ? 1200 : 3400
       );
       timeoutRef.current.push(timeout);
     }
@@ -122,8 +122,14 @@ export function HandTransferAnimationOverlay({
       <AnimatePresence>
         {animations.map((animation) => {
           const midX = (animation.from.x + animation.to.x) / 2;
-          const midY = Math.min(animation.from.y, animation.to.y) - (animation.kind === "seven_swap" ? 86 : 58);
-          const sideNudge = animation.direction === 1 ? 34 : -34;
+          const isSwap = animation.kind === "seven_swap";
+          // Separate 7-swap flight paths: direction 1 arcs high, direction -1 arcs low
+          const midY = isSwap
+            ? animation.direction === 1
+              ? Math.min(animation.from.y, animation.to.y) - 130
+              : Math.max(animation.from.y, animation.to.y) + 70
+            : Math.min(animation.from.y, animation.to.y) - 75;
+          const sideNudge = animation.direction === 1 ? 40 : -40;
 
           return (
             <motion.div
@@ -132,47 +138,52 @@ export function HandTransferAnimationOverlay({
               initial={{
                 x: animation.from.x - 36,
                 y: animation.from.y - 34,
-                rotate: animation.direction * -8,
-                scale: 0.78,
+                rotate: animation.direction * -10,
+                scale: 0.82,
                 opacity: 0
               }}
               animate={reduceMotion
-                ? { x: animation.from.x - 36, y: animation.from.y - 34, rotate: 0, scale: 0.9, opacity: [0, 1, 0] }
+                ? { x: animation.from.x - 36, y: animation.from.y - 34, rotate: 0, scale: 1, opacity: [0, 1, 0] }
                 : {
                     x: [animation.from.x - 36, midX + sideNudge - 36, animation.to.x - 36],
                     y: [animation.from.y - 34, midY - 34, animation.to.y - 34],
-                    rotate: [animation.direction * -8, animation.direction * 12, animation.direction * 4],
-                    scale: [0.78, 1.05, 0.8],
+                    rotate: [animation.direction * -10, animation.direction * 14, animation.direction * 2],
+                    scale: [0.82, 1.15, 0.85],
                     opacity: [0, 1, 1, 0]
                   }}
               exit={{ opacity: 0, scale: 0.8 }}
-              transition={{ duration: reduceMotion ? 0.72 : 1.15, ease: [0.2, 0.8, 0.2, 1] }}
+              transition={{ duration: reduceMotion ? 1.0 : 2.7, ease: [0.16, 0.85, 0.25, 1] }}
             >
-              {/* Organic borderless transfer indicator */}
-              <div className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap px-3 py-1 text-[11px] font-black uppercase tracking-wider text-white select-none drop-shadow-lg">
-                <span className="text-white/80">{animation.fromPlayerName}</span>{" "}
-                <span className={animation.kind === "seven_swap" ? "text-fuchsia-300 font-black text-sm" : "text-emerald-300 font-black text-sm"}>
-                  {animation.kind === "seven_swap" ? "⇄" : "→"}
+              {/* High-Visibility Floating Transfer Label */}
+              <div className="absolute -top-11 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-white/20 bg-black/88 px-3.5 py-1 text-[11px] font-black uppercase tracking-wider text-white shadow-[0_4px_24px_rgba(0,0,0,0.8)] backdrop-blur-md">
+                <span className="text-amber-300">{animation.fromPlayerName}</span>{" "}
+                <span className={isSwap ? "text-fuchsia-400 font-black text-sm" : "text-emerald-400 font-black text-sm"}>
+                  {isSwap ? "➔" : "→"}
                 </span>{" "}
-                <span className="text-white/80">{animation.toPlayerName}</span>
+                <span className="text-emerald-300">{animation.toPlayerName}</span>
+                <span className="ml-2 rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] text-white">
+                  {animation.cardCount} cards
+                </span>
               </div>
               <div
                 className="relative h-24 w-[4.5rem]"
                 style={{
-                  filter: animation.kind === "seven_swap" ? "drop-shadow(0 0 20px rgba(168,85,247,0.5))" : "drop-shadow(0 0 16px rgba(45,140,255,0.4))"
+                  filter: isSwap
+                    ? "drop-shadow(0 0 24px rgba(168,85,247,0.65))"
+                    : "drop-shadow(0 0 20px rgba(45,140,255,0.55))"
                 }}
               >
-                <div className="absolute left-0 top-2 rotate-[-12deg] opacity-85">
-                  <UnoCard faceDown compact theme={theme} liftOnHover={false} className="h-20 w-[3.4rem] rounded-xl ring-1 ring-white/20" />
+                <div className="absolute left-0 top-2 rotate-[-14deg] opacity-85">
+                  <UnoCard faceDown compact theme={theme} liftOnHover={false} className="h-20 w-[3.4rem] rounded-xl ring-1 ring-white/25" />
                 </div>
                 <div className="absolute left-2 top-1 rotate-[0deg] opacity-95">
-                  <UnoCard faceDown compact theme={theme} liftOnHover={false} className="h-20 w-[3.4rem] rounded-xl ring-1 ring-white/20" />
+                  <UnoCard faceDown compact theme={theme} liftOnHover={false} className="h-20 w-[3.4rem] rounded-xl ring-1 ring-white/25" />
                 </div>
-                <div className="absolute left-4 top-0 rotate-[12deg]">
-                  <UnoCard faceDown compact theme={theme} liftOnHover={false} className="h-20 w-[3.4rem] rounded-xl ring-1 ring-white/20" />
+                <div className="absolute left-4 top-0 rotate-[14deg]">
+                  <UnoCard faceDown compact theme={theme} liftOnHover={false} className="h-20 w-[3.4rem] rounded-xl ring-1 ring-white/25" />
                 </div>
 
-                <div className="absolute -bottom-1 right-0 rounded-full bg-black/85 px-2 py-0.5 text-[0.66rem] font-black text-amber-200 shadow-md">
+                <div className="absolute -bottom-1.5 right-0 rounded-full border border-amber-300/40 bg-black/90 px-2 py-0.5 text-[0.7rem] font-black text-amber-200 shadow-lg">
                   {animation.cardCount}
                 </div>
               </div>

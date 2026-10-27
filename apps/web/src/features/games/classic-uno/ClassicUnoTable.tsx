@@ -834,10 +834,17 @@ export function ClassicUnoTable({
                           aria-label={`${me.displayName}, ${me.handCount} cards${me.isCurrentTurn ? ", your turn" : ""}`}
                           className={cn(
                             "flex w-[4.75rem] flex-col items-center gap-1 rounded-2xl border p-2 text-center sm:hidden",
-                            me.isCurrentTurn ? "border-lime-200/60 bg-lime-400/15" : "border-white/10 bg-black/45"
+                            me.isCurrentTurn
+                              ? "border-2 border-[#22c55e] bg-emerald-950/75 shadow-[0_0_24px_rgba(34,197,94,0.85)] ring-2 ring-[#4ade80]"
+                              : "border-white/10 bg-black/45"
                           )}
                         >
-                          <div className="grid h-9 w-9 place-items-center overflow-hidden rounded-full border border-white/20 bg-black/50 text-xs font-black text-white">
+                          <div
+                            className={cn(
+                              "grid h-9 w-9 place-items-center overflow-hidden rounded-full border text-xs font-black text-white",
+                              me.isCurrentTurn ? "border-2 border-[#4ade80] shadow-[0_0_14px_rgba(74,222,128,0.9)]" : "border-white/20 bg-black/50"
+                            )}
+                          >
                             {roomPlayerById.get(me.userId)?.avatarUrl ? (
                               <img src={roomPlayerById.get(me.userId)?.avatarUrl ?? undefined} alt="" className="h-full w-full object-cover" />
                             ) : (
@@ -846,7 +853,7 @@ export function ClassicUnoTable({
                           </div>
                           <span className="max-w-full truncate text-[0.58rem] font-black text-white">{me.displayName}</span>
                           <span className="text-[0.58rem] font-bold text-amber-200">{me.handCount} cards</span>
-                          {me.isCurrentTurn ? <span className="text-[0.52rem] font-black uppercase text-lime-200">Your turn</span> : null}
+                          {me.isCurrentTurn ? <span className="text-[0.52rem] font-black uppercase text-emerald-300">Your turn</span> : null}
                         </div>
 
                         <div className="hidden w-[min(17rem,24vw)] pb-1 sm:block">

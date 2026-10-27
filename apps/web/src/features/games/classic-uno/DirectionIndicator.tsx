@@ -67,7 +67,7 @@ export function DirectionIndicator({
     <div
       aria-label={`Turn direction: ${clockwise ? "clockwise" : "counterclockwise"}`}
       role="img"
-      className="pointer-events-none absolute inset-0 z-[1] grid place-items-center overflow-hidden translate-y-10"
+      className="pointer-events-none absolute inset-0 z-[1] grid place-items-center overflow-hidden translate-y-8"
     >
       {/* Dynamic Turn Spotlight Beam pointing to the active seat */}
       {activeSeatAngle !== undefined && !reduceMotion ? (
@@ -173,11 +173,11 @@ export function DirectionIndicator({
           />
         </motion.div>
 
-        {/* Directional Sweeping Chevrons & Wave Arcs */}
+        {/* Directional Sweeping Chevrons & Wave Arcs - Concentric & Tangent */}
         <motion.div
-          className="absolute inset-[3%] rounded-full"
+          className="absolute inset-[2%] rounded-full"
           animate={rotation}
-          transition={reduceMotion ? { duration: 0.01 } : { duration: 16, repeat: Infinity, ease: "linear" }}
+          transition={reduceMotion ? { duration: 0.01 } : { duration: 18, repeat: Infinity, ease: "linear" }}
         >
           <DirectionChevrons color={palette.color} pulse={palette.pulse} clockwise={clockwise} />
         </motion.div>
@@ -226,6 +226,8 @@ export function DirectionIndicator({
 }
 
 function DirectionChevrons({ color, pulse, clockwise }: { color: string; pulse: string; clockwise: boolean }) {
+  const markerId = `chevron-marker-${clockwise ? "cw" : "ccw"}`;
+
   return (
     <span
       aria-hidden="true"
@@ -233,38 +235,56 @@ function DirectionChevrons({ color, pulse, clockwise }: { color: string; pulse: 
       style={{ filter: `drop-shadow(0 0 10px ${pulse})` }}
     >
       <svg className="h-full w-full overflow-visible" viewBox="0 0 100 100">
-        {/* Primary Sweep Arc */}
+        <defs>
+          <marker
+            id={markerId}
+            viewBox="0 0 10 10"
+            refX="6"
+            refY="5"
+            markerWidth="5"
+            markerHeight="5"
+            orient="auto"
+          >
+            <path
+              d="M 1 1.5 L 9 5 L 1 8.5 Z"
+              fill="white"
+              stroke={color}
+              strokeWidth="1.2"
+              strokeLinejoin="round"
+            />
+          </marker>
+        </defs>
+
+        {/* Top Symmetrical Arc */}
         <path
-          d={clockwise ? "M 64 6.5 A 44 44 0 1 1 32 8" : "M 36 6.5 A 44 44 0 1 0 68 8"}
+          d={
+            clockwise
+              ? "M 7.5 38.6 A 44 44 0 0 1 92.5 38.6"
+              : "M 92.5 38.6 A 44 44 0 0 0 7.5 38.6"
+          }
           fill="none"
           stroke={color}
-          strokeWidth="4"
+          strokeWidth="3.5"
           strokeLinecap="round"
-          strokeDasharray="18 10 35 12"
+          strokeDasharray="14 8 28 8"
+          markerEnd={`url(#${markerId})`}
           opacity="0.95"
         />
 
-        {/* Primary Arrow Tip */}
+        {/* Bottom Symmetrical Arc */}
         <path
-          d={clockwise
-            ? "M 44 3.5 L 34 11.5 L 31.5 3.5 Z"
-            : "M 56 3.5 L 66 11.5 L 68.5 3.5 Z"}
-          fill="white"
+          d={
+            clockwise
+              ? "M 92.5 61.4 A 44 44 0 0 1 7.5 61.4"
+              : "M 7.5 61.4 A 44 44 0 0 0 92.5 61.4"
+          }
+          fill="none"
           stroke={color}
-          strokeWidth="1.8"
-          strokeLinejoin="round"
-        />
-
-        {/* Secondary Opposite Arrow Tip for balance */}
-        <path
-          d={clockwise
-            ? "M 56 96.5 L 66 88.5 L 68.5 96.5 Z"
-            : "M 44 96.5 L 34 88.5 L 31.5 96.5 Z"}
-          fill={color}
-          stroke="white"
-          strokeWidth="1.2"
-          strokeLinejoin="round"
-          opacity="0.85"
+          strokeWidth="3.5"
+          strokeLinecap="round"
+          strokeDasharray="14 8 28 8"
+          markerEnd={`url(#${markerId})`}
+          opacity="0.95"
         />
       </svg>
     </span>
