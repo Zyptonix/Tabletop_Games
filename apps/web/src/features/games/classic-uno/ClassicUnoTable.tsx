@@ -854,7 +854,7 @@ export function ClassicUnoTable({
                           className={cn(
                             "flex w-[4.75rem] flex-col items-center gap-1 rounded-2xl border p-2 text-center sm:hidden",
                             me.isCurrentTurn
-                              ? "border-2 border-emerald-300 bg-[linear-gradient(135deg,#10b981_0%,#059669_48%,#047857_100%)] shadow-[0_0_24px_rgba(16,185,129,0.7)] text-white"
+                              ? "border-2 border-emerald-300 bg-[linear-gradient(135deg,#34d399_0%,#10b981_100%)] shadow-[0_0_24px_rgba(16,185,129,0.7)] text-white"
                               : "border-white/10 bg-black/45"
                           )}
                         >

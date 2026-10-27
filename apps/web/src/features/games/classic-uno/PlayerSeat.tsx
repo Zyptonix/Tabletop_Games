@@ -70,7 +70,7 @@ export function PlayerSeat({
         "relative isolate overflow-visible rounded-[1.55rem] border text-white backdrop-blur-xl transition-all duration-200",
         compact ? "min-h-[5.25rem]" : "min-h-[6.05rem]",
         player.isCurrentTurn
-          ? "border-2 border-emerald-300 bg-[linear-gradient(135deg,#10b981_0%,#059669_48%,#047857_100%)] scale-[1.02] shadow-[0_0_36px_rgba(52,211,153,0.7),0_0_60px_rgba(16,185,129,0.45),0_18px_44px_rgba(0,0,0,0.6)]"
+          ? "border-2 border-emerald-300 bg-[linear-gradient(135deg,#34d399_0%,#10b981_100%)] scale-[1.02] shadow-[0_0_36px_rgba(52,211,153,0.7),0_0_60px_rgba(16,185,129,0.45),0_18px_44px_rgba(0,0,0,0.6)]"
           : "border-emerald-300/12 bg-[linear-gradient(135deg,rgba(7,22,14,0.88),rgba(5,15,12,0.76)_42%,rgba(0,0,0,0.66)_100%)] shadow-[0_18px_44px_rgba(0,0,0,0.66),0_0_24px_rgba(34,197,94,0.07)]",
         inactive && "opacity-60 grayscale",
         isSelf ? "p-4" : compact ? "p-3" : "p-3.5"
