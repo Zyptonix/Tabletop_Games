@@ -70,7 +70,7 @@ export function PlayerSeat({
         "relative isolate overflow-visible rounded-[1.55rem] border text-white backdrop-blur-xl transition-all duration-200",
         compact ? "min-h-[5.25rem]" : "min-h-[6.05rem]",
         player.isCurrentTurn
-          ? "border-2 border-[#22c55e] bg-[linear-gradient(135deg,rgba(34,197,94,0.42),rgba(16,185,129,0.28)_38%,rgba(4,24,14,0.96))] scale-[1.03] ring-2 ring-[#4ade80] shadow-[0_0_0_2px_rgba(74,222,128,0.9),0_0_35px_rgba(34,197,94,0.95),0_0_75px_rgba(34,197,94,0.5),0_18px_60px_rgba(0,0,0,0.8)]"
+          ? "border-emerald-400/55 bg-[linear-gradient(135deg,rgba(16,185,129,0.18),rgba(6,28,18,0.92)_50%,rgba(3,14,9,0.96))] scale-[1.015] shadow-[0_0_24px_rgba(16,185,129,0.28),0_18px_44px_rgba(0,0,0,0.6)]"
           : "border-emerald-300/12 bg-[linear-gradient(135deg,rgba(7,22,14,0.88),rgba(5,15,12,0.76)_42%,rgba(0,0,0,0.66)_100%)] shadow-[0_18px_44px_rgba(0,0,0,0.66),0_0_24px_rgba(34,197,94,0.07)]",
         inactive && "opacity-60 grayscale",
         isSelf ? "p-4" : compact ? "p-3" : "p-3.5"
@@ -78,32 +78,20 @@ export function PlayerSeat({
     >
       {player.isCurrentTurn ? (
         <>
-          {/* Animated Sweeping Neon Green Border Beam */}
-          <div className="pointer-events-none absolute -inset-[1px] overflow-hidden rounded-[inherit]">
-            <motion.div
-              className="absolute -inset-[100%] bg-[conic-gradient(from_0deg,transparent_0_280deg,rgba(74,222,128,0.95)_330deg,white_360deg)]"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
-            />
-          </div>
-
+          {/* Subtle Ambient Breathing Glow - Refined & Non-Intrusive */}
           <motion.div
-            className="pointer-events-none absolute inset-0 rounded-[inherit] bg-[linear-gradient(135deg,rgba(74,222,128,0.28),rgba(34,197,94,0.18)_42%,rgba(0,0,0,0)_78%)]"
-            animate={{ opacity: [0.7, 1, 0.7] }}
-            transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+            className="pointer-events-none absolute -inset-2 rounded-[2rem] bg-emerald-500/14 blur-xl"
+            animate={{ opacity: [0.3, 0.65, 0.3], scale: [0.99, 1.02, 0.99] }}
+            transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
           />
 
           <motion.div
-            className="pointer-events-none absolute -inset-3 rounded-[2rem] bg-[#22c55e]/28 blur-2xl"
-            animate={{ opacity: [0.45, 0.9, 0.45], scale: [0.98, 1.05, 0.98] }}
-            transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+            className="pointer-events-none absolute inset-0 rounded-[inherit] bg-[radial-gradient(ellipse_at_50%_0%,rgba(16,185,129,0.15),transparent_72%)]"
+            animate={{ opacity: [0.45, 0.85, 0.45] }}
+            transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
           />
 
-          <motion.div
-            className="pointer-events-none absolute inset-0 rounded-[inherit] border border-[#86efac]/60"
-            animate={{ opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
-          />
+          <div className="pointer-events-none absolute inset-0 rounded-[inherit] border border-emerald-400/30" />
         </>
       ) : null}
 
@@ -136,7 +124,7 @@ export function PlayerSeat({
                 "grid place-items-center rounded-full border text-sm font-black",
                 compact ? "h-11 w-11" : "h-12 w-12",
                 player.isCurrentTurn
-                  ? "border-2 border-[#22c55e] bg-emerald-400/25 text-emerald-50 shadow-[0_0_24px_rgba(34,197,94,0.85)] ring-2 ring-[#4ade80]"
+                  ? "border border-emerald-400/70 bg-emerald-500/20 text-emerald-100 shadow-[0_0_16px_rgba(16,185,129,0.35)]"
                   : "border-emerald-200/14 bg-black/58 text-white"
               )}
             >
@@ -187,11 +175,11 @@ export function PlayerSeat({
             >
               {player.isCurrentTurn ? (
                 <div
-                  className="inline-flex items-center gap-1.5 rounded-full border border-[#86efac] bg-[#22c55e]/35 px-2.5 py-0.5 text-[0.62rem] font-black uppercase tracking-wider text-emerald-50 shadow-[0_0_20px_rgba(34,197,94,0.9)]"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/40 bg-emerald-500/20 px-2.5 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider text-emerald-100 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
                 >
                   <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-85 bg-[#4ade80]" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-[#86efac]" />
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60 bg-emerald-400" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-300" />
                   </span>
                   <span>Turn</span>
                 </div>

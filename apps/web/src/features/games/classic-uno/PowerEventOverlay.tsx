@@ -198,7 +198,12 @@ export function PowerEventOverlay({
         onSeatEffect?.(notice.targetPlayerId, notice.seatEffect);
       }
 
-      const duration = notice.tone.includes("plus") || notice.tone === "roulette" ? 2200 : 1850;
+      const duration =
+        notice.tone === "seven_swap" || notice.tone === "zero_pass"
+          ? 3200
+          : notice.tone.includes("plus") || notice.tone === "roulette"
+            ? 2400
+            : 1950;
       const timeout = window.setTimeout(
         () => setNotices((current) => current.filter((item) => item.id !== notice.id)),
         duration
@@ -466,7 +471,7 @@ function normalizePowerEvent(
     return {
       id: event.id,
       hugeTitle: "HAND SWAP",
-      subtitle: `${fromName} ⇄ ${toName}`,
+      subtitle: `${fromName} took ${toName}'s cards · Hand Swapped!`,
       tone: "seven_swap",
       createdAt: event.createdAt
     };
@@ -474,11 +479,12 @@ function normalizePowerEvent(
 
   // 0-Pass
   if (type.endsWith(":zero_pass")) {
-    const direction = getString(payload.directionLabel) ?? (payload.direction === -1 ? "Counter-Clockwise" : "Clockwise");
+    const dirVal = getNumber(payload.direction);
+    const directionWord = dirVal === -1 ? "Anti-Clockwise" : "Clockwise";
     return {
       id: event.id,
       hugeTitle: "PASS ALL",
-      subtitle: `Everyone passed hands ${direction}`,
+      subtitle: `All cards switched ${directionWord}!`,
       tone: "zero_pass",
       createdAt: event.createdAt
     };

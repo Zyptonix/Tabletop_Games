@@ -835,14 +835,14 @@ export function ClassicUnoTable({
                           className={cn(
                             "flex w-[4.75rem] flex-col items-center gap-1 rounded-2xl border p-2 text-center sm:hidden",
                             me.isCurrentTurn
-                              ? "border-2 border-[#22c55e] bg-emerald-950/75 shadow-[0_0_24px_rgba(34,197,94,0.85)] ring-2 ring-[#4ade80]"
+                              ? "border border-emerald-400/60 bg-emerald-950/70 shadow-[0_0_18px_rgba(16,185,129,0.35)]"
                               : "border-white/10 bg-black/45"
                           )}
                         >
                           <div
                             className={cn(
                               "grid h-9 w-9 place-items-center overflow-hidden rounded-full border text-xs font-black text-white",
-                              me.isCurrentTurn ? "border-2 border-[#4ade80] shadow-[0_0_14px_rgba(74,222,128,0.9)]" : "border-white/20 bg-black/50"
+                              me.isCurrentTurn ? "border border-emerald-400/60 bg-emerald-500/20 shadow-[0_0_12px_rgba(16,185,129,0.4)]" : "border-white/20 bg-black/50"
                             )}
                           >
                             {roomPlayerById.get(me.userId)?.avatarUrl ? (
