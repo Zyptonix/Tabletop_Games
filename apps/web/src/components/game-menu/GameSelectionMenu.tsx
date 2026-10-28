@@ -22,7 +22,8 @@ const META: Record<string, { subtitle: string; colors: string; icon: string; art
   risk: { subtitle: "Reinforce borders and attack", colors: "from-rose-500/25 via-red-400/10 to-slate-950", icon: "🌍", art: "grid" },
   "world-conquest": { subtitle: "An expanded territory campaign", colors: "from-fuchsia-500/25 via-violet-300/10 to-slate-950", icon: "🗺️", art: "grid" },
   codenames: { subtitle: "Team word association and deduction", colors: "from-amber-400/25 via-yellow-200/10 to-slate-950", icon: "🔎", art: "words" },
-  poker: { subtitle: "Texas Hold’em · hand ranking and bets", colors: "from-emerald-500/25 via-teal-300/10 to-slate-950", icon: "♠", art: "cards" }
+  poker: { subtitle: "Texas Hold’em · hand ranking and bets", colors: "from-emerald-500/25 via-teal-300/10 to-slate-950", icon: "♠", art: "cards" },
+  blackjack: { subtitle: "Casino 21 · Dealer stands on 17", colors: "from-amber-500/25 via-emerald-400/15 to-slate-950", icon: "🎰", art: "cards" }
 };
 function Art({ kind, icon }: { kind: string; icon: string }) {
   if (kind === "cards") return <div className="relative flex h-full items-center justify-center"><span className="absolute h-20 w-14 -rotate-[18deg] rounded-lg border border-white/30 bg-slate-100 shadow-xl"><span className="absolute left-2 top-1 text-xl text-rose-600">♥</span></span><span className="absolute h-20 w-14 rotate-[14deg] rounded-lg border border-white/30 bg-white shadow-xl"><span className="absolute left-2 top-1 text-xl text-slate-950">♠</span><span className="absolute bottom-1 right-2 text-xl text-slate-950">{icon}</span></span></div>;

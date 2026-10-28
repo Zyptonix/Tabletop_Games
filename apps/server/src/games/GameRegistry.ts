@@ -33,6 +33,7 @@ import {
   worldConquestModule,
   codenamesModule,
   pokerModule,
+  blackjackModule,
   type BoardGameState,
   type BoardGameAction,
   type BoardGameSettings
@@ -79,7 +80,8 @@ const modules = new Map<GameId, AnyGameModule>([
   ["risk", riskModule as GameModule<BoardGameState, BoardGameAction, BoardGameSettings> as AnyGameModule],
   ["world-conquest", worldConquestModule as GameModule<BoardGameState, BoardGameAction, BoardGameSettings> as AnyGameModule],
   ["codenames", codenamesModule as GameModule<BoardGameState, BoardGameAction, BoardGameSettings> as AnyGameModule],
-  ["poker", pokerModule as GameModule<BoardGameState, BoardGameAction, BoardGameSettings> as AnyGameModule]
+  ["poker", pokerModule as GameModule<BoardGameState, BoardGameAction, BoardGameSettings> as AnyGameModule],
+  ["blackjack", blackjackModule as GameModule<BoardGameState, BoardGameAction, BoardGameSettings> as AnyGameModule]
 ]);
 
 export class GameRegistry {

@@ -132,6 +132,18 @@ export const GAME_VISUAL_META: Record<string, GameVisualMeta> = {
     badge: "High Stakes",
     highlight: "Hold'em"
   },
+  "blackjack": {
+    id: "blackjack",
+    displayName: "Blackjack · 21",
+    tagline: "Casino 21 against the house dealer. Double down, split pairs, and hit the table.",
+    category: "cards",
+    categoryLabel: "Casino Classic",
+    thumbnailUrl: "/game-assets/thumbnails/poker.jpg",
+    fallbackGradient: "from-amber-950 via-emerald-950/40 to-black",
+    accentColor: "#10b981",
+    badge: "Vegas Table",
+    highlight: "Dealer 17"
+  },
   "ludo": {
     id: "ludo",
     displayName: "Ludo",

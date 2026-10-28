@@ -21,11 +21,12 @@ export const GAME_STATUS: Record<string, GameStatus> = {
   "reversi": "complete",
   "strategic-shockwave": "complete",
   "bomber-tag": "complete",
+  "chess": "complete",
+  "connect-four": "complete",
+  "poker": "complete",
+  "blackjack": "complete",
 
   // Prototyping Games (Test Games & Prototypes in development)
-  "connect-four": "prototype",
-  "chess": "prototype",
-  poker: "prototype",
   barricades: "prototype",
   "uno-flip": "prototype",
   monopoly: "prototype",

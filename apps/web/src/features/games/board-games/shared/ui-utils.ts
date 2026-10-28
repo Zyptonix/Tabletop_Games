@@ -9,7 +9,8 @@ export const GAME_META: Record<string, { title: string; icon: string; accent: st
   risk: { title: "Risk", icon: "🌍", accent: "#fb7185", description: "Territory strategy" },
   "world-conquest": { title: "World Conquest", icon: "🗺️", accent: "#f472b6", description: "Larger conquest map" },
   codenames: { title: "Codenames", icon: "🕵️", accent: "#facc15", description: "Team word deduction" },
-  poker: { title: "Poker · Texas Hold'em", icon: "🃏", accent: "#c4b5fd", description: "Cards, blinds and betting" }
+  poker: { title: "Poker · Texas Hold'em", icon: "🃏", accent: "#c4b5fd", description: "Cards, blinds and betting" },
+  blackjack: { title: "Blackjack · 21", icon: "🎰", accent: "#34d399", description: "Vegas table, 3:2 payouts" }
 };
 export const PLAYER_COLORS = ["#38bdf8", "#fb7185", "#facc15", "#4ade80", "#c084fc", "#fb923c", "#2dd4bf", "#f472b6", "#a3e635", "#94a3b8"];
 export const owns = (state: PublicBoardGameState, userId: string) => state.currentPlayerId === userId && state.phase === "playing";

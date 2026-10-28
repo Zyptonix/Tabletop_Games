@@ -15,6 +15,7 @@
     "./world-conquest": "./src/games/world-conquest/index.ts",
     "./codenames": "./src/games/codenames/index.ts",
     "./poker": "./src/games/poker/index.ts",
+    "./blackjack": "./src/games/blackjack/index.ts",
     "./classic-uno": "./src/games/classic-uno/index.ts",
     "./uno-no-mercy": "./src/games/uno-no-mercy/index.ts",
     "./mafia-werewolf": "./src/games/mafia-werewolf/index.ts",

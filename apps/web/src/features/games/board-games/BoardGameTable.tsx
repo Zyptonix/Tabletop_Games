@@ -19,6 +19,7 @@ import { RiskTable } from "../risk/RiskTable";
 import { WorldConquestTable } from "../world-conquest/WorldConquestTable";
 import { CodenamesTable } from "../codenames/CodenamesTable";
 import { PokerTable } from "../poker/PokerTable";
+import { BlackjackTable } from "../blackjack/BlackjackTable";
 
 
 
@@ -55,7 +56,7 @@ function ActivityIcon({ type, message }: { type: string; message: string }) {
 export function BoardGameTable({ room, state, legalActions, gameEvents, currentUserId, timer, onAction, onChat, onEndMatch }: BoardGameTableProps) {
   const router = useRouter();
   const meta = GAME_META[state.gameId] ?? GAME_META.chess!;
-  const isCustomLayout = state.gameId === "battleship" || state.gameId === "chess";
+  const isCustomLayout = state.gameId === "battleship" || state.gameId === "chess" || state.gameId === "poker" || state.gameId === "blackjack";
   const isBattleship = state.gameId === "battleship";
   const isChess = state.gameId === "chess";
   const [sidebarOpen, setSidebarOpen] = useState(!isCustomLayout);
@@ -73,7 +74,7 @@ export function BoardGameTable({ room, state, legalActions, gameEvents, currentU
 
   function dashboard() { router.push("/dashboard"); }
 
-  function renderBoard(){const gameProps={room,state,legalActions,gameEvents,currentUserId,timer: timer ?? null,onAction,onChat,...(onEndMatch ? {onEndMatch} : {})};switch(state.gameId){case "chess":return <ChessTable {...gameProps}/>;case "battleship":return <BattleshipTable {...gameProps}/>;case "ludo":return <LudoTable {...gameProps}/>;case "barricades":return <BarricadesTable {...gameProps}/>;case "monopoly":return <MonopolyTable {...gameProps}/>;case "risk":return <RiskTable {...gameProps}/>;case "world-conquest":return <WorldConquestTable {...gameProps}/>;case "codenames":return <CodenamesTable {...gameProps}/>;case "poker":return <PokerTable {...gameProps}/>;default:return null;}}
+  function renderBoard(){const gameProps={room,state,legalActions,gameEvents,currentUserId,timer: timer ?? null,onAction,onChat,...(onEndMatch ? {onEndMatch} : {})};switch(state.gameId){case "chess":return <ChessTable {...gameProps}/>;case "battleship":return <BattleshipTable {...gameProps}/>;case "ludo":return <LudoTable {...gameProps}/>;case "barricades":return <BarricadesTable {...gameProps}/>;case "monopoly":return <MonopolyTable {...gameProps}/>;case "risk":return <RiskTable {...gameProps}/>;case "world-conquest":return <WorldConquestTable {...gameProps}/>;case "codenames":return <CodenamesTable {...gameProps}/>;case "poker":return <PokerTable {...gameProps}/>;case "blackjack":return <BlackjackTable {...gameProps}/>;default:return null;}}
 
   return <div className="board-game-screen h-dvh min-h-0 overflow-hidden bg-[#050a0f] text-slate-100">
     <div className="flex h-full min-h-0 flex-col">

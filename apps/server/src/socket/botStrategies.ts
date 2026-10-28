@@ -252,7 +252,7 @@ export function chooseBotAction(legalActions: unknown[], gameId: string, gameSta
     preferred ??= actions.find((action) => action.type === "play_card");
     preferred ??= actions.find((action) => action.type === "redouble");
     preferred ??= actions.find((action) => action.type === "double");
-  } else if (["chess", "battleship", "ludo", "barricades", "monopoly", "risk", "world-conquest", "codenames", "poker"].includes(gameId)) {
+  } else if (["chess", "battleship", "ludo", "barricades", "monopoly", "risk", "world-conquest", "codenames", "poker", "blackjack"].includes(gameId)) {
     if (gameId === "ludo") {
       preferred = actions.find((action) => action.type === "roll_dice") ?? actions.find((action) => action.type === "move_token") ?? actions.find((action) => action.type === "end_turn");
     } else if (gameId === "battleship") {
@@ -297,6 +297,13 @@ export function chooseBotAction(legalActions: unknown[], gameId: string, gameSta
       preferred = actions.find((action) => action.type === "claim_territory") ?? actions.find((action) => action.type === "attack_territory") ?? actions.find((action) => action.type === "reinforce_territory") ?? actions.find((action) => action.type === "end_turn");
     } else if (gameId === "poker") {
       preferred = actions.find((action) => action.type === "poker_action" && action.choice === "check") ?? actions.find((action) => action.type === "poker_action" && action.choice === "call") ?? actions.find((action) => action.type === "poker_action" && action.choice === "raise") ?? actions.find((action) => action.type === "poker_action" && action.choice === "all_in") ?? actions.find((action) => action.type === "poker_action" && action.choice === "fold");
+    } else if (gameId === "blackjack") {
+      preferred =
+        actions.find((action) => action.type === "blackjack_action" && action.choice === "deal") ??
+        actions.find((action) => action.type === "blackjack_action" && action.choice === "bet" && action.amount === 25) ??
+        actions.find((action) => action.type === "blackjack_action" && action.choice === "next_round") ??
+        actions.find((action) => action.type === "blackjack_action" && action.choice === "hit") ??
+        actions.find((action) => action.type === "blackjack_action" && action.choice === "stand");
     } else {
       const candidates = actions.filter((action) => ["move_piece", "fire", "reveal_word"].includes(String(action.type)));
       preferred = candidates[Math.floor(Math.random() * candidates.length)];

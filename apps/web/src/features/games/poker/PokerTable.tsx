@@ -1,86 +1,549 @@
 "use client";
-import { useState } from "react";
+
+import { useState, useMemo, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Eye, EyeOff, Trophy, HelpCircle, Volume2, VolumeX, Sparkles, Flame } from "lucide-react";
 import type { AnyAction, BoardGameTableProps } from "../board-games/shared/types";
-import { PLAYER_COLORS, owns, isAction, hasAction, money } from "../board-games/shared/ui-utils";
-
-const POKER_CARD_SUIT_FILES: Record<string, string> = { "♠": "spades", "♥": "hearts", "♦": "diamonds", "♣": "clubs" };
-
-function PokerPlayingCard({ card, hidden = false, compact = false }: { card?: string | null; hidden?: boolean; compact?: boolean }) {
-  const [failed, setFailed] = useState(false);
-  if (hidden || !card) return <div className={`poker-playing-card poker-card-back ${compact ? "poker-card-compact" : ""}`} aria-label="Hidden card"><span>♠</span><b>TABLETOP</b><small>ARENA</small></div>;
-  const suit = card.slice(-1);
-  const rank = card.slice(0, -1);
-  const suitFile = POKER_CARD_SUIT_FILES[suit];
-  const asset = `/game-assets/twenty-nine/cards/${rank}_of_${suitFile}.png`;
-  const red = suit === "♥" || suit === "♦";
-  return <div className={`poker-playing-card ${compact ? "poker-card-compact" : ""}`} title={`${rank} of ${suitFile ?? "unknown suit"}`}>
-    {!failed && suitFile ? <img src={asset} alt={`${rank} of ${suitFile}`} draggable={false} onError={() => setFailed(true)} /> : <div className={`poker-card-fallback ${red ? "text-rose-600" : "text-slate-950"}`}><strong>{rank}</strong><span>{suit}</span><small>{rank}{suit}</small></div>}
-  </div>;
-}
+import { CasinoChip, ChipStack } from "../casino/CasinoChip";
+import { CasinoPlayingCard } from "../casino/CasinoPlayingCard";
+import { casinoAudio } from "../casino/casinoAudio";
+import { owns, isAction } from "../board-games/shared/ui-utils";
 
 const POKER_HAND_RANKINGS = [
-  { name: "Royal flush", tier: "Top tier", example: "A♠ K♠ Q♠ J♠ 10♠", detail: "A-K-Q-J-10, all one suit. The highest possible straight flush." },
-  { name: "Straight flush", tier: "Tier 2", example: "9♥ 8♥ 7♥ 6♥ 5♥", detail: "Five consecutive ranks in the same suit. A-2-3-4-5 is the low ace straight." },
-  { name: "Four of a kind", tier: "Tier 3", example: "Q♠ Q♥ Q♦ Q♣ A♦", detail: "Four cards of one rank, then the highest kicker." },
-  { name: "Full house", tier: "Tier 4", example: "10♠ 10♥ 10♦ 4♣ 4♥", detail: "Three of a kind plus a pair. Compare the three-card rank first, then the pair." },
-  { name: "Flush", tier: "Tier 5", example: "A♦ J♦ 8♦ 5♦ 2♦", detail: "Five cards of one suit, not in sequence. Compare highest card downward." },
-  { name: "Straight", tier: "Tier 6", example: "9♠ 8♥ 7♦ 6♣ 5♠", detail: "Five consecutive ranks in mixed suits. Ace can be high or low, never wrap around." },
-  { name: "Three of a kind", tier: "Tier 7", example: "7♠ 7♥ 7♦ A♣ 9♠", detail: "Three equal ranks plus two kickers, compared from highest to lowest." },
-  { name: "Two pair", tier: "Tier 8", example: "K♠ K♥ 3♦ 3♣ A♠", detail: "Compare the higher pair, then the lower pair, then the kicker." },
-  { name: "One pair", tier: "Tier 9", example: "J♠ J♥ A♦ 8♣ 4♠", detail: "One pair plus three kickers, compared in order." },
-  { name: "High card", tier: "Lowest", example: "A♠ J♥ 8♦ 5♣ 2♠", detail: "No combination; compare all five card ranks from highest down." }
+  { name: "Royal Flush", tier: "Top Tier", example: "A♠ K♠ Q♠ J♠ 10♠", detail: "A-K-Q-J-10 of the exact same suit." },
+  { name: "Straight Flush", tier: "Tier 2", example: "9♥ 8♥ 7♥ 6♥ 5♥", detail: "Five consecutive cards of the same suit." },
+  { name: "Four of a Kind", tier: "Tier 3", example: "Q♠ Q♥ Q♦ Q♣ A♦", detail: "Four cards of matching rank." },
+  { name: "Full House", tier: "Tier 4", example: "10♠ 10♥ 10♦ 4♣ 4♥", detail: "Three of a kind combined with a pair." },
+  { name: "Flush", tier: "Tier 5", example: "A♦ J♦ 8♦ 5♦ 2♦", detail: "Any five cards of the same suit, not in sequence." },
+  { name: "Straight", tier: "Tier 6", example: "9♠ 8♥ 7♦ 6♣ 5♠", detail: "Five cards in sequence of mixed suits." },
+  { name: "Three of a Kind", tier: "Tier 7", example: "7♠ 7♥ 7♦ A♣ 9♠", detail: "Three cards of identical rank." },
+  { name: "Two Pair", tier: "Tier 8", example: "K♠ K♥ 3♦ 3♣ A♠", detail: "Two distinct pairs of cards." },
+  { name: "One Pair", tier: "Tier 9", example: "J♠ J♥ A♦ 8♣ 4♠", detail: "Two cards of the same rank." },
+  { name: "High Card", tier: "Lowest", example: "A♠ J♥ 8♦ 5♣ 2♠", detail: "No combinations; highest individual card plays." }
 ];
-export function PokerTable(props:BoardGameTableProps){
-const { room, state, legalActions, gameEvents, currentUserId, onAction, onChat, onEndMatch } = props;
-const me = state.players.find((player) => player.userId === currentUserId);
-const isMyTurn = owns(state, currentUserId);
-const currentPlayer = state.players.find((player) => player.userId === state.currentPlayerId);
-const [pokerRulesOpen,setPokerRulesOpen]=useState(false);function dispatch(action:AnyAction){const {type,...payload}=action;onAction(type,payload as Record<string,unknown>);}
 
-function renderPoker() {
-    const myPaid = state.pokerBets[currentUserId] ?? 0;
-    const myStack = state.pokerStacks[currentUserId] ?? 0;
-    const callAmount = Math.min(Math.max(0, state.pokerBetToCall - myPaid), myStack);
-    const activePlayers = state.players.filter((player) => !player.folded).length;
-    const showHandCards = state.communityCards.length > 0 && state.pokerStreet !== "preflop";
-    return <div className="poker-casino flex h-full min-h-0 w-full flex-col gap-2">
-      <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200/15 bg-[#0b1513] px-3 py-2 shadow-[0_8px_25px_rgba(0,0,0,.22)]">
-        <div className="flex min-w-0 items-center gap-2"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-amber-200/25 bg-amber-300/10 text-2xl text-amber-100">♠</span><div className="min-w-0"><p className="text-[9px] font-black uppercase tracking-[.25em] text-amber-200/55">After-hours casino</p><h2 className="truncate text-lg font-black text-white">Texas Hold’em <span className="text-amber-100/55">· Hand {state.pokerHandNumber ?? 1}</span></h2></div></div>
-        <div className="flex items-center gap-2"><div className="rounded-lg border border-amber-200/15 bg-black/20 px-3 py-1.5 text-right"><p className="text-[8px] font-black uppercase tracking-[.2em] text-white/35">Table pot</p><p className="text-lg font-black tabular-nums text-amber-100">${state.pokerPot.toLocaleString("en-US")}</p></div><button type="button" onClick={() => setPokerRulesOpen(true)} className="min-h-9 rounded-lg border border-amber-200/25 bg-amber-200/10 px-3 text-[10px] font-black uppercase tracking-wider text-amber-100 transition hover:bg-amber-200/20">♜ Hand rankings</button></div>
-      </header>
-      <section className="poker-casino-felt relative flex min-h-0 flex-1 flex-col justify-between overflow-hidden rounded-[2rem] border-[5px] border-[#9e7138] px-2 py-2 shadow-[inset_0_0_0_2px_rgba(255,235,190,.08),inset_0_0_60px_rgba(0,0,0,.3),0_18px_35px_rgba(0,0,0,.35)] sm:px-3">
-        <div className="pointer-events-none absolute inset-[3%] rounded-[48%] border border-amber-100/15"/><div className="pointer-events-none absolute inset-[7%] rounded-[45%] border border-emerald-100/[.06]"/>
-        <div className="relative z-10 grid shrink-0 grid-cols-2 gap-1.5 sm:grid-cols-3 xl:grid-cols-6">
-          {state.players.map((player) => {
-            const eliminated = (player.stack ?? 0) <= 0 && player.folded;
-            return <div key={player.userId} className={`min-w-0 rounded-lg border px-2 py-1.5 text-center shadow-[0_4px_12px_rgba(0,0,0,.15)] ${player.isCurrentTurn ? "border-amber-200/50 bg-amber-100/[.12] ring-1 ring-amber-200/20" : "border-white/10 bg-[#04120e]/65"} ${player.folded || eliminated ? "opacity-45" : ""}`}>
-              <div className="flex items-center justify-center gap-1"><span className="h-1.5 w-1.5 rounded-full" style={{ background: PLAYER_COLORS[player.seat % PLAYER_COLORS.length] }}/><p className="max-w-full truncate text-[10px] font-black text-white">{player.displayName}{player.userId === currentUserId ? " · YOU" : ""}</p></div>
-              <p className="mt-0.5 truncate text-[9px] font-bold text-emerald-100/60">{eliminated ? "BUSTED" : player.folded ? "FOLDED" : `$${(player.stack ?? 0).toLocaleString("en-US")}`}{player.seat === state.pokerButtonSeat ? " · DEALER" : ""}</p>
-              <div className="mt-1 flex min-h-[2.6rem] items-center justify-center gap-1">
-                {player.folded || eliminated ? <span className="text-[9px] font-black uppercase text-white/25">Out</span> : player.userId === currentUserId ? state.myPokerCards.map((card) => <PokerPlayingCard key={card} card={card} compact />) : <><PokerPlayingCard hidden compact/><PokerPlayingCard hidden compact/></>}
-              </div>
-              <p className="mt-0.5 text-[8px] font-bold text-amber-100/60">Bet ${(player.bet ?? 0).toLocaleString("en-US")}</p>
-            </div>;
-          })}
-        </div>
-        <div className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center py-1 text-center">
-          <div className="rounded-full border border-amber-100/15 bg-black/25 px-3 py-1 text-[9px] font-black uppercase tracking-[.22em] text-amber-100/65">{state.pokerStreet} · {activePlayers} live</div>
-          <div className="mt-2 flex min-h-0 items-center justify-center gap-1.5 sm:gap-2" aria-label="Community cards">
-            {Array.from({ length: 5 }, (_, index) => <PokerPlayingCard key={index} card={state.communityCards[index] ?? null} compact />)}
-          </div>
-          <div className="mt-2 flex flex-wrap items-center justify-center gap-2"><span className="rounded-full border border-amber-100/15 bg-[#04120e]/70 px-3 py-1 text-[10px] font-black text-amber-100">POT ${state.pokerPot.toLocaleString("en-US")}</span><span className="rounded-full border border-white/10 bg-black/25 px-3 py-1 text-[10px] font-bold text-white/65">To call ${callAmount.toLocaleString("en-US")}</span></div>
-          <p className="mt-2 max-w-[95%] text-[10px] font-semibold leading-relaxed text-emerald-50/70" aria-live="polite">{state.pokerLastAction}</p>
-          {showHandCards ? <p className="mt-1 text-[8px] font-bold uppercase tracking-[.18em] text-amber-100/35">Best five cards win · kickers break ties</p> : null}
-        </div>
-      </section>
-      <footer className="flex shrink-0 flex-wrap items-center gap-2 rounded-xl border border-white/[.07] bg-[#0b1513] px-3 py-2">
-        <div className="mr-auto min-w-0"><p className="text-[8px] font-black uppercase tracking-[.2em] text-white/35">Your chips</p><p className="text-sm font-black text-emerald-100">${myStack.toLocaleString("en-US")} <span className="text-[9px] font-semibold text-white/35">· Button rotates each hand</span></p></div>
-        {legalActions.filter(isAction).filter((action) => action.type === "poker_action").map((action) => <button key={String(action.choice)} type="button" onClick={() => dispatch(action)} className={`min-h-10 rounded-lg px-3 text-[10px] font-black uppercase tracking-wider transition hover:-translate-y-0.5 ${action.choice === "fold" ? "border border-rose-300/25 bg-rose-500/10 text-rose-100 hover:bg-rose-500/20" : action.choice === "raise" || action.choice === "all_in" ? "border border-amber-100/30 bg-gradient-to-b from-amber-200 to-amber-400 text-[#251707] shadow-[0_3px_0_#8e5d25] hover:brightness-105" : "border border-emerald-200/20 bg-emerald-300/10 text-emerald-100 hover:bg-emerald-300/20"}`}>{action.choice === "fold" ? "Fold" : action.choice === "check" ? "Check" : action.choice === "call" ? `Call $${callAmount}` : action.choice === "raise" ? "Raise +$20" : "All-in"}</button>)}
-      </footer>
-      {pokerRulesOpen ? <div className="fixed inset-0 z-[200] grid place-items-center bg-black/75 p-3 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="poker-rules-title" onClick={() => setPokerRulesOpen(false)}><section className="poker-rules-modal w-full max-w-3xl rounded-2xl border border-amber-200/25 bg-[#07120f] p-4 shadow-[0_25px_90px_rgba(0,0,0,.72)]" onClick={(event) => event.stopPropagation()}><div className="flex items-start justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-[.25em] text-amber-200/55">Casino cheat sheet</p><h3 id="poker-rules-title" className="mt-1 text-xl font-black text-amber-100">Poker hand rankings</h3><p className="mt-1 text-[10px] text-white/50">Strongest to weakest · use your best five of seven cards.</p></div><button type="button" onClick={() => setPokerRulesOpen(false)} aria-label="Close hand rankings" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/10 text-white/70 hover:bg-white/10">✕</button></div><div className="mt-3 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-        {POKER_HAND_RANKINGS.map((hand, index) => <article key={hand.name} className="flex min-w-0 items-start gap-2 rounded-lg border border-white/[.07] bg-white/[.035] p-2"><span className="grid h-6 w-6 shrink-0 place-items-center rounded-md border border-amber-100/20 bg-amber-200/10 text-[10px] font-black text-amber-100">{index + 1}</span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-1.5"><h4 className="text-[11px] font-black text-white">{hand.name}</h4><span className="text-[7px] font-black uppercase tracking-widest text-amber-200/45">{hand.tier}</span></div><p className="mt-0.5 font-mono text-[9px] font-bold text-emerald-100/85">{hand.example}</p><p className="mt-0.5 text-[9px] leading-snug text-white/50">{hand.detail}</p></div></article>)}
-      </div><div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3"><div className="rounded-lg border border-white/[.07] bg-black/20 p-2"><p className="text-[9px] font-black text-amber-100">Card order</p><p className="mt-1 text-[9px] leading-snug text-white/55">2, 3, 4, 5, 6, 7, 8, 9, 10, J, Q, K, A. Ace can be low only in A-2-3-4-5.</p></div><div className="rounded-lg border border-white/[.07] bg-black/20 p-2"><p className="text-[9px] font-black text-amber-100">Kickers & ties</p><p className="mt-1 text-[9px] leading-snug text-white/55">Compare the category first, then its tie-break ranks. Equal hands split the eligible pot; odd chips go by seat order.</p></div><div className="rounded-lg border border-white/[.07] bg-black/20 p-2"><p className="text-[9px] font-black text-amber-100">Hand flow</p><p className="mt-1 text-[9px] leading-snug text-white/55">Preflop → flop (3 cards) → turn → river → showdown. Fold, check/call, raise or go all-in. Dealer button rotates; play continues until one stack remains.</p></div></div><p className="mt-2 text-[8px] font-semibold text-white/30">Suits have equal strength. This table uses fixed $10/$20 blinds and $20 fixed-limit raises (not no-limit betting).</p></section></div> : null}
-    </div>;
+// Helper to quickly evaluate player's combined cards for a descriptive badge
+function evaluateQuickHandName(holeCards: string[], communityCards: string[]): string {
+  const allCards = [...holeCards, ...communityCards].filter(Boolean);
+  if (allCards.length < 2) return "High Card";
+
+  const ranks = allCards.map((c) => c.slice(0, -1));
+  const counts: Record<string, number> = {};
+  for (const r of ranks) {
+    counts[r] = (counts[r] ?? 0) + 1;
   }
-return renderPoker();
+  const freq = Object.values(counts).sort((a, b) => b - a);
+
+  if (freq[0] === 4) return "Four of a Kind 💥";
+  if (freq[0] === 3 && freq[1] && freq[1] >= 2) return "Full House 🏰";
+
+  const suits = allCards.map((c) => c.slice(-1));
+  const suitCounts: Record<string, number> = {};
+  for (const s of suits) {
+    suitCounts[s] = (suitCounts[s] ?? 0) + 1;
+  }
+  if (Object.values(suitCounts).some((c) => c >= 5)) return "Flush 🌊";
+
+  if (freq[0] === 3) return "Three of a Kind 🔥";
+  if (freq[0] === 2 && freq[1] === 2) return "Two Pair ✌️";
+  if (freq[0] === 2) return "One Pair 🃏";
+
+  return "High Card";
+}
+
+export function PokerTable(props: BoardGameTableProps) {
+  const { room, state, legalActions, currentUserId, onAction, onChat, onEndMatch } = props;
+
+  const [pokerRulesOpen, setPokerRulesOpen] = useState(false);
+  const [hideMyCards, setHideMyCards] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+
+  const me = state.players.find((p) => p.userId === currentUserId);
+  const isMyTurn = owns(state, currentUserId);
+  const currentPlayer = state.players.find((p) => p.userId === state.currentPlayerId);
+
+  const myPaid = state.pokerBets[currentUserId] ?? 0;
+  const myStack = state.pokerStacks[currentUserId] ?? 0;
+  const callAmount = Math.min(Math.max(0, state.pokerBetToCall - myPaid), myStack);
+
+  const handDescription = useMemo(
+    () => evaluateQuickHandName(state.myPokerCards ?? [], state.communityCards ?? []),
+    [state.myPokerCards, state.communityCards]
+  );
+
+  function playSound(type: "chip" | "card" | "win") {
+    if (!soundEnabled) return;
+    if (type === "chip") casinoAudio.playChip();
+    if (type === "card") casinoAudio.playCardDeal();
+    if (type === "win") casinoAudio.playWin();
+  }
+
+  function dispatch(action: AnyAction) {
+    const { type, ...payload } = action;
+    if (action.choice === "raise" || action.choice === "call" || action.choice === "all_in") {
+      playSound("chip");
+    } else {
+      playSound("card");
+    }
+    onAction(type, payload as Record<string, unknown>);
+  }
+
+  // Play card sound when community cards advance
+  useEffect(() => {
+    if (state.communityCards && state.communityCards.length > 0) {
+      playSound("card");
+    }
+  }, [state.communityCards?.length, state.pokerStreet]);
+
+  // Seating arrangement: Local player is at seat 0 (bottom center),
+  // other players are seated clockwise around the oval.
+  const seatedPlayers = useMemo(() => {
+    const mySeat = me?.seat ?? 0;
+    const count = state.players.length;
+    return state.players.map((p) => {
+      // Relative offset from me
+      const relPos = (p.seat - mySeat + count) % count;
+      return { ...p, relPos };
+    });
+  }, [state.players, me]);
+
+  const opponents = seatedPlayers.filter((p) => p.userId !== currentUserId);
+
+  return (
+    <div className="relative flex h-full min-h-0 w-full flex-col select-none overflow-hidden bg-[#040a08] text-white">
+      {/* ============================================================== */}
+      {/* CASINO AMBIENCE & CHANDELIER LIGHTING                         */}
+      {/* ============================================================== */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_15%,rgba(16,185,129,0.22),transparent_70%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_85%,rgba(245,158,11,0.12),transparent_65%)]" />
+
+      {/* ============================================================== */}
+      {/* TOP HEADER: TABLE INFO & CONTROLS                              */}
+      {/* ============================================================== */}
+      <header className="relative z-20 flex shrink-0 items-center justify-between border-b border-amber-500/20 bg-slate-950/80 px-4 py-2 backdrop-blur-md">
+        <div className="flex items-center gap-3">
+          <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-amber-400 via-amber-600 to-yellow-800 text-slate-950 font-black shadow-lg">
+            ♠
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-base font-black tracking-tight text-amber-200">
+                Texas Hold’em Poker
+              </h1>
+              <span className="rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-black text-amber-300">
+                Hand #{state.pokerHandNumber ?? 1}
+              </span>
+            </div>
+            <p className="text-[11px] font-medium text-emerald-400/80">
+              Blinds $10 / $20 · Fixed-Limit Betting
+            </p>
+          </div>
+        </div>
+
+        {/* Top Controls: Sound, Rules, Pot */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 rounded-xl border border-amber-400/30 bg-black/40 px-3 py-1.5 shadow-inner">
+            <span className="text-[10px] font-black uppercase tracking-wider text-amber-400">
+              Table Pot:
+            </span>
+            <span className="font-mono text-base font-black text-amber-300 tabular-nums">
+              ${state.pokerPot.toLocaleString("en-US")}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setSoundEnabled((prev) => !prev)}
+            className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/5 text-white/70 hover:bg-white/10"
+            title={soundEnabled ? "Mute audio" : "Enable audio"}
+          >
+            {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4 text-rose-400" />}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setPokerRulesOpen(true)}
+            className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-white/80 hover:bg-white/10"
+          >
+            <HelpCircle className="h-4 w-4 text-amber-300" />
+            <span className="hidden sm:inline">Hand Rankings</span>
+          </button>
+        </div>
+      </header>
+
+      {/* ============================================================== */}
+      {/* MAIN CASINO POKER TABLE (OVAL FELT & SURROUNDING SEATS)        */}
+      {/* ============================================================== */}
+      <main className="relative flex flex-1 min-h-0 flex-col items-center justify-between p-2 sm:p-4 overflow-hidden">
+        {/* CASINO OVAL TABLE FELT */}
+        <div
+          className="relative flex h-full w-full max-w-5xl flex-col items-center justify-between rounded-[80px] sm:rounded-[120px] border-[12px] sm:border-[16px] border-[#542d10] p-4 shadow-[inset_0_0_100px_rgba(0,0,0,0.85),0_25px_60px_rgba(0,0,0,0.9)] overflow-hidden"
+          style={{
+            background:
+              "radial-gradient(ellipse at 50% 50%, #064e3b 0%, #043d2e 45%, #022c22 80%, #011c15 100%)",
+            boxShadow:
+              "inset 0 0 100px rgba(0,0,0,0.7), inset 0 2px 4px rgba(255,255,255,0.2), 0 20px 50px rgba(0,0,0,0.85)"
+          }}
+        >
+          {/* Inner Golden Racetrack Line */}
+          <div className="pointer-events-none absolute inset-6 sm:inset-10 rounded-[60px] sm:rounded-[90px] border-2 border-amber-300/25" />
+
+          {/* ========================================================== */}
+          {/* TOP OPPONENTS ROW                                          */}
+          {/* ========================================================== */}
+          <div className="relative z-10 flex w-full items-start justify-around px-2 sm:px-6">
+            {opponents.map((player) => {
+              const isEliminated = (player.stack ?? 0) <= 0 && player.folded;
+              const isTurn = state.currentPlayerId === player.userId && state.phase === "playing";
+              const isDealer = player.seat === state.pokerButtonSeat;
+
+              return (
+                <div
+                  key={player.userId}
+                  className={`flex flex-col items-center gap-1 rounded-2xl border p-2 backdrop-blur-md transition-all ${
+                    isTurn
+                      ? "border-amber-400 bg-amber-500/20 ring-2 ring-amber-400/50 shadow-2xl scale-105"
+                      : "border-white/10 bg-black/50"
+                  } ${player.folded || isEliminated ? "opacity-40" : ""}`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-bold text-white truncate max-w-[80px] sm:max-w-[110px]">
+                      {player.displayName}
+                    </span>
+                    {isDealer ? (
+                      <span className="grid h-4 w-4 place-items-center rounded-full bg-amber-400 text-[9px] font-black text-slate-950 shadow">
+                        D
+                      </span>
+                    ) : null}
+                    {player.isBot ? (
+                      <span className="rounded bg-sky-500/20 px-1 text-[8px] font-black text-sky-300 uppercase">
+                        BOT
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {/* Opponent Stack */}
+                  <span className="font-mono text-xs font-black text-emerald-300">
+                    {isEliminated ? "BUSTED" : player.folded ? "FOLDED" : `$${(player.stack ?? 0).toLocaleString("en-US")}`}
+                  </span>
+
+                  {/* Opponent Hole Cards */}
+                  <div className="flex items-center gap-1 mt-0.5">
+                    {player.folded || isEliminated ? (
+                      <div className="h-10 w-7 rounded border border-dashed border-white/20" />
+                    ) : (
+                      <>
+                        <CasinoPlayingCard hidden size="xs" />
+                        <CasinoPlayingCard hidden size="xs" />
+                      </>
+                    )}
+                  </div>
+
+                  {/* Opponent Active Bet Badge */}
+                  {(player.bet ?? 0) > 0 ? (
+                    <div className="mt-1">
+                      <ChipStack amount={player.bet ?? 0} size="xs" />
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ========================================================== */}
+          {/* CENTER FELT: COMMUNITY CARDS & POT PILE                    */}
+          {/* ========================================================== */}
+          <div className="relative z-10 flex flex-col items-center justify-center my-auto py-2 text-center">
+            {/* Street Indicator & Active Live Count */}
+            <div className="flex items-center gap-2 rounded-full border border-amber-400/30 bg-black/60 px-4 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-amber-300 shadow-md backdrop-blur-sm">
+              <span>{state.pokerStreet}</span>
+              <span className="text-white/30">·</span>
+              <span className="text-emerald-400">
+                {state.players.filter((p) => !p.folded).length} PLAYERS IN
+              </span>
+            </div>
+
+            {/* Central 5 Community Cards (Flop, Turn, River) */}
+            <div className="mt-3 flex items-center justify-center gap-2 sm:gap-3" aria-label="Community Cards">
+              {Array.from({ length: 5 }, (_, i) => {
+                const card = state.communityCards[i] ?? null;
+                return (
+                  <CasinoPlayingCard
+                    key={`${i}-${card ?? "empty"}`}
+                    card={card}
+                    hidden={!card}
+                    size="md"
+                    className="shadow-2xl"
+                  />
+                );
+              })}
+            </div>
+
+            {/* Central Pot Display with 3D Chips Stack */}
+            <div className="mt-3 flex items-center justify-center gap-3">
+              <div className="flex items-center gap-2 rounded-2xl border border-amber-400/50 bg-black/70 px-4 py-1.5 shadow-[0_0_25px_rgba(251,191,36,0.25)] backdrop-blur-sm">
+                <ChipStack amount={state.pokerPot} size="sm" showLabel={false} />
+                <span className="font-mono text-base font-black text-amber-300 drop-shadow">
+                  POT: ${state.pokerPot.toLocaleString("en-US")}
+                </span>
+              </div>
+
+              {callAmount > 0 ? (
+                <div className="rounded-xl border border-white/10 bg-black/40 px-3 py-1 font-mono text-xs font-bold text-white/80">
+                  To Call: ${callAmount}
+                </div>
+              ) : null}
+            </div>
+
+            {/* Last Action Telemetry Banner */}
+            {state.pokerLastAction ? (
+              <p className="mt-2 text-xs font-semibold text-emerald-200/80 drop-shadow">
+                {state.pokerLastAction}
+              </p>
+            ) : null}
+          </div>
+
+          {/* ========================================================== */}
+          {/* LOCAL PLAYER (YOU) SEAT (BOTTOM CENTER)                    */}
+          {/* ========================================================== */}
+          {me ? (
+            <div className="relative z-10 flex flex-col items-center gap-2">
+              <div
+                className={`relative flex flex-col items-center gap-1.5 rounded-3xl border p-3 backdrop-blur-md transition-all ${
+                  isMyTurn
+                    ? "border-amber-400 bg-amber-500/15 ring-2 ring-amber-400/60 shadow-[0_0_30px_rgba(251,191,36,0.35)] scale-105"
+                    : "border-white/20 bg-black/60 shadow-xl"
+                }`}
+              >
+                {/* Player Name, Stack & Dealer Badge */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black text-white tracking-wide">
+                    {me.displayName} (YOU)
+                  </span>
+                  {me.seat === state.pokerButtonSeat ? (
+                    <span className="grid h-4 w-4 place-items-center rounded-full bg-amber-400 text-[9px] font-black text-slate-950 shadow">
+                      D
+                    </span>
+                  ) : null}
+                  <span className="rounded bg-emerald-500/20 px-2 py-0.5 font-mono text-xs font-black text-emerald-300">
+                    ${myStack.toLocaleString("en-US")}
+                  </span>
+                </div>
+
+                {/* Local Hole Cards (With Hide / Peek Toggle) */}
+                <div className="flex items-center justify-center gap-2 mt-0.5">
+                  {(state.myPokerCards ?? []).map((card, i) => (
+                    <CasinoPlayingCard
+                      key={`${i}-${card}`}
+                      card={card}
+                      hidden={hideMyCards}
+                      size="lg"
+                      className="shadow-2xl"
+                    />
+                  ))}
+                </div>
+
+                {/* Hand Evaluator Badge & Peek Toggle Button */}
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="rounded-full border border-amber-400/40 bg-amber-400/15 px-3 py-0.5 text-[11px] font-black text-amber-300">
+                    {handDescription}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => setHideMyCards((prev) => !prev)}
+                    className="flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-2.5 py-0.5 text-[10px] font-bold text-white/80 hover:bg-white/20 active:scale-95"
+                    title={hideMyCards ? "Reveal Cards" : "Hide Cards"}
+                  >
+                    {hideMyCards ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                    <span>{hideMyCards ? "Peek" : "Hide"}</span>
+                  </button>
+                </div>
+
+                {/* Current Player Round Bet */}
+                {myPaid > 0 ? (
+                  <div className="absolute -top-6">
+                    <ChipStack amount={myPaid} size="sm" />
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        {/* ========================================================== */}
+        {/* CASINO ACTION / BETTING CONSOLE (BOTTOM BAR)              */}
+        {/* ========================================================== */}
+        <div className="relative z-20 mt-2 flex w-full max-w-4xl flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-500/20 bg-slate-950/90 p-3 shadow-2xl backdrop-blur-xl">
+          {/* Player Chips & Status Info */}
+          <div className="flex items-center gap-3">
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-400">
+                Your Stack
+              </span>
+              <span className="font-mono text-base font-black text-emerald-300">
+                ${myStack.toLocaleString("en-US")}
+              </span>
+            </div>
+
+            <div className="h-8 w-px bg-white/10" />
+
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black uppercase tracking-wider text-white/40">
+                Turn
+              </span>
+              <span className="text-xs font-bold text-white">
+                {isMyTurn ? "🟢 Your Move" : `⏳ ${currentPlayer?.displayName ?? "Waiting"}`}
+              </span>
+            </div>
+          </div>
+
+          {/* Action Buttons: FOLD, CHECK / CALL, RAISE, ALL-IN */}
+          <div className="flex items-center gap-2">
+            {legalActions
+              .filter(isAction)
+              .filter((action) => action.type === "poker_action")
+              .map((action) => {
+                const choice = String(action.choice);
+
+                if (choice === "fold") {
+                  return (
+                    <button
+                      key={choice}
+                      type="button"
+                      onClick={() => dispatch(action)}
+                      className="rounded-xl border border-rose-500/50 bg-rose-600/20 px-4 py-2 text-xs font-black text-rose-200 hover:bg-rose-600/30 active:scale-95 transition"
+                    >
+                      FOLD 🚫
+                    </button>
+                  );
+                }
+
+                if (choice === "check") {
+                  return (
+                    <button
+                      key={choice}
+                      type="button"
+                      onClick={() => dispatch(action)}
+                      className="rounded-xl border border-emerald-400/50 bg-emerald-500/20 px-5 py-2 text-xs font-black text-emerald-300 hover:bg-emerald-500/30 active:scale-95 transition"
+                    >
+                      CHECK ✋
+                    </button>
+                  );
+                }
+
+                if (choice === "call") {
+                  return (
+                    <button
+                      key={choice}
+                      type="button"
+                      onClick={() => dispatch(action)}
+                      className="flex items-center gap-1.5 rounded-xl bg-emerald-500 px-5 py-2 text-xs font-black text-slate-950 shadow-lg shadow-emerald-500/25 hover:bg-emerald-400 active:scale-95 transition"
+                    >
+                      <span>CALL</span>
+                      <span className="font-mono">${callAmount}</span>
+                    </button>
+                  );
+                }
+
+                if (choice === "raise") {
+                  return (
+                    <button
+                      key={choice}
+                      type="button"
+                      onClick={() => dispatch(action)}
+                      className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-600 px-5 py-2 text-xs font-black text-slate-950 shadow-lg shadow-amber-500/30 hover:brightness-110 active:scale-95 transition"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" />
+                      <span>RAISE (+$20)</span>
+                    </button>
+                  );
+                }
+
+                if (choice === "all_in") {
+                  return (
+                    <button
+                      key={choice}
+                      type="button"
+                      onClick={() => dispatch(action)}
+                      className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-red-600 via-rose-500 to-amber-500 px-5 py-2 text-xs font-black text-white shadow-lg shadow-rose-600/30 hover:brightness-110 active:scale-95 transition"
+                    >
+                      <Flame className="h-3.5 w-3.5" />
+                      <span>ALL-IN (${myStack})</span>
+                    </button>
+                  );
+                }
+
+                return null;
+              })}
+          </div>
+        </div>
+      </main>
+
+      {/* ============================================================== */}
+      {/* HAND RANKINGS MODAL                                            */}
+      {/* ============================================================== */}
+      <AnimatePresence>
+        {pokerRulesOpen ? (
+          <div
+            className="fixed inset-0 z-50 grid place-items-center bg-black/80 p-4 backdrop-blur-md"
+            onClick={() => setPokerRulesOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-3xl rounded-2xl border border-amber-400/30 bg-slate-950 p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <div>
+                  <h3 className="text-xl font-black text-amber-300">
+                    Poker Hand Rankings
+                  </h3>
+                  <p className="text-xs text-white/50">
+                    Highest to lowest standard 5-card poker combinations.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPokerRulesOpen(false)}
+                  className="text-white/40 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {POKER_HAND_RANKINGS.map((hand, idx) => (
+                  <div
+                    key={hand.name}
+                    className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-3"
+                  >
+                    <span className="grid h-6 w-6 place-items-center rounded-lg bg-amber-400/20 text-xs font-black text-amber-300 shrink-0">
+                      {idx + 1}
+                    </span>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <strong className="text-xs text-white font-black">{hand.name}</strong>
+                        <span className="text-[9px] font-bold text-amber-400 uppercase tracking-wider">
+                          {hand.tier}
+                        </span>
+                      </div>
+                      <p className="font-mono text-[11px] font-bold text-emerald-300 mt-0.5">
+                        {hand.example}
+                      </p>
+                      <p className="text-[10px] text-white/60 leading-snug mt-0.5">
+                        {hand.detail}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        ) : null}
+      </AnimatePresence>
+    </div>
+  );
 }

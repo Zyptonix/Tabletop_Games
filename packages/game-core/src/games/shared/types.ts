@@ -9,7 +9,8 @@ export type BoardGameId =
   | "risk"
   | "world-conquest"
   | "codenames"
-  | "poker";
+  | "poker"
+  | "blackjack";
 
 export type PokerStreet = "preflop" | "flop" | "turn" | "river" | "showdown";
 
@@ -39,7 +40,8 @@ export type BoardGameAction =
   | { type: "reveal_word"; index: number }
   | { type: "give_clue"; clue: string; number: number }
   | { type: "end_codenames_turn" }
-  | { type: "poker_action"; choice: "fold" | "check" | "call" | "raise" | "all_in" };
+  | { type: "poker_action"; choice: "fold" | "check" | "call" | "raise" | "all_in" }
+  | { type: "blackjack_action"; choice: "bet" | "clear_bet" | "deal" | "hit" | "stand" | "double" | "split" | "next_round"; amount?: number };
 
 export interface BattleshipPlacedShip {
   id: string;
@@ -157,6 +159,19 @@ export interface BoardGameState {
   pokerHandNumber: number;
   pokerStreet: PokerStreet;
   pokerLastAction: string;
+  blackjackDealerHand?: string[] | undefined;
+  blackjackDealerHoleHidden?: boolean | undefined;
+  blackjackPlayerHands?: Record<string, string[][]> | undefined;
+  blackjackBets?: Record<string, number[]> | undefined;
+  blackjackChips?: Record<string, number> | undefined;
+  blackjackPhase?: ("betting" | "player_turns" | "dealer_turn" | "round_end") | undefined;
+  blackjackActivePlayerIndex?: number | undefined;
+  blackjackActiveHandIndex?: number | undefined;
+  blackjackReadyPlayers?: string[] | undefined;
+  blackjackRoundResults?: Record<string, Array<{ payout: number; result: "win" | "loss" | "push" | "blackjack" | "bust"; message: string }>> | undefined;
+  blackjackRoundNumber?: number | undefined;
+  blackjackLastAction?: string | undefined;
+  blackjackDeck?: string[] | undefined;
 }
 
 export interface PublicBoardGameState {
@@ -224,6 +239,18 @@ export interface PublicBoardGameState {
   pokerButtonSeat: number;
   pokerHandNumber: number;
   pokerLastAction: string;
+  blackjackDealerHand?: string[] | undefined;
+  blackjackDealerHoleHidden?: boolean | undefined;
+  blackjackDealerScore?: number | undefined;
+  blackjackPlayerHands?: Record<string, string[][]> | undefined;
+  blackjackBets?: Record<string, number[]> | undefined;
+  blackjackChips?: Record<string, number> | undefined;
+  blackjackPhase?: ("betting" | "player_turns" | "dealer_turn" | "round_end") | undefined;
+  blackjackActiveHandIndex?: number | undefined;
+  blackjackReadyPlayers?: string[] | undefined;
+  blackjackRoundResults?: Record<string, Array<{ payout: number; result: "win" | "loss" | "push" | "blackjack" | "bust"; message: string }>> | undefined;
+  blackjackRoundNumber?: number | undefined;
+  blackjackLastAction?: string | undefined;
   activityLog: ActivityItem[];
   chessMoveHistory?: ChessMoveRecord[] | undefined;
   chessLastMove?: { from: number; to: number } | null | undefined;

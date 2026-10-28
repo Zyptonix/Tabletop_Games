@@ -72,7 +72,7 @@ export default function RoomPage() {
       ? (socketState.gameState as PublicGridGameState | null)
       : null;
   const boardGameState =
-    ["chess", "battleship", "ludo", "barricades", "monopoly", "risk", "world-conquest", "codenames", "poker"].includes(room.gameId as string)
+    ["chess", "battleship", "ludo", "barricades", "monopoly", "risk", "world-conquest", "codenames", "poker", "blackjack"].includes(room.gameId as string)
       ? (socketState.gameState as PublicBoardGameState | null)
       : null;
 
