@@ -416,7 +416,6 @@ export function PokerTable(props: BoardGameTableProps) {
               const isEliminated = (player.stack ?? 0) <= 0 && player.folded;
               const isTurn = state.currentPlayerId === player.userId && state.phase === "playing";
               const isDealer = player.seat === state.pokerButtonSeat;
-              const showdownCards = state.pokerLastHandResult?.showdownCards?.[player.userId];
 
               return (
                 <div
@@ -448,15 +447,10 @@ export function PokerTable(props: BoardGameTableProps) {
                     {isEliminated ? "BUSTED" : player.folded ? "FOLDED" : `$${(player.stack ?? 0).toLocaleString("en-US")}`}
                   </span>
 
-                  {/* Opponent Hole Cards: Showdown reveal or Card backs */}
+                  {/* Opponent Hole Cards (Always hidden face-down) */}
                   <div className="flex items-center -space-x-3 sm:-space-x-4 mt-0.5">
                     {player.folded || isEliminated ? (
                       <div className="h-14 w-10 rounded border border-dashed border-white/20" />
-                    ) : showdownCards && showdownCards.length >= 2 ? (
-                      <>
-                        <CasinoPlayingCard card={showdownCards[0] ?? null} size="sm" className="shadow-md ring-1 ring-amber-400/50" />
-                        <CasinoPlayingCard card={showdownCards[1] ?? null} size="sm" className="shadow-md ring-1 ring-amber-400/50" />
-                      </>
                     ) : (
                       <>
                         <CasinoPlayingCard hidden size="sm" className="shadow-md" />
