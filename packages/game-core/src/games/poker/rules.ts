@@ -230,13 +230,37 @@ export function settlePokerShowdown(state: BoardGameState, now: string): void {
   }
   state.pokerPot = 0;
   state.pokerStreet = "showdown";
+  const rankNames = ["High Card", "One Pair", "Two Pair", "Three of a Kind", "Straight", "Flush", "Full House", "Four of a Kind", "Straight Flush"];
+  const winningRankIndex = values.get(mainPotWinners[0]?.userId ?? "")?.[0] ?? 0;
+  const bestHandName = rankNames[winningRankIndex] ?? "Best Hand";
+  const totalPot = distributed + residual;
+
+  const showdownCards: Record<string, string[]> = {};
+  for (const player of active) {
+    showdownCards[player.userId] = (state.pokerCardsByPlayer[player.userId] ?? []).slice();
+  }
+
   if (mainPotWinners.length === 1) {
     const winner = mainPotWinners[0]!;
-    const rankName = ["high card", "one pair", "two pair", "three of a kind", "straight", "flush", "full house", "four of a kind", "straight flush"][(values.get(winner.userId)?.[0] ?? 0)] ?? "best hand";
-    state.pokerLastAction = `${winner.displayName} takes the main pot with ${rankName}; side pots are settled.`;
+    state.pokerLastAction = `${winner.displayName} takes the main pot with ${bestHandName.toLowerCase()}; side pots are settled.`;
   } else {
     state.pokerLastAction = `Main pot split: ${mainPotWinners.map((player) => player.displayName).join(", ") || "no eligible player"}. Side pots are settled.`;
   }
+
+  state.pokerLastHandResult = {
+    handNumber: state.pokerHandNumber,
+    winnerUserIds: mainPotWinners.map((w) => w.userId),
+    winnerNames: mainPotWinners.map((w) => w.displayName),
+    potWon: totalPot,
+    handName: bestHandName,
+    byFold: false,
+    isSplit: mainPotWinners.length > 1,
+    summary: mainPotWinners.length === 1
+      ? `${mainPotWinners[0]!.displayName} takes the main pot of $${totalPot} with ${bestHandName}.`
+      : `Main pot ($${totalPot}) split between ${mainPotWinners.map((p) => p.displayName).join(", ")}.`,
+    showdownCards
+  };
+
   // Only the tournament end condition finalizes a match. A normal showdown pays
   // the pots and immediately starts the next hand while at least two stacks remain.
   startNextPokerHand(state, now, state.pokerLastAction);
@@ -246,9 +270,22 @@ export function advancePokerStreet(state: BoardGameState, now: string): void {
   const active = state.players.filter((player) => !state.pokerFolded.includes(player.userId));
   if (active.length <= 1) {
     const winner = active[0];
+    const winningPot = state.pokerPot;
     if (winner) state.pokerStacks[winner.userId] = (state.pokerStacks[winner.userId] ?? 0) + state.pokerPot;
     state.pokerPot = 0;
     state.pokerLastAction = winner ? `${winner.displayName} won hand ${state.pokerHandNumber} because every opponent folded.` : "Hand ended without an eligible player.";
+    if (winner) {
+      state.pokerLastHandResult = {
+        handNumber: state.pokerHandNumber,
+        winnerUserIds: [winner.userId],
+        winnerNames: [winner.displayName],
+        potWon: winningPot,
+        handName: "Opponents Folded",
+        byFold: true,
+        isSplit: false,
+        summary: `${winner.displayName} won $${winningPot} because every opponent folded.`
+      };
+    }
     startNextPokerHand(state, now, state.pokerLastAction);
     return;
   }

@@ -34,9 +34,22 @@ export function reducePokerAction(state:BoardGameState,playerId:string,action:Bo
     const allMatched = active.every((item) => (state.pokerBets[item.userId] ?? 0) === state.pokerBetToCall || (state.pokerStacks[item.userId] ?? 0) === 0);
     if (active.length <= 1) {
       const winner = active[0];
+      const winningPot = state.pokerPot;
       if (winner) state.pokerStacks[winner.userId] = (state.pokerStacks[winner.userId] ?? 0) + state.pokerPot;
       state.pokerPot = 0;
       state.pokerLastAction = winner ? `${winner.displayName} won hand ${state.pokerHandNumber} because every opponent folded.` : "Hand ended without an eligible player.";
+      if (winner) {
+        state.pokerLastHandResult = {
+          handNumber: state.pokerHandNumber,
+          winnerUserIds: [winner.userId],
+          winnerNames: [winner.displayName],
+          potWon: winningPot,
+          handName: "Opponents Folded",
+          byFold: true,
+          isSplit: false,
+          summary: `${winner.displayName} won $${winningPot} because every opponent folded.`
+        };
+      }
       startNextPokerHand(state, now, state.pokerLastAction);
     } else if (everyoneActed && allMatched) advancePokerStreet(state, now);
     else state.currentPlayerId = nextPokerActor(state, playerId);} else return {accepted:false,message:""};return {accepted:true,message};}

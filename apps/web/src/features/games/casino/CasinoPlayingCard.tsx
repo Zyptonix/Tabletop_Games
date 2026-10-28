@@ -38,7 +38,7 @@ export function CasinoPlayingCard({
   className = "",
   onClick
 }: {
-  card?: string | null;
+  card?: string | null | undefined;
   hidden?: boolean;
   size?: "xs" | "sm" | "md" | "lg" | "xl";
   peek?: boolean;

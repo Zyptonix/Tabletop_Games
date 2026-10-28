@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, Trophy, HelpCircle, Volume2, VolumeX, Sparkles, Flame } from "lucide-react";
+import { Eye, EyeOff, Trophy, HelpCircle, Volume2, VolumeX, Sparkles, Flame, CheckCircle2 } from "lucide-react";
+import type { PokerLastHandResult } from "@tabletop/game-core";
 import type { AnyAction, BoardGameTableProps } from "../board-games/shared/types";
 import { CasinoChip, ChipStack, breakdownChips, type ChipDenomination } from "../casino/CasinoChip";
 import { CasinoPlayingCard } from "../casino/CasinoPlayingCard";
@@ -138,6 +139,24 @@ export function PokerTable(props: BoardGameTableProps) {
   const [pokerRulesOpen, setPokerRulesOpen] = useState(false);
   const [hideMyCards, setHideMyCards] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [showWinnerModal, setShowWinnerModal] = useState(false);
+  const [activeWinnerResult, setActiveWinnerResult] = useState<PokerLastHandResult | null>(null);
+  const lastCelebratedHandRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (state.pokerLastHandResult && state.pokerLastHandResult.handNumber !== lastCelebratedHandRef.current) {
+      lastCelebratedHandRef.current = state.pokerLastHandResult.handNumber;
+      setActiveWinnerResult(state.pokerLastHandResult);
+      setShowWinnerModal(true);
+      if (soundEnabled) casinoAudio.playWin();
+
+      const timer = setTimeout(() => {
+        setShowWinnerModal(false);
+      }, 6500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [state.pokerLastHandResult, soundEnabled]);
 
   const me = state.players.find((p) => p.userId === currentUserId);
   const isMyTurn = owns(state, currentUserId);
@@ -287,11 +306,12 @@ export function PokerTable(props: BoardGameTableProps) {
               const isEliminated = (player.stack ?? 0) <= 0 && player.folded;
               const isTurn = state.currentPlayerId === player.userId && state.phase === "playing";
               const isDealer = player.seat === state.pokerButtonSeat;
+              const showdownCards = state.pokerLastHandResult?.showdownCards?.[player.userId];
 
               return (
                 <div
                   key={player.userId}
-                  className={`flex flex-col items-center gap-1.5 rounded-2xl border p-2.5 backdrop-blur-md transition-all ${
+                  className={`flex flex-col items-center gap-1.5 rounded-2xl border p-2 sm:p-2.5 backdrop-blur-md transition-all ${
                     isTurn
                       ? "border-amber-400 bg-amber-500/20 ring-4 ring-amber-400/50 shadow-[0_0_30px_rgba(251,191,36,0.5)] scale-105"
                       : "border-white/10 bg-black/50 shadow-lg"
@@ -318,10 +338,15 @@ export function PokerTable(props: BoardGameTableProps) {
                     {isEliminated ? "BUSTED" : player.folded ? "FOLDED" : `$${(player.stack ?? 0).toLocaleString("en-US")}`}
                   </span>
 
-                  {/* Opponent Hole Cards */}
-                  <div className="flex items-center -space-x-4 mt-0.5">
+                  {/* Opponent Hole Cards: Showdown reveal or Card backs */}
+                  <div className="flex items-center -space-x-3 sm:-space-x-4 mt-0.5">
                     {player.folded || isEliminated ? (
                       <div className="h-14 w-10 rounded border border-dashed border-white/20" />
+                    ) : showdownCards && showdownCards.length >= 2 ? (
+                      <>
+                        <CasinoPlayingCard card={showdownCards[0] ?? null} size="sm" className="shadow-md ring-1 ring-amber-400/50" />
+                        <CasinoPlayingCard card={showdownCards[1] ?? null} size="sm" className="shadow-md ring-1 ring-amber-400/50" />
+                      </>
                     ) : (
                       <>
                         <CasinoPlayingCard hidden size="sm" className="shadow-md" />
@@ -342,55 +367,94 @@ export function PokerTable(props: BoardGameTableProps) {
           </div>
 
           {/* ========================================================== */}
-          {/* CENTER FELT: COMMUNITY CARDS & DYNAMIC CHIPS POT           */}
+          {/* CENTER FELT: 3-PANEL WIDESCREEN ARENA                      */}
+          {/* (Pot on Left, Cards in Center, Street/Action on Right)      */}
           {/* ========================================================== */}
-          <div className="relative z-10 flex flex-col items-center justify-center my-auto py-2 text-center">
-            {/* Street Indicator & Active Live Count */}
-            <div className="flex items-center gap-2 rounded-full border border-amber-400/30 bg-black/60 px-4 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-amber-300 shadow-md backdrop-blur-sm">
-              <span>{state.pokerStreet}</span>
-              <span className="text-white/30">·</span>
-              <span className="text-emerald-400">
-                {state.players.filter((p) => !p.folded).length} PLAYERS IN
+          <div className="relative z-10 flex w-full items-center justify-between px-4 sm:px-8 lg:px-14 my-auto py-1">
+            {/* LEFT FELT STATION: Dynamic Multi-Stack Pot Cluster & Last Winner */}
+            <div className="flex flex-1 flex-col items-start justify-center gap-2">
+              <DynamicPotCluster potAmount={state.pokerPot} callAmount={callAmount} />
+
+              {state.pokerLastHandResult ? (
+                <motion.button
+                  type="button"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  onClick={() => {
+                    setActiveWinnerResult(state.pokerLastHandResult!);
+                    setShowWinnerModal(true);
+                  }}
+                  className="group flex items-center gap-2 rounded-2xl border border-amber-400/40 bg-black/60 px-3 py-1.5 shadow-lg backdrop-blur-md hover:border-amber-300 hover:bg-black/80 transition-all text-left"
+                  title="Click to view showdown winner details"
+                >
+                  <span className="grid h-6 w-6 place-items-center rounded-lg bg-amber-400/20 text-amber-300 shrink-0 group-hover:scale-110 transition-transform text-xs">
+                    🏆
+                  </span>
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-black uppercase tracking-wider text-amber-400">
+                      Last Hand #{state.pokerLastHandResult.handNumber}
+                    </span>
+                    <span className="text-xs font-black text-white truncate max-w-[170px] sm:max-w-[210px]">
+                      {state.pokerLastHandResult.winnerNames.join(", ")}{" "}
+                      <span className="text-emerald-400 font-mono">(+${state.pokerLastHandResult.potWon})</span>
+                    </span>
+                    <span className="text-[10px] text-amber-200/70 font-semibold">
+                      {state.pokerLastHandResult.handName} · <span className="underline text-amber-300">View</span>
+                    </span>
+                  </div>
+                </motion.button>
+              ) : null}
+            </div>
+
+            {/* CENTER FELT STATION: Community Cards (Clean & Uncrowded) */}
+            <div className="flex flex-col items-center justify-center shrink-0 px-2 sm:px-6">
+              <div className="flex items-center justify-center gap-2 sm:gap-3" aria-label="Community Cards">
+                {Array.from({ length: 5 }, (_, i) => {
+                  const card = state.communityCards[i] ?? null;
+                  return (
+                    <CasinoPlayingCard
+                      key={`${i}-${card ?? "empty"}`}
+                      card={card}
+                      hidden={!card}
+                      size="md"
+                      className="shadow-2xl"
+                    />
+                  );
+                })}
+              </div>
+              <span className="mt-1.5 text-[10px] font-black tracking-widest uppercase text-emerald-300/40">
+                Community Cards
               </span>
             </div>
 
-            {/* Central 5 Community Cards (Flop, Turn, River) */}
-            <div className="mt-3 flex items-center justify-center gap-2 sm:gap-3" aria-label="Community Cards">
-              {Array.from({ length: 5 }, (_, i) => {
-                const card = state.communityCards[i] ?? null;
-                return (
-                  <CasinoPlayingCard
-                    key={`${i}-${card ?? "empty"}`}
-                    card={card}
-                    hidden={!card}
-                    size="md"
-                    className="shadow-2xl"
-                  />
-                );
-              })}
-            </div>
+            {/* RIGHT FELT STATION: Street, Active Players Count & Action Banner */}
+            <div className="flex flex-1 flex-col items-end justify-center gap-2 text-right">
+              {/* Street Badge & Active Live Count */}
+              <div className="flex items-center gap-2 rounded-full border border-amber-400/30 bg-black/60 px-4 py-1.5 text-[11px] font-black uppercase tracking-[0.2em] text-amber-300 shadow-md backdrop-blur-sm">
+                <span className="text-amber-300 font-extrabold">{state.pokerStreet}</span>
+                <span className="text-white/30">·</span>
+                <span className="text-emerald-400 font-bold">
+                  {state.players.filter((p) => !p.folded).length} PLAYERS IN
+                </span>
+              </div>
 
-            {/* DYNAMIC CASINO POT CLUSTER (Multi-Stack 3D Real Chips) */}
-            <div className="mt-3 flex items-center justify-center">
-              <DynamicPotCluster potAmount={state.pokerPot} callAmount={callAmount} />
+              {/* Last Action Telemetry Banner */}
+              {state.pokerLastAction ? (
+                <div className="max-w-[240px] sm:max-w-[290px] rounded-2xl border border-white/10 bg-black/55 px-3.5 py-2 text-xs font-semibold text-emerald-200/90 shadow-md backdrop-blur-sm">
+                  {state.pokerLastAction}
+                </div>
+              ) : null}
             </div>
-
-            {/* Last Action Telemetry Banner */}
-            {state.pokerLastAction ? (
-              <p className="mt-2 text-xs font-semibold text-emerald-200/80 drop-shadow">
-                {state.pokerLastAction}
-              </p>
-            ) : null}
           </div>
 
           {/* ========================================================== */}
           {/* LOCAL PLAYER (YOU) SEAT & BET CHIPS ON THE SIDE            */}
           {/* ========================================================== */}
           {me ? (
-            <div className="relative z-10 flex items-center justify-center gap-4 sm:gap-6">
+            <div className="relative z-10 mb-2 sm:mb-3 flex items-center justify-center gap-4 sm:gap-6">
               {/* Main Player Pod */}
               <div
-                className={`relative flex flex-col items-center gap-1.5 rounded-3xl border p-3 backdrop-blur-md transition-all ${
+                className={`relative flex flex-col items-center gap-1 rounded-3xl border px-4 py-2 sm:py-2.5 backdrop-blur-md transition-all ${
                   isMyTurn
                     ? "border-amber-400 bg-amber-500/15 ring-2 ring-amber-400/60 shadow-[0_0_30px_rgba(251,191,36,0.35)] scale-105"
                     : "border-white/20 bg-black/60 shadow-xl"
@@ -418,8 +482,8 @@ export function PokerTable(props: BoardGameTableProps) {
                       key={`${i}-${card}`}
                       card={card}
                       hidden={hideMyCards}
-                      size="lg"
-                      className="shadow-2xl"
+                      size="md"
+                      className="shadow-2xl ring-1 ring-white/10"
                     />
                   ))}
                 </div>
@@ -656,6 +720,119 @@ export function PokerTable(props: BoardGameTableProps) {
           </div>
         </div>
       </main>
+
+      {/* ============================================================== */}
+      {/* WINNER CELEBRATION MODAL (POPUP LIKE UNO & 29)                */}
+      {/* ============================================================== */}
+      <AnimatePresence>
+        {showWinnerModal && activeWinnerResult ? (
+          <div
+            className="fixed inset-0 z-50 grid place-items-center bg-black/80 p-4 backdrop-blur-md"
+            onClick={() => setShowWinnerModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.85, opacity: 0, y: 25 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.88, opacity: 0, y: 20 }}
+              transition={{ type: "spring", damping: 18, stiffness: 280 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-lg overflow-hidden rounded-3xl border-2 border-amber-400 bg-gradient-to-b from-[#14231b] via-[#0b1612] to-[#040807] p-6 text-center shadow-[0_0_90px_rgba(251,191,36,0.45)]"
+            >
+              {/* Radial Golden Background Rays */}
+              <div className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 h-64 w-64 rounded-full bg-amber-400/20 blur-3xl" />
+
+              {/* Hand Completion Badge */}
+              <div className="relative z-10 inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-400/10 px-4 py-1 text-xs font-black uppercase tracking-widest text-amber-300">
+                <Sparkles className="h-3.5 w-3.5 text-amber-300" />
+                <span>Hand #{activeWinnerResult.handNumber} Complete</span>
+                <Sparkles className="h-3.5 w-3.5 text-amber-300" />
+              </div>
+
+              {/* Animated Trophy Icon */}
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: [1, 1.15, 1], rotate: [0, 8, -8, 0] }}
+                transition={{ repeat: Infinity, duration: 2.2 }}
+                className="relative z-10 mx-auto mt-4 grid h-20 w-20 place-items-center rounded-3xl bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 text-4xl shadow-[0_0_40px_rgba(251,191,36,0.5)] border border-amber-200/50"
+              >
+                🏆
+              </motion.div>
+
+              {/* Winner Name / Headline */}
+              <div className="relative z-10 mt-4">
+                <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white drop-shadow">
+                  {activeWinnerResult.winnerUserIds.includes(currentUserId) ? (
+                    <span className="bg-gradient-to-r from-emerald-300 via-yellow-200 to-amber-300 bg-clip-text text-transparent">
+                      🎉 YOU WON THE POT! 🎉
+                    </span>
+                  ) : (
+                    <span className="bg-gradient-to-r from-amber-200 via-yellow-100 to-amber-400 bg-clip-text text-transparent">
+                      {activeWinnerResult.winnerNames.join(", ")} WINS!
+                    </span>
+                  )}
+                </h2>
+
+                {/* Pot Amount */}
+                <div className="mt-2 font-mono text-3xl sm:text-4xl font-black text-amber-300 drop-shadow-[0_2px_12px_rgba(251,191,36,0.5)]">
+                  +${activeWinnerResult.potWon.toLocaleString("en-US")}
+                </div>
+
+                {/* Winning Hand Type Pill */}
+                <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 shadow">
+                  <span className="text-xs font-bold text-white/60 uppercase tracking-wider">Winning Hand:</span>
+                  <span className="text-xs font-black text-amber-300">{activeWinnerResult.handName}</span>
+                </div>
+
+                {/* Showdown Hole Cards if present */}
+                {activeWinnerResult.winnerUserIds.length > 0 &&
+                activeWinnerResult.showdownCards?.[activeWinnerResult.winnerUserIds[0]!] &&
+                activeWinnerResult.showdownCards[activeWinnerResult.winnerUserIds[0]!]!.length >= 2 ? (
+                  <div className="mt-4 flex flex-col items-center">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-1.5">
+                      Winning Hole Cards
+                    </span>
+                    <div className="flex items-center justify-center gap-2">
+                      {activeWinnerResult.showdownCards[activeWinnerResult.winnerUserIds[0]!]!.map((c, i) => (
+                        <CasinoPlayingCard key={i} card={c} size="md" className="shadow-xl ring-2 ring-amber-400/50" />
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* Decorative Flying Casino Chips */}
+                <div className="mt-4 flex items-center justify-center -space-x-1">
+                  {[-24, -12, 0, 12, 24].map((deg, idx) => (
+                    <motion.div
+                      key={idx}
+                      initial={{ y: 20, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1, rotate: deg }}
+                      transition={{ delay: 0.1 + idx * 0.05 }}
+                    >
+                      <CasinoChip value={([100, 50, 25, 50, 100] as const)[idx]!} size="xs" />
+                    </motion.div>
+                  ))}
+                </div>
+
+                {/* Summary Text */}
+                <p className="mt-3 text-xs text-white/70">
+                  {activeWinnerResult.summary}
+                </p>
+              </div>
+
+              {/* Action Button */}
+              <div className="relative z-10 mt-6 flex items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowWinnerModal(false)}
+                  className="w-full max-w-xs rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 py-3 text-sm font-black tracking-wider uppercase text-slate-950 shadow-lg hover:brightness-110 active:scale-95 transition-all"
+                >
+                  Continue to Hand #{state.pokerHandNumber} →
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        ) : null}
+      </AnimatePresence>
 
       {/* ============================================================== */}
       {/* HAND RANKINGS MODAL                                            */}

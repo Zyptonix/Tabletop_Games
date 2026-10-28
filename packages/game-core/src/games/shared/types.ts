@@ -93,6 +93,18 @@ export interface ChessMoveRecord {
   clockRemainingMs?: number | undefined;
 }
 
+export interface PokerLastHandResult {
+  handNumber: number;
+  winnerUserIds: string[];
+  winnerNames: string[];
+  potWon: number;
+  handName: string;
+  byFold: boolean;
+  isSplit: boolean;
+  summary: string;
+  showdownCards?: Record<string, string[]> | undefined;
+}
+
 export interface BoardGameState {
   gameId: BoardGameId;
   version: string;
@@ -159,6 +171,7 @@ export interface BoardGameState {
   pokerHandNumber: number;
   pokerStreet: PokerStreet;
   pokerLastAction: string;
+  pokerLastHandResult?: PokerLastHandResult | undefined;
   blackjackDealerHand?: string[] | undefined;
   blackjackDealerHoleHidden?: boolean | undefined;
   blackjackPlayerHands?: Record<string, string[][]> | undefined;
@@ -239,6 +252,7 @@ export interface PublicBoardGameState {
   pokerButtonSeat: number;
   pokerHandNumber: number;
   pokerLastAction: string;
+  pokerLastHandResult?: PokerLastHandResult | undefined;
   blackjackDealerHand?: string[] | undefined;
   blackjackDealerHoleHidden?: boolean | undefined;
   blackjackDealerScore?: number | undefined;
