@@ -298,12 +298,41 @@ export function chooseBotAction(legalActions: unknown[], gameId: string, gameSta
     } else if (gameId === "poker") {
       preferred = actions.find((action) => action.type === "poker_action" && action.choice === "check") ?? actions.find((action) => action.type === "poker_action" && action.choice === "call") ?? actions.find((action) => action.type === "poker_action" && action.choice === "raise") ?? actions.find((action) => action.type === "poker_action" && action.choice === "all_in") ?? actions.find((action) => action.type === "poker_action" && action.choice === "fold");
     } else if (gameId === "blackjack") {
+      const stateObj = isRecord(gameState) ? gameState : null;
+      const hands = stateObj?.blackjackPlayerHands as Record<string, string[][]> | undefined;
+      const botHands = hands?.[playerId] ?? [[]];
+      const activeIdx = (typeof stateObj?.blackjackActiveHandIndex === "number" ? stateObj.blackjackActiveHandIndex : 0);
+      const curHand = botHands[activeIdx] ?? botHands[0] ?? [];
+
+      let total = 0;
+      let aces = 0;
+      for (const c of curHand) {
+        if (!c || c === "hidden") continue;
+        const rank = c.slice(0, -1);
+        if (rank === "A") { aces += 1; total += 11; }
+        else if (["K", "Q", "J", "10"].includes(rank)) { total += 10; }
+        else { total += parseInt(rank, 10) || 0; }
+      }
+      while (total > 21 && aces > 0) { total -= 10; aces -= 1; }
+
+      const hitAction = actions.find((a) => a.type === "blackjack_action" && a.choice === "hit");
+      const standAction = actions.find((a) => a.type === "blackjack_action" && a.choice === "stand");
+      const doubleAction = actions.find((a) => a.type === "blackjack_action" && a.choice === "double");
+
+      let turnChoice: RecordValue | undefined;
+      if (total >= 17) {
+        turnChoice = standAction ?? hitAction;
+      } else if (total === 10 || total === 11) {
+        turnChoice = doubleAction ?? hitAction ?? standAction;
+      } else {
+        turnChoice = hitAction ?? standAction;
+      }
+
       preferred =
         actions.find((action) => action.type === "blackjack_action" && action.choice === "deal") ??
         actions.find((action) => action.type === "blackjack_action" && action.choice === "bet" && action.amount === 25) ??
         actions.find((action) => action.type === "blackjack_action" && action.choice === "next_round") ??
-        actions.find((action) => action.type === "blackjack_action" && action.choice === "hit") ??
-        actions.find((action) => action.type === "blackjack_action" && action.choice === "stand");
+        turnChoice;
     } else {
       const candidates = actions.filter((action) => ["move_piece", "fire", "reveal_word"].includes(String(action.type)));
       preferred = candidates[Math.floor(Math.random() * candidates.length)];

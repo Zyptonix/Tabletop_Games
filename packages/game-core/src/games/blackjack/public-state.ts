@@ -40,3 +40,4 @@ export function getBlackjackPublicState(state: BoardGameState, viewerId: string)
     blackjackLastAction: state.blackjackLastAction ?? "Place your bets."
   };
 }
+

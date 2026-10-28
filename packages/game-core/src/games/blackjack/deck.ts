@@ -74,3 +74,4 @@ export function evaluateBlackjackHand(cards: string[]): HandEvaluation {
 
   return { total, isSoft, isBlackjack, isBust, displayValue };
 }
+

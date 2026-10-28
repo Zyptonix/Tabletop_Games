@@ -2,14 +2,130 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Trophy, RotateCcw, HelpCircle, Shield, Volume2, VolumeX } from "lucide-react";
-import type { AnyAction, BoardGameTableProps } from "../board-games/shared/types";
+import { Sparkles, Trophy, RotateCcw, HelpCircle, Volume2, VolumeX, Flame } from "lucide-react";
+import type { BoardGameTableProps } from "../board-games/shared/types";
 import { CasinoChip, ChipStack, type ChipDenomination } from "../casino/CasinoChip";
 import { CasinoPlayingCard } from "../casino/CasinoPlayingCard";
 import { casinoAudio } from "../casino/casinoAudio";
-import { evaluateBlackjackHand } from "@tabletop/game-core";
+import { evaluateBlackjackHand, type HandEvaluation } from "@tabletop/game-core";
 
-const BET_CHIPS: ChipDenomination[] = [10, 25, 50, 100, 500];
+const BET_CHIPS: ChipDenomination[] = [5, 10, 25, 50, 100, 500, 1000];
+
+// Visual 3D Chip Column for the Dealer Chip Tray
+function DealerChipColumn({ denom, count = 12 }: { denom: ChipDenomination; count?: number }) {
+  const colors: Record<ChipDenomination, { rim: string; stripe: string; bg: string }> = {
+    5: { rim: "#ef4444", stripe: "#ffffff", bg: "#991b1b" },
+    10: { rim: "#3b82f6", stripe: "#ffffff", bg: "#1e40af" },
+    25: { rim: "#22c55e", stripe: "#fde047", bg: "#166534" },
+    50: { rim: "#06b6d4", stripe: "#ffffff", bg: "#155e75" },
+    100: { rim: "#475569", stripe: "#fbbf24", bg: "#0f172a" },
+    500: { rim: "#a855f7", stripe: "#f472b6", bg: "#6b21a8" },
+    1000: { rim: "#eab308", stripe: "#000000", bg: "#854d0e" }
+  };
+  const c = colors[denom] ?? colors[25];
+
+  return (
+    <div className="relative flex flex-col items-center w-6 sm:w-8 h-14 sm:h-16 justify-end bg-black/60 rounded-sm p-0.5 border border-amber-900/40 shadow-inner">
+      <div className="flex flex-col-reverse items-center -space-y-2.5 sm:-space-y-3 w-full">
+        {Array.from({ length: count }).map((_, i) => (
+          <div
+            key={i}
+            className="w-full h-2 sm:h-2.5 rounded-sm border-t border-b shadow-sm relative overflow-hidden"
+            style={{
+              backgroundColor: c.bg,
+              borderColor: c.rim,
+              boxShadow: "inset 0 1px 1px rgba(255,255,255,0.4), 0 1px 2px rgba(0,0,0,0.6)"
+            }}
+          >
+            <div
+              className="absolute inset-y-0 left-1 w-1 opacity-70"
+              style={{ backgroundColor: c.stripe }}
+            />
+            <div
+              className="absolute inset-y-0 right-1 w-1 opacity-70"
+              style={{ backgroundColor: c.stripe }}
+            />
+          </div>
+        ))}
+      </div>
+      <span className="text-[7px] sm:text-[8px] font-black tracking-tighter text-amber-300/80 mt-0.5">
+        ${denom}
+      </span>
+    </div>
+  );
+}
+
+// Inset Brass Cup Holder on the Leather Rail
+function BrassCupHolder({ side }: { side: "left" | "right" }) {
+  return (
+    <div
+      className={`hidden lg:flex absolute top-1/2 -translate-y-1/2 z-10 ${
+        side === "left" ? "left-4" : "right-4"
+      } h-14 w-14 sm:h-16 sm:w-16 rounded-full border-4 border-[#855325] p-1.5 shadow-[inset_0_4px_12px_rgba(0,0,0,0.9),0_6px_14px_rgba(0,0,0,0.7)]`}
+      style={{
+        background: "radial-gradient(circle at 35% 35%, #92400e 0%, #451a03 60%, #1c0a02 100%)"
+      }}
+    >
+      <div className="h-full w-full rounded-full border border-amber-400/40 bg-[radial-gradient(circle_at_30%_30%,#1e1107,#090401_85%)] shadow-inner flex items-center justify-center">
+        <div className="h-4 w-4 rounded-full border border-amber-500/20 bg-black/60 opacity-60" />
+      </div>
+    </div>
+  );
+}
+
+// Eye-catching Floating Score Badge for any hand
+function HandScoreBadge({ evaluation, className = "" }: { evaluation: HandEvaluation; className?: string }) {
+  if (evaluation.total === 0) return null;
+
+  if (evaluation.isBlackjack) {
+    return (
+      <span
+        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] sm:text-xs font-black uppercase tracking-wide bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-slate-950 shadow-[0_0_15px_rgba(251,191,36,0.7)] border border-amber-200 animate-pulse ${className}`}
+      >
+        <Trophy className="h-3 w-3 text-slate-950" />
+        <span>BJ 21</span>
+      </span>
+    );
+  }
+
+  if (evaluation.isBust) {
+    return (
+      <span
+        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] sm:text-xs font-black uppercase tracking-wide bg-gradient-to-r from-rose-600 to-red-700 text-white shadow-[0_0_12px_rgba(225,29,72,0.6)] border border-rose-400 ${className}`}
+      >
+        <span>💥 {evaluation.total} BUST</span>
+      </span>
+    );
+  }
+
+  if (evaluation.total === 21) {
+    return (
+      <span
+        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] sm:text-xs font-black tracking-wide bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-[0_0_12px_rgba(16,185,129,0.5)] border border-emerald-300 ${className}`}
+      >
+        21
+      </span>
+    );
+  }
+
+  if (evaluation.isSoft) {
+    return (
+      <span
+        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] sm:text-[11px] font-black tracking-wide bg-cyan-950/90 text-cyan-200 border border-cyan-400/60 shadow-md ${className}`}
+      >
+        Soft {evaluation.total}
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] sm:text-xs font-black tracking-wide bg-slate-950/85 text-amber-200 border border-amber-400/40 shadow-md tabular-nums ${className}`}
+    >
+      {evaluation.total}
+    </span>
+  );
+}
 
 export function BlackjackTable(props: BoardGameTableProps) {
   const { room, state, legalActions, currentUserId, onAction, onChat, onEndMatch } = props;
@@ -40,7 +156,7 @@ export function BlackjackTable(props: BoardGameTableProps) {
     if (type === "bust") casinoAudio.playBust();
   }
 
-  // Trigger win sound on round results
+  // Trigger audio fanfare on round finish
   useEffect(() => {
     if (phase === "round_end" && roundResults && roundResults.length > 0) {
       const anyWin = roundResults.some((r) => r.result === "win" || r.result === "blackjack");
@@ -58,6 +174,14 @@ export function BlackjackTable(props: BoardGameTableProps) {
   function handleClearBet() {
     playSound("chip");
     onAction("blackjack_action", { choice: "clear_bet" });
+  }
+
+  function handleDoubleBet() {
+    playSound("chip");
+    const additional = Math.min(myCurrentBet, myChips);
+    if (additional > 0) {
+      onAction("blackjack_action", { choice: "bet", amount: additional });
+    }
   }
 
   function handleDeal() {
@@ -90,7 +214,6 @@ export function BlackjackTable(props: BoardGameTableProps) {
     onAction("blackjack_action", { choice: "next_round" });
   }
 
-  // Can double?
   const activeHandIndex = state.blackjackActiveHandIndex ?? 0;
   const activeHand = myHands[activeHandIndex] ?? [];
   const canDouble = isMyTurn && activeHand.length === 2 && myChips >= (myBets[activeHandIndex] ?? 0);
@@ -101,48 +224,88 @@ export function BlackjackTable(props: BoardGameTableProps) {
     activeHand[0]?.slice(0, -1) === activeHand[1]?.slice(0, -1) &&
     myHands.length < 4;
 
-  // Other players (opponents)
+  // Seating calculation: 5 positions along the widescreen arc
+  // [Seat 1 (Far Left), Seat 2 (Mid Left), Seat 3 (Center: YOU), Seat 4 (Mid Right), Seat 5 (Far Right)]
   const otherPlayers = state.players.filter((p) => p.userId !== currentUserId);
 
+  const fiveSeats = useMemo(() => {
+    // Center seat (index 2) is ALWAYS the local viewer
+    const seats: Array<{
+      positionIndex: number;
+      player: typeof me | null;
+      isLocal: boolean;
+      yOffsetClass: string;
+    }> = [
+      { positionIndex: 0, player: null, isLocal: false, yOffsetClass: "-translate-y-4 lg:-translate-y-8" },
+      { positionIndex: 1, player: null, isLocal: false, yOffsetClass: "-translate-y-1 lg:-translate-y-2" },
+      { positionIndex: 2, player: me ?? null, isLocal: true, yOffsetClass: "translate-y-2 lg:translate-y-4" },
+      { positionIndex: 3, player: null, isLocal: false, yOffsetClass: "-translate-y-1 lg:-translate-y-2" },
+      { positionIndex: 4, player: null, isLocal: false, yOffsetClass: "-translate-y-4 lg:-translate-y-8" }
+    ];
+
+    // Assign opponents to seats around the user
+    if (otherPlayers.length === 1) {
+      seats[1]!.player = otherPlayers[0]!;
+    } else if (otherPlayers.length === 2) {
+      seats[1]!.player = otherPlayers[0]!;
+      seats[3]!.player = otherPlayers[1]!;
+    } else if (otherPlayers.length === 3) {
+      seats[0]!.player = otherPlayers[0]!;
+      seats[1]!.player = otherPlayers[1]!;
+      seats[3]!.player = otherPlayers[2]!;
+    } else if (otherPlayers.length >= 4) {
+      seats[0]!.player = otherPlayers[0]!;
+      seats[1]!.player = otherPlayers[1]!;
+      seats[3]!.player = otherPlayers[2]!;
+      seats[4]!.player = otherPlayers[3]!;
+    }
+
+    return seats;
+  }, [me, otherPlayers]);
+
+  const dealerEval = useMemo(() => {
+    return evaluateBlackjackHand(dealerCards);
+  }, [dealerCards]);
+
   return (
-    <div className="relative flex h-full min-h-0 w-full flex-col select-none overflow-hidden bg-[#050c0a] text-white">
+    <div className="relative flex h-full min-h-0 w-full flex-col select-none overflow-hidden bg-[#030907] text-white">
       {/* ============================================================== */}
-      {/* CASINO AMBIENT BACKGROUND & CEILING LIGHTS                    */}
+      {/* CASINO AMBIENT LIGHTING & CHANDELIER SHADOWS                  */}
       {/* ============================================================== */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(16,185,129,0.18),transparent_65%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_110%,rgba(217,119,6,0.12),transparent_70%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(16,185,129,0.22),transparent_70%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_100%,rgba(217,119,6,0.12),transparent_65%)]" />
 
       {/* ============================================================== */}
-      {/* CASINO TOP HEADER                                              */}
+      {/* TOP HEADER: CASINO ROOM INFO & CONTROLS                        */}
       {/* ============================================================== */}
-      <header className="relative z-20 flex shrink-0 items-center justify-between border-b border-amber-500/20 bg-slate-950/80 px-4 py-2 backdrop-blur-md">
+      <header className="relative z-30 flex shrink-0 items-center justify-between border-b border-amber-500/20 bg-slate-950/85 px-4 py-2 backdrop-blur-md">
         <div className="flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-700 text-slate-950 font-black shadow-lg">
+          <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-amber-400 via-amber-600 to-yellow-800 text-slate-950 font-black shadow-lg">
             🎰
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-base font-black tracking-tight text-amber-200">
+              <h1 className="text-sm sm:text-base font-black tracking-tight text-amber-200">
                 VIP High-Roller Blackjack
               </h1>
               <span className="rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-black text-amber-300">
                 Round {state.blackjackRoundNumber ?? 1}
               </span>
             </div>
-            <p className="text-[11px] font-medium text-emerald-400/80">
-              Dealer stands on all 17s · Blackjack pays 3 to 2
+            <p className="text-[10px] sm:text-[11px] font-medium text-emerald-400/80">
+              Vegas Rules · Dealer stands on 17 · Blackjack pays 3 to 2
             </p>
           </div>
         </div>
 
-        {/* Top Controls: Sound, Rules, Chips */}
-        <div className="flex items-center gap-3">
+        {/* Top Controls: Sound, Rules, Chip Bankroll */}
+        <div className="flex items-center gap-2 sm:gap-3">
           {/* Chip Bankroll Pod */}
-          <div className="flex items-center gap-2 rounded-xl border border-amber-400/30 bg-black/40 px-3 py-1.5 shadow-inner">
-            <span className="text-[11px] font-black uppercase tracking-wider text-amber-400">
+          <div className="flex items-center gap-2 rounded-xl border border-amber-400/35 bg-black/50 px-3 py-1.5 shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)]">
+            <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-amber-400">
               Chips:
             </span>
-            <span className="font-mono text-base font-black text-emerald-300 tabular-nums">
+            <span className="font-mono text-sm sm:text-base font-black text-emerald-300 tabular-nums">
               ${myChips.toLocaleString("en-US")}
             </span>
           </div>
@@ -168,198 +331,345 @@ export function BlackjackTable(props: BoardGameTableProps) {
       </header>
 
       {/* ============================================================== */}
-      {/* MAIN CASINO BLACKJACK TABLE (SEMI-CIRCULAR FELT)                */}
+      {/* MAIN CASINO BLACKJACK ARENA (FULL WIDESCREEN 3D TABLE)        */}
       {/* ============================================================== */}
-      <main className="relative flex flex-1 min-h-0 flex-col items-center justify-between p-2 sm:p-4 overflow-hidden">
-        {/* SEMI-CIRCULAR FELT WITH PADDED LEATHER RAIL */}
+      <main className="relative flex flex-1 min-h-0 flex-col items-center justify-between p-2 sm:p-3 overflow-hidden">
+        {/* SEMI-CIRCULAR 3D TABLE BODY */}
         <div
-          className="relative flex h-full w-full max-w-5xl flex-col items-center justify-between rounded-b-[180px] sm:rounded-b-[240px] border-x-[12px] sm:border-x-[16px] border-b-[14px] sm:border-b-[18px] border-t-2 border-[#542d10] p-4 shadow-[inset_0_0_80px_rgba(0,0,0,0.8),0_25px_60px_rgba(0,0,0,0.9)] overflow-hidden"
+          className="relative flex h-full w-full max-w-[1780px] 2xl:max-w-[1920px] flex-col items-center justify-between rounded-b-[180px] sm:rounded-b-[240px] md:rounded-b-[300px] border-x-[12px] sm:border-x-[18px] md:border-x-[24px] border-b-[14px] sm:border-b-[22px] md:border-b-[28px] border-t-[8px] sm:border-t-[10px] border-[#381a0e] shadow-[inset_0_0_120px_rgba(0,0,0,0.85),0_30px_70px_rgba(0,0,0,0.95)] overflow-hidden"
           style={{
             background:
-              "radial-gradient(circle at 50% 15%, #065f46 0%, #044e39 45%, #022c22 85%, #011d16 100%)",
+              "radial-gradient(ellipse at 50% 20%, #0d6e51 0%, #07523c 40%, #033929 75%, #012218 100%)",
             boxShadow:
-              "inset 0 0 100px rgba(0,0,0,0.7), inset 0 2px 4px rgba(255,255,255,0.2), 0 20px 50px rgba(0,0,0,0.85)"
+              "inset 0 0 140px rgba(0,0,0,0.8), inset 0 3px 6px rgba(255,255,255,0.25), 0 25px 60px rgba(0,0,0,0.9)"
           }}
         >
-          {/* Subtle felt texture line / arc */}
-          <div className="pointer-events-none absolute inset-x-8 top-1/2 -translate-y-1/2 h-[70%] rounded-b-full border-2 border-dashed border-amber-300/20" />
+          {/* Embedded Brass Cup Holders on Rails */}
+          <BrassCupHolder side="left" />
+          <BrassCupHolder side="right" />
 
-          {/* Golden Casino Text printed on table */}
-          <div className="pointer-events-none absolute top-[36%] inset-x-0 text-center select-none">
-            <p className="font-serif text-[10px] sm:text-xs font-black tracking-[0.25em] text-amber-200/40 uppercase">
+          {/* Golden Stitched Seam on Inner Leather Rail */}
+          <div className="pointer-events-none absolute inset-x-3 sm:inset-x-6 top-0 bottom-3 sm:bottom-6 rounded-b-[160px] sm:rounded-b-[220px] md:rounded-b-[280px] border-2 border-dashed border-amber-500/20" />
+
+          {/* ========================================================== */}
+          {/* CURVED CASINO TEXT & FELT MARKINGS (FROM REAL TABLE)       */}
+          {/* ========================================================== */}
+          <div className="pointer-events-none absolute inset-x-0 top-[28%] sm:top-[30%] flex flex-col items-center justify-center select-none text-center px-4">
+            {/* Concentric curved dashed line across the table */}
+            <div className="absolute w-[85%] max-w-[1200px] h-[180px] sm:h-[220px] rounded-b-full border-b-2 border-dashed border-emerald-300/20 -top-8" />
+
+            {/* ARC 1: BLACKJACK PAYS 3 TO 2 (Bold Crimson Serif) */}
+            <h2 className="font-serif text-xs sm:text-base md:text-xl lg:text-2xl font-black tracking-[0.25em] text-[#dc2626] uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
               ★ BLACKJACK PAYS 3 TO 2 ★
-            </p>
-            <p className="mt-1 font-serif text-[8px] sm:text-[10px] font-bold tracking-[0.2em] text-white/30 uppercase">
-              Dealer must draw to 16 and stand on all 17s
-            </p>
-          </div>
+            </h2>
 
-          {/* ========================================================== */}
-          {/* DEALER AREA (TOP CENTER)                                   */}
-          {/* ========================================================== */}
-          <div className="relative z-10 flex flex-col items-center gap-1.5">
-            {/* Dealer Chip Tray & Nameplate */}
-            <div className="flex items-center gap-2 rounded-full border border-amber-400/30 bg-slate-950/70 px-4 py-1 shadow-lg backdrop-blur-sm">
-              <span className="text-xs font-black tracking-wider text-amber-300 uppercase">
-                DEALER
+            {/* ARC 2: House Rule Text */}
+            <p className="mt-1 font-serif text-[9px] sm:text-xs md:text-sm font-bold tracking-[0.2em] text-amber-200/60 uppercase drop-shadow">
+              Dealer must draw to 16, and stand on all 17's
+            </p>
+
+            {/* ARC 3: Insurance Ribbon Inscription */}
+            <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-950/40 px-4 py-1 backdrop-blur-xs">
+              <span className="font-serif text-[8px] sm:text-[10px] md:text-xs font-black tracking-[0.2em] text-yellow-300/80 uppercase">
+                INSURANCE PAYS 2 TO 1
               </span>
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              {dealerCards.length > 0 ? (
-                <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 font-mono text-[11px] font-black text-emerald-300">
-                  {holeHidden ? `Shows ${dealerScore}` : `Total: ${dealerScore}`}
-                </span>
-              ) : null}
-            </div>
-
-            {/* Dealer Cards */}
-            <div className="flex items-center justify-center gap-2 min-h-[90px] sm:min-h-[105px]">
-              {dealerCards.length === 0 ? (
-                <div className="flex items-center gap-2 opacity-30">
-                  <div className="h-20 w-14 rounded-lg border-2 border-dashed border-white/40" />
-                  <div className="h-20 w-14 rounded-lg border-2 border-dashed border-white/40" />
-                </div>
-              ) : (
-                dealerCards.map((card, i) => (
-                  <CasinoPlayingCard
-                    key={`${i}-${card}`}
-                    card={card}
-                    hidden={card === "hidden"}
-                    size="md"
-                    className="shadow-2xl"
-                  />
-                ))
-              )}
             </div>
           </div>
 
           {/* ========================================================== */}
-          {/* OPPONENT SEATS (AROUND THE PERIMETER)                      */}
+          {/* DEALER STATION (TOP CENTER)                                */}
           {/* ========================================================== */}
-          {otherPlayers.length > 0 ? (
-            <div className="relative z-10 flex w-full justify-around px-4">
-              {otherPlayers.map((player) => {
+          <div className="relative z-20 flex w-full flex-col items-center pt-1 sm:pt-2">
+            {/* Embedded 3D Casino Chip Tray & Dealing Shoe Header */}
+            <div className="relative flex items-center justify-center gap-2 sm:gap-6 bg-gradient-to-b from-[#1b0d06] to-[#0d0502] px-4 sm:px-8 py-1.5 rounded-b-2xl border-x-2 border-b-2 border-[#542d10] shadow-[0_10px_25px_rgba(0,0,0,0.85)]">
+              {/* Dealer Chip Rack with 7 columns */}
+              <div className="flex items-center gap-1 sm:gap-1.5 p-1 rounded-lg bg-black/70 border border-amber-900/40">
+                <DealerChipColumn denom={1000} count={8} />
+                <DealerChipColumn denom={500} count={9} />
+                <DealerChipColumn denom={100} count={12} />
+                <DealerChipColumn denom={50} count={10} />
+                <DealerChipColumn denom={25} count={14} />
+                <DealerChipColumn denom={10} count={12} />
+                <DealerChipColumn denom={5} count={15} />
+              </div>
+
+              {/* DEALER Acrylic Dealing Shoe (Top Right) */}
+              <div className="hidden md:flex flex-col items-center justify-center h-14 sm:h-16 w-16 sm:w-20 rounded-lg border-2 border-slate-700/80 bg-gradient-to-br from-slate-900 via-slate-950 to-black p-1 shadow-2xl relative overflow-hidden">
+                <span className="text-[8px] font-black tracking-widest text-white/50 uppercase">
+                  SHOE (4D)
+                </span>
+                <div className="w-12 h-6 rounded-xs border border-white/20 bg-gradient-to-r from-red-900 via-amber-900 to-red-950 mt-1 shadow-inner flex items-center justify-center">
+                  <span className="text-[8px] text-amber-300 font-bold">♠ ♥</span>
+                </div>
+              </div>
+            </div>
+
+            {/* DEALER Cards & Score Badge */}
+            <div className="flex flex-col items-center gap-1.5 mt-2">
+              <div className="flex items-center gap-2">
+                {/* White Circular "DEALER" Puck */}
+                <div className="grid h-6 w-6 sm:h-7 sm:w-7 place-items-center rounded-full border border-slate-400 bg-white font-serif text-[8px] sm:text-[9px] font-black text-slate-950 shadow-md">
+                  D
+                </div>
+                <span className="text-xs sm:text-sm font-black tracking-wider text-amber-300 uppercase">
+                  DEALER
+                </span>
+
+                {/* Score Pill */}
+                {dealerCards.length > 0 ? (
+                  holeHidden ? (
+                    <span className="rounded-full border border-sky-400/40 bg-sky-950/80 px-2.5 py-0.5 font-mono text-[11px] font-black text-sky-200 shadow">
+                      Shows {dealerScore}
+                    </span>
+                  ) : (
+                    <HandScoreBadge evaluation={dealerEval} />
+                  )
+                ) : null}
+              </div>
+
+              {/* Dealer Cards Cascading */}
+              <div className="flex items-center justify-center min-h-[95px] sm:min-h-[115px] pt-1">
+                {dealerCards.length === 0 ? (
+                  <div className="flex items-center -space-x-8 opacity-30">
+                    <div className="h-20 w-14 sm:h-24 sm:w-16 rounded-lg border-2 border-dashed border-white/40" />
+                    <div className="h-20 w-14 sm:h-24 sm:w-16 rounded-lg border-2 border-dashed border-white/40" />
+                  </div>
+                ) : (
+                  <div className="flex items-center -space-x-7 sm:-space-x-9">
+                    {dealerCards.map((card, i) => (
+                      <motion.div
+                        key={`${i}-${card}`}
+                        initial={{ y: -30, opacity: 0, scale: 0.8 }}
+                        animate={{ y: 0, opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.25, delay: i * 0.08 }}
+                        className="relative"
+                        style={{ zIndex: i }}
+                      >
+                        <CasinoPlayingCard
+                          card={card}
+                          hidden={card === "hidden"}
+                          size="md"
+                          className="shadow-[0_8px_20px_rgba(0,0,0,0.7)]"
+                        />
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Live Game Announcement Capsule */}
+              <div className="mt-1 flex items-center gap-1.5 rounded-full border border-amber-400/30 bg-slate-950/80 px-4 py-1 shadow-lg backdrop-blur-md">
+                <Flame className="h-3.5 w-3.5 text-amber-400 animate-pulse" />
+                <span className="text-[11px] sm:text-xs font-bold text-amber-200">
+                  {state.blackjackLastAction || "Place your bets to start the hand."}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* ========================================================== */}
+          {/* THE 5 PANORAMIC BETTING STATIONS (WIDESCREEN ARC)          */}
+          {/* ========================================================== */}
+          <div className="relative z-20 w-full px-2 sm:px-4 md:px-8 pb-3 sm:pb-5">
+            <div className="grid grid-cols-5 gap-2 sm:gap-4 md:gap-6 items-end w-full">
+              {fiveSeats.map((seat, seatIdx) => {
+                const player = seat.player;
+                const isLocal = seat.isLocal;
+
+                // If seat is empty, show empty betting box on felt
+                if (!player) {
+                  return (
+                    <div
+                      key={`empty-${seatIdx}`}
+                      className={`flex flex-col items-center justify-end ${seat.yOffsetClass} opacity-35`}
+                    >
+                      {/* Empty Circular Bet Spot */}
+                      <div className="h-14 w-14 sm:h-18 sm:w-18 rounded-full border-2 border-dashed border-emerald-300/30 flex items-center justify-center">
+                        <span className="text-[9px] font-black uppercase tracking-wider text-emerald-300/40">
+                          SEAT {seatIdx + 1}
+                        </span>
+                      </div>
+                      {/* Empty Rectangular Card Area */}
+                      <div className="mt-2 h-20 w-16 sm:h-24 sm:w-20 rounded-xl border border-dashed border-emerald-300/20 bg-emerald-950/10" />
+                    </div>
+                  );
+                }
+
+                // Populated player seat
                 const hands = state.blackjackPlayerHands?.[player.userId] ?? [[]];
                 const bets = state.blackjackBets?.[player.userId] ?? [0];
                 const chips = state.blackjackChips?.[player.userId] ?? 0;
                 const isTurn = state.currentPlayerId === player.userId;
+                const results = state.blackjackRoundResults?.[player.userId];
 
                 return (
                   <div
                     key={player.userId}
-                    className={`flex flex-col items-center gap-1 rounded-2xl border p-2 backdrop-blur-sm transition-all ${
-                      isTurn
-                        ? "border-amber-400 bg-amber-500/15 ring-2 ring-amber-400/50 shadow-xl"
-                        : "border-white/10 bg-black/40"
-                    }`}
+                    className={`flex flex-col items-center justify-end ${seat.yOffsetClass} transition-all duration-300`}
                   >
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[11px] font-bold text-white">
-                        {player.displayName}
-                      </span>
-                      {player.isBot ? (
-                        <span className="rounded bg-sky-500/20 px-1 text-[8px] font-black text-sky-300 uppercase">
-                          BOT
-                        </span>
-                      ) : null}
-                    </div>
-
-                    <span className="font-mono text-[10px] text-emerald-300 font-bold">
-                      ${chips.toLocaleString("en-US")}
-                    </span>
-
-                    {/* Opponent Cards */}
-                    <div className="flex items-center gap-1 mt-0.5">
-                      {hands[0]?.map((c, idx) => (
-                        <CasinoPlayingCard key={idx} card={c} size="xs" />
-                      ))}
-                    </div>
-
-                    {/* Opponent Bet */}
-                    {bets[0] ? (
-                      <div className="mt-1">
-                        <ChipStack amount={bets[0]} size="xs" />
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          ) : null}
-
-          {/* ========================================================== */}
-          {/* LOCAL PLAYER SEAT & BETTING SPOT (BOTTOM CENTER)           */}
-          {/* ========================================================== */}
-          <div className="relative z-10 flex flex-col items-center gap-2">
-            {/* Split hands container or single hand */}
-            <div className="flex items-center justify-center gap-6">
-              {myHands.map((hand, handIdx) => {
-                const handEval = evaluateBlackjackHand(hand);
-                const handBet = myBets[handIdx] ?? 0;
-                const isActiveHand = isMyTurn && activeHandIndex === handIdx;
-
-                return (
-                  <div
-                    key={handIdx}
-                    className={`flex flex-col items-center gap-1.5 p-2 rounded-2xl transition-all ${
-                      isActiveHand
-                        ? "ring-2 ring-amber-300 bg-black/40 shadow-2xl scale-105"
-                        : ""
-                    }`}
-                  >
-                    {/* Golden Circular Betting Spot */}
+                    {/* Active Turn Halo Ring & Pod */}
                     <div
-                      className={`relative flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full border-2 border-dashed transition-all ${
-                        handBet > 0
-                          ? "border-amber-400 bg-amber-400/10 shadow-[0_0_20px_rgba(251,191,36,0.3)]"
-                          : "border-white/30 bg-black/20"
+                      className={`relative flex flex-col items-center gap-1 rounded-2xl p-2 sm:p-2.5 transition-all duration-300 w-full max-w-[280px] ${
+                        isTurn
+                          ? "bg-amber-500/20 border-2 border-amber-300 ring-4 ring-amber-400/40 shadow-[0_0_35px_rgba(251,191,36,0.6)] scale-105 z-30"
+                          : isLocal
+                            ? "bg-black/50 border border-emerald-400/40 shadow-xl z-20"
+                            : "bg-black/40 border border-white/10 shadow-lg"
                       }`}
                     >
-                      {handBet > 0 ? (
-                        <ChipStack amount={handBet} size="sm" showLabel={false} />
-                      ) : (
-                        <span className="text-[10px] font-black tracking-widest text-white/30 uppercase">
-                          BET
-                        </span>
-                      )}
+                      {/* Floating End-of-Round Celebration Banner */}
+                      <AnimatePresence>
+                        {phase === "round_end" && results && results[0] ? (
+                          <motion.div
+                            initial={{ y: -15, scale: 0.8, opacity: 0 }}
+                            animate={{ y: 0, scale: 1, opacity: 1 }}
+                            exit={{ y: -10, opacity: 0 }}
+                            className={`absolute -top-6 rounded-full px-3 py-1 text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-2xl z-40 border ${
+                              results[0].result === "win" || results[0].result === "blackjack"
+                                ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 border-emerald-200 shadow-[0_0_20px_rgba(16,185,129,0.8)]"
+                                : results[0].result === "bust"
+                                  ? "bg-rose-600 text-white border-rose-300 shadow-[0_0_15px_rgba(225,29,72,0.6)]"
+                                  : results[0].result === "push"
+                                    ? "bg-slate-700 text-amber-200 border-slate-400"
+                                    : "bg-slate-900 text-white/70 border-white/20"
+                            }`}
+                          >
+                            {results[0].result === "blackjack"
+                              ? `🏆 BJ +$${results[0].payout}`
+                              : results[0].result === "win"
+                                ? `🎉 WIN +$${results[0].payout}`
+                                : results[0].result === "bust"
+                                  ? "💥 BUST"
+                                  : results[0].result === "push"
+                                    ? "🤝 PUSH"
+                                    : "DEALER WINS"}
+                          </motion.div>
+                        ) : null}
+                      </AnimatePresence>
 
-                      {/* Bet Label Badge */}
-                      {handBet > 0 ? (
-                        <span className="absolute -bottom-2 rounded-full border border-amber-300 bg-slate-950 px-2 py-0.5 font-mono text-[10px] font-black text-amber-300 shadow">
-                          ${handBet}
-                        </span>
-                      ) : null}
-                    </div>
-
-                    {/* Player Cards for this hand */}
-                    <div className="flex items-center justify-center gap-1.5 min-h-[90px] sm:min-h-[105px]">
-                      {hand.length === 0 ? (
-                        <div className="flex items-center gap-1.5 opacity-20">
-                          <div className="h-20 w-14 rounded-lg border border-dashed border-white" />
-                          <div className="h-20 w-14 rounded-lg border border-dashed border-white" />
+                      {/* Seat Avatar & Nameplate */}
+                      <div className="flex items-center gap-1.5 w-full justify-center">
+                        <div
+                          className={`grid h-6 w-6 sm:h-7 sm:w-7 place-items-center rounded-full text-xs font-black shadow-md ${
+                            isLocal
+                              ? "bg-gradient-to-br from-emerald-400 to-teal-600 text-slate-950"
+                              : "bg-gradient-to-br from-slate-700 to-slate-900 text-white"
+                          }`}
+                        >
+                          {player.displayName.charAt(0).toUpperCase()}
                         </div>
-                      ) : (
-                        hand.map((c, i) => (
-                          <CasinoPlayingCard key={`${i}-${c}`} card={c} size="md" />
-                        ))
-                      )}
-                    </div>
+                        <div className="flex flex-col items-start leading-tight">
+                          <div className="flex items-center gap-1">
+                            <span className="text-[11px] sm:text-xs font-black text-white truncate max-w-[80px] sm:max-w-[100px]">
+                              {player.displayName}
+                            </span>
+                            {player.isBot ? (
+                              <span className="rounded bg-sky-500/25 px-1 py-0.2 text-[8px] font-black text-sky-300 uppercase">
+                                BOT
+                              </span>
+                            ) : isLocal ? (
+                              <span className="rounded bg-emerald-500/25 px-1 py-0.2 text-[8px] font-black text-emerald-300 uppercase">
+                                YOU
+                              </span>
+                            ) : null}
+                          </div>
+                          <span className="font-mono text-[10px] sm:text-[11px] font-bold text-emerald-300 tabular-nums">
+                            ${chips.toLocaleString("en-US")}
+                          </span>
+                        </div>
+                      </div>
 
-                    {/* Hand Score Badge */}
-                    {hand.length > 0 ? (
-                      <span
-                        className={`rounded-full px-2.5 py-0.5 text-[11px] font-black shadow-md ${
-                          handEval.isBlackjack
-                            ? "bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 animate-bounce"
-                            : handEval.isBust
-                              ? "bg-rose-600 text-white"
-                              : handEval.total === 21
-                                ? "bg-emerald-500 text-white"
-                                : "bg-black/60 text-white border border-white/20"
-                        }`}
-                      >
-                        {handEval.displayValue}
-                      </span>
-                    ) : null}
+                      {/* Active Turn Banner */}
+                      {isTurn ? (
+                        <div className="flex items-center gap-1 rounded-full bg-amber-400 px-2 py-0.5 text-[9px] font-black text-slate-950 uppercase tracking-widest animate-bounce">
+                          <span>▶ ACTING NOW</span>
+                        </div>
+                      ) : null}
+
+                      {/* Circular Golden Betting Ring (Front of Box towards Dealer) */}
+                      <div className="relative mt-1">
+                        <div
+                          className={`flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-full border-2 transition-all ${
+                            (bets[0] ?? 0) > 0
+                              ? "border-amber-400 bg-amber-400/10 shadow-[0_0_20px_rgba(251,191,36,0.35)]"
+                              : "border-dashed border-amber-400/50 bg-black/30"
+                          }`}
+                        >
+                          {(bets[0] ?? 0) > 0 ? (
+                            <ChipStack amount={bets[0]!} size="sm" showLabel={false} />
+                          ) : (
+                            <span className="text-[9px] font-black uppercase tracking-wider text-amber-300/40">
+                              BET
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Bet Amount Pill Badge */}
+                        {(bets[0] ?? 0) > 0 ? (
+                          <span className="absolute -bottom-2 inset-x-0 mx-auto w-fit rounded-full border border-amber-300 bg-slate-950 px-2 py-0.2 font-mono text-[10px] font-black text-amber-300 shadow">
+                            ${bets[0]}
+                          </span>
+                        ) : null}
+                      </div>
+
+                      {/* Rectangular Card Placement Felt Box */}
+                      <div className="relative mt-2 w-full rounded-xl border border-emerald-400/40 bg-emerald-950/30 p-2 shadow-inner">
+                        {/* Hands Container (Handles Split Hands for Local Player) */}
+                        <div className="flex items-center justify-center gap-3">
+                          {hands.map((hand, handIdx) => {
+                            const handEval = evaluateBlackjackHand(hand);
+                            const isActiveSplitHand = isTurn && activeHandIndex === handIdx;
+
+                            return (
+                              <div
+                                key={handIdx}
+                                className={`relative flex flex-col items-center gap-1 rounded-lg p-1 transition-all ${
+                                  isActiveSplitHand
+                                    ? "ring-2 ring-amber-400 bg-amber-500/10"
+                                    : ""
+                                }`}
+                              >
+                                {/* Prominent Score Badge (Attached to Top Right) */}
+                                {hand.length > 0 ? (
+                                  <div className="self-end -mb-2 z-20">
+                                    <HandScoreBadge evaluation={handEval} />
+                                  </div>
+                                ) : null}
+
+                                {/* Overlapping Cascading Cards */}
+                                <div className="flex items-center justify-center min-h-[90px] sm:min-h-[110px] pt-1">
+                                  {hand.length === 0 ? (
+                                    <div className="flex items-center -space-x-8 opacity-25">
+                                      <div className="h-20 w-14 sm:h-24 sm:w-16 rounded-lg border border-dashed border-white" />
+                                      <div className="h-20 w-14 sm:h-24 sm:w-16 rounded-lg border border-dashed border-white" />
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center -space-x-7 sm:-space-x-9">
+                                      {hand.map((c, i) => (
+                                        <motion.div
+                                          key={`${i}-${c}`}
+                                          initial={{ y: -25, opacity: 0, scale: 0.8 }}
+                                          animate={{ y: 0, opacity: 1, scale: 1 }}
+                                          transition={{ duration: 0.2, delay: i * 0.06 }}
+                                          className="relative"
+                                          style={{ zIndex: i }}
+                                        >
+                                          <CasinoPlayingCard
+                                            card={c}
+                                            size={isLocal ? "md" : "sm"}
+                                            className="shadow-[0_6px_16px_rgba(0,0,0,0.6)]"
+                                          />
+                                        </motion.div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 );
               })}
@@ -367,16 +677,16 @@ export function BlackjackTable(props: BoardGameTableProps) {
           </div>
         </div>
 
-        {/* ========================================================== */}
-        {/* CASINO ACTION / BETTING CONSOLE (BOTTOM BAR)              */}
-        {/* ========================================================== */}
-        <div className="relative z-20 mt-2 flex w-full max-w-4xl flex-col items-center gap-2 rounded-2xl border border-amber-500/20 bg-slate-950/90 p-3 shadow-2xl backdrop-blur-xl">
+        {/* ============================================================== */}
+        {/* 3D CASINO ACTION / BETTING CONSOLE (REPLICATING IMAGE 3)       */}
+        {/* ============================================================== */}
+        <div className="relative z-30 mt-2 flex w-full max-w-5xl flex-col items-center gap-2 rounded-2xl border-2 border-amber-500/30 bg-gradient-to-b from-slate-900/95 via-slate-950/95 to-black p-3 shadow-[0_15px_40px_rgba(0,0,0,0.85)] backdrop-blur-xl">
           {/* PHASE: BETTING CONSOLE */}
           {phase === "betting" ? (
             <div className="flex w-full flex-wrap items-center justify-between gap-3">
-              {/* Chip Tray */}
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-wider text-amber-400/80 mr-1 hidden sm:inline">
+              {/* Chip Selector Tray */}
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-amber-400/90 mr-1 hidden sm:inline">
                   Select Chip:
                 </span>
                 {BET_CHIPS.map((chip) => (
@@ -390,67 +700,100 @@ export function BlackjackTable(props: BoardGameTableProps) {
                 ))}
               </div>
 
-              {/* Bet Action Buttons */}
-              <div className="flex items-center gap-2">
+              {/* Bet Modifiers & 3D DEAL Button */}
+              <div className="flex items-center gap-2 sm:gap-3">
                 <button
                   type="button"
                   onClick={handleClearBet}
                   disabled={myCurrentBet === 0}
-                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-white/70 hover:bg-white/10 disabled:opacity-30"
+                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-white/70 hover:bg-white/10 active:scale-95 disabled:opacity-30"
                 >
-                  Clear
+                  Clear Bet
                 </button>
 
                 <button
                   type="button"
+                  onClick={handleDoubleBet}
+                  disabled={myCurrentBet === 0 || myChips < myCurrentBet}
+                  className="rounded-xl border border-cyan-400/40 bg-cyan-950/60 px-3 py-2 text-xs font-black text-cyan-200 hover:bg-cyan-900/60 active:scale-95 disabled:opacity-30"
+                >
+                  2X Bet
+                </button>
+
+                {/* 3D Glossy DEAL Button */}
+                <button
+                  type="button"
                   onClick={handleDeal}
                   disabled={myCurrentBet < 10}
-                  className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-6 py-2.5 text-xs font-black text-slate-950 shadow-lg shadow-emerald-500/25 hover:brightness-110 active:scale-95 disabled:opacity-40"
+                  className="group relative flex items-center gap-2 rounded-full px-8 py-3 text-sm sm:text-base font-black tracking-wider uppercase text-slate-950 transition-all shadow-[0_6px_0_#064e3b,0_12px_24px_rgba(16,185,129,0.4)] hover:brightness-110 active:translate-y-1 active:shadow-[0_2px_0_#064e3b] disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{
+                    background: "linear-gradient(180deg, #34d399 0%, #10b981 40%, #059669 100%)"
+                  }}
                 >
-                  <Sparkles className="h-4 w-4" />
+                  <Sparkles className="h-5 w-5 text-slate-950" />
                   <span>DEAL (${myCurrentBet})</span>
                 </button>
               </div>
             </div>
           ) : null}
 
-          {/* PHASE: PLAYER TURNS (HIT, STAND, DOUBLE, SPLIT) */}
+          {/* PHASE: PLAYER TURNS (3D PILL BUTTONS REPLICATING IMAGE 3) */}
           {phase === "player_turns" ? (
-            <div className="flex w-full items-center justify-center gap-3">
+            <div className="flex w-full flex-wrap items-center justify-center gap-3 sm:gap-5 py-1">
+              {/* HIT BUTTON (Glossy Emerald 3D Pill) */}
               <button
                 type="button"
                 onClick={handleHit}
                 disabled={!isMyTurn}
-                className="flex items-center gap-1.5 rounded-xl bg-emerald-500 px-6 py-2.5 text-xs font-black text-slate-950 shadow-lg shadow-emerald-500/30 hover:bg-emerald-400 active:scale-95 disabled:opacity-30"
+                className="group relative flex items-center gap-2 rounded-full px-8 py-3 text-sm sm:text-base font-black tracking-wider uppercase text-slate-950 transition-all shadow-[0_6px_0_#064e3b,0_12px_24px_rgba(16,185,129,0.4)] hover:brightness-110 active:translate-y-1 active:shadow-[0_2px_0_#064e3b] disabled:opacity-30 disabled:cursor-not-allowed"
+                style={{
+                  background: "linear-gradient(180deg, #34d399 0%, #10b981 50%, #059669 100%)"
+                }}
               >
-                HIT 🃏
+                <span>HIT</span>
+                <span className="text-base sm:text-lg">🃏</span>
               </button>
 
+              {/* STAND BUTTON (Glossy Amber/Red 3D Pill) */}
               <button
                 type="button"
                 onClick={handleStand}
                 disabled={!isMyTurn}
-                className="flex items-center gap-1.5 rounded-xl bg-amber-400 px-6 py-2.5 text-xs font-black text-slate-950 shadow-lg shadow-amber-400/30 hover:bg-amber-300 active:scale-95 disabled:opacity-30"
+                className="group relative flex items-center gap-2 rounded-full px-8 py-3 text-sm sm:text-base font-black tracking-wider uppercase text-slate-950 transition-all shadow-[0_6px_0_#78350f,0_12px_24px_rgba(245,158,11,0.4)] hover:brightness-110 active:translate-y-1 active:shadow-[0_2px_0_#78350f] disabled:opacity-30 disabled:cursor-not-allowed"
+                style={{
+                  background: "linear-gradient(180deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%)"
+                }}
               >
-                STAND ✋
+                <span>STAND</span>
+                <span className="text-base sm:text-lg">✋</span>
               </button>
 
+              {/* DOUBLE BUTTON (Glossy Cyan 3D Pill) */}
               <button
                 type="button"
                 onClick={handleDouble}
                 disabled={!canDouble}
-                className="rounded-xl border border-cyan-400/50 bg-cyan-500/20 px-4 py-2 text-xs font-black text-cyan-200 hover:bg-cyan-500/30 active:scale-95 disabled:opacity-25"
+                className="group relative flex items-center gap-1.5 rounded-full px-6 py-2.5 text-xs sm:text-sm font-black tracking-wider uppercase text-slate-950 transition-all shadow-[0_5px_0_#164e63,0_10px_20px_rgba(6,182,212,0.35)] hover:brightness-110 active:translate-y-1 active:shadow-[0_2px_0_#164e63] disabled:opacity-25 disabled:cursor-not-allowed"
+                style={{
+                  background: "linear-gradient(180deg, #38bdf8 0%, #06b6d4 50%, #0891b2 100%)"
+                }}
               >
-                DOUBLE 2X
+                <span>DOUBLE 2X</span>
+                <span>⚡</span>
               </button>
 
+              {/* SPLIT BUTTON (Glossy Purple 3D Pill) */}
               {canSplit ? (
                 <button
                   type="button"
                   onClick={handleSplit}
-                  className="rounded-xl border border-purple-400/50 bg-purple-500/20 px-4 py-2 text-xs font-black text-purple-200 hover:bg-purple-500/30 active:scale-95"
+                  className="group relative flex items-center gap-1.5 rounded-full px-6 py-2.5 text-xs sm:text-sm font-black tracking-wider uppercase text-white transition-all shadow-[0_5px_0_#581c87,0_10px_20px_rgba(168,85,247,0.35)] hover:brightness-110 active:translate-y-1 active:shadow-[0_2px_0_#581c87]"
+                  style={{
+                    background: "linear-gradient(180deg, #c084fc 0%, #a855f7 50%, #7e22ce 100%)"
+                  }}
                 >
-                  SPLIT ✌️
+                  <span>SPLIT</span>
+                  <span>✌️</span>
                 </button>
               ) : null}
             </div>
@@ -458,20 +801,24 @@ export function BlackjackTable(props: BoardGameTableProps) {
 
           {/* PHASE: ROUND END CONSOLE */}
           {phase === "round_end" ? (
-            <div className="flex w-full flex-wrap items-center justify-between gap-3">
+            <div className="flex w-full flex-wrap items-center justify-between gap-3 px-2">
               <div className="flex items-center gap-2">
                 <Trophy className="h-5 w-5 text-amber-400" />
-                <span className="text-xs font-bold text-amber-200">
+                <span className="text-xs sm:text-sm font-black text-amber-200">
                   {roundResults?.[0]?.message ?? state.blackjackLastAction}
                 </span>
               </div>
 
+              {/* NEXT HAND 3D BUTTON */}
               <button
                 type="button"
                 onClick={handleNextRound}
-                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-600 px-6 py-2 text-xs font-black text-slate-950 shadow-lg shadow-amber-500/25 hover:brightness-110 active:scale-95"
+                className="group relative flex items-center gap-2 rounded-full px-8 py-3 text-sm sm:text-base font-black tracking-wider uppercase text-slate-950 transition-all shadow-[0_6px_0_#78350f,0_12px_24px_rgba(245,158,11,0.4)] hover:brightness-110 active:translate-y-1 active:shadow-[0_2px_0_#78350f]"
+                style={{
+                  background: "linear-gradient(180deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%)"
+                }}
               >
-                <RotateCcw className="h-4 w-4" />
+                <RotateCcw className="h-5 w-5" />
                 <span>NEXT HAND</span>
               </button>
             </div>
@@ -480,7 +827,7 @@ export function BlackjackTable(props: BoardGameTableProps) {
       </main>
 
       {/* ============================================================== */}
-      {/* RULES MODAL                                                    */}
+      {/* HOUSE RULES MODAL                                              */}
       {/* ============================================================== */}
       <AnimatePresence>
         {rulesOpen ? (
@@ -493,12 +840,15 @@ export function BlackjackTable(props: BoardGameTableProps) {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg rounded-2xl border border-amber-400/30 bg-slate-950 p-6 shadow-2xl space-y-4"
+              className="w-full max-w-lg rounded-2xl border-2 border-amber-400/40 bg-slate-950 p-6 shadow-2xl space-y-4"
             >
               <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                <h3 className="text-lg font-black text-amber-300">
-                  Blackjack · House Rules
-                </h3>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🎰</span>
+                  <h3 className="text-base sm:text-lg font-black text-amber-300">
+                    Vegas Blackjack House Rules
+                  </h3>
+                </div>
                 <button
                   type="button"
                   onClick={() => setRulesOpen(false)}
@@ -508,20 +858,27 @@ export function BlackjackTable(props: BoardGameTableProps) {
                 </button>
               </div>
 
-              <div className="space-y-3 text-xs text-white/70 leading-relaxed">
+              <div className="space-y-3 text-xs text-white/80 leading-relaxed">
                 <p>
-                  <strong>Objective:</strong> Beat the dealer's hand total without exceeding 21.
+                  <strong>Goal:</strong> Achieve a hand value closer to 21 than the dealer without going over 21.
                 </p>
-                <div className="rounded-xl bg-white/5 p-3 space-y-1">
-                  <p className="font-bold text-amber-200">Payouts:</p>
-                  <p>• Natural Blackjack: Pays <strong>3 to 2</strong></p>
-                  <p>• Standard Win: Pays <strong>1 to 1</strong></p>
-                  <p>• Tie / Push: Original bet returned</p>
+                <div className="rounded-xl bg-white/5 p-3 space-y-1 border border-white/10">
+                  <p className="font-bold text-amber-300 uppercase tracking-wider text-[11px]">Payouts:</p>
+                  <p>• <strong>Natural Blackjack</strong> (2 cards totaling 21): Pays <strong>3 to 2</strong></p>
+                  <p>• <strong>Standard Win</strong>: Pays <strong>1 to 1</strong> (Even money)</p>
+                  <p>• <strong>Push / Tie</strong>: Bet returned</p>
                 </div>
-                <div className="rounded-xl bg-white/5 p-3 space-y-1">
-                  <p className="font-bold text-emerald-300">Dealer Rules:</p>
-                  <p>• Dealer must draw cards until total is 17 or higher.</p>
-                  <p>• Dealer stands on all 17s (hard and soft).</p>
+                <div className="rounded-xl bg-white/5 p-3 space-y-1 border border-white/10">
+                  <p className="font-bold text-emerald-300 uppercase tracking-wider text-[11px]">Dealer Rules:</p>
+                  <p>• Dealer must draw cards until their hand reaches 17 or higher.</p>
+                  <p>• Dealer stands on all 17s (both hard and soft 17).</p>
+                </div>
+                <div className="rounded-xl bg-white/5 p-3 space-y-1 border border-white/10">
+                  <p className="font-bold text-cyan-300 uppercase tracking-wider text-[11px]">Player Moves:</p>
+                  <p>• <strong>Hit:</strong> Draw another card.</p>
+                  <p>• <strong>Stand:</strong> Keep current hand and end your turn.</p>
+                  <p>• <strong>Double Down:</strong> Double original bet, receive exactly one more card, and stand.</p>
+                  <p>• <strong>Split:</strong> If dealt a pair of equal cards, split them into two separate hands with an equal bet.</p>
                 </div>
               </div>
             </motion.div>

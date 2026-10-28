@@ -177,12 +177,12 @@ export function PokerTable(props: BoardGameTableProps) {
       <main className="relative flex flex-1 min-h-0 flex-col items-center justify-between p-2 sm:p-4 overflow-hidden">
         {/* CASINO OVAL TABLE FELT */}
         <div
-          className="relative flex h-full w-full max-w-5xl flex-col items-center justify-between rounded-[80px] sm:rounded-[120px] border-[12px] sm:border-[16px] border-[#542d10] p-4 shadow-[inset_0_0_100px_rgba(0,0,0,0.85),0_25px_60px_rgba(0,0,0,0.9)] overflow-hidden"
+          className="relative flex h-full w-full max-w-[1720px] 2xl:max-w-[1850px] flex-col items-center justify-between rounded-[80px] sm:rounded-[120px] border-[12px] sm:border-[18px] border-[#542d10] p-4 shadow-[inset_0_0_120px_rgba(0,0,0,0.85),0_30px_70px_rgba(0,0,0,0.95)] overflow-hidden"
           style={{
             background:
               "radial-gradient(ellipse at 50% 50%, #064e3b 0%, #043d2e 45%, #022c22 80%, #011c15 100%)",
             boxShadow:
-              "inset 0 0 100px rgba(0,0,0,0.7), inset 0 2px 4px rgba(255,255,255,0.2), 0 20px 50px rgba(0,0,0,0.85)"
+              "inset 0 0 120px rgba(0,0,0,0.7), inset 0 2px 4px rgba(255,255,255,0.25), 0 25px 60px rgba(0,0,0,0.9)"
           }}
         >
           {/* Inner Golden Racetrack Line */}
@@ -191,7 +191,7 @@ export function PokerTable(props: BoardGameTableProps) {
           {/* ========================================================== */}
           {/* TOP OPPONENTS ROW                                          */}
           {/* ========================================================== */}
-          <div className="relative z-10 flex w-full items-start justify-around px-2 sm:px-6">
+          <div className="relative z-10 flex w-full items-start justify-around px-2 sm:px-8">
             {opponents.map((player) => {
               const isEliminated = (player.stack ?? 0) <= 0 && player.folded;
               const isTurn = state.currentPlayerId === player.userId && state.phase === "playing";
@@ -200,14 +200,14 @@ export function PokerTable(props: BoardGameTableProps) {
               return (
                 <div
                   key={player.userId}
-                  className={`flex flex-col items-center gap-1 rounded-2xl border p-2 backdrop-blur-md transition-all ${
+                  className={`flex flex-col items-center gap-1.5 rounded-2xl border p-2.5 backdrop-blur-md transition-all ${
                     isTurn
-                      ? "border-amber-400 bg-amber-500/20 ring-2 ring-amber-400/50 shadow-2xl scale-105"
-                      : "border-white/10 bg-black/50"
+                      ? "border-amber-400 bg-amber-500/20 ring-4 ring-amber-400/50 shadow-[0_0_30px_rgba(251,191,36,0.5)] scale-105"
+                      : "border-white/10 bg-black/50 shadow-lg"
                   } ${player.folded || isEliminated ? "opacity-40" : ""}`}
                 >
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] font-bold text-white truncate max-w-[80px] sm:max-w-[110px]">
+                    <span className="text-xs font-bold text-white truncate max-w-[90px] sm:max-w-[130px]">
                       {player.displayName}
                     </span>
                     {isDealer ? (
@@ -228,13 +228,13 @@ export function PokerTable(props: BoardGameTableProps) {
                   </span>
 
                   {/* Opponent Hole Cards */}
-                  <div className="flex items-center gap-1 mt-0.5">
+                  <div className="flex items-center -space-x-4 mt-0.5">
                     {player.folded || isEliminated ? (
-                      <div className="h-10 w-7 rounded border border-dashed border-white/20" />
+                      <div className="h-14 w-10 rounded border border-dashed border-white/20" />
                     ) : (
                       <>
-                        <CasinoPlayingCard hidden size="xs" />
-                        <CasinoPlayingCard hidden size="xs" />
+                        <CasinoPlayingCard hidden size="sm" className="shadow-md" />
+                        <CasinoPlayingCard hidden size="sm" className="shadow-md" />
                       </>
                     )}
                   </div>
@@ -242,7 +242,7 @@ export function PokerTable(props: BoardGameTableProps) {
                   {/* Opponent Active Bet Badge */}
                   {(player.bet ?? 0) > 0 ? (
                     <div className="mt-1">
-                      <ChipStack amount={player.bet ?? 0} size="xs" />
+                      <ChipStack amount={player.bet ?? 0} size="sm" />
                     </div>
                   ) : null}
                 </div>
@@ -399,7 +399,7 @@ export function PokerTable(props: BoardGameTableProps) {
           </div>
 
           {/* Action Buttons: FOLD, CHECK / CALL, RAISE, ALL-IN */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 sm:gap-3">
             {legalActions
               .filter(isAction)
               .filter((action) => action.type === "poker_action")
@@ -412,9 +412,13 @@ export function PokerTable(props: BoardGameTableProps) {
                       key={choice}
                       type="button"
                       onClick={() => dispatch(action)}
-                      className="rounded-xl border border-rose-500/50 bg-rose-600/20 px-4 py-2 text-xs font-black text-rose-200 hover:bg-rose-600/30 active:scale-95 transition"
+                      className="group relative flex items-center gap-1.5 rounded-full px-5 py-2.5 text-xs font-black tracking-wider uppercase text-rose-200 transition-all shadow-[0_4px_0_#4c0519,0_8px_16px_rgba(225,29,72,0.3)] hover:brightness-110 active:translate-y-1 active:shadow-[0_1px_0_#4c0519] border border-rose-500/40"
+                      style={{
+                        background: "linear-gradient(180deg, #881337 0%, #4c0519 100%)"
+                      }}
                     >
-                      FOLD 🚫
+                      <span>FOLD</span>
+                      <span>🚫</span>
                     </button>
                   );
                 }
@@ -425,9 +429,13 @@ export function PokerTable(props: BoardGameTableProps) {
                       key={choice}
                       type="button"
                       onClick={() => dispatch(action)}
-                      className="rounded-xl border border-emerald-400/50 bg-emerald-500/20 px-5 py-2 text-xs font-black text-emerald-300 hover:bg-emerald-500/30 active:scale-95 transition"
+                      className="group relative flex items-center gap-1.5 rounded-full px-6 py-2.5 text-xs font-black tracking-wider uppercase text-emerald-200 transition-all shadow-[0_4px_0_#064e3b,0_8px_16px_rgba(16,185,129,0.3)] hover:brightness-110 active:translate-y-1 active:shadow-[0_1px_0_#064e3b] border border-emerald-500/40"
+                      style={{
+                        background: "linear-gradient(180deg, #065f46 0%, #064e3b 100%)"
+                      }}
                     >
-                      CHECK ✋
+                      <span>CHECK</span>
+                      <span>✋</span>
                     </button>
                   );
                 }
@@ -438,10 +446,13 @@ export function PokerTable(props: BoardGameTableProps) {
                       key={choice}
                       type="button"
                       onClick={() => dispatch(action)}
-                      className="flex items-center gap-1.5 rounded-xl bg-emerald-500 px-5 py-2 text-xs font-black text-slate-950 shadow-lg shadow-emerald-500/25 hover:bg-emerald-400 active:scale-95 transition"
+                      className="group relative flex items-center gap-2 rounded-full px-6 py-2.5 text-xs font-black tracking-wider uppercase text-slate-950 transition-all shadow-[0_5px_0_#064e3b,0_10px_20px_rgba(16,185,129,0.4)] hover:brightness-110 active:translate-y-1 active:shadow-[0_1px_0_#064e3b]"
+                      style={{
+                        background: "linear-gradient(180deg, #34d399 0%, #10b981 50%, #059669 100%)"
+                      }}
                     >
                       <span>CALL</span>
-                      <span className="font-mono">${callAmount}</span>
+                      <span className="font-mono font-black">${callAmount}</span>
                     </button>
                   );
                 }
@@ -452,7 +463,10 @@ export function PokerTable(props: BoardGameTableProps) {
                       key={choice}
                       type="button"
                       onClick={() => dispatch(action)}
-                      className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-600 px-5 py-2 text-xs font-black text-slate-950 shadow-lg shadow-amber-500/30 hover:brightness-110 active:scale-95 transition"
+                      className="group relative flex items-center gap-1.5 rounded-full px-6 py-2.5 text-xs font-black tracking-wider uppercase text-slate-950 transition-all shadow-[0_5px_0_#78350f,0_10px_20px_rgba(245,158,11,0.4)] hover:brightness-110 active:translate-y-1 active:shadow-[0_1px_0_#78350f]"
+                      style={{
+                        background: "linear-gradient(180deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%)"
+                      }}
                     >
                       <Sparkles className="h-3.5 w-3.5" />
                       <span>RAISE (+$20)</span>
@@ -466,9 +480,12 @@ export function PokerTable(props: BoardGameTableProps) {
                       key={choice}
                       type="button"
                       onClick={() => dispatch(action)}
-                      className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-red-600 via-rose-500 to-amber-500 px-5 py-2 text-xs font-black text-white shadow-lg shadow-rose-600/30 hover:brightness-110 active:scale-95 transition"
+                      className="group relative flex items-center gap-1.5 rounded-full px-6 py-2.5 text-xs font-black tracking-wider uppercase text-white transition-all shadow-[0_5px_0_#7f1d1d,0_10px_20px_rgba(239,68,68,0.5)] hover:brightness-110 active:translate-y-1 active:shadow-[0_1px_0_#7f1d1d]"
+                      style={{
+                        background: "linear-gradient(180deg, #ef4444 0%, #dc2626 50%, #991b1b 100%)"
+                      }}
                     >
-                      <Flame className="h-3.5 w-3.5" />
+                      <Flame className="h-3.5 w-3.5 text-amber-300" />
                       <span>ALL-IN (${myStack})</span>
                     </button>
                   );

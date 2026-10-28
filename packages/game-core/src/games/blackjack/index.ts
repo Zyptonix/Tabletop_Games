@@ -21,3 +21,4 @@ export const blackjackModule = createBoardGameModule({
   publicState: getBlackjackPublicState,
   results: getBlackjackResults
 });
+

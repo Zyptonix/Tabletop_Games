@@ -25,3 +25,4 @@ export function getBlackjackResults(state: BoardGameState): GameResults {
     scoreByUserId: Object.fromEntries(sorted.map((p) => [p.userId, chips[p.userId] ?? 0]))
   };
 }
+
