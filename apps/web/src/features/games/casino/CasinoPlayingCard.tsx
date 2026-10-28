@@ -3,16 +3,32 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 
-const SUIT_FILES: Record<string, string> = {
+const SUIT_TO_NAME: Record<string, string> = {
   "♠": "spades",
   "♥": "hearts",
   "♦": "diamonds",
   "♣": "clubs",
+  spades: "spades",
+  hearts: "hearts",
+  diamonds: "diamonds",
+  clubs: "clubs",
   s: "spades",
   h: "hearts",
   d: "diamonds",
   c: "clubs"
 };
+
+function parseCard(cardStr?: string | null): { rank: string; suit: string; suitName: string; isRed: boolean } {
+  if (!cardStr || cardStr === "hidden") {
+    return { rank: "", suit: "", suitName: "", isRed: false };
+  }
+  const clean = cardStr.trim();
+  const suit = clean.slice(-1);
+  const rank = clean.slice(0, -1);
+  const suitName = SUIT_TO_NAME[suit] ?? "";
+  const isRed = suit === "♥" || suit === "♦" || suitName === "hearts" || suitName === "diamonds";
+  return { rank, suit, suitName, isRed };
+}
 
 export function CasinoPlayingCard({
   card,
@@ -30,62 +46,61 @@ export function CasinoPlayingCard({
   onClick?: () => void;
 }) {
   const isHidden = hidden || !card || card === "hidden";
-
-  let suit = "";
-  let rank = "";
-  if (!isHidden && card) {
-    suit = card.slice(-1);
-    rank = card.slice(0, -1);
-  }
-
-  const suitFile = SUIT_FILES[suit] ?? "";
-  const isRed = suit === "♥" || suit === "♦" || suit === "h" || suit === "d";
+  const { rank, suit, suitName, isRed } = parseCard(card);
 
   const candidates = useMemo(() => {
-    if (!rank || !suitFile) return [];
+    if (isHidden || !rank || !suitName) return [];
     return [
-      `/game-assets/twenty-nine/cards/${rank}_of_${suitFile}.png`,
-      `/game-assets/twenty-nine/${rank}_of_${suitFile}.png`,
-      `/game-assets/29/cards/${rank}_of_${suitFile}.png`
+      `/game-assets/twenty-nine/cards/${rank}_of_${suitName}.png`,
+      `/game-assets/twenty-nine/${rank}_of_${suitName}.png`,
+      `/game-assets/29/cards/${rank}_of_${suitName}.png`
     ];
-  }, [rank, suitFile]);
+  }, [isHidden, rank, suitName]);
 
   const [imgIndex, setImgIndex] = useState(0);
 
-  // Always reset candidate index whenever the card or hidden status changes
   useEffect(() => {
     setImgIndex(0);
   }, [card, hidden]);
 
-  const sizeClasses = {
-    xs: "w-9 h-13 rounded-md text-[9px]",
-    sm: "w-12 h-17 sm:w-14 sm:h-20 rounded-lg text-xs",
-    md: "w-15 h-22 sm:w-17 sm:h-25 rounded-xl text-sm",
-    lg: "w-20 h-29 sm:w-24 sm:h-35 rounded-2xl text-base",
-    xl: "w-24 h-35 sm:w-28 sm:h-41 rounded-2xl text-lg"
-  }[size];
+  // Guaranteed, rock-solid pixel dimensions (prevents any natural-image blowup)
+  const sizeConfig: Record<
+    "xs" | "sm" | "md" | "lg" | "xl",
+    { width: string; height: string; rounded: string; textClass: string }
+  > = {
+    xs: { width: "2.5rem", height: "3.6rem", rounded: "rounded-md", textClass: "text-[9px]" },
+    sm: { width: "3.3rem", height: "4.7rem", rounded: "rounded-lg", textClass: "text-[10px]" },
+    md: { width: "4.2rem", height: "6.0rem", rounded: "rounded-xl", textClass: "text-xs" },
+    lg: { width: "5.2rem", height: "7.4rem", rounded: "rounded-xl", textClass: "text-sm" },
+    xl: { width: "6.5rem", height: "9.2rem", rounded: "rounded-2xl", textClass: "text-base" }
+  };
+
+  const currentSize = sizeConfig[size] ?? sizeConfig.md;
 
   return (
     <motion.div
       layout
       whileHover={onClick ? { scale: 1.06, y: -4 } : {}}
       onClick={onClick}
-      className={`relative select-none shrink-0 overflow-hidden shadow-[0_6px_16px_rgba(0,0,0,0.55)] border border-slate-300/40 transition-all ${sizeClasses} ${
+      className={`relative select-none shrink-0 overflow-hidden shadow-[0_6px_16px_rgba(0,0,0,0.6)] border border-slate-300/40 bg-white transition-all ${currentSize.rounded} ${
         onClick ? "cursor-pointer" : ""
       } ${className}`}
       style={{
-        background: isHidden
-          ? "linear-gradient(135deg, #881337 0%, #4c0519 100%)"
-          : "#ffffff"
+        width: currentSize.width,
+        height: currentSize.height,
+        minWidth: currentSize.width,
+        minHeight: currentSize.height,
+        maxWidth: currentSize.width,
+        maxHeight: currentSize.height
       }}
     >
       {isHidden ? (
-        <div className="relative flex h-full w-full items-center justify-center p-0.5">
+        <div className="relative flex h-full w-full items-center justify-center overflow-hidden bg-[#7f1d1d]">
           <img
             src="/game-assets/twenty-nine/cards/back.png"
             alt="Card Back"
             draggable={false}
-            className="h-full w-full object-cover rounded-[inherit]"
+            className="absolute inset-0 h-full w-full object-cover select-none pointer-events-none"
           />
           {/* Subtle gold foil emblem overlay */}
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -95,41 +110,40 @@ export function CasinoPlayingCard({
           </div>
         </div>
       ) : (
-        <div className="relative flex h-full w-full items-center justify-center bg-white rounded-[inherit] overflow-hidden">
+        <div className="relative flex h-full w-full items-center justify-center bg-white overflow-hidden">
+          {/* Real High-Resolution Playing Card PNG Sprite */}
           {candidates.length > 0 && imgIndex < candidates.length ? (
             <img
               key={candidates[imgIndex]}
               src={candidates[imgIndex]}
-              alt={`${rank} of ${suitFile}`}
+              alt={`${rank} of ${suitName}`}
               draggable={false}
-              className="absolute inset-0 h-full w-full object-contain pointer-events-none select-none p-0.5"
+              className="absolute inset-0 z-10 h-full w-full object-cover select-none pointer-events-none"
               onError={() => setImgIndex((prev) => prev + 1)}
             />
           ) : null}
 
-          {/* Procedural fallback only if image candidates are exhausted */}
-          {imgIndex >= candidates.length && (
-            <div
-              className={`flex h-full w-full flex-col justify-between p-1 font-black ${
-                isRed ? "text-rose-600" : "text-slate-950"
-              }`}
-            >
-              <div className="flex items-center justify-between text-xs leading-none">
-                <span>{rank}</span>
-                <span>{suit}</span>
-              </div>
-              <span className="self-center text-lg">{suit}</span>
-              <div className="flex items-center justify-between text-xs leading-none rotate-180">
-                <span>{rank}</span>
-                <span>{suit}</span>
-              </div>
+          {/* Procedural fallback face rendered underneath or as backup */}
+          <div
+            className={`absolute inset-0 z-0 flex h-full w-full flex-col justify-between p-1 font-black ${
+              isRed ? "text-rose-600" : "text-slate-950"
+            } ${currentSize.textClass}`}
+          >
+            <div className="flex items-center justify-between leading-none">
+              <span>{rank}</span>
+              <span>{suit}</span>
             </div>
-          )}
+            <span className="self-center text-base sm:text-lg leading-none">{suit}</span>
+            <div className="flex items-center justify-between leading-none rotate-180">
+              <span>{rank}</span>
+              <span>{suit}</span>
+            </div>
+          </div>
         </div>
       )}
 
       {/* Glossy card sheen overlay */}
-      <span className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent" />
+      <span className="pointer-events-none absolute inset-0 z-20 bg-gradient-to-tr from-transparent via-white/10 to-transparent" />
     </motion.div>
   );
 }
