@@ -181,9 +181,42 @@ export function BoardGamesTable({
   const p1 = state.players[0];
   const p2 = state.players[1];
   const clockSeconds = Number(room.settings?.clockSeconds ?? 0);
+
+  const INITIAL_CLOCK_MS = 5 * 60 * 1000;
+  const [clockBanks, setClockBanks] = useState<Record<string, number>>({});
+
+  // Reset clock banks on match start / reset
+  useEffect(() => {
+    if (state.gameId !== "connect-four") return;
+    if (state.moveCount === 0 || Object.keys(clockBanks).length === 0) {
+      setClockBanks(
+        Object.fromEntries(state.players.map((p) => [p.userId, INITIAL_CLOCK_MS]))
+      );
+    }
+  }, [state.gameId, state.moveCount, state.players]);
+
+  // Chess clock tick: Decrements ONLY the active player's clock bank during active play
+  useEffect(() => {
+    if (state.gameId !== "connect-four" || state.phase !== "playing" || !state.currentPlayerId) return;
+
+    const activeId = state.currentPlayerId;
+    const interval = setInterval(() => {
+      setClockBanks((prev) => {
+        const current = prev[activeId] ?? INITIAL_CLOCK_MS;
+        if (current <= 0) return prev;
+        return {
+          ...prev,
+          [activeId]: Math.max(0, current - 1000)
+        };
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [state.gameId, state.phase, state.currentPlayerId]);
+
   const clockFor = (userId: string) => {
-    if (timer != null && timer.currentPlayerId === userId && timer.remainingMs !== null) {
-      return timer.remainingMs;
+    if (state.gameId === "connect-four") {
+      return clockBanks[userId] ?? INITIAL_CLOCK_MS;
     }
     const rem = (state as Record<string, unknown>).clockRemainingMsByPlayer as Record<string, number> | undefined;
     if (rem?.[userId] !== undefined) return rem[userId]!;
@@ -483,12 +516,12 @@ export function BoardGamesTable({
                             style={{ zIndex: isLast ? 20 : isGhost ? 15 : 0 }}
                           >
                             <span className={useBoardSprite ? `connect-four-sprite-cell-content ${isWinning ? "connect-four-winning-hole" : ""}` : `connect-four-hole relative grid aspect-square w-full place-items-center rounded-full ${isWinning ? "connect-four-winning-hole" : ""}`}>
-                              {/* OCCUPIED 3D DISC */}
+                              {/* OCCUPIED DISC */}
                               {cell ? (
                                 <motion.div
                                   key={`${key}-${cell}`}
                                   initial={{ y: -((rowIndex + 1.8) * 85), scale: 0.9 }}
-                                  animate={{ y: 0, scale: isWinning ? [1, 1.05, 1] : 1 }}
+                                  animate={{ y: 0, scale: isWinning ? [1, 1.08, 1] : 1 }}
                                   transition={{
                                     type: "spring",
                                     stiffness: 350,
@@ -499,55 +532,34 @@ export function BoardGamesTable({
                                   className={`${useBoardSprite ? "connect-four-sprite-disc" : "connect-four-disc relative z-10 flex h-[92%] w-[92%] items-center justify-center rounded-full"} ${isLast ? "connect-four-last-disc" : ""} ${isWinning ? "connect-four-winning-disc" : ""}`}
                                   style={{
                                     background: playerIndex === 0
-                                      ? "radial-gradient(circle at 32% 28%, #ff4b6e 0%, #e11d48 35%, #be123c 72%, #881337 100%)"
-                                      : "radial-gradient(circle at 32% 28%, #fff066 0%, #facc15 35%, #eab308 72%, #854d0e 100%)",
-                                    boxShadow: playerIndex === 0
-                                      ? "inset 0 3px 5px rgba(255,255,255,0.55), inset 0 -6px 8px rgba(0,0,0,0.45), 0 4px 8px rgba(0,0,0,0.4)"
-                                      : "inset 0 3px 5px rgba(255,255,255,0.65), inset 0 -6px 8px rgba(0,0,0,0.4), 0 4px 8px rgba(0,0,0,0.35)"
+                                      ? "radial-gradient(circle at 32% 28%, #ff4b6e 0%, #e11d48 40%, #9f1239 100%)"
+                                      : "radial-gradient(circle at 32% 28%, #fef08a 0%, #eab308 40%, #854d0e 100%)",
+                                    boxShadow: "0 4px 8px rgba(0,0,0,0.35)"
                                   }}
                                 >
-                                  {!useBoardSprite ? (
-                                    <>
-                                      {/* Concentric Embossed Coin Ring */}
-                                      <span className="pointer-events-none absolute inset-[14%] rounded-full border-[2.5px] border-white/30 shadow-[inset_0_2px_4px_rgba(0,0,0,0.35),0_1px_2px_rgba(255,255,255,0.25)]" />
-                                      {/* Inner Coin Boss & Specular Flare */}
-                                      <span className="pointer-events-none absolute inset-[34%] rounded-full bg-gradient-to-br from-white/35 to-black/25 shadow-[inset_0_1px_2px_rgba(255,255,255,0.4),0_0_0_1.5px_rgba(0,0,0,0.2)]" />
-                                      <span className="pointer-events-none absolute left-[22%] top-[14%] h-[20%] w-[32%] rounded-full bg-white/60 blur-[0.6px]" />
-
-                                      {/* Sunken Socket Shadow Overlay (Authentic 3D socket depth) */}
-                                      <span className="pointer-events-none absolute inset-0 rounded-full shadow-[inset_0_10px_14px_rgba(0,0,0,0.65),inset_0_-3px_5px_rgba(255,255,255,0.2)]" />
-                                    </>
-                                  ) : null}
-
-                                  {/* Custom disc sprite if configured */}
-                                  {state.gameId === "connect-four" && (playerIndex === 0 ? connectFourArt.redDisc : connectFourArt.yellowDisc) ? (
-                                    <img
-                                      src={(playerIndex === 0 ? connectFourArt.redDisc : connectFourArt.yellowDisc) ?? undefined}
-                                      alt=""
-                                      aria-hidden="true"
-                                      draggable={false}
-                                      onError={(event) => { event.currentTarget.style.display = "none"; }}
-                                      className={`connect-four-custom-disc pointer-events-none absolute z-10 select-none ${useBoardSprite ? "object-contain" : "inset-0 h-full w-full object-fill"}`}
-                                      style={useBoardSprite ? { inset: "-6%", width: "100%", height: "100%" } : undefined}
-                                    />
-                                  ) : null}
+                                  {/* Authentic classic piece */}
+                                  <img
+                                    src={(playerIndex === 0 ? connectFourArt.redDisc : connectFourArt.yellowDisc) || (playerIndex === 0 ? "/game-assets/connect-four/red-disc-trimmed.png" : "/game-assets/connect-four/yellow-disc-trimmed.png")}
+                                    alt={playerIndex === 0 ? "Red piece" : "Yellow piece"}
+                                    draggable={false}
+                                    onError={(event) => { event.currentTarget.style.display = "none"; }}
+                                    className="pointer-events-none absolute inset-0 z-10 h-full w-full object-contain select-none drop-shadow-sm"
+                                  />
                                 </motion.div>
                               ) : isGhost ? (
                                 /* GHOST DISC ON HOVER AT TARGET CELL */
                                 <motion.div
-                                  initial={{ opacity: 0.25, scale: 0.88 }}
-                                  animate={{ opacity: [0.35, 0.75, 0.35], scale: [0.92, 0.96, 0.92] }}
+                                  initial={{ opacity: 0.3, scale: 0.88 }}
+                                  animate={{ opacity: [0.35, 0.7, 0.35], scale: [0.92, 0.95, 0.92] }}
                                   transition={{ duration: 1.1, repeat: Infinity, ease: "easeInOut" }}
                                   className="pointer-events-none relative z-10 flex h-[92%] w-[92%] items-center justify-center rounded-full"
-                                  style={{
-                                    background: myPlayerIndex === 1
-                                      ? "radial-gradient(circle at 35% 30%, rgba(250, 204, 21, 0.55), rgba(161, 98, 7, 0.45))"
-                                      : "radial-gradient(circle at 35% 30%, rgba(244, 63, 94, 0.55), rgba(159, 18, 57, 0.45))",
-                                    border: myPlayerIndex === 1 ? "2.5px dashed #facc15" : "2.5px dashed #f43f5e",
-                                    boxShadow: myPlayerIndex === 1 ? "0 0 16px rgba(250, 204, 21, 0.5)" : "0 0 16px rgba(244, 63, 94, 0.5)"
-                                  }}
                                 >
-                                  <span className="text-xs font-black text-white/90 drop-shadow">↓</span>
+                                  <img
+                                    src={(myPlayerIndex === 1 ? connectFourArt.yellowDisc : connectFourArt.redDisc) || (myPlayerIndex === 1 ? "/game-assets/connect-four/yellow-disc-trimmed.png" : "/game-assets/connect-four/red-disc-trimmed.png")}
+                                    alt="Preview drop"
+                                    draggable={false}
+                                    className="pointer-events-none h-full w-full object-contain opacity-55 select-none"
+                                  />
                                 </motion.div>
                               ) : null}
                             </span>

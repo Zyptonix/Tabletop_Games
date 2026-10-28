@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Clock,
@@ -95,10 +95,10 @@ function ChessPieceArt({ piece }: { piece: string }) {
   const kind = piece.toLowerCase();
   const sizeClass =
     kind === "p"
-      ? "h-[45%] w-[45%]"
+      ? "h-[58%] w-[58%]"
       : kind === "k" || kind === "q"
-        ? "h-[64%] w-[64%]"
-        : "h-[54%] w-[54%]";
+        ? "h-[68%] w-[68%]"
+        : "h-[60%] w-[60%]";
 
   return (
     <img
@@ -180,6 +180,58 @@ function getCheckedKingSquares(board: Array<Array<string | null>>): Set<number> 
   return checked;
 }
 
+const STARTING_BOARD: Array<Array<string | null>> = [
+  ["r", "n", "b", "q", "k", "b", "n", "r"],
+  ["p", "p", "p", "p", "p", "p", "p", "p"],
+  [null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null],
+  [null, null, null, null, null, null, null, null],
+  ["P", "P", "P", "P", "P", "P", "P", "P"],
+  ["R", "N", "B", "Q", "K", "B", "N", "R"]
+];
+
+function replayChessBoard(history: ChessMoveRecord[], upToPly: number): Array<Array<string | null>> {
+  const b: Array<Array<string | null>> = STARTING_BOARD.map((row) => [...row]);
+  if (upToPly < 0) return b;
+
+  for (let i = 0; i <= upToPly && i < history.length; i++) {
+    const move = history[i];
+    if (!move) continue;
+
+    const fromR = Math.floor(move.from / 8);
+    const fromC = move.from % 8;
+    const toR = Math.floor(move.to / 8);
+    const toC = move.to % 8;
+
+    const piece = b[fromR]?.[fromC] ?? move.piece;
+
+    // Handle en passant capture
+    if (move.piece.toLowerCase() === "p" && fromC !== toC && b[toR]?.[toC] === null) {
+      b[fromR]![toC] = null;
+    }
+
+    // Handle castling rook movement
+    if (move.piece.toLowerCase() === "k" && Math.abs(toC - fromC) === 2) {
+      const rookFrom = toC > fromC ? 7 : 0;
+      const rookTo = toC > fromC ? 5 : 3;
+      const rook = b[toR]?.[rookFrom] ?? (move.side === "w" ? "R" : "r");
+      b[toR]![rookTo] = rook;
+      b[toR]![rookFrom] = null;
+    }
+
+    let finalPiece = piece;
+    if (move.promotion) {
+      finalPiece = move.side === "w" ? move.promotion.toUpperCase() : move.promotion.toLowerCase();
+    }
+
+    b[fromR]![fromC] = null;
+    b[toR]![toC] = finalPiece;
+  }
+
+  return b;
+}
+
 export function ChessTable(props: BoardGameTableProps) {
   const { room, state, legalActions, currentUserId, timer, onAction, onChat, onEndMatch } = props;
 
@@ -193,6 +245,7 @@ export function ChessTable(props: BoardGameTableProps) {
   const [selectedSquare, setSelectedSquare] = useState<number | null>(null);
   const [chessMoveNotice, setChessMoveNotice] = useState<string | null>(null);
   const [pendingPromotion, setPendingPromotion] = useState<{ choices: AnyAction[]; targetSquare: number } | null>(null);
+  const [viewingPlyIndex, setViewingPlyIndex] = useState<number | null>(null);
   const [sidebarTab, setSidebarTab] = useState<"moves" | "chat" | "info">("moves");
   const [chatDraft, setChatDraft] = useState("");
   const [confirmResign, setConfirmResign] = useState(false);
@@ -200,13 +253,13 @@ export function ChessTable(props: BoardGameTableProps) {
   // Default orientation: Player's pieces at bottom (flip if Black)
   const isFlipped = manualFlipped !== null ? manualFlipped : !isWhite;
 
-  const clockSeconds = Number(room.settings?.clockSeconds ?? 0);
+  const clockSeconds = Number(room.settings?.clockSeconds ?? 300);
   const chessClockEnabled = clockSeconds > 0;
 
   const clockFor = (userId: string) =>
     timer != null && timer.currentPlayerId === userId && timer.remainingMs !== null
       ? timer.remainingMs
-      : state.clockRemainingMsByPlayer?.[userId] ?? clockSeconds * 1000;
+      : state.clockRemainingMsByPlayer?.[userId] ?? (clockSeconds > 0 ? clockSeconds * 1000 : 300000);
 
   const formatClock = (milliseconds: number) => {
     const seconds = Math.max(0, Math.ceil(milliseconds / 1000));
@@ -316,10 +369,13 @@ export function ChessTable(props: BoardGameTableProps) {
     const pairs: Array<{
       moveNumber: number;
       white?: ChessMoveRecord | undefined;
+      whiteIndex?: number;
       black?: ChessMoveRecord | undefined;
+      blackIndex?: number;
     }> = [];
 
-    for (const record of moveHistory) {
+    for (let i = 0; i < moveHistory.length; i++) {
+      const record = moveHistory[i]!;
       let existing = pairs.find((p) => p.moveNumber === record.moveNumber);
       if (!existing) {
         existing = { moveNumber: record.moveNumber };
@@ -327,8 +383,10 @@ export function ChessTable(props: BoardGameTableProps) {
       }
       if (record.side === "w") {
         existing.white = record;
+        existing.whiteIndex = i;
       } else {
         existing.black = record;
+        existing.blackIndex = i;
       }
     }
     return pairs;
@@ -336,7 +394,34 @@ export function ChessTable(props: BoardGameTableProps) {
 
   const lastMove = state.chessLastMove;
 
+  // Reset review index when new move is made
+  useEffect(() => {
+    setViewingPlyIndex(null);
+  }, [state.chessMoveHistory?.length]);
+
+  const isReviewingHistory = viewingPlyIndex !== null && viewingPlyIndex < moveHistory.length - 1;
+
+  const displayedBoard = useMemo(() => {
+    if (viewingPlyIndex === null || viewingPlyIndex >= moveHistory.length - 1) {
+      return state.board;
+    }
+    return replayChessBoard(moveHistory, viewingPlyIndex);
+  }, [viewingPlyIndex, moveHistory, state.board]);
+
+  const displayedLastMove = useMemo(() => {
+    if (viewingPlyIndex === null || viewingPlyIndex >= moveHistory.length - 1) {
+      return lastMove;
+    }
+    if (viewingPlyIndex < 0) return null;
+    const m = moveHistory[viewingPlyIndex];
+    return m ? { from: m.from, to: m.to } : null;
+  }, [viewingPlyIndex, moveHistory, lastMove]);
+
   function handleSquareClick(index: number, rowIndex: number, column: number, piece: string | null) {
+    if (isReviewingHistory) {
+      setViewingPlyIndex(null);
+      return;
+    }
     if (!isMyTurn || state.phase === "finished") return;
 
     const isOwnPiece = Boolean(
@@ -402,7 +487,7 @@ export function ChessTable(props: BoardGameTableProps) {
       {/* ============================================================== */}
       {/* LEFT COLUMN: CHESS BOARD & PLAYER PODS (CHESS.COM STRUCTURE)  */}
       {/* ============================================================== */}
-      <div className="flex flex-col items-center w-full shrink-0" style={{ maxWidth: "min(100%, calc(100dvh - 120px), 760px)" }}>
+      <div className="flex flex-col items-center w-full shrink-0" style={{ maxWidth: "min(100%, calc(100dvh - 235px), 550px)" }}>
         {/* TOP OPPONENT POD */}
         {topPlayer ? (
           <div className="flex w-full items-center justify-between py-1.5 px-1 text-white">
@@ -483,6 +568,23 @@ export function ChessTable(props: BoardGameTableProps) {
           className="relative aspect-square w-full rounded-2xl overflow-hidden border-[5px] sm:border-[6px] border-[#2b2b29] bg-[#2b2b29] shadow-[0_20px_50px_rgba(0,0,0,0.7)]"
           style={{ aspectRatio: "1 / 1" }}
         >
+          {/* History Review Floating Pill */}
+          {isReviewingHistory ? (
+            <div className="absolute top-2 inset-x-2 z-30 flex items-center justify-between rounded-xl border border-amber-400/80 bg-slate-950/95 px-3 py-1.5 shadow-2xl backdrop-blur-md">
+              <div className="flex items-center gap-2 text-xs font-bold text-amber-200">
+                <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+                <span>Move {viewingPlyIndex < 0 ? "Start" : viewingPlyIndex + 1} of {moveHistory.length}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewingPlyIndex(null)}
+                className="rounded-lg bg-emerald-500/30 border border-emerald-400/50 px-2.5 py-0.5 text-xs font-black text-emerald-200 hover:bg-emerald-500/50 active:scale-95 transition"
+              >
+                Live ⏩
+              </button>
+            </div>
+          ) : null}
+
           <div className="grid grid-cols-8 grid-rows-8 h-full w-full">
             {Array.from({ length: 64 }, (_, displayIndex) => {
               const displayRow = Math.floor(displayIndex / 8);
@@ -493,13 +595,13 @@ export function ChessTable(props: BoardGameTableProps) {
               const column = isFlipped ? 7 - displayColumn : displayColumn;
 
               const index = rowIndex * 8 + column;
-              const piece = state.board[rowIndex]?.[column] ?? null;
+              const piece = displayedBoard[rowIndex]?.[column] ?? null;
 
               const isLightSquare = (rowIndex + column) % 2 === 0;
-              const isSelected = selectedSquare === index;
-              const isLegalMove = selectedMoves.some((action) => action.to === index);
-              const isKingChecked = piece && checkedKingSquares.has(index);
-              const isLastMoveSquare = lastMove && (lastMove.from === index || lastMove.to === index);
+              const isSelected = !isReviewingHistory && selectedSquare === index;
+              const isLegalMove = !isReviewingHistory && selectedMoves.some((action) => action.to === index);
+              const isKingChecked = !isReviewingHistory && piece && checkedKingSquares.has(index);
+              const isLastMoveSquare = displayedLastMove && (displayedLastMove.from === index || displayedLastMove.to === index);
 
               // Square Colors: Chess.com Natural Green & Buff
               const squareBgClass = isLightSquare
@@ -720,7 +822,7 @@ export function ChessTable(props: BoardGameTableProps) {
       {/* ============================================================== */}
       {/* RIGHT COLUMN: CHESS.COM SIDEBAR (MOVES, NOTATION, CHAT, INFO) */}
       {/* ============================================================== */}
-      <div className="w-full lg:w-[360px] xl:w-[380px] shrink-0 flex flex-col rounded-2xl border border-white/10 bg-slate-950/90 shadow-2xl backdrop-blur-2xl overflow-hidden self-stretch max-h-[min(calc(100dvh-120px),760px)]">
+      <div className="w-full lg:w-[360px] xl:w-[380px] shrink-0 flex flex-col rounded-2xl border border-white/10 bg-slate-950/90 shadow-2xl backdrop-blur-2xl overflow-hidden self-stretch max-h-[min(calc(100dvh-145px),640px)]">
         {/* TOP TABS: MOVES / CHAT / INFO */}
         <div className="flex border-b border-white/10 bg-black/40">
           <button
@@ -799,12 +901,26 @@ export function ChessTable(props: BoardGameTableProps) {
                     {/* White Move */}
                     <div className="flex items-center gap-1 font-bold text-white/90">
                       {pair.white ? (
-                        <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (pair.whiteIndex === moveHistory.length - 1) {
+                              setViewingPlyIndex(null);
+                            } else {
+                              setViewingPlyIndex(pair.whiteIndex ?? null);
+                            }
+                          }}
+                          className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-xs transition ${
+                            viewingPlyIndex === pair.whiteIndex || (viewingPlyIndex === null && pair.whiteIndex === moveHistory.length - 1)
+                              ? "bg-amber-400 text-slate-950 font-black shadow-sm"
+                              : "hover:bg-white/10"
+                          }`}
+                        >
                           <span className="text-sm opacity-60">
                             {PIECES[pair.white.piece.toUpperCase()] ?? ""}
                           </span>
                           <span>{pair.white.san}</span>
-                        </>
+                        </button>
                       ) : (
                         <span className="text-white/20">—</span>
                       )}
@@ -813,12 +929,26 @@ export function ChessTable(props: BoardGameTableProps) {
                     {/* Black Move */}
                     <div className="flex items-center gap-1 font-bold text-white/90">
                       {pair.black ? (
-                        <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (pair.blackIndex === moveHistory.length - 1) {
+                              setViewingPlyIndex(null);
+                            } else {
+                              setViewingPlyIndex(pair.blackIndex ?? null);
+                            }
+                          }}
+                          className={`flex items-center gap-1 rounded px-1.5 py-0.5 text-xs transition ${
+                            viewingPlyIndex === pair.blackIndex || (viewingPlyIndex === null && pair.blackIndex === moveHistory.length - 1)
+                              ? "bg-amber-400 text-slate-950 font-black shadow-sm"
+                              : "hover:bg-white/10"
+                          }`}
+                        >
                           <span className="text-sm opacity-60">
                             {PIECES[pair.black.piece.toLowerCase()] ?? ""}
                           </span>
                           <span>{pair.black.san}</span>
-                        </>
+                        </button>
                       ) : (
                         <span className="text-white/20">—</span>
                       )}
@@ -847,33 +977,43 @@ export function ChessTable(props: BoardGameTableProps) {
               <div className="flex items-center justify-center gap-2">
                 <button
                   type="button"
-                  disabled={moveHistory.length === 0}
-                  className="grid h-8 w-10 place-items-center rounded-lg border border-white/10 bg-white/5 text-white hover:bg-white/15 disabled:opacity-30"
-                  title="First Move"
+                  disabled={moveHistory.length === 0 || viewingPlyIndex === -1}
+                  onClick={() => setViewingPlyIndex(-1)}
+                  className="grid h-8 w-10 place-items-center rounded-lg border border-white/10 bg-white/5 text-white hover:bg-white/15 disabled:opacity-30 active:scale-95 transition"
+                  title="Starting Position (|<)"
                 >
                   <ChevronsLeft className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
-                  disabled={moveHistory.length === 0}
-                  className="grid h-8 w-10 place-items-center rounded-lg border border-white/10 bg-white/5 text-white hover:bg-white/15 disabled:opacity-30"
-                  title="Previous Move"
+                  disabled={moveHistory.length === 0 || viewingPlyIndex === -1}
+                  onClick={() =>
+                    setViewingPlyIndex((prev) => (prev === null ? moveHistory.length - 2 : Math.max(-1, prev - 1)))
+                  }
+                  className="grid h-8 w-10 place-items-center rounded-lg border border-white/10 bg-white/5 text-white hover:bg-white/15 disabled:opacity-30 active:scale-95 transition"
+                  title="Previous Move (<)"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
-                  disabled={moveHistory.length === 0}
-                  className="grid h-8 w-10 place-items-center rounded-lg border border-white/10 bg-white/5 text-white hover:bg-white/15 disabled:opacity-30"
-                  title="Next Move"
+                  disabled={moveHistory.length === 0 || viewingPlyIndex === null}
+                  onClick={() =>
+                    setViewingPlyIndex((prev) =>
+                      prev === null ? null : prev + 1 >= moveHistory.length - 1 ? null : prev + 1
+                    )
+                  }
+                  className="grid h-8 w-10 place-items-center rounded-lg border border-white/10 bg-white/5 text-white hover:bg-white/15 disabled:opacity-30 active:scale-95 transition"
+                  title="Next Move (>)"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
-                  disabled={moveHistory.length === 0}
-                  className="grid h-8 w-10 place-items-center rounded-lg border border-white/10 bg-white/5 text-white hover:bg-white/15 disabled:opacity-30"
-                  title="Latest Move"
+                  disabled={moveHistory.length === 0 || viewingPlyIndex === null}
+                  onClick={() => setViewingPlyIndex(null)}
+                  className="grid h-8 w-10 place-items-center rounded-lg border border-white/10 bg-white/5 text-white hover:bg-white/15 disabled:opacity-30 active:scale-95 transition"
+                  title="Latest / Live Move (>|)"
                 >
                   <ChevronsRight className="h-4 w-4" />
                 </button>
