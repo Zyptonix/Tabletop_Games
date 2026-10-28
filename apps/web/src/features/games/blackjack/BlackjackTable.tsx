@@ -354,10 +354,10 @@ export function BlackjackTable(props: BoardGameTableProps) {
           {/* TOP LEFT FELT: BLACKJACK PAYS 3 TO 2 & RULES INSCRIPTION   */}
           {/* ========================================================== */}
           <div className="pointer-events-none absolute left-6 sm:left-12 lg:left-16 top-3 sm:top-5 z-10 flex flex-col items-start select-none">
-            <h2 className="font-serif text-xs sm:text-sm md:text-base lg:text-lg font-black tracking-[0.2em] text-[#dc2626] uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+            <h2 className="font-serif text-xs sm:text-sm md:text-base lg:text-lg font-black tracking-[0.2em] bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 bg-clip-text text-transparent uppercase drop-shadow-[0_2px_6px_rgba(0,0,0,0.85)]">
               ★ BLACKJACK PAYS 3 TO 2 ★
             </h2>
-            <p className="mt-0.5 font-serif text-[8px] sm:text-[10px] md:text-xs font-bold tracking-[0.15em] text-amber-200/70 uppercase drop-shadow">
+            <p className="mt-0.5 font-serif text-[8px] sm:text-[10px] md:text-xs font-bold tracking-[0.15em] text-amber-200/80 uppercase drop-shadow">
               Dealer must draw to 16, and stand on all 17's
             </p>
           </div>

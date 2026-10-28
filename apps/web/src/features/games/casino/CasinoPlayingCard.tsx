@@ -1,13 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 
 const SUIT_FILES: Record<string, string> = {
   "♠": "spades",
   "♥": "hearts",
   "♦": "diamonds",
-  "♣": "clubs"
+  "♣": "clubs",
+  s: "spades",
+  h: "hearts",
+  d: "diamonds",
+  c: "clubs"
 };
 
 export function CasinoPlayingCard({
@@ -25,31 +29,48 @@ export function CasinoPlayingCard({
   className?: string;
   onClick?: () => void;
 }) {
-  const [failed, setFailed] = useState(false);
-
   const isHidden = hidden || !card || card === "hidden";
-  const suit = !isHidden && card ? card.slice(-1) : "";
-  const rank = !isHidden && card ? card.slice(0, -1) : "";
-  const suitFile = SUIT_FILES[suit];
-  const isRed = suit === "♥" || suit === "♦";
+
+  let suit = "";
+  let rank = "";
+  if (!isHidden && card) {
+    suit = card.slice(-1);
+    rank = card.slice(0, -1);
+  }
+
+  const suitFile = SUIT_FILES[suit] ?? "";
+  const isRed = suit === "♥" || suit === "♦" || suit === "h" || suit === "d";
+
+  const candidates = useMemo(() => {
+    if (!rank || !suitFile) return [];
+    return [
+      `/game-assets/twenty-nine/cards/${rank}_of_${suitFile}.png`,
+      `/game-assets/twenty-nine/${rank}_of_${suitFile}.png`,
+      `/game-assets/29/cards/${rank}_of_${suitFile}.png`
+    ];
+  }, [rank, suitFile]);
+
+  const [imgIndex, setImgIndex] = useState(0);
+
+  // Always reset candidate index whenever the card or hidden status changes
+  useEffect(() => {
+    setImgIndex(0);
+  }, [card, hidden]);
 
   const sizeClasses = {
-    xs: "w-8 h-12 rounded-sm text-[9px]",
-    sm: "w-11 h-16 rounded-md text-xs",
-    md: "w-14 h-20 sm:w-16 sm:h-24 rounded-lg text-sm",
-    lg: "w-20 h-28 sm:w-24 sm:h-34 rounded-xl text-base",
-    xl: "w-24 h-34 sm:w-28 sm:h-40 rounded-2xl text-lg"
+    xs: "w-9 h-13 rounded-md text-[9px]",
+    sm: "w-12 h-17 sm:w-14 sm:h-20 rounded-lg text-xs",
+    md: "w-15 h-22 sm:w-17 sm:h-25 rounded-xl text-sm",
+    lg: "w-20 h-29 sm:w-24 sm:h-35 rounded-2xl text-base",
+    xl: "w-24 h-35 sm:w-28 sm:h-41 rounded-2xl text-lg"
   }[size];
-
-  const asset = `/game-assets/twenty-nine/cards/${rank}_of_${suitFile}.png`;
-  const backAsset = "/game-assets/twenty-nine/cards/back.png";
 
   return (
     <motion.div
       layout
       whileHover={onClick ? { scale: 1.06, y: -4 } : {}}
       onClick={onClick}
-      className={`relative select-none shrink-0 overflow-hidden shadow-[0_4px_10px_rgba(0,0,0,0.5)] border border-white/20 transition-all ${sizeClasses} ${
+      className={`relative select-none shrink-0 overflow-hidden shadow-[0_6px_16px_rgba(0,0,0,0.55)] border border-slate-300/40 transition-all ${sizeClasses} ${
         onClick ? "cursor-pointer" : ""
       } ${className}`}
       style={{
@@ -61,13 +82,10 @@ export function CasinoPlayingCard({
       {isHidden ? (
         <div className="relative flex h-full w-full items-center justify-center p-0.5">
           <img
-            src={backAsset}
+            src="/game-assets/twenty-nine/cards/back.png"
             alt="Card Back"
             draggable={false}
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
-            }}
-            className="h-full w-full object-fill rounded-[inherit]"
+            className="h-full w-full object-cover rounded-[inherit]"
           />
           {/* Subtle gold foil emblem overlay */}
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -77,16 +95,20 @@ export function CasinoPlayingCard({
           </div>
         </div>
       ) : (
-        <div className="relative flex h-full w-full items-center justify-center bg-white">
-          {!failed && suitFile ? (
+        <div className="relative flex h-full w-full items-center justify-center bg-white rounded-[inherit] overflow-hidden">
+          {candidates.length > 0 && imgIndex < candidates.length ? (
             <img
-              src={asset}
+              key={candidates[imgIndex]}
+              src={candidates[imgIndex]}
               alt={`${rank} of ${suitFile}`}
               draggable={false}
-              onError={() => setFailed(true)}
-              className="h-full w-full object-fill rounded-[inherit]"
+              className="absolute inset-0 h-full w-full object-contain pointer-events-none select-none p-0.5"
+              onError={() => setImgIndex((prev) => prev + 1)}
             />
-          ) : (
+          ) : null}
+
+          {/* Procedural fallback only if image candidates are exhausted */}
+          {imgIndex >= candidates.length && (
             <div
               className={`flex h-full w-full flex-col justify-between p-1 font-black ${
                 isRed ? "text-rose-600" : "text-slate-950"
