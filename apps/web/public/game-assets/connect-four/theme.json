@@ -2,8 +2,8 @@
   "version": 1,
   "sprites": {
     "boardOverlay": "",
-    "redDisc": "/game-assets/connect-four/red-disc-trimmed.png",
-    "yellowDisc": "/game-assets/connect-four/yellow-disc-trimmed.png",
+    "redDisc": "",
+    "yellowDisc": "",
     "dropIndicator": "",
     "redPlayerBadge": "",
     "yellowPlayerBadge": "",

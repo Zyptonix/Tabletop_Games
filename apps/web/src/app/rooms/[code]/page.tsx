@@ -220,6 +220,7 @@ export default function RoomPage() {
             legalActions={socketState.legalActions}
             gameEvents={socketState.gameEvents}
             currentUserId={user.id}
+            timer={socketState.timer}
             onAction={(type, payload) => socketState.sendAction(room.id, type, payload)}
             onChat={socketState.sendChat}
             onEndMatch={socketState.endRoom}

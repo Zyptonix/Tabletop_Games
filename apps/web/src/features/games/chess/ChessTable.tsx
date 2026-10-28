@@ -92,7 +92,13 @@ function ChessPieceArt({ piece }: { piece: string }) {
     );
   }
 
-  const isPawn = piece.toLowerCase() === "p";
+  const kind = piece.toLowerCase();
+  const sizeClass =
+    kind === "p"
+      ? "h-[45%] w-[45%]"
+      : kind === "k" || kind === "q"
+        ? "h-[64%] w-[64%]"
+        : "h-[54%] w-[54%]";
 
   return (
     <img
@@ -100,9 +106,7 @@ function ChessPieceArt({ piece }: { piece: string }) {
       alt={piece}
       draggable={false}
       onError={() => setFailedFile(file)}
-      className={`pointer-events-none select-none object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.45)] transition-transform duration-150 ${
-        isPawn ? "h-[74%] w-[74%]" : "h-[82%] w-[82%]"
-      }`}
+      className={`pointer-events-none select-none object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.45)] transition-transform duration-150 ${sizeClass}`}
     />
   );
 }
@@ -394,17 +398,17 @@ export function ChessTable(props: BoardGameTableProps) {
   const bottomCaptured = bottomIsWhite ? materialData.capturedByWhite : materialData.capturedByBlack;
 
   return (
-    <div className="flex w-full flex-col lg:flex-row items-center lg:items-start justify-center gap-6 max-w-7xl mx-auto p-2 sm:p-4 select-none">
+    <div className="flex w-full flex-col lg:flex-row items-center justify-center gap-3 lg:gap-6 max-w-7xl mx-auto p-1 sm:p-2 select-none h-full overflow-hidden">
       {/* ============================================================== */}
       {/* LEFT COLUMN: CHESS BOARD & PLAYER PODS (CHESS.COM STRUCTURE)  */}
       {/* ============================================================== */}
-      <div className="flex flex-col items-center w-full max-w-[min(92vw,640px)] shrink-0">
+      <div className="flex flex-col items-center w-full shrink-0" style={{ maxWidth: "min(100%, calc(100dvh - 120px), 760px)" }}>
         {/* TOP OPPONENT POD */}
         {topPlayer ? (
-          <div className="flex w-full items-center justify-between py-2 px-1 text-white">
+          <div className="flex w-full items-center justify-between py-1.5 px-1 text-white">
             <div className="flex items-center gap-3">
-              <div className="relative h-10 w-10 overflow-hidden rounded-lg bg-gradient-to-br from-slate-700 to-slate-900 border border-white/20 shadow-md grid place-items-center">
-                <span className="text-base font-black text-slate-300">
+              <div className="relative h-9 w-9 overflow-hidden rounded-lg bg-gradient-to-br from-slate-700 to-slate-900 border border-white/20 shadow-md grid place-items-center">
+                <span className="text-sm font-black text-slate-300">
                   {topPlayer.displayName.slice(0, 1).toUpperCase()}
                 </span>
                 {topPlayer.isBot ? (
@@ -416,7 +420,7 @@ export function ChessTable(props: BoardGameTableProps) {
 
               <div className="flex flex-col">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-bold text-white tracking-wide">
+                  <span className="text-xs sm:text-sm font-bold text-white tracking-wide">
                     {topPlayer.displayName}
                   </span>
                   <span className="text-xs text-white/50 font-medium">
@@ -449,7 +453,7 @@ export function ChessTable(props: BoardGameTableProps) {
             <div className="flex items-center gap-2">
               {chessClockEnabled ? (
                 <div
-                  className={`flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 font-mono text-xl font-black tabular-nums shadow-lg transition-all ${
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1 font-mono text-lg font-black tabular-nums shadow-lg transition-all ${
                     topPlayer.userId === state.currentPlayerId && state.phase === "playing"
                       ? clockFor(topPlayer.userId) <= 15000
                         ? "bg-rose-600/90 text-white ring-2 ring-rose-400 animate-pulse"
@@ -466,7 +470,7 @@ export function ChessTable(props: BoardGameTableProps) {
                 type="button"
                 onClick={() => setManualFlipped((prev) => (prev !== null ? !prev : isWhite))}
                 title="Flip Board"
-                className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 bg-black/30 text-white/60 hover:bg-white/10 hover:text-white"
+                className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-black/30 text-white/60 hover:bg-white/10 hover:text-white"
               >
                 <RotateCcw className="h-4 w-4" />
               </button>
@@ -474,9 +478,12 @@ export function ChessTable(props: BoardGameTableProps) {
           </div>
         ) : null}
 
-        {/* 8x8 CHESS BOARD CONTAINER */}
-        <div className="relative w-full aspect-square rounded-2xl overflow-hidden border-[6px] border-[#2b2b29] bg-[#2b2b29] shadow-[0_20px_50px_rgba(0,0,0,0.7)]">
-          <div className="grid grid-cols-8 h-full w-full">
+        {/* 8x8 CHESS BOARD CONTAINER - ALWAYS STRICTLY SQUARE */}
+        <div
+          className="relative aspect-square w-full rounded-2xl overflow-hidden border-[5px] sm:border-[6px] border-[#2b2b29] bg-[#2b2b29] shadow-[0_20px_50px_rgba(0,0,0,0.7)]"
+          style={{ aspectRatio: "1 / 1" }}
+        >
+          <div className="grid grid-cols-8 grid-rows-8 h-full w-full">
             {Array.from({ length: 64 }, (_, displayIndex) => {
               const displayRow = Math.floor(displayIndex / 8);
               const displayColumn = displayIndex % 8;
@@ -505,7 +512,7 @@ export function ChessTable(props: BoardGameTableProps) {
                   type="button"
                   onClick={() => handleSquareClick(index, rowIndex, column, piece)}
                   aria-label={`Chess square ${String.fromCharCode(97 + column)}${8 - rowIndex}`}
-                  className={`relative flex items-center justify-center transition-colors ${squareBgClass} ${
+                  className={`relative aspect-square flex items-center justify-center transition-colors ${squareBgClass} ${
                     isLastMoveSquare ? "!bg-[#f7ec74]/75 !text-slate-900" : ""
                   } ${isSelected ? "!bg-[#f5e050] !text-slate-900 ring-4 ring-inset ring-amber-400" : ""}`}
                 >
@@ -542,45 +549,69 @@ export function ChessTable(props: BoardGameTableProps) {
                   {isLegalMove && piece ? (
                     <span className="pointer-events-none absolute inset-1.5 z-20 rounded-full border-[4px] sm:border-[5px] border-emerald-600/75 animate-pulse" />
                   ) : null}
-
-                  {/* Promotion Popover right on the promotion square */}
-                  {pendingPromotion && pendingPromotion.targetSquare === index ? (
-                    <div
-                      onClick={(e) => e.stopPropagation()}
-                      className="absolute z-50 flex flex-col gap-1 rounded-xl border border-amber-300 bg-slate-900/95 p-1.5 shadow-2xl backdrop-blur-md"
-                    >
-                      {pendingPromotion.choices.map((action) => (
-                        <button
-                          key={String(action.promotion)}
-                          type="button"
-                          onClick={() => {
-                            onAction("move_piece", {
-                              from: action.from,
-                              to: action.to,
-                              promotion: action.promotion
-                            });
-                            setPendingPromotion(null);
-                            setSelectedSquare(null);
-                            setChessMoveNotice(null);
-                          }}
-                          className="grid h-10 w-10 place-items-center rounded-lg border border-white/20 bg-white/10 text-xl font-black text-amber-200 hover:bg-emerald-500/40 hover:scale-105 active:scale-95"
-                        >
-                          {String(action.promotion).toUpperCase()}
-                        </button>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={() => setPendingPromotion(null)}
-                        className="text-[9px] font-bold text-white/50 hover:text-white"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : null}
                 </button>
               );
             })}
           </div>
+
+          {/* ELEGANT PROMOTION MODAL OVERLAY (OUTSIDE OF BUTTONS) */}
+          {pendingPromotion ? (
+            <div
+              className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+              onClick={() => setPendingPromotion(null)}
+            >
+              <div
+                className="flex flex-col items-center gap-3 rounded-2xl border-2 border-amber-400/80 bg-slate-900/95 p-4 shadow-2xl max-w-[290px] w-full"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="text-center">
+                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-amber-300">Pawn Promotion</p>
+                  <p className="text-xs text-white/60">Choose your promotion piece:</p>
+                </div>
+
+                <div className="grid grid-cols-4 gap-2 w-full">
+                  {pendingPromotion.choices.map((action) => {
+                    const promoLetter = String(action.promotion ?? "q").toLowerCase();
+                    const pieceSymbol = isWhite ? promoLetter.toUpperCase() : promoLetter;
+                    const pieceName = promoLetter === "q" ? "Queen" : promoLetter === "r" ? "Rook" : promoLetter === "b" ? "Bishop" : "Knight";
+
+                    return (
+                      <button
+                        key={promoLetter}
+                        type="button"
+                        onClick={() => {
+                          onAction("move_piece", {
+                            from: action.from,
+                            to: action.to,
+                            promotion: action.promotion
+                          });
+                          setPendingPromotion(null);
+                          setSelectedSquare(null);
+                          setChessMoveNotice(null);
+                        }}
+                        className="group flex flex-col items-center justify-center gap-1.5 rounded-xl border border-white/20 bg-white/10 p-2 transition hover:scale-105 hover:border-amber-400 hover:bg-amber-400/20 active:scale-95 shadow-md"
+                      >
+                        <div className="h-10 w-10 flex items-center justify-center">
+                          <ChessPieceArt piece={pieceSymbol} />
+                        </div>
+                        <span className="text-[10px] font-bold text-white/80 group-hover:text-amber-200">
+                          {pieceName}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setPendingPromotion(null)}
+                  className="mt-0.5 text-xs font-bold text-white/40 hover:text-white transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         {/* BOTTOM CURRENT PLAYER POD */}
@@ -673,21 +704,23 @@ export function ChessTable(props: BoardGameTableProps) {
           </div>
         ) : null}
 
-        {/* Notice banner */}
+        {/* Floating Notice Toast */}
         {chessMoveNotice ? (
-          <p
-            role="status"
-            className="mt-2 w-full rounded-xl border border-rose-400/30 bg-rose-950/70 p-2.5 text-center text-xs font-semibold text-rose-200 shadow-lg backdrop-blur-md"
-          >
-            ⚠️ {chessMoveNotice}
-          </p>
+          <div className="absolute top-14 inset-x-4 z-40 flex justify-center pointer-events-none">
+            <p
+              role="status"
+              className="pointer-events-auto rounded-xl border border-rose-400/50 bg-rose-950/90 px-4 py-2 text-center text-xs font-bold text-rose-200 shadow-xl backdrop-blur-md animate-in fade-in slide-in-from-top-2"
+            >
+              ⚠️ {chessMoveNotice}
+            </p>
+          </div>
         ) : null}
       </div>
 
       {/* ============================================================== */}
       {/* RIGHT COLUMN: CHESS.COM SIDEBAR (MOVES, NOTATION, CHAT, INFO) */}
       {/* ============================================================== */}
-      <div className="w-full lg:w-[380px] flex flex-col rounded-2xl border border-white/10 bg-slate-950/90 shadow-2xl backdrop-blur-2xl overflow-hidden self-stretch min-h-[520px]">
+      <div className="w-full lg:w-[360px] xl:w-[380px] shrink-0 flex flex-col rounded-2xl border border-white/10 bg-slate-950/90 shadow-2xl backdrop-blur-2xl overflow-hidden self-stretch max-h-[min(calc(100dvh-120px),760px)]">
         {/* TOP TABS: MOVES / CHAT / INFO */}
         <div className="flex border-b border-white/10 bg-black/40">
           <button

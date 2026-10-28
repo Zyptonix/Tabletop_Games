@@ -55,8 +55,10 @@ function ActivityIcon({ type, message }: { type: string; message: string }) {
 export function BoardGameTable({ room, state, legalActions, gameEvents, currentUserId, timer, onAction, onChat, onEndMatch }: BoardGameTableProps) {
   const router = useRouter();
   const meta = GAME_META[state.gameId] ?? GAME_META.chess!;
+  const isCustomLayout = state.gameId === "battleship" || state.gameId === "chess";
   const isBattleship = state.gameId === "battleship";
-  const [sidebarOpen, setSidebarOpen] = useState(!isBattleship);
+  const isChess = state.gameId === "chess";
+  const [sidebarOpen, setSidebarOpen] = useState(!isCustomLayout);
   
   const me = state.players.find((player) => player.userId === currentUserId);
   const isMyTurn = owns(state, currentUserId);
@@ -85,12 +87,12 @@ export function BoardGameTable({ room, state, legalActions, gameEvents, currentU
         </div>
       </header>
       <div className={`grid min-h-0 flex-1 gap-2 p-2 sm:p-3 transition-all ${sidebarOpen ? "grid-cols-1 lg:grid-cols-[minmax(0,1fr)_350px] xl:grid-cols-[minmax(0,1fr)_370px]" : "grid-cols-1"}`}>
-        <main className={`relative min-h-0 min-w-0 rounded-2xl border border-white/10 bg-[radial-gradient(ellipse_at_45%_0%,rgba(30,64,85,.22),transparent_60%),linear-gradient(145deg,#0b141d,#080e14)] ${isBattleship ? "p-1.5 sm:p-2.5 overflow-hidden flex flex-col h-full" : "p-3 sm:p-5 lg:overflow-y-auto lg:p-5 xl:p-6"}`}>
-          {!isBattleship ? (
+        <main className={`relative min-h-0 min-w-0 rounded-2xl border border-white/10 bg-[radial-gradient(ellipse_at_45%_0%,rgba(30,64,85,.22),transparent_60%),linear-gradient(145deg,#0b141d,#080e14)] ${isCustomLayout ? "p-1.5 sm:p-2.5 overflow-hidden flex flex-col h-full" : "p-3 sm:p-5 lg:overflow-y-auto lg:p-5 xl:p-6"}`}>
+          {!isCustomLayout ? (
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-white/[.07] pb-3"><div><p className="text-[10px] font-black uppercase tracking-[.25em]" style={{ color: meta.accent }}>Tabletop Arena / Board Games</p><p className="mt-1 text-xs text-white/45">{state.players.length} players · Turn {state.turnNumber} · Move {state.actionNumber}</p></div><div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs font-bold text-white/65">{isMyTurn ? "⚡ Your move" : `👤 ${currentPlayer?.displayName ?? "—"}`}</div></div>
           ) : null}
-          <div className={`board-game-content min-h-0 min-w-0 flex-1 ${isBattleship ? "h-full flex flex-col overflow-hidden" : ""}`}>{renderBoard()}</div>
-          {!isBattleship ? (
+          <div className={`board-game-content min-h-0 min-w-0 flex-1 ${isCustomLayout ? "h-full flex flex-col overflow-hidden" : ""}`}>{renderBoard()}</div>
+          {!isCustomLayout ? (
             <div className="mt-5 rounded-xl border border-amber-200/15 bg-amber-100/[.045] p-3 text-xs leading-relaxed text-amber-100/70"><span className="mr-2 font-black">📘 RULES STATUS</span>{state.gameNotice}</div>
           ) : null}
           {state.phase === "finished" ? <div className="absolute inset-0 z-30 grid place-items-center bg-black/75 p-5 backdrop-blur-sm"><div className="w-full max-w-md rounded-3xl border border-emerald-100/20 bg-[#0c181d] p-8 text-center shadow-2xl"><div className="text-5xl">🏆</div><h2 className="mt-3 text-2xl font-black">{state.winnerUserId === currentUserId ? "You won!" : `${state.players.find((player) => player.userId === state.winnerUserId)?.displayName ?? "The match"} won!`}</h2><p className="mt-2 text-sm text-white/50">The match has ended. Return to the dashboard when you are ready.</p><button type="button" onClick={dashboard} className="mt-6 min-h-12 w-full rounded-xl bg-emerald-300 px-5 font-black text-slate-950 hover:bg-emerald-200">🏠 Return to dashboard</button></div></div> : null}

@@ -99,33 +99,83 @@ function drawStoneWall(ctx: CanvasRenderingContext2D, px: number, py: number) {
   ctx.strokeRect(px + 0.75, py + 0.75, TILE - 1.5, TILE - 1.5);
 }
 
-function drawWoodCrate(ctx: CanvasRenderingContext2D, px: number, py: number) {
+function drawHazardBlock(ctx: CanvasRenderingContext2D, px: number, py: number) {
   // Cast Shadow
-  ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+  ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
   ctx.fillRect(px + 3, py + TILE - 3, TILE - 3, 5);
 
-  // Main Crate Body
-  ctx.fillStyle = "#6d3e1d";
+  // Black block foundation
+  ctx.fillStyle = "#0a0a0a";
   ctx.fillRect(px + 1, py + 1, TILE - 2, TILE - 2);
 
-  // Horizontal Planks
-  const plankH = (TILE - 2) / 3;
+  // High-contrast Yellow and Black Diagonal Hazard Stripes
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(px + 2, py + 2, TILE - 4, TILE - 4);
+  ctx.clip();
+
+  // Solid Caution Yellow base
+  ctx.fillStyle = "#facc15";
+  ctx.fillRect(px + 2, py + 2, TILE - 4, TILE - 4);
+
+  // Jet Black 45-degree diagonal stripes
+  ctx.fillStyle = "#09090b";
+  const stripeWidth = 9;
+  for (let x = -TILE * 2; x < TILE * 3; x += stripeWidth * 2) {
+    ctx.beginPath();
+    ctx.moveTo(px + x, py);
+    ctx.lineTo(px + x + stripeWidth, py);
+    ctx.lineTo(px + x + stripeWidth + TILE, py + TILE);
+    ctx.lineTo(px + x + TILE, py + TILE);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // Top highlight bevel & bottom shadow bevel
+  ctx.fillStyle = "rgba(255, 255, 255, 0.45)";
+  ctx.fillRect(px + 2, py + 2, TILE - 4, 2.5);
+  ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+  ctx.fillRect(px + 2, py + TILE - 4.5, TILE - 4, 2.5);
+
+  // Caution Yellow Inner Frame Border
+  ctx.strokeStyle = "#eab308";
+  ctx.lineWidth = 2.5;
+  ctx.strokeRect(px + 2, py + 2, TILE - 4, TILE - 4);
+
+  // Deep Black Outer Edge
+  ctx.strokeStyle = "#000000";
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(px + 0.75, py + 0.75, TILE - 1.5, TILE - 1.5);
+}
+
+function drawWoodCrate(ctx: CanvasRenderingContext2D, px: number, py: number) {
+  // Cast Shadow
+  ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
+  ctx.fillRect(px + 3, py + TILE - 3, TILE - 3, 5);
+
+  // Wood base foundation
+  ctx.fillStyle = "#5c3317";
+  ctx.fillRect(px + 1, py + 1, TILE - 2, TILE - 2);
+
+  // 3 Horizontal Planks
+  const plankH = (TILE - 4) / 3;
   for (let i = 0; i < 3; i++) {
-    const plankY = py + 1 + i * plankH;
-    ctx.fillStyle = i % 2 === 0 ? "#7e4a24" : "#6d3e1d";
-    ctx.fillRect(px + 2, plankY, TILE - 4, plankH);
+    const plankY = py + 2 + i * plankH;
+    ctx.fillStyle = i % 2 === 0 ? "#854d0e" : "#78350f";
+    ctx.fillRect(px + 2, plankY, TILE - 4, plankH - 1);
 
-    // Plank highlight top edge
-    ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
-    ctx.fillRect(px + 2, plankY, TILE - 4, 1.5);
+    // Plank top highlight
+    ctx.fillStyle = "rgba(255, 255, 255, 0.16)";
+    ctx.fillRect(px + 2, plankY, TILE - 4, 1.2);
 
-    // Plank shadow bottom edge
+    // Plank bottom shadow
     ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
-    ctx.fillRect(px + 2, plankY + plankH - 1.5, TILE - 4, 1.5);
+    ctx.fillRect(px + 2, plankY + plankH - 2, TILE - 4, 1);
   }
 
-  // Wood X-Braces
-  ctx.strokeStyle = "#502c13";
+  // Cross Diagonal Braces (Wood X)
+  ctx.strokeStyle = "#451a03";
   ctx.lineWidth = 3.5;
   ctx.beginPath();
   ctx.moveTo(px + 4, py + 4);
@@ -134,33 +184,29 @@ function drawWoodCrate(ctx: CanvasRenderingContext2D, px: number, py: number) {
   ctx.lineTo(px + 4, py + TILE - 4);
   ctx.stroke();
 
-  // Iron Corner Brackets & Rivets
-  const bracketSize = 7;
-  ctx.fillStyle = "#2d3748"; // Dark iron
-  // Top Left
-  ctx.fillRect(px + 1, py + 1, bracketSize, 3);
-  ctx.fillRect(px + 1, py + 1, 3, bracketSize);
-  // Top Right
-  ctx.fillRect(px + TILE - bracketSize - 1, py + 1, bracketSize, 3);
-  ctx.fillRect(px + TILE - 4, py + 1, 3, bracketSize);
-  // Bottom Left
-  ctx.fillRect(px + 1, py + TILE - 4, bracketSize, 3);
-  ctx.fillRect(px + 1, py + TILE - bracketSize - 1, 3, bracketSize);
-  // Bottom Right
-  ctx.fillRect(px + TILE - bracketSize - 1, py + TILE - 4, bracketSize, 3);
-  ctx.fillRect(px + TILE - 4, py + TILE - bracketSize - 1, 3, bracketSize);
+  // Iron Corner Reinforcements
+  const bracket = 7;
+  ctx.fillStyle = "#334155"; // Dark iron
+  ctx.fillRect(px + 1, py + 1, bracket, 2.5);
+  ctx.fillRect(px + 1, py + 1, 2.5, bracket);
+  ctx.fillRect(px + TILE - bracket - 1, py + 1, bracket, 2.5);
+  ctx.fillRect(px + TILE - 3.5, py + 1, 2.5, bracket);
+  ctx.fillRect(px + 1, py + TILE - 3.5, bracket, 2.5);
+  ctx.fillRect(px + 1, py + TILE - bracket - 1, 2.5, bracket);
+  ctx.fillRect(px + TILE - bracket - 1, py + TILE - 3.5, bracket, 2.5);
+  ctx.fillRect(px + TILE - 3.5, py + TILE - bracket - 1, 2.5, bracket);
 
   // Silver Rivets
-  ctx.fillStyle = "#94a3b8";
-  ctx.fillRect(px + 3, py + 3, 2, 2);
-  ctx.fillRect(px + TILE - 5, py + 3, 2, 2);
-  ctx.fillRect(px + 3, py + TILE - 5, 2, 2);
-  ctx.fillRect(px + TILE - 5, py + TILE - 5, 2, 2);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillRect(px + 3, py + 3, 1.5, 1.5);
+  ctx.fillRect(px + TILE - 4.5, py + 3, 1.5, 1.5);
+  ctx.fillRect(px + 3, py + TILE - 4.5, 1.5, 1.5);
+  ctx.fillRect(px + TILE - 4.5, py + TILE - 4.5, 1.5, 1.5);
 
-  // Crate perimeter outline
-  ctx.strokeStyle = "#2e1809";
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(px + 1, py + 1, TILE - 2, TILE - 2);
+  // Outer border
+  ctx.strokeStyle = "#271202";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
 }
 
 function drawTile(ctx: CanvasRenderingContext2D, tile: ShockwaveTile, col: number, row: number) {
@@ -171,8 +217,10 @@ function drawTile(ctx: CanvasRenderingContext2D, tile: ShockwaveTile, col: numbe
   drawCobblestoneFloor(ctx, px, py, col, row);
 
   if (tile === "wall") {
-    drawStoneWall(ctx, px, py);
+    // SOLID INDESTRUCTIBLE WALLS: Black and Yellow Hazard Blocks!
+    drawHazardBlock(ctx, px, py);
   } else if (tile === "block") {
+    // BREAKABLE BLOCKS: Destructible Wooden Crates!
     drawWoodCrate(ctx, px, py);
   }
 }
@@ -189,31 +237,67 @@ function drawGame(ctx: CanvasRenderingContext2D, state: PublicStrategicShockwave
   // 1. Draw Map Tiles
   state.board.forEach((row, y) => row.forEach((tile, x) => drawTile(ctx, tile, x, y)));
 
-  // 2. Dynamic Torches / Lanterns Lighting
-  const torchPositions = [
-    { x: 1.5, y: 1.5 },
-    { x: state.width - 2.5, y: 1.5 },
-    { x: 1.5, y: state.height - 2.5 },
-    { x: state.width - 2.5, y: state.height - 2.5 },
-    { x: Math.floor(state.width / 2) + 0.5, y: Math.floor(state.height / 2) + 0.5 }
-  ];
+  // 2. High-visibility Danger Square Light Indicators (Vivid Red Blast Cross & Floor Danger Laser)
+  for (const bomb of state.bombs) {
+    const fuseMs = bomb.explodeAt - now;
+    const isCritical = fuseMs < 750;
+    const pulseSpeed = isCritical ? 45 : 100;
+    const pulse = 0.5 + Math.sin(now / pulseSpeed) * 0.4;
 
-  for (const torch of torchPositions) {
-    const tx = torch.x * TILE;
-    const ty = torch.y * TILE;
-    const flicker = 0.88 + Math.sin(now / 110 + torch.x * 3) * 0.12;
+    const threatCells: Array<{ x: number; y: number; isOrigin: boolean }> = [{ x: bomb.x, y: bomb.y, isOrigin: true }];
+    for (const direction of [
+      { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }
+    ]) {
+      for (let distance = 1; distance <= bomb.blastRange; distance += 1) {
+        const x = bomb.x + direction.x * distance;
+        const y = bomb.y + direction.y * distance;
+        const tile = state.board[y]?.[x];
+        if (tile === undefined || tile === "wall") break;
+        threatCells.push({ x, y, isOrigin: false });
+        if (tile === "block") break;
+      }
+    }
 
-    const radial = ctx.createRadialGradient(tx, ty, 6, tx, ty, TILE * 3.2);
-    radial.addColorStop(0, `rgba(251, 191, 36, ${0.32 * flicker})`);
-    radial.addColorStop(0.4, `rgba(245, 158, 11, ${0.14 * flicker})`);
-    radial.addColorStop(1, "rgba(245, 158, 11, 0)");
+    for (const cell of threatCells) {
+      const px = cell.x * TILE;
+      const py = cell.y * TILE;
+      const cx = px + TILE / 2;
+      const cy = py + TILE / 2;
 
-    ctx.save();
-    ctx.fillStyle = radial;
-    ctx.beginPath();
-    ctx.arc(tx, ty, TILE * 3.2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+      ctx.save();
+      // 1. Vivid Glowing Danger Light Beam
+      ctx.fillStyle = isCritical ? `rgba(239, 68, 68, ${0.48 + pulse * 0.3})` : `rgba(220, 38, 38, ${0.28 + pulse * 0.25})`;
+      ctx.fillRect(px + 1, py + 1, TILE - 2, TILE - 2);
+
+      // 2. High-contrast Neon Red Hazard Border
+      ctx.strokeStyle = isCritical ? "rgba(254, 226, 226, 0.95)" : `rgba(248, 113, 113, ${0.75 + pulse * 0.25})`;
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = "#ef4444";
+      ctx.shadowBlur = 10;
+      ctx.strokeRect(px + 2, py + 2, TILE - 4, TILE - 4);
+
+      // 3. Central Laser Shockwave Beam
+      ctx.strokeStyle = `rgba(254, 202, 202, ${0.5 + pulse * 0.35})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(px + 4, cy);
+      ctx.lineTo(px + TILE - 4, cy);
+      ctx.moveTo(cx, py + 4);
+      ctx.lineTo(cx, py + TILE - 4);
+      ctx.stroke();
+
+      // 4. Danger Skull Beacon Icon (on path cells)
+      if (!cell.isOrigin) {
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "900 13px ui-sans-serif, system-ui";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.shadowColor = "#ef4444";
+        ctx.shadowBlur = 6;
+        ctx.fillText("☠", cx, cy + 0.5);
+      }
+      ctx.restore();
+    }
   }
 
   // 3. Power-Ups (Floating 3D Crystals & Gems)
@@ -320,32 +404,6 @@ function drawGame(ctx: CanvasRenderingContext2D, state: PublicStrategicShockwave
     ctx.arc(sparkX, sparkY, 3.5, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
-
-    // Threat Area Indicators
-    const threatCells: Array<{ x: number; y: number }> = [{ x: bomb.x, y: bomb.y }];
-    for (const direction of [
-      { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }
-    ]) {
-      for (let distance = 1; distance <= bomb.blastRange; distance += 1) {
-        const x = bomb.x + direction.x * distance;
-        const y = bomb.y + direction.y * distance;
-        const tile = state.board[y]?.[x];
-        if (tile === undefined || tile === "wall") break;
-        threatCells.push({ x, y });
-        if (tile === "block") break;
-      }
-    }
-
-    // Threat highlight in cells
-    for (const cell of threatCells) {
-      const px = cell.x * TILE;
-      const py = cell.y * TILE;
-      const warningAlpha = Math.max(0.08, Math.min(0.28, (2000 - fuseMs) / 2000));
-      ctx.save();
-      ctx.fillStyle = isCritical ? "rgba(244, 63, 94, 0.32)" : `rgba(239, 68, 68, ${warningAlpha})`;
-      ctx.fillRect(px + 2, py + 2, TILE - 4, TILE - 4);
-      ctx.restore();
-    }
   }
 
   // 5. Explosions (Fiery Shockwave Plasm & Smoke)

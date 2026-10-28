@@ -115,6 +115,7 @@ export function BoardGamesTable({
   state,
   legalActions,
   currentUserId,
+  timer,
   gameEvents = [],
   onAction,
   onChat,
@@ -124,6 +125,7 @@ export function BoardGamesTable({
   state: PublicGridGameState;
   legalActions: unknown[];
   currentUserId: string;
+  timer?: { currentPlayerId: string | null; remainingMs: number | null } | null;
   gameEvents?: GameEvent[];
   onAction: (type: string, payload?: Record<string, unknown>) => void;
   onChat: (roomId: string, body: string) => void;
@@ -164,6 +166,34 @@ export function BoardGamesTable({
   const legalSquares = useMemo(() => new Set(allowed.filter((action) => action.type === "place").map((action) => `${action.row},${action.column}`)), [legalActions]);
   const discsByPlayerId = state.discsByPlayerId ?? Object.fromEntries(state.players.map((player) => [player.userId, countPieces(state.board, player.userId)]));
   const title = state.gameId === "connect-four" ? "Connect Four" : "Reversi";
+  const myPlayerIndex = state.players.findIndex((player) => player.userId === currentUserId);
+  const activeHoverColumn = hoverColumn !== null ? hoverColumn : (keyboardNavigationActive ? keyboardColumn : null);
+  const ghostRowForHover = useMemo(() => {
+    if (activeHoverColumn === null || !isMyTurn || state.gameId !== "connect-four" || state.phase !== "playing") return null;
+    for (let r = state.rows - 1; r >= 0; r--) {
+      if (!state.board[r]?.[activeHoverColumn]) {
+        return r;
+      }
+    }
+    return null;
+  }, [activeHoverColumn, isMyTurn, state.gameId, state.phase, state.rows, state.board]);
+
+  const p1 = state.players[0];
+  const p2 = state.players[1];
+  const clockSeconds = Number(room.settings?.clockSeconds ?? 0);
+  const clockFor = (userId: string) => {
+    if (timer != null && timer.currentPlayerId === userId && timer.remainingMs !== null) {
+      return timer.remainingMs;
+    }
+    const rem = (state as Record<string, unknown>).clockRemainingMsByPlayer as Record<string, number> | undefined;
+    if (rem?.[userId] !== undefined) return rem[userId]!;
+    return clockSeconds > 0 ? clockSeconds * 1000 : 300000;
+  };
+  const formatClock = (milliseconds: number) => {
+    const seconds = Math.max(0, Math.ceil(milliseconds / 1000));
+    return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+  };
+
   const winningCells = state.gameId === "connect-four" && state.phase === "finished" && state.winnerUserId
     ? getWinningCells(state.board, state.lastMove)
     : new Set<string>();
@@ -254,18 +284,103 @@ export function BoardGamesTable({
                   <div className="hidden items-center gap-2 text-[0.7rem] font-semibold text-white/40 md:flex"><span className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1">CLICK</span> column or slot <span className="text-white/20">·</span><span className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1">← →</span> choose</div>
                 </div>
 
-                <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 pb-1">
-                  <div
-                    className={`connect-four-cabinet relative flex max-h-full min-h-0 max-w-full ${useBoardSprite ? "connect-four-sprite-cabinet" : "flex-col rounded-[1.25rem] border-[3px] border-[#126bb3] p-2.5 sm:rounded-[1.5rem] sm:p-3"}`}
-                    onPointerMove={(event) => { if (event.pointerType === "mouse") setKeyboardNavigationActive(false); }}
-                    onPointerLeave={() => { setHoverColumn(null); setKeyboardNavigationActive(false); }}
-                    style={{
-                      width: useBoardSprite
-                        ? "min(100%, 1200px, calc((100dvh - 250px) * 1.8347))"
-                        : "min(100%, 920px, calc((100dvh - 250px) * 1.1667))",
-                      aspectRatio: useBoardSprite ? "677 / 369" : undefined
-                    }}
-                  >
+                <div className="flex min-h-0 flex-1 flex-col xl:flex-row items-center justify-center gap-4 lg:gap-8 py-2 px-1">
+                  {/* LEFT SIDE PANEL: CHESS CLOCK TIMERS & STATUS (Unblocks the board completely) */}
+                  <div className="flex w-full xl:w-[220px] 2xl:w-[240px] shrink-0 flex-row xl:flex-col items-stretch justify-center gap-2.5 sm:gap-3">
+                    {/* Opponent Card (Yellow - Player 2) */}
+                    {p2 ? (
+                      <div className={`flex flex-1 xl:flex-none flex-col gap-1.5 rounded-2xl border p-2.5 sm:p-3 transition-all ${
+                        state.currentPlayerId === p2.userId && state.phase === "playing"
+                          ? "border-amber-400 bg-amber-500/15 shadow-[0_0_20px_rgba(245,158,11,0.25)] ring-1 ring-amber-400/50"
+                          : "border-white/10 bg-slate-900/60"
+                      }`}>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="grid h-6 w-6 place-items-center rounded-full bg-gradient-to-br from-yellow-300 to-amber-600 shadow text-[10px] font-black text-black">
+                              🟡
+                            </span>
+                            <span className="truncate text-xs font-bold text-white tracking-wide">
+                              {p2.displayName}
+                            </span>
+                          </div>
+                          {room.players.find((p) => p.userId === p2.userId)?.isBot ? (
+                            <span className="rounded bg-sky-500/20 px-1.5 py-0.5 text-[9px] font-black uppercase text-sky-300">BOT</span>
+                          ) : null}
+                        </div>
+                        <div className={`flex items-center justify-center gap-2 rounded-xl py-1 sm:py-1.5 font-mono text-lg sm:text-xl font-black tabular-nums transition-all ${
+                          state.currentPlayerId === p2.userId && state.phase === "playing"
+                            ? "bg-amber-400 text-slate-950 shadow-md animate-pulse"
+                            : "bg-black/40 text-white/70"
+                        }`}>
+                          <span>{formatClock(clockFor(p2.userId))}</span>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* Match Status Card (Placed in the left dock, out of the board's way) */}
+                    <div className="hidden xl:flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-white/10 bg-black/40 p-3 text-center">
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-sky-300">Match Status</span>
+                      <p className="text-xs font-extrabold text-white">
+                        {isFinished
+                          ? (state.winnerUserId ? `🏆 ${winnerName ?? "Player"} wins!` : "🤝 Draw game")
+                          : isMyTurn ? "✨ Your move"
+                          : isBotTurn ? "🤖 Thinking…"
+                          : "👀 Waiting…"}
+                      </p>
+                      <p className="text-[11px] font-medium text-white/50">
+                        {isFinished ? "Round complete" : isMyTurn ? "Pick a column or slot" : "Watch for winning lines"}
+                      </p>
+                      <div className="mt-1 flex items-center gap-2 text-[10px] font-black tracking-wider text-white/30">
+                        <span>🔴 RED</span>
+                        <span>VS</span>
+                        <span>🟡 YELLOW</span>
+                      </div>
+                    </div>
+
+                    {/* Your Card (Red - Player 1) */}
+                    {p1 ? (
+                      <div className={`flex flex-1 xl:flex-none flex-col gap-1.5 rounded-2xl border p-2.5 sm:p-3 transition-all ${
+                        state.currentPlayerId === p1.userId && state.phase === "playing"
+                          ? "border-rose-500 bg-rose-500/15 shadow-[0_0_20px_rgba(244,63,94,0.25)] ring-1 ring-rose-400/50"
+                          : "border-white/10 bg-slate-900/60"
+                      }`}>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="grid h-6 w-6 place-items-center rounded-full bg-gradient-to-br from-rose-400 to-rose-700 shadow text-[10px] font-black text-white">
+                              🔴
+                            </span>
+                            <span className="truncate text-xs font-bold text-white tracking-wide">
+                              {p1.displayName} {p1.userId === currentUserId ? "(You)" : ""}
+                            </span>
+                          </div>
+                          {p1.userId === currentUserId ? (
+                            <span className="rounded bg-rose-500/20 px-1.5 py-0.5 text-[9px] font-black uppercase text-rose-300">YOU</span>
+                          ) : null}
+                        </div>
+                        <div className={`flex items-center justify-center gap-2 rounded-xl py-1 sm:py-1.5 font-mono text-lg sm:text-xl font-black tabular-nums transition-all ${
+                          state.currentPlayerId === p1.userId && state.phase === "playing"
+                            ? "bg-rose-500 text-white shadow-md animate-pulse"
+                            : "bg-black/40 text-white/70"
+                        }`}>
+                          <span>{formatClock(clockFor(p1.userId))}</span>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {/* CENTER: 3D CONNECT FOUR CABINET */}
+                  <div className="flex min-h-0 flex-1 flex-col items-center justify-center pb-2">
+                    <div
+                      className={`connect-four-cabinet relative flex max-h-full min-h-0 max-w-full ${useBoardSprite ? "connect-four-sprite-cabinet" : "flex-col rounded-[1.75rem] border-x-[6px] border-t-[5px] border-b-[8px] border-sky-400/40 p-2 sm:p-3 shadow-[0_25px_60px_-10px_rgba(0,0,0,0.85)]"}`}
+                      onPointerMove={(event) => { if (event.pointerType === "mouse") setKeyboardNavigationActive(false); }}
+                      onPointerLeave={() => { setHoverColumn(null); setKeyboardNavigationActive(false); }}
+                      style={{
+                        width: useBoardSprite
+                          ? "min(100%, 1200px, calc((100dvh - 250px) * 1.8347))"
+                          : "min(100%, 880px, calc((100dvh - 250px) * 1.1667))",
+                        aspectRatio: useBoardSprite ? "677 / 369" : undefined
+                      }}
+                    >
                     {useBoardSprite ? (
                       <div className="connect-four-sprite-controls absolute z-30 grid" style={{ left: "17.2%", top: "2.2%", width: "65.6%", height: "4.3%", gridTemplateColumns: `repeat(${state.columns}, minmax(0, 1fr))` }} aria-label="Drop into column" onPointerLeave={() => setHoverColumn(null)}>
                         {Array.from({ length: state.columns }, (_, column) => {
@@ -282,23 +397,62 @@ export function BoardGamesTable({
                         })}
                       </div>
                     ) : null}
-                    {!useBoardSprite ? <div className="connect-four-top-lip relative z-10 mb-1 grid h-7 shrink-0 grid-cols-7 items-center gap-1 rounded-md border border-[#064a86] px-1.5 sm:mb-2 sm:h-8 sm:px-2" aria-label="Drop into column" onPointerLeave={() => setHoverColumn(null)}>
-                      {Array.from({ length: state.columns }, (_, column) => {
-                        const enabled = isMyTurn && columnsWithMoves.has(column);
-                        const hovered = hoverColumn === column || (keyboardNavigationActive && keyboardColumn === column);
-                        const discColor = CONNECT_FOUR_COLORS[state.players.findIndex((player) => player.userId === currentUserId)] ?? CONNECT_FOUR_COLORS[0]!;
-                        return (
-                          <button key={column} type="button" disabled={!enabled} onPointerEnter={() => { setHoverColumn(column); setKeyboardNavigationActive(false); }} onFocus={() => { setHoverColumn(column); setKeyboardNavigationActive(true); }} onBlur={() => { setHoverColumn(null); setKeyboardNavigationActive(false); }} onClick={() => sendDrop(column)} aria-label={`Drop disc in column ${column + 1}`} className="grid h-full min-w-0 place-items-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-white/80 disabled:cursor-not-allowed">
-                            <motion.span animate={{ scale: hovered && enabled ? 1.07 : 1, opacity: enabled ? (hovered ? 0.95 : 0.5) : 0.12, y: hovered && enabled ? 1 : 0 }} transition={{ type: "spring", stiffness: 360, damping: 24 }} className="connect-four-drop-indicator relative block aspect-square h-[min(1.25rem,80%)] rounded-full border" style={{ background: `radial-gradient(circle at 30% 20%,${discColor.light},${discColor.css} 52%,${discColor.dark})`, borderColor: discColor.light, boxShadow: hovered && enabled ? `0 0 14px ${discColor.css}88` : "inset 0 2px 4px #0008" }}>
-                              {connectFourArt.dropIndicator ? <img src={connectFourArt.dropIndicator} alt="" aria-hidden="true" draggable={false} onError={(event) => { event.currentTarget.style.display = "none"; }} className="pointer-events-none absolute inset-[-20%] h-[140%] w-[140%] object-contain" /> : null}
-                            </motion.span>
-                          </button>
-                        );
-                      })}
-                    </div> : null}
 
+                    {/* TOP DROP FUNNEL CHUTES */}
+                    {!useBoardSprite ? (
+                      <div className="connect-four-top-lip relative z-10 mb-1.5 grid h-9 shrink-0 grid-cols-7 items-center gap-1.5 rounded-xl border border-sky-400/30 px-2 sm:h-10 sm:px-3" aria-label="Drop into column" onPointerLeave={() => setHoverColumn(null)}>
+                        {Array.from({ length: state.columns }, (_, column) => {
+                          const enabled = isMyTurn && columnsWithMoves.has(column);
+                          const hovered = hoverColumn === column || (keyboardNavigationActive && keyboardColumn === column);
+                          const discColor = CONNECT_FOUR_COLORS[myPlayerIndex >= 0 ? myPlayerIndex : 0] ?? CONNECT_FOUR_COLORS[0]!;
+                          return (
+                            <button
+                              key={column}
+                              type="button"
+                              disabled={!enabled}
+                              onPointerEnter={() => { setHoverColumn(column); setKeyboardNavigationActive(false); }}
+                              onFocus={() => { setHoverColumn(column); setKeyboardNavigationActive(true); }}
+                              onBlur={() => { setHoverColumn(null); setKeyboardNavigationActive(false); }}
+                              onClick={() => sendDrop(column)}
+                              aria-label={`Drop disc in column ${column + 1}`}
+                              className="group relative flex h-full min-w-0 items-center justify-center rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-white/80 disabled:cursor-not-allowed"
+                            >
+                              {/* 3D Drop Notch Bevel */}
+                              <div className={`absolute inset-x-1.5 top-0 bottom-1 rounded-b-md transition-colors ${hovered && enabled ? "bg-sky-400/25 border-b-2 border-sky-300" : "bg-black/30 border-b border-white/10"}`} />
+                              <motion.span
+                                animate={{
+                                  scale: hovered && enabled ? 1.15 : 1,
+                                  opacity: enabled ? (hovered ? 1 : 0.45) : 0.08,
+                                  y: hovered && enabled ? [0, 2, 0] : 0
+                                }}
+                                transition={{
+                                  type: hovered && enabled ? "spring" : "tween",
+                                  stiffness: 400,
+                                  damping: 20,
+                                  y: { repeat: hovered && enabled ? Infinity : 0, duration: 0.8 }
+                                }}
+                                className="connect-four-drop-indicator relative z-10 block aspect-square h-[min(1.4rem,85%)] rounded-full border-[1.5px]"
+                                style={{
+                                  background: `radial-gradient(circle at 32% 28%, ${discColor.light} 0%, ${discColor.css} 50%, ${discColor.dark} 100%)`,
+                                  borderColor: discColor.light,
+                                  boxShadow: hovered && enabled ? `0 0 16px ${discColor.css}, inset 0 2px 4px rgba(255,255,255,0.6)` : "inset 0 1px 3px rgba(0,0,0,0.5)"
+                                }}
+                              >
+                                {hovered && enabled ? (
+                                  <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[10px] font-black text-white drop-shadow">
+                                    ↓
+                                  </span>
+                                ) : null}
+                              </motion.span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+
+                    {/* MOLDED 3D BOARD GRID */}
                     <div
-                      className={useBoardSprite ? "connect-four-sprite-grid absolute z-10 grid" : "connect-four-grid relative z-10 grid w-full grid-cols-7 overflow-visible rounded-[0.65rem] border-[2px] border-[#064a86]"}
+                      className={useBoardSprite ? "connect-four-sprite-grid absolute z-10 grid" : "connect-four-grid relative z-10 grid w-full grid-cols-7 gap-1.5 sm:gap-2 p-2 sm:p-3 overflow-visible rounded-2xl border-2 border-[#093c76]"}
                       style={useBoardSprite
                         ? { left: "17.2%", top: "6.2%", width: "65.6%", height: "84.8%", gridTemplateColumns: `repeat(${state.columns}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${state.rows}, minmax(0, 1fr))` }
                         : { gridTemplateColumns: `repeat(${state.columns}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${state.rows}, minmax(0, 1fr))`, aspectRatio: "7 / 6" }}
@@ -306,56 +460,125 @@ export function BoardGamesTable({
                       aria-label="Connect Four board"
                       onPointerLeave={() => setHoverColumn(null)}
                     >
-                        {state.board.flatMap((row, rowIndex) => row.map((cell, columnIndex) => {
+                      {state.board.flatMap((row, rowIndex) => row.map((cell, columnIndex) => {
                         const key = `${rowIndex},${columnIndex}`;
                         const legal = columnsWithMoves.has(columnIndex);
                         const playerIndex = state.players.findIndex((player) => player.userId === cell);
                         const color = CONNECT_FOUR_COLORS[playerIndex] ?? CONNECT_FOUR_COLORS[0]!;
                         const isLast = state.lastMove?.row === rowIndex && state.lastMove?.column === columnIndex;
                         const isWinning = winningCells.has(key);
-                        const isHovered = hoverColumn === columnIndex || (keyboardNavigationActive && keyboardColumn === columnIndex);
+                        const isHovered = activeHoverColumn === columnIndex;
                         const occupied = Boolean(cell);
+                        const isGhost = isMyTurn && !occupied && columnIndex === activeHoverColumn && rowIndex === ghostRowForHover;
+
                         return (
-                          <button key={key} type="button" onClick={() => sendDrop(columnIndex)} onPointerEnter={() => { setHoverColumn(columnIndex); setKeyboardNavigationActive(false); }} disabled={!isMyTurn || state.phase !== "playing" || !legal} aria-label={cell ? `${state.players[playerIndex]?.displayName ?? "Player"} ${color.name.toLowerCase()} disc at row ${rowIndex + 1}, column ${columnIndex + 1}` : `Empty slot row ${rowIndex + 1}, column ${columnIndex + 1}${legal ? ", legal column" : ""}`} className={`${useBoardSprite ? "connect-four-sprite-cell" : "connect-four-cell relative grid min-h-0 min-w-0 place-items-center border-b border-r border-[#064c88]/90 p-0"} focus-visible:z-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/80 ${isHovered && isMyTurn && !occupied ? (useBoardSprite ? "connect-four-sprite-slot-hover" : "connect-four-slot-hover") : ""} ${isWinning ? "connect-four-winning-slot" : ""}`} style={{ zIndex: isLast ? 20 : 0 }}>
-                            {isHovered && isMyTurn && !useBoardSprite ? (
-                              <span className="pointer-events-none absolute inset-0 z-0 bg-sky-300/[0.08]" />
-                            ) : null}
-                            <span className={useBoardSprite ? `connect-four-sprite-cell-content ${isWinning ? "connect-four-winning-hole" : ""}` : `connect-four-hole relative grid aspect-square w-[80%] place-items-center rounded-full ${isWinning ? "connect-four-winning-hole" : ""}`}>
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => sendDrop(columnIndex)}
+                            onPointerEnter={() => { setHoverColumn(columnIndex); setKeyboardNavigationActive(false); }}
+                            disabled={!isMyTurn || state.phase !== "playing" || !legal}
+                            aria-label={cell ? `${state.players[playerIndex]?.displayName ?? "Player"} ${color.name.toLowerCase()} disc at row ${rowIndex + 1}, column ${columnIndex + 1}` : `Empty slot row ${rowIndex + 1}, column ${columnIndex + 1}${legal ? ", legal column" : ""}`}
+                            className={`${useBoardSprite ? "connect-four-sprite-cell" : "connect-four-cell relative flex items-center justify-center p-0.5 bg-transparent border-none"} focus-visible:z-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 ${isHovered && isMyTurn ? "connect-four-slot-hover" : ""} ${isWinning ? "connect-four-winning-slot" : ""}`}
+                            style={{ zIndex: isLast ? 20 : isGhost ? 15 : 0 }}
+                          >
+                            <span className={useBoardSprite ? `connect-four-sprite-cell-content ${isWinning ? "connect-four-winning-hole" : ""}` : `connect-four-hole relative grid aspect-square w-full place-items-center rounded-full ${isWinning ? "connect-four-winning-hole" : ""}`}>
+                              {/* OCCUPIED 3D DISC */}
                               {cell ? (
-                                <motion.span key={`${key}-${cell}`} initial={{ y: -((rowIndex + 1) * (useBoardSprite ? 68 : 96)), scale: 0.86 }} animate={{ y: 0, scale: isWinning ? [1, 1.06, 1] : 1 }} transition={{ type: "spring", stiffness: 320, damping: 18, mass: 0.72, scale: { duration: 0.35, repeat: isWinning ? Infinity : 0, repeatType: "reverse" } }} className={`${useBoardSprite ? "connect-four-sprite-disc" : "connect-four-disc relative z-10 block h-[91%] w-[91%] rounded-full"} ${isLast ? "connect-four-last-disc" : ""} ${isWinning ? "connect-four-winning-disc" : ""}`} style={{ width: useBoardSprite ? "75%" : undefined, height: useBoardSprite ? "auto" : undefined, aspectRatio: useBoardSprite ? "1 / 1" : undefined, background: `radial-gradient(circle at 29% 21%,${color.light} 0%,${color.css} 32%,${color.dark} 100%)`, border: `2px solid ${color.light}bb`, boxShadow: `inset 0 3px 5px rgba(255,255,255,.46),inset 0 -7px 10px rgba(0,0,0,.25),0 3px 5px rgba(0,0,0,.32)` }}>
-                                  {!useBoardSprite ? <span className="pointer-events-none absolute left-[21%] top-[15%] h-[17%] w-[29%] rounded-full bg-white/55 blur-[0.5px]" /> : null}
-                                  {state.gameId === "connect-four" && (playerIndex === 0 ? connectFourArt.redDisc : connectFourArt.yellowDisc) ? <img src={(playerIndex === 0 ? connectFourArt.redDisc : connectFourArt.yellowDisc) ?? undefined} alt="" aria-hidden="true" draggable={false} onError={(event) => { event.currentTarget.style.display = "none"; }} className={`connect-four-custom-disc pointer-events-none absolute z-10 select-none ${useBoardSprite ? "object-contain" : "inset-0 h-full w-full object-fill"}`} style={useBoardSprite ? { inset: "-6%", width: "100%", height: "100%" } : undefined} /> : null}
-                                </motion.span>
-                              ) : useBoardSprite && isHovered && isMyTurn && legal ? <span className="connect-four-sprite-empty-preview" /> : !useBoardSprite && isHovered && isMyTurn && legal ? <span className="connect-four-empty-preview block h-[86%] w-[86%] rounded-full border-2 border-dashed border-white/45" /> : null}
+                                <motion.div
+                                  key={`${key}-${cell}`}
+                                  initial={{ y: -((rowIndex + 1.8) * 85), scale: 0.9 }}
+                                  animate={{ y: 0, scale: isWinning ? [1, 1.05, 1] : 1 }}
+                                  transition={{
+                                    type: "spring",
+                                    stiffness: 350,
+                                    damping: 20,
+                                    mass: 0.72,
+                                    scale: { duration: 0.45, repeat: isWinning ? Infinity : 0, repeatType: "reverse" }
+                                  }}
+                                  className={`${useBoardSprite ? "connect-four-sprite-disc" : "connect-four-disc relative z-10 flex h-[92%] w-[92%] items-center justify-center rounded-full"} ${isLast ? "connect-four-last-disc" : ""} ${isWinning ? "connect-four-winning-disc" : ""}`}
+                                  style={{
+                                    background: playerIndex === 0
+                                      ? "radial-gradient(circle at 32% 28%, #ff4b6e 0%, #e11d48 35%, #be123c 72%, #881337 100%)"
+                                      : "radial-gradient(circle at 32% 28%, #fff066 0%, #facc15 35%, #eab308 72%, #854d0e 100%)",
+                                    boxShadow: playerIndex === 0
+                                      ? "inset 0 3px 5px rgba(255,255,255,0.55), inset 0 -6px 8px rgba(0,0,0,0.45), 0 4px 8px rgba(0,0,0,0.4)"
+                                      : "inset 0 3px 5px rgba(255,255,255,0.65), inset 0 -6px 8px rgba(0,0,0,0.4), 0 4px 8px rgba(0,0,0,0.35)"
+                                  }}
+                                >
+                                  {!useBoardSprite ? (
+                                    <>
+                                      {/* Concentric Embossed Coin Ring */}
+                                      <span className="pointer-events-none absolute inset-[14%] rounded-full border-[2.5px] border-white/30 shadow-[inset_0_2px_4px_rgba(0,0,0,0.35),0_1px_2px_rgba(255,255,255,0.25)]" />
+                                      {/* Inner Coin Boss & Specular Flare */}
+                                      <span className="pointer-events-none absolute inset-[34%] rounded-full bg-gradient-to-br from-white/35 to-black/25 shadow-[inset_0_1px_2px_rgba(255,255,255,0.4),0_0_0_1.5px_rgba(0,0,0,0.2)]" />
+                                      <span className="pointer-events-none absolute left-[22%] top-[14%] h-[20%] w-[32%] rounded-full bg-white/60 blur-[0.6px]" />
+
+                                      {/* Sunken Socket Shadow Overlay (Authentic 3D socket depth) */}
+                                      <span className="pointer-events-none absolute inset-0 rounded-full shadow-[inset_0_10px_14px_rgba(0,0,0,0.65),inset_0_-3px_5px_rgba(255,255,255,0.2)]" />
+                                    </>
+                                  ) : null}
+
+                                  {/* Custom disc sprite if configured */}
+                                  {state.gameId === "connect-four" && (playerIndex === 0 ? connectFourArt.redDisc : connectFourArt.yellowDisc) ? (
+                                    <img
+                                      src={(playerIndex === 0 ? connectFourArt.redDisc : connectFourArt.yellowDisc) ?? undefined}
+                                      alt=""
+                                      aria-hidden="true"
+                                      draggable={false}
+                                      onError={(event) => { event.currentTarget.style.display = "none"; }}
+                                      className={`connect-four-custom-disc pointer-events-none absolute z-10 select-none ${useBoardSprite ? "object-contain" : "inset-0 h-full w-full object-fill"}`}
+                                      style={useBoardSprite ? { inset: "-6%", width: "100%", height: "100%" } : undefined}
+                                    />
+                                  ) : null}
+                                </motion.div>
+                              ) : isGhost ? (
+                                /* GHOST DISC ON HOVER AT TARGET CELL */
+                                <motion.div
+                                  initial={{ opacity: 0.25, scale: 0.88 }}
+                                  animate={{ opacity: [0.35, 0.75, 0.35], scale: [0.92, 0.96, 0.92] }}
+                                  transition={{ duration: 1.1, repeat: Infinity, ease: "easeInOut" }}
+                                  className="pointer-events-none relative z-10 flex h-[92%] w-[92%] items-center justify-center rounded-full"
+                                  style={{
+                                    background: myPlayerIndex === 1
+                                      ? "radial-gradient(circle at 35% 30%, rgba(250, 204, 21, 0.55), rgba(161, 98, 7, 0.45))"
+                                      : "radial-gradient(circle at 35% 30%, rgba(244, 63, 94, 0.55), rgba(159, 18, 57, 0.45))",
+                                    border: myPlayerIndex === 1 ? "2.5px dashed #facc15" : "2.5px dashed #f43f5e",
+                                    boxShadow: myPlayerIndex === 1 ? "0 0 16px rgba(250, 204, 21, 0.5)" : "0 0 16px rgba(244, 63, 94, 0.5)"
+                                  }}
+                                >
+                                  <span className="text-xs font-black text-white/90 drop-shadow">↓</span>
+                                </motion.div>
+                              ) : null}
                             </span>
                           </button>
                         );
-                        }))}
+                      }))}
                     </div>
+
                     {useBoardSprite ? <img src={connectFourArt.boardOverlay ?? undefined} alt="" aria-hidden="true" draggable={false} onError={() => setConnectFourArt((currentArt) => ({ ...currentArt, boardOverlay: null }))} className="connect-four-board-overlay connect-four-board-sprite pointer-events-none absolute inset-0 z-20 h-full w-full select-none object-fill" /> : null}
+
+                    {/* MOLDED 3D SUPPORT LEGS */}
                     {!useBoardSprite ? (
-                      <div className="pointer-events-none absolute -bottom-7 left-2 right-2 z-0 flex justify-between px-2 sm:px-6" aria-hidden="true">
+                      <div className="pointer-events-none absolute -bottom-8 left-2 right-2 z-0 flex justify-between px-3 sm:px-6" aria-hidden="true">
                         {/* Left 3D Support Leg */}
                         <div className="flex flex-col items-center">
-                          <div className="h-7 w-9 sm:w-12 rounded-t-md bg-gradient-to-b from-[#0e74be] to-[#043d6c] border-2 border-b-0 border-[#2399ec] shadow-md" />
-                          <div className="h-3.5 w-16 sm:w-22 rounded-full bg-gradient-to-r from-[#032038] via-[#095088] to-[#032038] border border-white/25 shadow-xl" />
-                          <div className="h-1.5 w-14 sm:w-18 rounded-full bg-black/60 blur-[2px] mt-0.5" />
+                          <div className="h-8 w-11 sm:w-14 rounded-t-lg bg-gradient-to-b from-[#1366bd] to-[#04335c] border-2 border-b-0 border-[#38a3f8] shadow-lg" />
+                          <div className="h-4 w-22 sm:w-28 rounded-full bg-gradient-to-r from-[#031d36] via-[#094d84] to-[#031d36] border border-white/25 shadow-2xl" />
+                          <div className="h-2 w-20 sm:w-26 rounded-full bg-black/75 blur-[2.5px] mt-0.5" />
                         </div>
                         {/* Right 3D Support Leg */}
                         <div className="flex flex-col items-center">
-                          <div className="h-7 w-9 sm:w-12 rounded-t-md bg-gradient-to-b from-[#0e74be] to-[#043d6c] border-2 border-b-0 border-[#2399ec] shadow-md" />
-                          <div className="h-3.5 w-16 sm:w-22 rounded-full bg-gradient-to-r from-[#032038] via-[#095088] to-[#032038] border border-white/25 shadow-xl" />
-                          <div className="h-1.5 w-14 sm:w-18 rounded-full bg-black/60 blur-[2px] mt-0.5" />
+                          <div className="h-8 w-11 sm:w-14 rounded-t-lg bg-gradient-to-b from-[#1366bd] to-[#04335c] border-2 border-b-0 border-[#38a3f8] shadow-lg" />
+                          <div className="h-4 w-22 sm:w-28 rounded-full bg-gradient-to-r from-[#031d36] via-[#094d84] to-[#031d36] border border-white/25 shadow-2xl" />
+                          <div className="h-2 w-20 sm:w-26 rounded-full bg-black/75 blur-[2.5px] mt-0.5" />
                         </div>
                       </div>
                     ) : null}
                   </div>
-                  <div className={`flex w-full ${useBoardSprite ? "max-w-[1200px]" : "max-w-[920px]"} shrink-0 items-center justify-between gap-3 px-1 pt-2 text-xs`}>
-                    <span className="truncate font-semibold text-white/50">{isFinished ? "Round complete" : isMyTurn ? "✨ Your move — pick a column" : isBotTurn ? "🤖 Opponent is thinking" : "👀 Watch for a winning line"}</span>
-                    <span className="shrink-0 font-black tracking-wider text-white/30">🔴 RED <span className="mx-1">VS</span> 🟡 YELLOW</span>
-                  </div>
                 </div>
-              </>
+              </div>
+            </>
             ) : (
               <>
                 <div className="mb-3 flex shrink-0 items-center justify-between gap-3 px-1">
