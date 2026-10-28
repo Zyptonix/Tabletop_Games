@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, Trophy, HelpCircle, Volume2, VolumeX, Sparkles, Flame } from "lucide-react";
 import type { AnyAction, BoardGameTableProps } from "../board-games/shared/types";
-import { CasinoChip, ChipStack } from "../casino/CasinoChip";
+import { CasinoChip, ChipStack, breakdownChips, type ChipDenomination } from "../casino/CasinoChip";
 import { CasinoPlayingCard } from "../casino/CasinoPlayingCard";
 import { casinoAudio } from "../casino/casinoAudio";
 import { owns, isAction } from "../board-games/shared/ui-utils";
@@ -21,6 +21,87 @@ const POKER_HAND_RANKINGS = [
   { name: "One Pair", tier: "Tier 9", example: "J♠ J♥ A♦ 8♣ 4♠", detail: "Two cards of the same rank." },
   { name: "High Card", tier: "Lowest", example: "A♠ J♥ 8♦ 5♣ 2♠", detail: "No combinations; highest individual card plays." }
 ];
+
+const RAISE_CHIPS: ChipDenomination[] = [5, 10, 25, 50, 100, 500];
+
+// Dynamic physical multi-stack chip cluster for the pot
+function DynamicPotCluster({ potAmount, callAmount }: { potAmount: number; callAmount: number }) {
+  const stacks = useMemo(() => {
+    if (potAmount <= 0) return [];
+    const chips = breakdownChips(potAmount);
+    if (chips.length <= 2) {
+      return [chips];
+    }
+    const stack1: ChipDenomination[] = [];
+    const stack2: ChipDenomination[] = [];
+    const stack3: ChipDenomination[] = [];
+    chips.forEach((c, idx) => {
+      if (idx % 3 === 0) stack1.push(c);
+      else if (idx % 3 === 1) stack2.push(c);
+      else stack3.push(c);
+    });
+    return [stack1, stack2, stack3].filter((s) => s.length > 0);
+  }, [potAmount]);
+
+  if (potAmount <= 0) return null;
+
+  return (
+    <motion.div
+      key={potAmount}
+      initial={{ scale: 0.94, y: 5 }}
+      animate={{ scale: 1, y: 0 }}
+      transition={{ type: "spring", damping: 14, stiffness: 220 }}
+      className="flex items-center gap-3 sm:gap-4 rounded-full border-2 border-dashed border-amber-400/50 bg-black/75 px-5 py-2 shadow-[0_0_35px_rgba(251,191,36,0.35)] backdrop-blur-md"
+    >
+      {/* Cluster of Dynamic Physical Chip Piles */}
+      <div className="flex items-end -space-x-2">
+        {stacks.map((stackChips, sIdx) => (
+          <motion.div
+            key={sIdx}
+            initial={{ y: -12, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: sIdx * 0.04 }}
+            className="relative flex flex-col items-center justify-end"
+            style={{
+              height: `${24 + stackChips.length * 3.5}px`,
+              width: "28px",
+              transform: `rotate(${(sIdx - 1) * 7}deg)`
+            }}
+          >
+            {stackChips.map((denom, i) => (
+              <div
+                key={i}
+                className="absolute"
+                style={{
+                  bottom: `${i * 3.5}px`,
+                  zIndex: i
+                }}
+              >
+                <CasinoChip value={denom} size="xs" />
+              </div>
+            ))}
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Pot Total & Call Amount */}
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5">
+          <Sparkles className="h-4 w-4 text-amber-400 animate-pulse" />
+          <span className="font-mono text-base sm:text-lg font-black text-amber-300 drop-shadow">
+            POT: ${potAmount.toLocaleString("en-US")}
+          </span>
+        </div>
+
+        {callAmount > 0 ? (
+          <span className="rounded-full border border-white/20 bg-white/10 px-2.5 py-0.5 font-mono text-xs font-bold text-white/90">
+            To Call: ${callAmount}
+          </span>
+        ) : null}
+      </div>
+    </motion.div>
+  );
+}
 
 // Helper to quickly evaluate player's combined cards for a descriptive badge
 function evaluateQuickHandName(holeCards: string[], communityCards: string[]): string {
@@ -66,6 +147,12 @@ export function PokerTable(props: BoardGameTableProps) {
   const myStack = state.pokerStacks[currentUserId] ?? 0;
   const callAmount = Math.min(Math.max(0, state.pokerBetToCall - myPaid), myStack);
 
+  const canRaise = isMyTurn && legalActions.some((a) => isAction(a) && a.type === "poker_action" && a.choice === "raise");
+  const maxAllowedRaise = Math.max(20, myStack - callAmount);
+  const [raiseAmount, setRaiseAmount] = useState(20);
+
+  const effectiveRaise = Math.min(Math.max(20, raiseAmount), maxAllowedRaise);
+
   const handDescription = useMemo(
     () => evaluateQuickHandName(state.myPokerCards ?? [], state.communityCards ?? []),
     [state.myPokerCards, state.communityCards]
@@ -88,6 +175,11 @@ export function PokerTable(props: BoardGameTableProps) {
     onAction(type, payload as Record<string, unknown>);
   }
 
+  function handleAddRaiseChip(val: ChipDenomination) {
+    playSound("chip");
+    setRaiseAmount((prev) => Math.min(prev + val, maxAllowedRaise));
+  }
+
   // Play card sound when community cards advance
   useEffect(() => {
     if (state.communityCards && state.communityCards.length > 0) {
@@ -101,7 +193,6 @@ export function PokerTable(props: BoardGameTableProps) {
     const mySeat = me?.seat ?? 0;
     const count = state.players.length;
     return state.players.map((p) => {
-      // Relative offset from me
       const relPos = (p.seat - mySeat + count) % count;
       return { ...p, relPos };
     });
@@ -135,7 +226,7 @@ export function PokerTable(props: BoardGameTableProps) {
               </span>
             </div>
             <p className="text-[11px] font-medium text-emerald-400/80">
-              Blinds $10 / $20 · Fixed-Limit Betting
+              Blinds $10 / $20 · Interactive Chip Betting
             </p>
           </div>
         </div>
@@ -251,7 +342,7 @@ export function PokerTable(props: BoardGameTableProps) {
           </div>
 
           {/* ========================================================== */}
-          {/* CENTER FELT: COMMUNITY CARDS & POT PILE                    */}
+          {/* CENTER FELT: COMMUNITY CARDS & DYNAMIC CHIPS POT           */}
           {/* ========================================================== */}
           <div className="relative z-10 flex flex-col items-center justify-center my-auto py-2 text-center">
             {/* Street Indicator & Active Live Count */}
@@ -279,20 +370,9 @@ export function PokerTable(props: BoardGameTableProps) {
               })}
             </div>
 
-            {/* Central Pot Display with 3D Chips Stack */}
-            <div className="mt-3 flex items-center justify-center gap-3">
-              <div className="flex items-center gap-2 rounded-2xl border border-amber-400/50 bg-black/70 px-4 py-1.5 shadow-[0_0_25px_rgba(251,191,36,0.25)] backdrop-blur-sm">
-                <ChipStack amount={state.pokerPot} size="sm" showLabel={false} />
-                <span className="font-mono text-base font-black text-amber-300 drop-shadow">
-                  POT: ${state.pokerPot.toLocaleString("en-US")}
-                </span>
-              </div>
-
-              {callAmount > 0 ? (
-                <div className="rounded-xl border border-white/10 bg-black/40 px-3 py-1 font-mono text-xs font-bold text-white/80">
-                  To Call: ${callAmount}
-                </div>
-              ) : null}
+            {/* DYNAMIC CASINO POT CLUSTER (Multi-Stack 3D Real Chips) */}
+            <div className="mt-3 flex items-center justify-center">
+              <DynamicPotCluster potAmount={state.pokerPot} callAmount={callAmount} />
             </div>
 
             {/* Last Action Telemetry Banner */}
@@ -304,10 +384,11 @@ export function PokerTable(props: BoardGameTableProps) {
           </div>
 
           {/* ========================================================== */}
-          {/* LOCAL PLAYER (YOU) SEAT (BOTTOM CENTER)                    */}
+          {/* LOCAL PLAYER (YOU) SEAT & BET CHIPS ON THE SIDE            */}
           {/* ========================================================== */}
           {me ? (
-            <div className="relative z-10 flex flex-col items-center gap-2">
+            <div className="relative z-10 flex items-center justify-center gap-4 sm:gap-6">
+              {/* Main Player Pod */}
               <div
                 className={`relative flex flex-col items-center gap-1.5 rounded-3xl border p-3 backdrop-blur-md transition-all ${
                   isMyTurn
@@ -359,140 +440,219 @@ export function PokerTable(props: BoardGameTableProps) {
                     <span>{hideMyCards ? "Peek" : "Hide"}</span>
                   </button>
                 </div>
-
-                {/* Current Player Round Bet */}
-                {myPaid > 0 ? (
-                  <div className="absolute -top-6">
-                    <ChipStack amount={myPaid} size="sm" />
-                  </div>
-                ) : null}
               </div>
+
+              {/* DEDICATED CURRENT BET CHIPS POSITIONED ON THE SIDE OF THE HAND */}
+              {myPaid > 0 ? (
+                <motion.div
+                  initial={{ scale: 0.8, x: -10, opacity: 0 }}
+                  animate={{ scale: 1, x: 0, opacity: 1 }}
+                  className="flex flex-col items-center gap-1 p-2 rounded-2xl bg-black/60 border border-amber-400/50 shadow-xl backdrop-blur-md shrink-0"
+                >
+                  <span className="text-[9px] font-black uppercase tracking-wider text-amber-300">
+                    Your Bet
+                  </span>
+                  <ChipStack amount={myPaid} size="sm" showLabel={false} />
+                  <span className="rounded-full bg-slate-950 border border-amber-400/50 px-2 py-0.5 font-mono text-xs font-black text-emerald-300 shadow">
+                    ${myPaid.toLocaleString("en-US")}
+                  </span>
+                </motion.div>
+              ) : null}
             </div>
           ) : null}
         </div>
 
-        {/* ========================================================== */}
+        {/* ============================================================== */}
         {/* CASINO ACTION / BETTING CONSOLE (BOTTOM BAR)              */}
-        {/* ========================================================== */}
-        <div className="relative z-20 mt-2 flex w-full max-w-4xl flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-500/20 bg-slate-950/90 p-3 shadow-2xl backdrop-blur-xl">
-          {/* Player Chips & Status Info */}
-          <div className="flex items-center gap-3">
-            <div className="flex flex-col">
-              <span className="text-[10px] font-black uppercase tracking-wider text-amber-400">
-                Your Stack
-              </span>
-              <span className="font-mono text-base font-black text-emerald-300">
-                ${myStack.toLocaleString("en-US")}
-              </span>
+        {/* ============================================================== */}
+        <div className="relative z-20 mt-2 flex w-full max-w-4xl flex-col gap-2 rounded-2xl border border-amber-500/20 bg-slate-950/90 p-3 shadow-2xl backdrop-blur-xl">
+          {/* INTERACTIVE CHIP SELECTOR TRAY FOR RAISING */}
+          {canRaise ? (
+            <div className="flex w-full flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 mr-1 hidden sm:inline">
+                  Add Chips to Raise:
+                </span>
+                {RAISE_CHIPS.map((chip) => (
+                  <CasinoChip
+                    key={chip}
+                    value={chip}
+                    size="sm"
+                    onClick={() => handleAddRaiseChip(chip)}
+                    disabled={effectiveRaise + chip > maxAllowedRaise}
+                  />
+                ))}
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    playSound("chip");
+                    setRaiseAmount(20);
+                  }}
+                  className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-bold text-white/70 hover:bg-white/10 active:scale-95"
+                >
+                  Min ($20)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    playSound("chip");
+                    setRaiseAmount((prev) => Math.min(prev + 40, maxAllowedRaise));
+                  }}
+                  className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-2 py-1 text-[10px] font-bold text-amber-300 hover:bg-amber-400/20 active:scale-95"
+                >
+                  +2X BB
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    playSound("chip");
+                    setRaiseAmount((prev) => Math.min(Math.max(prev, state.pokerPot), maxAllowedRaise));
+                  }}
+                  className="rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-[10px] font-bold text-emerald-300 hover:bg-emerald-400/20 active:scale-95"
+                >
+                  +Pot
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    playSound("chip");
+                    setRaiseAmount(20);
+                  }}
+                  className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-bold text-white/40 hover:bg-white/10 active:scale-95"
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {/* Player Chips & Action Buttons: FOLD, CHECK / CALL, RAISE, ALL-IN */}
+          <div className="flex w-full flex-wrap items-center justify-between gap-3">
+            {/* Player Chips & Status Info */}
+            <div className="flex items-center gap-3">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-400">
+                  Your Stack
+                </span>
+                <span className="font-mono text-base font-black text-emerald-300">
+                  ${myStack.toLocaleString("en-US")}
+                </span>
+              </div>
+
+              <div className="h-8 w-px bg-white/10" />
+
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black uppercase tracking-wider text-white/40">
+                  Turn
+                </span>
+                <span className="text-xs font-bold text-white">
+                  {isMyTurn ? "🟢 Your Move" : `⏳ ${currentPlayer?.displayName ?? "Waiting"}`}
+                </span>
+              </div>
             </div>
 
-            <div className="h-8 w-px bg-white/10" />
+            {/* Action Buttons: FOLD, CHECK / CALL, RAISE, ALL-IN */}
+            <div className="flex items-center gap-2 sm:gap-3">
+              {legalActions
+                .filter(isAction)
+                .filter((action) => action.type === "poker_action")
+                .map((action) => {
+                  const choice = String(action.choice);
 
-            <div className="flex flex-col">
-              <span className="text-[10px] font-black uppercase tracking-wider text-white/40">
-                Turn
-              </span>
-              <span className="text-xs font-bold text-white">
-                {isMyTurn ? "🟢 Your Move" : `⏳ ${currentPlayer?.displayName ?? "Waiting"}`}
-              </span>
+                  if (choice === "fold") {
+                    return (
+                      <button
+                        key={choice}
+                        type="button"
+                        onClick={() => dispatch(action)}
+                        className="group relative flex items-center gap-1.5 rounded-full px-5 py-2.5 text-xs font-black tracking-wider uppercase text-rose-200 transition-all shadow-[0_4px_0_#4c0519,0_8px_16px_rgba(225,29,72,0.3)] hover:brightness-110 active:translate-y-1 active:shadow-[0_1px_0_#4c0519] border border-rose-500/40"
+                        style={{
+                          background: "linear-gradient(180deg, #881337 0%, #4c0519 100%)"
+                        }}
+                      >
+                        <span>FOLD</span>
+                        <span>🚫</span>
+                      </button>
+                    );
+                  }
+
+                  if (choice === "check") {
+                    return (
+                      <button
+                        key={choice}
+                        type="button"
+                        onClick={() => dispatch(action)}
+                        className="group relative flex items-center gap-1.5 rounded-full px-6 py-2.5 text-xs font-black tracking-wider uppercase text-emerald-200 transition-all shadow-[0_4px_0_#064e3b,0_8px_16px_rgba(16,185,129,0.3)] hover:brightness-110 active:translate-y-1 active:shadow-[0_1px_0_#064e3b] border border-emerald-500/40"
+                        style={{
+                          background: "linear-gradient(180deg, #065f46 0%, #064e3b 100%)"
+                        }}
+                      >
+                        <span>CHECK</span>
+                        <span>✋</span>
+                      </button>
+                    );
+                  }
+
+                  if (choice === "call") {
+                    return (
+                      <button
+                        key={choice}
+                        type="button"
+                        onClick={() => dispatch(action)}
+                        className="group relative flex items-center gap-2 rounded-full px-6 py-2.5 text-xs font-black tracking-wider uppercase text-slate-950 transition-all shadow-[0_5px_0_#064e3b,0_10px_20px_rgba(16,185,129,0.4)] hover:brightness-110 active:translate-y-1 active:shadow-[0_1px_0_#064e3b]"
+                        style={{
+                          background: "linear-gradient(180deg, #34d399 0%, #10b981 50%, #059669 100%)"
+                        }}
+                      >
+                        <span>CALL</span>
+                        <span className="font-mono font-black">${callAmount}</span>
+                      </button>
+                    );
+                  }
+
+                  if (choice === "raise") {
+                    return (
+                      <button
+                        key={choice}
+                        type="button"
+                        onClick={() => {
+                          dispatch({ type: "poker_action", choice: "raise", amount: effectiveRaise });
+                          setRaiseAmount(20);
+                        }}
+                        className="group relative flex items-center gap-1.5 rounded-full px-6 py-2.5 text-xs font-black tracking-wider uppercase text-slate-950 transition-all shadow-[0_5px_0_#78350f,0_10px_20px_rgba(245,158,11,0.4)] hover:brightness-110 active:translate-y-1 active:shadow-[0_1px_0_#78350f]"
+                        style={{
+                          background: "linear-gradient(180deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%)"
+                        }}
+                      >
+                        <Sparkles className="h-3.5 w-3.5" />
+                        <span>RAISE (+${effectiveRaise})</span>
+                      </button>
+                    );
+                  }
+
+                  if (choice === "all_in") {
+                    return (
+                      <button
+                        key={choice}
+                        type="button"
+                        onClick={() => dispatch(action)}
+                        className="group relative flex items-center gap-1.5 rounded-full px-6 py-2.5 text-xs font-black tracking-wider uppercase text-white transition-all shadow-[0_5px_0_#7f1d1d,0_10px_20px_rgba(239,68,68,0.5)] hover:brightness-110 active:translate-y-1 active:shadow-[0_1px_0_#7f1d1d]"
+                        style={{
+                          background: "linear-gradient(180deg, #ef4444 0%, #dc2626 50%, #991b1b 100%)"
+                        }}
+                      >
+                        <Flame className="h-3.5 w-3.5 text-amber-300" />
+                        <span>ALL-IN (${myStack})</span>
+                      </button>
+                    );
+                  }
+
+                  return null;
+                })}
             </div>
-          </div>
-
-          {/* Action Buttons: FOLD, CHECK / CALL, RAISE, ALL-IN */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {legalActions
-              .filter(isAction)
-              .filter((action) => action.type === "poker_action")
-              .map((action) => {
-                const choice = String(action.choice);
-
-                if (choice === "fold") {
-                  return (
-                    <button
-                      key={choice}
-                      type="button"
-                      onClick={() => dispatch(action)}
-                      className="group relative flex items-center gap-1.5 rounded-full px-5 py-2.5 text-xs font-black tracking-wider uppercase text-rose-200 transition-all shadow-[0_4px_0_#4c0519,0_8px_16px_rgba(225,29,72,0.3)] hover:brightness-110 active:translate-y-1 active:shadow-[0_1px_0_#4c0519] border border-rose-500/40"
-                      style={{
-                        background: "linear-gradient(180deg, #881337 0%, #4c0519 100%)"
-                      }}
-                    >
-                      <span>FOLD</span>
-                      <span>🚫</span>
-                    </button>
-                  );
-                }
-
-                if (choice === "check") {
-                  return (
-                    <button
-                      key={choice}
-                      type="button"
-                      onClick={() => dispatch(action)}
-                      className="group relative flex items-center gap-1.5 rounded-full px-6 py-2.5 text-xs font-black tracking-wider uppercase text-emerald-200 transition-all shadow-[0_4px_0_#064e3b,0_8px_16px_rgba(16,185,129,0.3)] hover:brightness-110 active:translate-y-1 active:shadow-[0_1px_0_#064e3b] border border-emerald-500/40"
-                      style={{
-                        background: "linear-gradient(180deg, #065f46 0%, #064e3b 100%)"
-                      }}
-                    >
-                      <span>CHECK</span>
-                      <span>✋</span>
-                    </button>
-                  );
-                }
-
-                if (choice === "call") {
-                  return (
-                    <button
-                      key={choice}
-                      type="button"
-                      onClick={() => dispatch(action)}
-                      className="group relative flex items-center gap-2 rounded-full px-6 py-2.5 text-xs font-black tracking-wider uppercase text-slate-950 transition-all shadow-[0_5px_0_#064e3b,0_10px_20px_rgba(16,185,129,0.4)] hover:brightness-110 active:translate-y-1 active:shadow-[0_1px_0_#064e3b]"
-                      style={{
-                        background: "linear-gradient(180deg, #34d399 0%, #10b981 50%, #059669 100%)"
-                      }}
-                    >
-                      <span>CALL</span>
-                      <span className="font-mono font-black">${callAmount}</span>
-                    </button>
-                  );
-                }
-
-                if (choice === "raise") {
-                  return (
-                    <button
-                      key={choice}
-                      type="button"
-                      onClick={() => dispatch(action)}
-                      className="group relative flex items-center gap-1.5 rounded-full px-6 py-2.5 text-xs font-black tracking-wider uppercase text-slate-950 transition-all shadow-[0_5px_0_#78350f,0_10px_20px_rgba(245,158,11,0.4)] hover:brightness-110 active:translate-y-1 active:shadow-[0_1px_0_#78350f]"
-                      style={{
-                        background: "linear-gradient(180deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%)"
-                      }}
-                    >
-                      <Sparkles className="h-3.5 w-3.5" />
-                      <span>RAISE (+$20)</span>
-                    </button>
-                  );
-                }
-
-                if (choice === "all_in") {
-                  return (
-                    <button
-                      key={choice}
-                      type="button"
-                      onClick={() => dispatch(action)}
-                      className="group relative flex items-center gap-1.5 rounded-full px-6 py-2.5 text-xs font-black tracking-wider uppercase text-white transition-all shadow-[0_5px_0_#7f1d1d,0_10px_20px_rgba(239,68,68,0.5)] hover:brightness-110 active:translate-y-1 active:shadow-[0_1px_0_#7f1d1d]"
-                      style={{
-                        background: "linear-gradient(180deg, #ef4444 0%, #dc2626 50%, #991b1b 100%)"
-                      }}
-                    >
-                      <Flame className="h-3.5 w-3.5 text-amber-300" />
-                      <span>ALL-IN (${myStack})</span>
-                    </button>
-                  );
-                }
-
-                return null;
-              })}
           </div>
         </div>
       </main>

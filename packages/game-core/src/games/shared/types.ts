@@ -40,7 +40,7 @@ export type BoardGameAction =
   | { type: "reveal_word"; index: number }
   | { type: "give_clue"; clue: string; number: number }
   | { type: "end_codenames_turn" }
-  | { type: "poker_action"; choice: "fold" | "check" | "call" | "raise" | "all_in" }
+  | { type: "poker_action"; choice: "fold" | "check" | "call" | "raise" | "all_in"; amount?: number | undefined }
   | { type: "blackjack_action"; choice: "bet" | "clear_bet" | "deal" | "hit" | "stand" | "double" | "split" | "next_round"; amount?: number };
 
 export interface BattleshipPlacedShip {

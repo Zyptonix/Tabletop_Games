@@ -11,8 +11,11 @@ export function reducePokerAction(state:BoardGameState,playerId:string,action:Bo
     } else if (action.choice === "call") {
       chips = Math.min(owes, stack); message = `🃏 ${player.displayName} called $${chips}.`;
     } else if (action.choice === "raise") {
-      chips = Math.min(stack, owes + 20); state.pokerBetToCall = paid + chips; message = `🃏 ${player.displayName} raised the bet to $${state.pokerBetToCall}.`;
-      if (stack >= owes + 20) state.pokerActed = [];
+      const raiseAmt = typeof action.amount === "number" && action.amount > 0 ? action.amount : 20;
+      chips = Math.min(stack, owes + raiseAmt);
+      state.pokerBetToCall = paid + chips;
+      message = `🃏 ${player.displayName} raised to $${state.pokerBetToCall} (+$${raiseAmt}).`;
+      if (stack >= owes + raiseAmt) state.pokerActed = [];
     } else {
       chips = stack;
       const allInTotal = paid + chips;
