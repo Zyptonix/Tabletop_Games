@@ -216,6 +216,29 @@ describe("Poker tournament hand lifecycle v4", () => {
     expect(next.pokerButtonSeat).not.toBe(state.pokerButtonSeat);
     expect(afterChips).toBe(beforeChips);
   });
+
+  it("validates raise action with custom amount for the current player", () => {
+    const state = start(pokerModule);
+    const actor = state.currentPlayerId;
+    expect(actor).toBeTruthy();
+
+    // Valid raise with custom chip amount
+    const valid = pokerModule.validateAction({
+      state,
+      playerId: actor!,
+      action: { type: "poker_action", choice: "raise", amount: 50 }
+    });
+    expect(valid.ok).toBe(true);
+
+    // Illegal action for a player whose turn it is not
+    const otherPlayer = state.players.find((p) => p.userId !== actor);
+    const invalid = pokerModule.validateAction({
+      state,
+      playerId: otherPlayer!.userId,
+      action: { type: "poker_action", choice: "raise", amount: 50 }
+    });
+    expect(invalid.ok).toBe(false);
+  });
 });
 
 

@@ -133,6 +133,116 @@ function evaluateQuickHandName(holeCards: string[], communityCards: string[]): s
   return "High Card";
 }
 
+// Tasteful live feed card presenting poker action and table intel with emojis & clean pills
+function TastefulPokerInfo({ actionText }: { actionText: string }) {
+  if (!actionText) return null;
+
+  const parts = actionText
+    .split("·")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const mainEvent = parts[0] ?? "";
+  const metaPills = parts.slice(1);
+
+  // Parse main event characteristics
+  let emoji = "🎲";
+  let mainClass = "text-emerald-200";
+  let borderGlow = "border-amber-400/30";
+
+  if (/takes the main pot|won hand|winner|champion/i.test(mainEvent)) {
+    emoji = "🏆";
+    mainClass = "text-amber-200 font-extrabold";
+    borderGlow = "border-amber-400/50 shadow-[0_0_20px_rgba(251,191,36,0.25)]";
+  } else if (/all-in/i.test(mainEvent)) {
+    emoji = "🔥";
+    mainClass = "text-rose-300 font-extrabold";
+    borderGlow = "border-rose-500/40 shadow-[0_0_20px_rgba(244,63,94,0.2)]";
+  } else if (/raised/i.test(mainEvent)) {
+    emoji = "⚡";
+    mainClass = "text-amber-300 font-bold";
+    borderGlow = "border-amber-400/40";
+  } else if (/called/i.test(mainEvent)) {
+    emoji = "🪙";
+    mainClass = "text-sky-200 font-bold";
+    borderGlow = "border-sky-400/30";
+  } else if (/checked/i.test(mainEvent)) {
+    emoji = "✋";
+    mainClass = "text-slate-200 font-medium";
+  } else if (/folded/i.test(mainEvent)) {
+    emoji = "🚫";
+    mainClass = "text-rose-300/90 font-medium";
+  } else if (/cards dealt/i.test(mainEvent)) {
+    emoji = "🎴";
+    mainClass = "text-emerald-300 font-bold";
+  }
+
+  // Clean raw string artifacts
+  const cleanMain = mainEvent
+    .replace(/^[🃏🎲🏆🔥⚡🪙✋🚫🎴]\s*/u, "")
+    .replace(/;\s*side pots are settled\.?/i, "")
+    .trim();
+
+  return (
+    <motion.div
+      key={actionText}
+      initial={{ opacity: 0, scale: 0.96, y: 4 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      className={`w-full max-w-[280px] sm:max-w-[340px] rounded-2xl border ${borderGlow} bg-gradient-to-br from-black/85 via-slate-950/85 to-[#05110d]/90 p-3 shadow-xl backdrop-blur-md text-left space-y-1.5`}
+    >
+      {/* Header bar */}
+      <div className="flex items-center justify-between border-b border-white/10 pb-1">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs">{emoji}</span>
+          <span className="text-[9px] font-black uppercase tracking-wider text-amber-400">
+            Table Action
+          </span>
+        </div>
+        <span className="flex h-2 w-2 relative">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+        </span>
+      </div>
+
+      {/* Main event description */}
+      <p className={`text-xs leading-snug drop-shadow-sm ${mainClass}`}>
+        {cleanMain}
+      </p>
+
+      {/* Meta tags pills (e.g. Hand #2, Blinds $10/$20, Button: Bot 3) */}
+      {metaPills.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-1 pt-1">
+          {metaPills.map((pill, idx) => {
+            let pIcon = "ℹ️";
+            let pColor = "border-white/15 bg-white/5 text-white/80";
+
+            if (/hand/i.test(pill)) {
+              pIcon = "🃏";
+              pColor = "border-amber-400/30 bg-amber-400/10 text-amber-200";
+            } else if (/blinds/i.test(pill)) {
+              pIcon = "🪙";
+              pColor = "border-emerald-400/30 bg-emerald-400/10 text-emerald-200";
+            } else if (/button/i.test(pill)) {
+              pIcon = "🔘";
+              pColor = "border-sky-400/30 bg-sky-400/10 text-sky-200";
+            }
+
+            return (
+              <span
+                key={idx}
+                className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[9px] font-bold tracking-tight shadow-sm ${pColor}`}
+              >
+                <span>{pIcon}</span>
+                <span>{pill}</span>
+              </span>
+            );
+          })}
+        </div>
+      ) : null}
+    </motion.div>
+  );
+}
+
 export function PokerTable(props: BoardGameTableProps) {
   const { room, state, legalActions, currentUserId, onAction, onChat, onEndMatch } = props;
 
@@ -438,12 +548,8 @@ export function PokerTable(props: BoardGameTableProps) {
                 </span>
               </div>
 
-              {/* Last Action Telemetry Banner */}
-              {state.pokerLastAction ? (
-                <div className="max-w-[240px] sm:max-w-[290px] rounded-2xl border border-white/10 bg-black/55 px-3.5 py-2 text-xs font-semibold text-emerald-200/90 shadow-md backdrop-blur-sm">
-                  {state.pokerLastAction}
-                </div>
-              ) : null}
+              {/* Tasteful Live Table Intel Card */}
+              <TastefulPokerInfo actionText={state.pokerLastAction} />
             </div>
           </div>
 
