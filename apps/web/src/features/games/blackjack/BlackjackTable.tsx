@@ -12,7 +12,7 @@ import { evaluateBlackjackHand, type HandEvaluation } from "@tabletop/game-core"
 const BET_CHIPS: ChipDenomination[] = [5, 10, 25, 50, 100, 500, 1000];
 
 // Visual 3D Chip Column for the Dealer Chip Tray
-function DealerChipColumn({ denom, count = 12 }: { denom: ChipDenomination; count?: number }) {
+function DealerChipColumn({ denom, count = 10 }: { denom: ChipDenomination; count?: number }) {
   const colors: Record<ChipDenomination, { rim: string; stripe: string; bg: string }> = {
     5: { rim: "#ef4444", stripe: "#ffffff", bg: "#991b1b" },
     10: { rim: "#3b82f6", stripe: "#ffffff", bg: "#1e40af" },
@@ -25,30 +25,30 @@ function DealerChipColumn({ denom, count = 12 }: { denom: ChipDenomination; coun
   const c = colors[denom] ?? colors[25];
 
   return (
-    <div className="relative flex flex-col items-center w-6 sm:w-8 h-14 sm:h-16 justify-end bg-black/60 rounded-sm p-0.5 border border-amber-900/40 shadow-inner">
-      <div className="flex flex-col-reverse items-center -space-y-2.5 sm:-space-y-3 w-full">
+    <div className="relative flex flex-col items-center w-5 sm:w-6 h-11 sm:h-13 justify-end bg-black/60 rounded-sm p-0.5 border border-amber-900/40 shadow-inner">
+      <div className="flex flex-col-reverse items-center -space-y-2 w-full">
         {Array.from({ length: count }).map((_, i) => (
           <div
             key={i}
-            className="w-full h-2 sm:h-2.5 rounded-sm border-t border-b shadow-sm relative overflow-hidden"
+            className="w-full h-1.5 sm:h-2 rounded-xs border-t border-b shadow-xs relative overflow-hidden"
             style={{
               backgroundColor: c.bg,
               borderColor: c.rim,
-              boxShadow: "inset 0 1px 1px rgba(255,255,255,0.4), 0 1px 2px rgba(0,0,0,0.6)"
+              boxShadow: "inset 0 1px 1px rgba(255,255,255,0.4), 0 1px 1px rgba(0,0,0,0.6)"
             }}
           >
             <div
-              className="absolute inset-y-0 left-1 w-1 opacity-70"
+              className="absolute inset-y-0 left-0.5 w-0.5 opacity-70"
               style={{ backgroundColor: c.stripe }}
             />
             <div
-              className="absolute inset-y-0 right-1 w-1 opacity-70"
+              className="absolute inset-y-0 right-0.5 w-0.5 opacity-70"
               style={{ backgroundColor: c.stripe }}
             />
           </div>
         ))}
       </div>
-      <span className="text-[7px] sm:text-[8px] font-black tracking-tighter text-amber-300/80 mt-0.5">
+      <span className="text-[7px] font-black tracking-tighter text-amber-300/80 mt-0.5">
         ${denom}
       </span>
     </div>
@@ -224,26 +224,25 @@ export function BlackjackTable(props: BoardGameTableProps) {
     activeHand[0]?.slice(0, -1) === activeHand[1]?.slice(0, -1) &&
     myHands.length < 4;
 
-  // Seating calculation: 5 positions along the widescreen arc
+  // Seating arrangement: 5 positions across the widescreen arc
   // [Seat 1 (Far Left), Seat 2 (Mid Left), Seat 3 (Center: YOU), Seat 4 (Mid Right), Seat 5 (Far Right)]
   const otherPlayers = state.players.filter((p) => p.userId !== currentUserId);
 
   const fiveSeats = useMemo(() => {
-    // Center seat (index 2) is ALWAYS the local viewer
+    // Keep baseline flat or gently contoured without pushing the center seat down into the table rim
     const seats: Array<{
       positionIndex: number;
       player: typeof me | null;
       isLocal: boolean;
       yOffsetClass: string;
     }> = [
-      { positionIndex: 0, player: null, isLocal: false, yOffsetClass: "-translate-y-4 lg:-translate-y-8" },
-      { positionIndex: 1, player: null, isLocal: false, yOffsetClass: "-translate-y-1 lg:-translate-y-2" },
-      { positionIndex: 2, player: me ?? null, isLocal: true, yOffsetClass: "translate-y-2 lg:translate-y-4" },
-      { positionIndex: 3, player: null, isLocal: false, yOffsetClass: "-translate-y-1 lg:-translate-y-2" },
-      { positionIndex: 4, player: null, isLocal: false, yOffsetClass: "-translate-y-4 lg:-translate-y-8" }
+      { positionIndex: 0, player: null, isLocal: false, yOffsetClass: "-translate-y-2 sm:-translate-y-4" },
+      { positionIndex: 1, player: null, isLocal: false, yOffsetClass: "translate-y-0" },
+      { positionIndex: 2, player: me ?? null, isLocal: true, yOffsetClass: "translate-y-0" },
+      { positionIndex: 3, player: null, isLocal: false, yOffsetClass: "translate-y-0" },
+      { positionIndex: 4, player: null, isLocal: false, yOffsetClass: "-translate-y-2 sm:-translate-y-4" }
     ];
 
-    // Assign opponents to seats around the user
     if (otherPlayers.length === 1) {
       seats[1]!.player = otherPlayers[0]!;
     } else if (otherPlayers.length === 2) {
@@ -339,7 +338,7 @@ export function BlackjackTable(props: BoardGameTableProps) {
           className="relative flex h-full w-full max-w-[1780px] 2xl:max-w-[1920px] flex-col items-center justify-between rounded-b-[180px] sm:rounded-b-[240px] md:rounded-b-[300px] border-x-[12px] sm:border-x-[18px] md:border-x-[24px] border-b-[14px] sm:border-b-[22px] md:border-b-[28px] border-t-[8px] sm:border-t-[10px] border-[#381a0e] shadow-[inset_0_0_120px_rgba(0,0,0,0.85),0_30px_70px_rgba(0,0,0,0.95)] overflow-hidden"
           style={{
             background:
-              "radial-gradient(ellipse at 50% 20%, #0d6e51 0%, #07523c 40%, #033929 75%, #012218 100%)",
+              "radial-gradient(ellipse at 50% 15%, #0d6e51 0%, #07523c 40%, #033929 75%, #012218 100%)",
             boxShadow:
               "inset 0 0 140px rgba(0,0,0,0.8), inset 0 3px 6px rgba(255,255,255,0.25), 0 25px 60px rgba(0,0,0,0.9)"
           }}
@@ -352,150 +351,142 @@ export function BlackjackTable(props: BoardGameTableProps) {
           <div className="pointer-events-none absolute inset-x-3 sm:inset-x-6 top-0 bottom-3 sm:bottom-6 rounded-b-[160px] sm:rounded-b-[220px] md:rounded-b-[280px] border-2 border-dashed border-amber-500/20" />
 
           {/* ========================================================== */}
-          {/* CURVED CASINO TEXT & FELT MARKINGS (FROM REAL TABLE)       */}
+          {/* TOP LEFT FELT: BLACKJACK PAYS 3 TO 2 & RULES INSCRIPTION   */}
           {/* ========================================================== */}
-          <div className="pointer-events-none absolute inset-x-0 top-[28%] sm:top-[30%] flex flex-col items-center justify-center select-none text-center px-4">
-            {/* Concentric curved dashed line across the table */}
-            <div className="absolute w-[85%] max-w-[1200px] h-[180px] sm:h-[220px] rounded-b-full border-b-2 border-dashed border-emerald-300/20 -top-8" />
-
-            {/* ARC 1: BLACKJACK PAYS 3 TO 2 (Bold Crimson Serif) */}
-            <h2 className="font-serif text-xs sm:text-base md:text-xl lg:text-2xl font-black tracking-[0.25em] text-[#dc2626] uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+          <div className="pointer-events-none absolute left-6 sm:left-12 lg:left-16 top-3 sm:top-5 z-10 flex flex-col items-start select-none">
+            <h2 className="font-serif text-xs sm:text-sm md:text-base lg:text-lg font-black tracking-[0.2em] text-[#dc2626] uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
               ★ BLACKJACK PAYS 3 TO 2 ★
             </h2>
-
-            {/* ARC 2: House Rule Text */}
-            <p className="mt-1 font-serif text-[9px] sm:text-xs md:text-sm font-bold tracking-[0.2em] text-amber-200/60 uppercase drop-shadow">
+            <p className="mt-0.5 font-serif text-[8px] sm:text-[10px] md:text-xs font-bold tracking-[0.15em] text-amber-200/70 uppercase drop-shadow">
               Dealer must draw to 16, and stand on all 17's
             </p>
+          </div>
 
-            {/* ARC 3: Insurance Ribbon Inscription */}
-            <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-950/40 px-4 py-1 backdrop-blur-xs">
-              <span className="font-serif text-[8px] sm:text-[10px] md:text-xs font-black tracking-[0.2em] text-yellow-300/80 uppercase">
-                INSURANCE PAYS 2 TO 1
+          {/* ========================================================== */}
+          {/* TOP RIGHT FELT: DEALER CHIP TRAY, SHOE & INSURANCE BANNER  */}
+          {/* ========================================================== */}
+          <div className="absolute right-6 sm:right-12 lg:right-16 top-2 sm:top-3 z-20 flex items-center gap-2 sm:gap-3 select-none">
+            {/* Insurance Ribbon Text */}
+            <div className="hidden xl:flex flex-col items-end pointer-events-none mr-1">
+              <span className="font-serif text-[10px] sm:text-xs font-black tracking-[0.18em] text-yellow-300/85 uppercase drop-shadow">
+                ★ INSURANCE PAYS 2 TO 1 ★
               </span>
+              <span className="text-[9px] font-bold text-emerald-300/70 uppercase tracking-wider">
+                Vegas House Rules
+              </span>
+            </div>
+
+            {/* Compact 3D Dealer Chip Rack */}
+            <div className="flex items-center gap-1 sm:gap-1.5 p-1 rounded-lg bg-black/75 border border-amber-900/50 shadow-xl">
+              <DealerChipColumn denom={1000} count={6} />
+              <DealerChipColumn denom={500} count={7} />
+              <DealerChipColumn denom={100} count={9} />
+              <DealerChipColumn denom={50} count={8} />
+              <DealerChipColumn denom={25} count={10} />
+              <DealerChipColumn denom={10} count={9} />
+              <DealerChipColumn denom={5} count={11} />
+            </div>
+
+            {/* 4-Deck Card Dealing Shoe */}
+            <div className="hidden lg:flex flex-col items-center justify-center h-12 w-14 rounded-lg border border-slate-700 bg-gradient-to-br from-slate-900 to-black p-1 shadow-xl">
+              <span className="text-[7px] font-black tracking-widest text-white/50 uppercase">
+                SHOE
+              </span>
+              <div className="w-10 h-4 rounded-xs border border-white/20 bg-gradient-to-r from-red-900 to-amber-950 mt-0.5 flex items-center justify-center">
+                <span className="text-[7px] text-amber-300 font-bold">♠ ♥</span>
+              </div>
             </div>
           </div>
 
           {/* ========================================================== */}
-          {/* DEALER STATION (TOP CENTER)                                */}
+          {/* DEALER STATION (MOVED TO TOP CENTER - MAXIMUM SPACE)       */}
           {/* ========================================================== */}
-          <div className="relative z-20 flex w-full flex-col items-center pt-1 sm:pt-2">
-            {/* Embedded 3D Casino Chip Tray & Dealing Shoe Header */}
-            <div className="relative flex items-center justify-center gap-2 sm:gap-6 bg-gradient-to-b from-[#1b0d06] to-[#0d0502] px-4 sm:px-8 py-1.5 rounded-b-2xl border-x-2 border-b-2 border-[#542d10] shadow-[0_10px_25px_rgba(0,0,0,0.85)]">
-              {/* Dealer Chip Rack with 7 columns */}
-              <div className="flex items-center gap-1 sm:gap-1.5 p-1 rounded-lg bg-black/70 border border-amber-900/40">
-                <DealerChipColumn denom={1000} count={8} />
-                <DealerChipColumn denom={500} count={9} />
-                <DealerChipColumn denom={100} count={12} />
-                <DealerChipColumn denom={50} count={10} />
-                <DealerChipColumn denom={25} count={14} />
-                <DealerChipColumn denom={10} count={12} />
-                <DealerChipColumn denom={5} count={15} />
+          <div className="relative z-20 flex w-full flex-col items-center pt-2 sm:pt-3">
+            {/* Dealer Header & Score Pill */}
+            <div className="flex items-center gap-2">
+              <div className="grid h-6 w-6 place-items-center rounded-full border border-slate-400 bg-white font-serif text-[8px] font-black text-slate-950 shadow-md">
+                D
               </div>
+              <span className="text-xs sm:text-sm font-black tracking-wider text-amber-300 uppercase">
+                DEALER
+              </span>
 
-              {/* DEALER Acrylic Dealing Shoe (Top Right) */}
-              <div className="hidden md:flex flex-col items-center justify-center h-14 sm:h-16 w-16 sm:w-20 rounded-lg border-2 border-slate-700/80 bg-gradient-to-br from-slate-900 via-slate-950 to-black p-1 shadow-2xl relative overflow-hidden">
-                <span className="text-[8px] font-black tracking-widest text-white/50 uppercase">
-                  SHOE (4D)
-                </span>
-                <div className="w-12 h-6 rounded-xs border border-white/20 bg-gradient-to-r from-red-900 via-amber-900 to-red-950 mt-1 shadow-inner flex items-center justify-center">
-                  <span className="text-[8px] text-amber-300 font-bold">♠ ♥</span>
-                </div>
-              </div>
+              {dealerCards.length > 0 ? (
+                holeHidden ? (
+                  <span className="rounded-full border border-sky-400/40 bg-sky-950/80 px-2.5 py-0.5 font-mono text-[11px] font-black text-sky-200 shadow">
+                    Shows {dealerScore}
+                  </span>
+                ) : (
+                  <HandScoreBadge evaluation={dealerEval} />
+                )
+              ) : null}
             </div>
 
-            {/* DEALER Cards & Score Badge */}
-            <div className="flex flex-col items-center gap-1.5 mt-2">
-              <div className="flex items-center gap-2">
-                {/* White Circular "DEALER" Puck */}
-                <div className="grid h-6 w-6 sm:h-7 sm:w-7 place-items-center rounded-full border border-slate-400 bg-white font-serif text-[8px] sm:text-[9px] font-black text-slate-950 shadow-md">
-                  D
+            {/* Dealer Cards: ALL CARDS VISIBLE SIDE BY SIDE (NO STACKING) */}
+            <div className="flex items-center justify-center gap-2 min-h-[90px] sm:min-h-[105px] pt-1">
+              {dealerCards.length === 0 ? (
+                <div className="flex items-center gap-2 opacity-30">
+                  <div className="h-20 w-14 sm:h-22 sm:w-16 rounded-lg border-2 border-dashed border-white/40" />
+                  <div className="h-20 w-14 sm:h-22 sm:w-16 rounded-lg border-2 border-dashed border-white/40" />
                 </div>
-                <span className="text-xs sm:text-sm font-black tracking-wider text-amber-300 uppercase">
-                  DEALER
-                </span>
+              ) : (
+                <div className="flex items-center justify-center gap-2">
+                  {dealerCards.map((card, i) => (
+                    <motion.div
+                      key={`${i}-${card}`}
+                      initial={{ y: -20, opacity: 0, scale: 0.85 }}
+                      animate={{ y: 0, opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.22, delay: i * 0.06 }}
+                      className="relative shrink-0"
+                    >
+                      <CasinoPlayingCard
+                        card={card}
+                        hidden={card === "hidden"}
+                        size="md"
+                        className="shadow-[0_8px_20px_rgba(0,0,0,0.7)]"
+                      />
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
 
-                {/* Score Pill */}
-                {dealerCards.length > 0 ? (
-                  holeHidden ? (
-                    <span className="rounded-full border border-sky-400/40 bg-sky-950/80 px-2.5 py-0.5 font-mono text-[11px] font-black text-sky-200 shadow">
-                      Shows {dealerScore}
-                    </span>
-                  ) : (
-                    <HandScoreBadge evaluation={dealerEval} />
-                  )
-                ) : null}
-              </div>
-
-              {/* Dealer Cards Cascading */}
-              <div className="flex items-center justify-center min-h-[95px] sm:min-h-[115px] pt-1">
-                {dealerCards.length === 0 ? (
-                  <div className="flex items-center -space-x-8 opacity-30">
-                    <div className="h-20 w-14 sm:h-24 sm:w-16 rounded-lg border-2 border-dashed border-white/40" />
-                    <div className="h-20 w-14 sm:h-24 sm:w-16 rounded-lg border-2 border-dashed border-white/40" />
-                  </div>
-                ) : (
-                  <div className="flex items-center -space-x-7 sm:-space-x-9">
-                    {dealerCards.map((card, i) => (
-                      <motion.div
-                        key={`${i}-${card}`}
-                        initial={{ y: -30, opacity: 0, scale: 0.8 }}
-                        animate={{ y: 0, opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.25, delay: i * 0.08 }}
-                        className="relative"
-                        style={{ zIndex: i }}
-                      >
-                        <CasinoPlayingCard
-                          card={card}
-                          hidden={card === "hidden"}
-                          size="md"
-                          className="shadow-[0_8px_20px_rgba(0,0,0,0.7)]"
-                        />
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Live Game Announcement Capsule */}
-              <div className="mt-1 flex items-center gap-1.5 rounded-full border border-amber-400/30 bg-slate-950/80 px-4 py-1 shadow-lg backdrop-blur-md">
-                <Flame className="h-3.5 w-3.5 text-amber-400 animate-pulse" />
-                <span className="text-[11px] sm:text-xs font-bold text-amber-200">
-                  {state.blackjackLastAction || "Place your bets to start the hand."}
-                </span>
-              </div>
+            {/* Live Game Announcement Capsule (Spacious & Clear) */}
+            <div className="mt-1 flex items-center gap-1.5 rounded-full border border-amber-400/30 bg-slate-950/80 px-4 py-1 shadow-lg backdrop-blur-md">
+              <Flame className="h-3.5 w-3.5 text-amber-400 animate-pulse" />
+              <span className="text-[11px] sm:text-xs font-bold text-amber-200">
+                {state.blackjackLastAction || "Place your bets to start the hand."}
+              </span>
             </div>
           </div>
 
           {/* ========================================================== */}
           {/* THE 5 PANORAMIC BETTING STATIONS (WIDESCREEN ARC)          */}
           {/* ========================================================== */}
-          <div className="relative z-20 w-full px-2 sm:px-4 md:px-8 pb-3 sm:pb-5">
-            <div className="grid grid-cols-5 gap-2 sm:gap-4 md:gap-6 items-end w-full">
+          <div className="relative z-20 w-full px-2 sm:px-4 md:px-8 pb-2 sm:pb-3">
+            <div className="grid grid-cols-5 gap-2 sm:gap-4 md:gap-5 items-end w-full">
               {fiveSeats.map((seat, seatIdx) => {
                 const player = seat.player;
                 const isLocal = seat.isLocal;
 
-                // If seat is empty, show empty betting box on felt
+                // Empty Seat Placeholder
                 if (!player) {
                   return (
                     <div
                       key={`empty-${seatIdx}`}
-                      className={`flex flex-col items-center justify-end ${seat.yOffsetClass} opacity-35`}
+                      className={`flex flex-col items-center justify-end ${seat.yOffsetClass} opacity-30`}
                     >
-                      {/* Empty Circular Bet Spot */}
-                      <div className="h-14 w-14 sm:h-18 sm:w-18 rounded-full border-2 border-dashed border-emerald-300/30 flex items-center justify-center">
-                        <span className="text-[9px] font-black uppercase tracking-wider text-emerald-300/40">
+                      <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-full border-2 border-dashed border-emerald-300/30 flex items-center justify-center">
+                        <span className="text-[8px] font-black uppercase tracking-wider text-emerald-300/40">
                           SEAT {seatIdx + 1}
                         </span>
                       </div>
-                      {/* Empty Rectangular Card Area */}
-                      <div className="mt-2 h-20 w-16 sm:h-24 sm:w-20 rounded-xl border border-dashed border-emerald-300/20 bg-emerald-950/10" />
+                      <div className="mt-1.5 h-16 w-14 sm:h-20 sm:w-18 rounded-xl border border-dashed border-emerald-300/20 bg-emerald-950/10" />
                     </div>
                   );
                 }
 
-                // Populated player seat
+                // Active Player / Bot Seat
                 const hands = state.blackjackPlayerHands?.[player.userId] ?? [[]];
                 const bets = state.blackjackBets?.[player.userId] ?? [0];
                 const chips = state.blackjackChips?.[player.userId] ?? 0;
@@ -509,11 +500,11 @@ export function BlackjackTable(props: BoardGameTableProps) {
                   >
                     {/* Active Turn Halo Ring & Pod */}
                     <div
-                      className={`relative flex flex-col items-center gap-1 rounded-2xl p-2 sm:p-2.5 transition-all duration-300 w-full max-w-[280px] ${
+                      className={`relative flex flex-col items-center gap-1 rounded-2xl p-2 transition-all duration-300 w-full max-w-[280px] ${
                         isTurn
-                          ? "bg-amber-500/20 border-2 border-amber-300 ring-4 ring-amber-400/40 shadow-[0_0_35px_rgba(251,191,36,0.6)] scale-105 z-30"
+                          ? "bg-amber-500/20 border-2 border-amber-300 ring-4 ring-amber-400/40 shadow-[0_0_30px_rgba(251,191,36,0.55)] scale-102 z-30"
                           : isLocal
-                            ? "bg-black/50 border border-emerald-400/40 shadow-xl z-20"
+                            ? "bg-black/55 border border-emerald-400/40 shadow-xl z-20"
                             : "bg-black/40 border border-white/10 shadow-lg"
                       }`}
                     >
@@ -550,7 +541,7 @@ export function BlackjackTable(props: BoardGameTableProps) {
                       {/* Seat Avatar & Nameplate */}
                       <div className="flex items-center gap-1.5 w-full justify-center">
                         <div
-                          className={`grid h-6 w-6 sm:h-7 sm:w-7 place-items-center rounded-full text-xs font-black shadow-md ${
+                          className={`grid h-6 w-6 place-items-center rounded-full text-xs font-black shadow-md ${
                             isLocal
                               ? "bg-gradient-to-br from-emerald-400 to-teal-600 text-slate-950"
                               : "bg-gradient-to-br from-slate-700 to-slate-900 text-white"
@@ -586,19 +577,19 @@ export function BlackjackTable(props: BoardGameTableProps) {
                         </div>
                       ) : null}
 
-                      {/* Circular Golden Betting Ring (Front of Box towards Dealer) */}
-                      <div className="relative mt-1">
+                      {/* Circular Golden Betting Ring */}
+                      <div className="relative mt-0.5">
                         <div
-                          className={`flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-full border-2 transition-all ${
+                          className={`flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full border-2 transition-all ${
                             (bets[0] ?? 0) > 0
                               ? "border-amber-400 bg-amber-400/10 shadow-[0_0_20px_rgba(251,191,36,0.35)]"
                               : "border-dashed border-amber-400/50 bg-black/30"
                           }`}
                         >
                           {(bets[0] ?? 0) > 0 ? (
-                            <ChipStack amount={bets[0]!} size="sm" showLabel={false} />
+                            <ChipStack amount={bets[0]!} size="xs" showLabel={false} />
                           ) : (
-                            <span className="text-[9px] font-black uppercase tracking-wider text-amber-300/40">
+                            <span className="text-[8px] font-black uppercase tracking-wider text-amber-300/40">
                               BET
                             </span>
                           )}
@@ -606,16 +597,16 @@ export function BlackjackTable(props: BoardGameTableProps) {
 
                         {/* Bet Amount Pill Badge */}
                         {(bets[0] ?? 0) > 0 ? (
-                          <span className="absolute -bottom-2 inset-x-0 mx-auto w-fit rounded-full border border-amber-300 bg-slate-950 px-2 py-0.2 font-mono text-[10px] font-black text-amber-300 shadow">
+                          <span className="absolute -bottom-2 inset-x-0 mx-auto w-fit rounded-full border border-amber-300 bg-slate-950 px-1.5 py-0.2 font-mono text-[9px] font-black text-amber-300 shadow">
                             ${bets[0]}
                           </span>
                         ) : null}
                       </div>
 
                       {/* Rectangular Card Placement Felt Box */}
-                      <div className="relative mt-2 w-full rounded-xl border border-emerald-400/40 bg-emerald-950/30 p-2 shadow-inner">
+                      <div className="relative mt-1.5 w-full rounded-xl border border-emerald-400/40 bg-emerald-950/30 p-1.5 shadow-inner">
                         {/* Hands Container (Handles Split Hands for Local Player) */}
-                        <div className="flex items-center justify-center gap-3">
+                        <div className="flex items-center justify-center gap-2">
                           {hands.map((hand, handIdx) => {
                             const handEval = evaluateBlackjackHand(hand);
                             const isActiveSplitHand = isTurn && activeHandIndex === handIdx;
@@ -629,35 +620,34 @@ export function BlackjackTable(props: BoardGameTableProps) {
                                     : ""
                                 }`}
                               >
-                                {/* Prominent Score Badge (Attached to Top Right) */}
+                                {/* Score Badge for EVERY Player & Bot */}
                                 {hand.length > 0 ? (
-                                  <div className="self-end -mb-2 z-20">
+                                  <div className="self-end -mb-1 z-20">
                                     <HandScoreBadge evaluation={handEval} />
                                   </div>
                                 ) : null}
 
-                                {/* Overlapping Cascading Cards */}
-                                <div className="flex items-center justify-center min-h-[90px] sm:min-h-[110px] pt-1">
+                                {/* ALL CARDS FULLY VISIBLE SIDE BY SIDE (NO OVERLAPPING/STACKING) */}
+                                <div className="flex items-center justify-center gap-1 sm:gap-1.5 min-h-[80px] sm:min-h-[96px] pt-1">
                                   {hand.length === 0 ? (
-                                    <div className="flex items-center -space-x-8 opacity-25">
-                                      <div className="h-20 w-14 sm:h-24 sm:w-16 rounded-lg border border-dashed border-white" />
-                                      <div className="h-20 w-14 sm:h-24 sm:w-16 rounded-lg border border-dashed border-white" />
+                                    <div className="flex items-center gap-1 opacity-25">
+                                      <div className="h-16 w-11 sm:h-20 sm:w-14 rounded-lg border border-dashed border-white" />
+                                      <div className="h-16 w-11 sm:h-20 sm:w-14 rounded-lg border border-dashed border-white" />
                                     </div>
                                   ) : (
-                                    <div className="flex items-center -space-x-7 sm:-space-x-9">
+                                    <div className="flex items-center justify-center gap-1 sm:gap-1.5">
                                       {hand.map((c, i) => (
                                         <motion.div
                                           key={`${i}-${c}`}
-                                          initial={{ y: -25, opacity: 0, scale: 0.8 }}
+                                          initial={{ y: -15, opacity: 0, scale: 0.85 }}
                                           animate={{ y: 0, opacity: 1, scale: 1 }}
-                                          transition={{ duration: 0.2, delay: i * 0.06 }}
-                                          className="relative"
-                                          style={{ zIndex: i }}
+                                          transition={{ duration: 0.2, delay: i * 0.05 }}
+                                          className="relative shrink-0"
                                         >
                                           <CasinoPlayingCard
                                             card={c}
                                             size={isLocal ? "md" : "sm"}
-                                            className="shadow-[0_6px_16px_rgba(0,0,0,0.6)]"
+                                            className="shadow-[0_4px_12px_rgba(0,0,0,0.6)]"
                                           />
                                         </motion.div>
                                       ))}
@@ -678,7 +668,7 @@ export function BlackjackTable(props: BoardGameTableProps) {
         </div>
 
         {/* ============================================================== */}
-        {/* 3D CASINO ACTION / BETTING CONSOLE (REPLICATING IMAGE 3)       */}
+        {/* 3D CASINO ACTION / BETTING CONSOLE                             */}
         {/* ============================================================== */}
         <div className="relative z-30 mt-2 flex w-full max-w-5xl flex-col items-center gap-2 rounded-2xl border-2 border-amber-500/30 bg-gradient-to-b from-slate-900/95 via-slate-950/95 to-black p-3 shadow-[0_15px_40px_rgba(0,0,0,0.85)] backdrop-blur-xl">
           {/* PHASE: BETTING CONSOLE */}
@@ -737,10 +727,10 @@ export function BlackjackTable(props: BoardGameTableProps) {
             </div>
           ) : null}
 
-          {/* PHASE: PLAYER TURNS (3D PILL BUTTONS REPLICATING IMAGE 3) */}
+          {/* PHASE: PLAYER TURNS */}
           {phase === "player_turns" ? (
             <div className="flex w-full flex-wrap items-center justify-center gap-3 sm:gap-5 py-1">
-              {/* HIT BUTTON (Glossy Emerald 3D Pill) */}
+              {/* HIT BUTTON */}
               <button
                 type="button"
                 onClick={handleHit}
@@ -754,7 +744,7 @@ export function BlackjackTable(props: BoardGameTableProps) {
                 <span className="text-base sm:text-lg">🃏</span>
               </button>
 
-              {/* STAND BUTTON (Glossy Amber/Red 3D Pill) */}
+              {/* STAND BUTTON */}
               <button
                 type="button"
                 onClick={handleStand}
@@ -768,7 +758,7 @@ export function BlackjackTable(props: BoardGameTableProps) {
                 <span className="text-base sm:text-lg">✋</span>
               </button>
 
-              {/* DOUBLE BUTTON (Glossy Cyan 3D Pill) */}
+              {/* DOUBLE BUTTON */}
               <button
                 type="button"
                 onClick={handleDouble}
@@ -782,7 +772,7 @@ export function BlackjackTable(props: BoardGameTableProps) {
                 <span>⚡</span>
               </button>
 
-              {/* SPLIT BUTTON (Glossy Purple 3D Pill) */}
+              {/* SPLIT BUTTON */}
               {canSplit ? (
                 <button
                   type="button"
