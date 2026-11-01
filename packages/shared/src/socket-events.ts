@@ -48,4 +48,6 @@ export interface ClientToServerEvents {
   "admin:force-snapshot": (payload: unknown) => void;
   "admin:end-room": (payload: unknown) => void;
   "debug:uno-scenario": (payload: unknown) => void;
+  "twenty-nine:confirm_single_hand": () => void;
+  "twenty-nine:ready_next_trick": () => void;
 }

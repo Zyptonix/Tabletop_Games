@@ -130,6 +130,34 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
       return;
     }
 
+    if (room.gameId === "twenty-nine") {
+      const s = room.gameState as any;
+      const hasHuman = room.players.some((p) => !p.isBot);
+
+      // Reset flags when game moves forward
+      if (s?.phase === "bidding") {
+        (room as any).singleHandConfirmed = false;
+        (room as any).trickAckConfirmed = false;
+      }
+      if ((s?.currentTrick?.length ?? 0) > 0) {
+        (room as any).trickAckConfirmed = false;
+      }
+
+      // 1. Single Hand wait: if trick 1 hasn't started, wait for human confirmation
+      const isTrick1Start = s?.phase === "playing" && (s?.completedTricks?.length ?? 0) === 0 && (s?.currentTrick?.length ?? 0) === 0 && s?.singleHandPlayerId === null;
+      if (hasHuman && isTrick1Start && !(room as any).singleHandConfirmed) {
+        clearBotTurn(room.id);
+        return;
+      }
+
+      // 2. Trick acknowledge wait: if a trick just ended, wait for human to click Next Trick!
+      const isWaitingTrickAck = s?.phase === "playing" && (s?.currentTrick?.length ?? 0) === 0 && (s?.completedTricks?.length ?? 0) > 0;
+      if (hasHuman && isWaitingTrickAck && !(room as any).trickAckConfirmed) {
+        clearBotTurn(room.id);
+        return;
+      }
+    }
+
     const active = botTimers.get(room.id);
     if (active?.userId === currentPlayerId) {
       return;
@@ -430,6 +458,9 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
           userId: user.id,
           envelope: parsed.data
         });
+        if (result.room.gameId === "twenty-nine") {
+          (result.room as any).singleHandConfirmed = true;
+        }
         if (result.shouldBroadcast) emitRoom(result.room, result.events);
       } catch (error) {
         emitError(socket, "game:error", error);
@@ -467,6 +498,26 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
         socket.emit("system:message", { roomId: parsed.data.roomId, message: "Snapshot saved." });
       } catch (error) {
         emitError(socket, "server:error", error);
+      }
+    });
+
+    socket.on("twenty-nine:confirm_single_hand", () => {
+      for (const roomId of socket.rooms) {
+        const room = manager.getRoom(roomId);
+        if (room && room.gameId === "twenty-nine") {
+          (room as any).singleHandConfirmed = true;
+          scheduleBotTurn(room);
+        }
+      }
+    });
+
+    socket.on("twenty-nine:ready_next_trick", () => {
+      for (const roomId of socket.rooms) {
+        const room = manager.getRoom(roomId);
+        if (room && room.gameId === "twenty-nine") {
+          (room as any).trickAckConfirmed = true;
+          scheduleBotTurn(room);
+        }
       }
     });
 

@@ -197,65 +197,6 @@ function formatEventLog(
   return null;
 }
 
-function TrickProgressWidget({
-  team,
-  count,
-  caption
-}: {
-  team: number;
-  count: number;
-  caption: string;
-}) {
-  const clampedCount = Math.max(0, Math.min(8, count));
-  const redTeam = team === 0;
-
-  return (
-    <div
-      className={cn(
-        "rounded-xl border px-2.5 py-1.5 backdrop-blur-md shadow-lg",
-        redTeam ? "border-rose-400/30 bg-rose-950/70" : "border-sky-400/30 bg-sky-950/70"
-      )}
-    >
-      <div className="mb-1 flex items-center justify-between gap-1">
-        <span
-          className={cn(
-            "text-[0.62rem] font-black uppercase tracking-wider",
-            redTeam ? "text-rose-200" : "text-sky-200"
-          )}
-        >
-          {caption}
-        </span>
-        <strong className="text-xs font-black tabular-nums text-white">
-          {clampedCount}
-          <span className="text-[0.58rem] text-white/40">/8</span>
-        </strong>
-      </div>
-
-      <div className="grid grid-cols-8 gap-1 w-36 sm:w-40">
-        {Array.from({ length: 8 }, (_, index) => {
-          const earned = index < clampedCount;
-          return (
-            <div
-              key={`${team}-trick-${index}`}
-              className={cn(
-                "relative aspect-[0.715] min-w-0 overflow-hidden rounded-[0.2rem] transition-all",
-                earned
-                  ? redTeam
-                    ? "ring-1 ring-rose-300 shadow-[0_0_8px_rgba(244,63,94,0.4)]"
-                    : "ring-1 ring-sky-300 shadow-[0_0_8px_rgba(56,189,248,0.4)]"
-                  : "border border-dashed border-white/20 bg-white/[0.04]"
-              )}
-            >
-              {earned ? (
-                <TwentyNineCardBack small className="h-full w-full rounded-[0.2rem] border-0 shadow-none" />
-              ) : null}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 export function TwentyNineTable({
   room,
@@ -265,7 +206,9 @@ export function TwentyNineTable({
   currentUserId,
   onAction,
   onChat,
-  onEndMatch
+  onEndMatch,
+  onReadyNextTrick,
+  onConfirmSingleHand
 }: {
   room: RoomStateView;
   state: PublicTwentyNineState;
@@ -275,6 +218,8 @@ export function TwentyNineTable({
   onAction: (type: string, payload?: Record<string, unknown>) => void;
   onChat?: ((roomId: string, body: string) => void) | undefined;
   onEndMatch?: ((roomId: string) => void) | undefined;
+  onReadyNextTrick?: () => void;
+  onConfirmSingleHand?: () => void;
 }) {
   const reduceMotion = useReducedMotion();
   const tableRef = useRef<HTMLDivElement | null>(null);
@@ -341,6 +286,61 @@ export function TwentyNineTable({
   useEffect(() => {
     setDeclinedSingleHand(false);
   }, [state.handNumber]);
+
+  // Manual advance trick handler (User-requested: cards stay on table until clicked)
+  const handleNextTrick = () => {
+    if (!persistedTrick) return;
+    const container = tableRef.current;
+    if (container) {
+      const from = centerOf(container);
+      const myTeam = me ? me.team : 0;
+      const didMyTeamWin = persistedTrick.winnerTeam === myTeam;
+      const center = centerOf(container);
+      const to = {
+        x: didMyTeamWin ? center.x + 180 : center.x - 180,
+        y: center.y
+      };
+
+      const arrivals: Flight[] = persistedTrick.cards.map((played, index) => ({
+        id: `collect-${persistedTrick.trickNumber}-${played.card.id}-${index}-${Date.now()}`,
+        card: played.card,
+        from: {
+          x: from.x + (index - 1.5) * 14,
+          y: from.y + (index % 2 === 0 ? 5 : -5)
+        },
+        to: { x: to.x + (index - 1.5) * 6, y: to.y },
+        kind: "collect" as const,
+        playerName: playerName(state, persistedTrick.winnerPlayerId, currentUserId),
+        delay: index * 0.05
+      }));
+
+      const arrivalIds = new Set(arrivals.map((f) => f.id));
+      setFlights((curr) => [...curr, ...arrivals].slice(-8));
+
+      const flightTimeout = window.setTimeout(
+        () => {
+          setFlights((curr) => curr.filter((item) => !arrivalIds.has(item.id)));
+          timeoutRefs.current = timeoutRefs.current.filter((item) => item !== flightTimeout);
+        },
+        reduceMotion ? 350 : 800
+      );
+      timeoutRefs.current.push(flightTimeout);
+    }
+
+    setPersistedTrick(null);
+    onReadyNextTrick?.();
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.key === " " || e.key === "Enter") && persistedTrick) {
+        e.preventDefault();
+        handleNextTrick();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [persistedTrick]);
 
   // Hand cards sorted cleanly
   const sortedHand = useMemo(() => {
@@ -464,7 +464,7 @@ export function TwentyNineTable({
         );
         const winningCardId = getWinningCardId(typedPlayedCards, state.trumpSuit, state.trumpRevealed);
 
-        // Keep 4 cards on table for 2.3s hold with prominent winner announcement so players see what was played
+        // Keep 4 cards on table for manual advance with prominent winner announcement so players see what was played
         setPersistedTrick({
           cards: typedPlayedCards,
           winnerPlayerId: winnerId,
@@ -473,59 +473,6 @@ export function TwentyNineTable({
           trickNumber: trickNum,
           winningCardId: winningCardId ?? typedPlayedCards[0]?.card.id ?? ""
         });
-
-        const from = centerOf(container);
-        const winnerTeam = typeof payload.winnerTeam === "number" ? payload.winnerTeam : 0;
-        const myTeam = me ? me.team : 0;
-        const didMyTeamWin = winnerTeam === myTeam;
-        const center = centerOf(container);
-        // Flow directly into the visible on-table felt deck: Right for Your Team, Left for Opponent!
-        const to = {
-          x: didMyTeamWin ? center.x + 160 : center.x - 160,
-          y: center.y
-        };
-
-        const arrivals: Flight[] = playedCards.slice(0, 4).flatMap((played, index) => {
-          if (!isRecord(played) || !isRecord(played.card)) return [];
-          const cardData = played.card;
-          if (typeof cardData.id !== "string") return [];
-          return [
-            {
-              id: `${event.id}-${index}-${cardData.id}`,
-              card: cardData as unknown as TwentyNineCard,
-              from: {
-                x: from.x + (index - 1.5) * 12,
-                y: from.y + (index % 2 === 0 ? 4 : -4)
-              },
-              to: { x: to.x + (index - 1.5) * 6, y: to.y },
-              kind: "collect" as const,
-              playerName: playerName(state, winnerId, currentUserId),
-              delay: 0
-            }
-          ];
-        });
-
-        if (arrivals.length === 0) continue;
-        const arrivalIds = new Set(arrivals.map((f) => f.id));
-
-        // Delay starting the flights until after the 2.3s hold period so players can inspect all 4 cards!
-        const holdDelayMs = reduceMotion ? 600 : 2300;
-        const holdTimeout = window.setTimeout(() => {
-          setPersistedTrick(null);
-          setFlights((curr) => [...curr, ...arrivals].slice(-8));
-
-          const flightTimeout = window.setTimeout(
-            () => {
-              setFlights((curr) => curr.filter((item) => !arrivalIds.has(item.id)));
-              timeoutRefs.current = timeoutRefs.current.filter((item) => item !== flightTimeout);
-            },
-            reduceMotion ? 350 : 1000
-          );
-          timeoutRefs.current.push(flightTimeout);
-          timeoutRefs.current = timeoutRefs.current.filter((item) => item !== holdTimeout);
-        }, holdDelayMs);
-
-        timeoutRefs.current.push(holdTimeout);
         continue;
       }
 
@@ -548,6 +495,7 @@ export function TwentyNineTable({
   function play(card: TwentyNineCard) {
     if (!legalPlayIds.has(card.id)) return;
     onAction("play_card", { cardId: card.id });
+    onConfirmSingleHand?.();
   }
 
   const onlineCount = room.players.filter((p) => p.connected).length;
@@ -653,17 +601,10 @@ export function TwentyNineTable({
           <TwentyNineHUD state={state} currentUserId={currentUserId} onOpenLastHand={() => setLastHandModalOpen(true)} />
         </div>
 
-        {/* CENTER ARENA: FELT STADIUM TABLE */}
-        <main
-          ref={tableRef}
-          className="twenty-nine-stadium-table relative my-1.5 flex min-h-0 flex-1 flex-col items-center justify-center rounded-[2.5rem] p-3 overflow-hidden"
-        >
-          {/* North Partner Seat - Placed more towards the middle (left ~32%) so it doesn't overlap with Left Seat or Center Trick */}
+        {/* TOP PARTNER SEAT (Separated completely above center table, zero overlap!) */}
+        <div className="flex justify-center items-center py-0.5 shrink-0 z-20">
           {partner ? (
-            <div
-              ref={(el) => registerSeat(partner.userId, el)}
-              className="absolute top-3 left-1/2 -translate-x-1/2 z-20"
-            >
+            <div ref={(el) => registerSeat(partner.userId, el)}>
               <TwentyNineSeat
                 player={partner}
                 roomPlayer={room.players.find((p) => p.userId === partner.userId)}
@@ -679,191 +620,207 @@ export function TwentyNineTable({
               />
             </div>
           ) : null}
+        </div>
 
-          {/* West Left Opponent Seat */}
-          {westPlayer ? (
-            <div
-              ref={(el) => registerSeat(westPlayer.userId, el)}
-              className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 z-20"
-            >
-              <TwentyNineSeat
-                player={westPlayer}
-                roomPlayer={room.players.find((p) => p.userId === westPlayer.userId)}
-                roleLabel="⚔️ Opponent"
-                isDealer={state.dealerPlayerId === westPlayer.userId}
-                isDeclarer={state.declarerId === westPlayer.userId}
-                isSingleHand={state.singleHandPlayerId === westPlayer.userId}
-              />
-            </div>
-          ) : null}
-
-          {/* East Right Opponent Seat */}
-          {eastPlayer ? (
-            <div
-              ref={(el) => registerSeat(eastPlayer.userId, el)}
-              className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 z-20"
-            >
-              <TwentyNineSeat
-                player={eastPlayer}
-                roomPlayer={room.players.find((p) => p.userId === eastPlayer.userId)}
-                roleLabel="⚔️ Opponent"
-                isDealer={state.dealerPlayerId === eastPlayer.userId}
-                isDeclarer={state.declarerId === eastPlayer.userId}
-                isSingleHand={state.singleHandPlayerId === eastPlayer.userId}
-              />
-            </div>
-          ) : null}
-
-          {/* INTERACTIVE TRUMP SET & DOUBLING DIALOGUE (Screenshot 1) */}
-          <AnimatePresence>
-            {state.phase === "doubling" ? (
-              <motion.div
-                initial={{ scale: 0.85, opacity: 0, y: 12 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                className="absolute z-50 rounded-3xl border-4 border-[#8a5326] bg-gradient-to-b from-[#5c3012] via-[#3d1e0a] to-[#241105] p-5 shadow-[0_20px_50px_rgba(0,0,0,0.85)] text-center text-white max-w-sm w-full mx-4 backdrop-blur-md"
-              >
-                <div className="text-base sm:text-lg font-black text-amber-200">
-                  {declarer?.displayName ?? "Declarer"} Set Trump
-                </div>
-                <div className="text-sm font-bold text-white/90 mt-1">
-                  Target Point: <span className="text-amber-300 font-extrabold">{state.contractTarget ?? state.currentBid}</span>
-                </div>
-                <div className="text-xs text-white/60 mt-0.5">
-                  Trump Type: {state.selectedTrumpMode === "seventh" ? "7th Card" : "Hand Suit"}
-                </div>
-                {state.multiplier > 1 ? (
-                  <div className="mt-1 text-xs font-black text-rose-300">
-                    Stakes: ×{state.multiplier}
-                  </div>
-                ) : null}
-
-                <div className="mt-4 flex items-center justify-center gap-3">
-                  {isMyTurn && hasAction(legalActions, "double") ? (
-                    <button
-                      type="button"
-                      onClick={() => onAction("double")}
-                      className="rounded-xl border border-rose-400 bg-rose-600 px-5 py-2 text-xs font-black text-white shadow-lg hover:bg-rose-500 active:scale-95 transition"
-                    >
-                      Double (×2)
-                    </button>
-                  ) : null}
-
-                  {isMyTurn && hasAction(legalActions, "pass_double") ? (
-                    <button
-                      type="button"
-                      onClick={() => onAction("pass_double")}
-                      className="rounded-xl border border-amber-400/80 bg-amber-600 px-6 py-2 text-xs font-black text-white shadow-lg hover:bg-amber-500 active:scale-95 transition"
-                    >
-                      OK
-                    </button>
-                  ) : isMyTurn && hasAction(legalActions, "continue_contract") ? (
-                    <button
-                      type="button"
-                      onClick={() => onAction("continue_contract")}
-                      className="rounded-xl border border-amber-400/80 bg-amber-600 px-6 py-2 text-xs font-black text-white shadow-lg hover:bg-amber-500 active:scale-95 transition"
-                    >
-                      OK
-                    </button>
-                  ) : (
-                    <div className="text-xs text-white/50 italic animate-pulse">
-                      Waiting for {currentTurnName}…
-                    </div>
-                  )}
-                </div>
-              </motion.div>
+        {/* MIDDLE ARENA: [WEST SEAT] --- [CENTER WOOD STADIUM TABLE (~50% width)] --- [EAST SEAT] */}
+        <div className="relative flex flex-1 items-center justify-between w-full min-h-0 px-2 sm:px-6 my-1">
+          {/* West Left Opponent Seat (Outside Table) */}
+          <div className="shrink-0 flex items-center justify-center w-24 sm:w-28 z-20">
+            {westPlayer ? (
+              <div ref={(el) => registerSeat(westPlayer.userId, el)}>
+                <TwentyNineSeat
+                  player={westPlayer}
+                  roomPlayer={room.players.find((p) => p.userId === westPlayer.userId)}
+                  roleLabel="⚔️ Opponent"
+                  isDealer={state.dealerPlayerId === westPlayer.userId}
+                  isDeclarer={state.declarerId === westPlayer.userId}
+                  isSingleHand={state.singleHandPlayerId === westPlayer.userId}
+                />
+              </div>
             ) : null}
-          </AnimatePresence>
-
-          {/* INTERACTIVE SINGLE HAND PROMPT DIALOGUE (Screenshot 2) */}
-          <AnimatePresence>
-            {state.phase === "playing" && state.completedTricks.length === 0 && state.currentTrick.length === 0 && hasAction(legalActions, "declare_single_hand") && !declinedSingleHand ? (
-              <motion.div
-                initial={{ scale: 0.85, opacity: 0, y: 12 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                className="absolute z-50 rounded-3xl border-4 border-[#8a5326] bg-gradient-to-b from-[#5c3012] via-[#3d1e0a] to-[#241105] p-5 shadow-[0_20px_50px_rgba(0,0,0,0.85)] text-center text-white max-w-sm w-full mx-4 backdrop-blur-md"
-              >
-                <div className="text-base sm:text-lg font-black text-white">
-                  Do you want to play Single Hand?
-                </div>
-                <p className="text-xs text-white/60 mt-1">
-                  You must win all 8 tricks alone without a trump suit (±3 game points).
-                </p>
-                <div className="mt-4 flex items-center justify-center gap-4">
-                  <button
-                    type="button"
-                    onClick={() => onAction("declare_single_hand")}
-                    className="rounded-xl border border-emerald-400 bg-emerald-600 px-6 py-2 text-xs font-black text-white shadow-lg hover:bg-emerald-500 active:scale-95 transition"
-                  >
-                    Yes
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDeclinedSingleHand(true)}
-                    className="rounded-xl border border-white/20 bg-white/10 px-6 py-2 text-xs font-black text-white shadow-lg hover:bg-white/20 active:scale-95 transition"
-                  >
-                    No
-                  </button>
-                </div>
-              </motion.div>
-            ) : null}
-          </AnimatePresence>
-
-          {/* CENTER TRICK ARENA (Enlarged Compass Cards, Points & Crown) */}
-          <div className="relative z-10">
-            <TwentyNineTrickArea
-              trick={state.currentTrick}
-              state={state}
-              currentUserId={currentUserId}
-              persistedCompletedTrick={persistedTrick}
-              onRevealTrump={() => onAction("reveal_trump")}
-              canRevealTrump={hasAction(legalActions, "reveal_trump")}
-            />
           </div>
 
-          {/* Flight Animations Overlay */}
-          <AnimatePresence initial={false}>
-            {flights.map((flight) => {
-              const midX = (flight.from.x + flight.to.x) / 2;
-              const midY =
-                Math.min(flight.from.y, flight.to.y) - (flight.kind === "collect" ? 40 : 60);
+          {/* Center Dedicated Felt Stadium Table (~50% Screen Width) */}
+          <div className="flex-1 flex items-center justify-center h-full min-h-0 max-w-4xl mx-auto px-2">
+            <main
+              ref={tableRef}
+              className="twenty-nine-stadium-table relative flex flex-col items-center justify-center w-full max-w-[50rem] h-full max-h-[22rem] sm:max-h-[25rem] rounded-[3.5rem] p-3 overflow-hidden shadow-2xl"
+            >
+              {/* INTERACTIVE TRUMP SET & DOUBLING DIALOGUE (Screenshot 1) */}
+              <AnimatePresence>
+                {state.phase === "doubling" ? (
+                  <motion.div
+                    initial={{ scale: 0.85, opacity: 0, y: 12 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    exit={{ scale: 0.9, opacity: 0 }}
+                    className="absolute z-50 rounded-3xl border-4 border-[#8a5326] bg-gradient-to-b from-[#5c3012] via-[#3d1e0a] to-[#241105] p-5 shadow-[0_20px_50px_rgba(0,0,0,0.85)] text-center text-white max-w-sm w-full mx-4 backdrop-blur-md"
+                  >
+                    <div className="text-base sm:text-lg font-black text-amber-200">
+                      {declarer?.displayName ?? "Declarer"} Set Trump
+                    </div>
+                    <div className="text-sm font-bold text-white/90 mt-1">
+                      Target Point: <span className="text-amber-300 font-extrabold">{state.contractTarget ?? state.currentBid}</span>
+                    </div>
+                    <div className="text-xs text-white/60 mt-0.5">
+                      Trump Type: {state.selectedTrumpMode === "seventh" ? "7th Card" : "Hand Suit"}
+                    </div>
+                    {state.multiplier > 1 ? (
+                      <div className="mt-1 text-xs font-black text-rose-300">
+                        Stakes: ×{state.multiplier}
+                      </div>
+                    ) : null}
 
-              return (
-                <motion.div
-                  key={flight.id}
-                  className="pointer-events-none absolute left-0 top-0 z-[60] drop-shadow-[0_10px_25px_rgba(0,0,0,0.6)]"
-                  initial={{
-                    x: flight.from.x - 28,
-                    y: flight.from.y - 40,
-                    scale: 0.75,
-                    opacity: 0,
-                    rotate: -10
-                  }}
-                  animate={
-                    reduceMotion
-                      ? { opacity: [0, 1, 0] }
-                      : {
-                          x: [flight.from.x - 28, midX - 28, flight.to.x - 28],
-                          y: [flight.from.y - 40, midY - 40, flight.to.y - 40],
-                          scale: [0.75, 1.05, 0.7],
-                          rotate: [-10, 8, 0],
-                          opacity: [0, 1, 1, 0]
-                        }
-                  }
-                  exit={{ opacity: 0 }}
-                  transition={{
-                    delay: flight.delay ?? 0,
-                    duration: reduceMotion ? 0.3 : 0.75,
-                    ease: [0.18, 0.86, 0.24, 1]
-                  }}
-                >
-                  <TwentyNineCardFace card={flight.card} size="sm" />
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-        </main>
+                    <div className="mt-4 flex items-center justify-center gap-3">
+                      {isMyTurn && hasAction(legalActions, "double") ? (
+                        <button
+                          type="button"
+                          onClick={() => onAction("double")}
+                          className="rounded-xl border border-rose-400 bg-rose-600 px-5 py-2 text-xs font-black text-white shadow-lg hover:bg-rose-500 active:scale-95 transition"
+                        >
+                          Double (×2)
+                        </button>
+                      ) : null}
+
+                      {isMyTurn && hasAction(legalActions, "pass_double") ? (
+                        <button
+                          type="button"
+                          onClick={() => onAction("pass_double")}
+                          className="rounded-xl border border-amber-400/80 bg-amber-600 px-6 py-2 text-xs font-black text-white shadow-lg hover:bg-amber-500 active:scale-95 transition"
+                        >
+                          OK
+                        </button>
+                      ) : isMyTurn && hasAction(legalActions, "continue_contract") ? (
+                        <button
+                          type="button"
+                          onClick={() => onAction("continue_contract")}
+                          className="rounded-xl border border-amber-400/80 bg-amber-600 px-6 py-2 text-xs font-black text-white shadow-lg hover:bg-amber-500 active:scale-95 transition"
+                        >
+                          OK
+                        </button>
+                      ) : (
+                        <div className="text-xs text-white/50 italic animate-pulse">
+                          Waiting for {currentTurnName}…
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+
+              {/* INTERACTIVE SINGLE HAND PROMPT DIALOGUE (Screenshot 2) */}
+              <AnimatePresence>
+                {state.phase === "playing" && state.completedTricks.length === 0 && state.currentTrick.length === 0 && hasAction(legalActions, "declare_single_hand") && !declinedSingleHand ? (
+                  <motion.div
+                    initial={{ scale: 0.85, opacity: 0, y: 12 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    exit={{ scale: 0.9, opacity: 0 }}
+                    className="absolute z-50 rounded-3xl border-4 border-[#8a5326] bg-gradient-to-b from-[#5c3012] via-[#3d1e0a] to-[#241105] p-5 shadow-[0_20px_50px_rgba(0,0,0,0.85)] text-center text-white max-w-sm w-full mx-4 backdrop-blur-md"
+                  >
+                    <div className="text-base sm:text-lg font-black text-white">
+                      Do you want to play Single Hand?
+                    </div>
+                    <p className="text-xs text-white/60 mt-1">
+                      You must win all 8 tricks alone without a trump suit (±3 game points).
+                    </p>
+                    <div className="mt-4 flex items-center justify-center gap-4">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onAction("declare_single_hand");
+                          onConfirmSingleHand?.();
+                        }}
+                        className="rounded-xl border border-emerald-400 bg-emerald-600 px-6 py-2 text-xs font-black text-white shadow-lg hover:bg-emerald-500 active:scale-95 transition"
+                      >
+                        Yes
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDeclinedSingleHand(true);
+                          onConfirmSingleHand?.();
+                        }}
+                        className="rounded-xl border border-white/20 bg-white/10 px-6 py-2 text-xs font-black text-white shadow-lg hover:bg-white/20 active:scale-95 transition"
+                      >
+                        No
+                      </button>
+                    </div>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+
+              {/* CENTER TRICK ARENA (Enlarged Compass Cards, Points & Crown) */}
+              <div className="relative z-10">
+                <TwentyNineTrickArea
+                  trick={state.currentTrick}
+                  state={state}
+                  currentUserId={currentUserId}
+                  persistedCompletedTrick={persistedTrick}
+                  onRevealTrump={() => onAction("reveal_trump")}
+                  canRevealTrump={hasAction(legalActions, "reveal_trump")}
+                  onNextTrick={handleNextTrick}
+                />
+              </div>
+
+              {/* Flight Animations Overlay */}
+              <AnimatePresence initial={false}>
+                {flights.map((flight) => {
+                  const midX = (flight.from.x + flight.to.x) / 2;
+                  const midY =
+                    Math.min(flight.from.y, flight.to.y) - (flight.kind === "collect" ? 40 : 60);
+
+                  return (
+                    <motion.div
+                      key={flight.id}
+                      className="pointer-events-none absolute left-0 top-0 z-[60] drop-shadow-[0_10px_25px_rgba(0,0,0,0.6)]"
+                      initial={{
+                        x: flight.from.x - 28,
+                        y: flight.from.y - 40,
+                        scale: 0.75,
+                        opacity: 0,
+                        rotate: -10
+                      }}
+                      animate={
+                        reduceMotion
+                          ? { opacity: [0, 1, 0] }
+                          : {
+                              x: [flight.from.x - 28, midX - 28, flight.to.x - 28],
+                              y: [flight.from.y - 40, midY - 40, flight.to.y - 40],
+                              scale: [0.75, 1.05, 0.7],
+                              rotate: [-10, 8, 0],
+                              opacity: [0, 1, 1, 0]
+                            }
+                      }
+                      exit={{ opacity: 0 }}
+                      transition={{
+                        delay: flight.delay ?? 0,
+                        duration: reduceMotion ? 0.3 : 0.75,
+                        ease: [0.18, 0.86, 0.24, 1]
+                      }}
+                    >
+                      <TwentyNineCardFace card={flight.card} size="sm" />
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </main>
+          </div>
+
+          {/* East Right Opponent Seat (Outside Table) */}
+          <div className="shrink-0 flex items-center justify-center w-24 sm:w-28 z-20">
+            {eastPlayer ? (
+              <div ref={(el) => registerSeat(eastPlayer.userId, el)}>
+                <TwentyNineSeat
+                  player={eastPlayer}
+                  roomPlayer={room.players.find((p) => p.userId === eastPlayer.userId)}
+                  roleLabel="⚔️ Opponent"
+                  isDealer={state.dealerPlayerId === eastPlayer.userId}
+                  isDeclarer={state.declarerId === eastPlayer.userId}
+                  isSingleHand={state.singleHandPlayerId === eastPlayer.userId}
+                />
+              </div>
+            ) : null}
+          </div>
+        </div>
 
         {/* BOTTOM DOCK: ACTIONS & PLAYER'S HAND */}
         <footer className="shrink-0 flex flex-col items-center gap-2">
@@ -1084,274 +1041,226 @@ export function TwentyNineTable({
             ) : null}
           </div>
 
-          {/* Bottom Dock Row: [Tricks Won Tracker] -- [Player Hand Fan] -- [Card Points Panel] */}
-          <div className="flex w-full items-end justify-center gap-2.5 sm:gap-3.5 max-w-[96rem]">
-            {/* Left Side: Dedicated Tricks Won Panel (Red & Blue 8 Slots) */}
-            <div className="hidden lg:flex flex-col justify-between shrink-0 rounded-2xl border border-white/10 bg-black/75 p-3 shadow-2xl backdrop-blur-xl w-[14rem] sm:w-[15.5rem] self-stretch">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[0.62rem] font-black uppercase tracking-wider text-white/60">
-                  Tricks Won (8 Max)
-                </span>
-                <span className="text-[0.62rem] font-black text-emerald-400">
-                  {state.completedTricks.length}/8 Done
-                </span>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <TrickProgressWidget team={0} count={state.tricksWonByTeam["0"]} caption="Team Red" />
-                <TrickProgressWidget team={1} count={state.tricksWonByTeam["1"]} caption="Team Blue" />
-              </div>
-            </div>
-
-            {/* Center: Local Player Hand Fan (Enlarged Cards) */}
-            <section
-              ref={handRef}
-              className="relative z-40 flex flex-1 min-w-0 max-w-4xl flex-col items-center justify-center rounded-2xl border border-white/10 bg-black/75 px-4 py-2 shadow-2xl backdrop-blur-xl"
-            >
-              {/* Local Player Info Bar */}
-              <div className="mb-1 flex w-full items-center justify-between px-2 text-xs">
-                <div className="flex items-center gap-2">
-                  <div
+        {/* BOTTOM HORIZONTAL TELEMETRY DOCK */}
+        <div className="z-30 flex flex-wrap items-center justify-between gap-2.5 w-full max-w-5xl px-2">
+          {/* Left Horizontal Capsule: Tricks Won (8 Max) */}
+          <div className="flex items-center gap-2.5 rounded-full border border-white/10 bg-black/80 px-4 py-1.5 shadow-xl backdrop-blur-md">
+            <span className="text-[0.62rem] font-black uppercase tracking-wider text-white/50">
+              Tricks ({state.completedTricks.length}/8)
+            </span>
+            <span className="text-white/20">|</span>
+            {/* Team Red compact indicators */}
+            <div className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-rose-400" />
+              <span className="text-[0.65rem] font-bold text-rose-200">Red:</span>
+              <div className="flex gap-0.5">
+                {Array.from({ length: 8 }, (_, i) => (
+                  <span
+                    key={`red-trick-${i}`}
                     className={cn(
-                      "h-3 w-3 rounded-full shadow-md",
-                      me?.team === 0 ? "bg-rose-400 shadow-rose-500/50" : "bg-sky-400 shadow-sky-500/50"
+                      "h-3 w-1.5 rounded-[1px]",
+                      i < state.tricksWonByTeam["0"]
+                        ? "bg-rose-400 shadow-[0_0_6px_rgba(244,63,94,0.7)]"
+                        : "bg-white/15"
                     )}
                   />
-                  <span className="font-black text-white">{me?.displayName ?? "Your Hand"}</span>
-                  <span className="text-white/40">·</span>
-                  <span className="text-white/60">
-                    {(me?.hand?.length ?? 0) + (state.privateSeventhCard ? 1 : 0)} cards in hand
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-1.5 text-white/50 text-[0.68rem]">
-                  <Shield className="h-3.5 w-3.5" />
-                  <span>Follow lead suit when possible</span>
-                </div>
+                ))}
               </div>
-
-              {/* Cards Fan or Sitting Out */}
-              {sittingOutSingleHand ? (
-                <div className="flex min-h-[7rem] flex-col items-center justify-center p-3 text-center">
-                  <p className="text-sm font-black text-violet-200">
-                    Sitting out — Partner is playing Single Hand alone!
-                  </p>
-                  <p className="mt-1 text-xs text-white/50">
-                    Teammate must win all 8 tricks alone. Your hand stays out of play.
-                  </p>
-                </div>
-              ) : (
-                <div className="relative flex min-h-[10.5rem] items-end justify-center overflow-visible pb-1 pt-3">
-                  {sortedHand.map((card, index) => {
-                    const canPlay = legalPlayIds.has(card.id) && isMyTurn && state.phase === "playing";
-                    const offset = index - (sortedHand.length - 1) / 2;
-                    const rotateDeg = offset * 2.5;
-                    const translateY = Math.abs(offset) * 3;
-
-                    return (
-                      <motion.button
-                        key={card.id}
-                        type="button"
-                        disabled={!canPlay}
-                        onClick={() => play(card)}
-                        initial={reduceMotion ? false : { opacity: 0, y: 20 }}
-                        animate={{
-                          opacity: 1,
-                          y: canPlay ? -15 - translateY : -translateY,
-                          rotate: rotateDeg,
-                          scale: canPlay ? 1.05 : 1
-                        }}
-                        {...(canPlay && !reduceMotion
-                          ? { whileHover: { y: -38, scale: 1.15, rotate: 0, zIndex: 120 } }
-                          : {})}
-                        {...(canPlay ? { whileTap: { scale: 0.95 } } : {})}
-                        transition={{ duration: 0.2 }}
-                        className={cn(
-                          "relative shrink-0 text-left outline-none transition-shadow",
-                          canPlay ? "cursor-pointer" : "cursor-default"
-                        )}
-                        style={{
-                          marginLeft: index === 0 ? 0 : "-2.2rem",
-                          zIndex: 10 + index
-                        }}
-                        title={canPlay ? `Play ${card.rank} of ${card.suit}` : `${card.rank} of ${card.suit}`}
-                      >
-                        <TwentyNineCardFace
-                          card={card}
-                          size="lg"
-                          playable={canPlay}
-                          muted={!canPlay && state.phase === "playing" && isMyTurn}
-                        />
-                      </motion.button>
-                    );
-                  })}
-
-                  {/* 7th Trump Hidden Card */}
-                  {state.privateSeventhCard &&
-                  state.phase === "playing" &&
-                  state.completedTricks.length === 7 &&
-                  (me?.hand?.length ?? 0) === 0 ? (
-                    <motion.button
-                      type="button"
-                      onClick={() => play(state.privateSeventhCard!)}
-                      className="relative cursor-pointer ring-2 ring-amber-400 rounded-2xl ml-2"
-                    >
-                      <TwentyNineCardFace card={state.privateSeventhCard} size="lg" playable />
-                      <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-amber-400 px-2.5 py-0.5 text-[0.62rem] font-black text-black shadow-lg">
-                        7TH TRUMP
-                      </span>
-                    </motion.button>
-                  ) : null}
-
-                  {!sortedHand.length && state.phase !== "finished" && !sittingOutSingleHand ? (
-                    <div className="py-8 text-xs font-bold text-white/40">
-                      Your cards will appear here after the deal.
-                    </div>
-                  ) : null}
-                </div>
-              )}
-            </section>
-
-            {/* Right Side: Card Points & Contract Telemetry */}
-            <div className="hidden lg:flex flex-col justify-between shrink-0 rounded-2xl border border-white/10 bg-black/80 p-3 shadow-2xl backdrop-blur-xl w-[15rem] sm:w-[16.5rem] self-stretch">
-              <div>
-                {/* Header: Declarer & Target */}
-                <div className="flex items-center justify-between pb-1.5 border-b border-white/10 mb-2">
-                  <div className="flex items-center gap-1.5">
-                    <Crown className="h-3.5 w-3.5 text-amber-300" />
-                    <span className="text-[0.62rem] font-black uppercase tracking-wider text-amber-300">
-                      Declarer & Bid
-                    </span>
-                  </div>
-                  <span className="text-[0.62rem] font-black text-amber-200 bg-amber-500/20 border border-amber-400/30 px-2 py-0.5 rounded-full">
-                    Target: {state.contractTarget ?? state.currentBid ?? "—"}
-                  </span>
-                </div>
-
-                {/* Declarer Info Box */}
-                {declarer ? (
-                  <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-1.5 mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className={cn(
-                        "h-2.5 w-2.5 rounded-full",
-                        declarer.team === 0 ? "bg-rose-500 shadow-sm shadow-rose-500" : "bg-sky-500 shadow-sm shadow-sky-500"
-                      )} />
-                      <span className="text-xs font-black text-white truncate max-w-[8rem]" title={declarer.displayName}>
-                        {declarer.displayName} {isViewerDeclarer ? "(You)" : ""}
-                      </span>
-                    </div>
-                    <span className={cn(
-                      "text-[0.6rem] font-black uppercase px-1.5 py-0.5 rounded",
-                      declarer.team === 0 ? "text-rose-300 bg-rose-950/60" : "text-sky-300 bg-sky-950/60"
-                    )}>
-                      {declarer.team === 0 ? "Team Red" : "Team Blue"}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="text-[0.65rem] text-white/40 italic mb-2">
-                    Bidding in progress...
-                  </div>
-                )}
-
-                {/* TRUMP STATUS - Crystal clear CONCEALED vs REVEALED */}
-                <div className="rounded-xl border border-white/10 bg-black/40 p-2 mb-2">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[0.58rem] font-black uppercase tracking-widest text-white/50">
-                      Trump Suit
-                    </span>
-                    {state.trumpRevealed ? (
-                      <span className="flex items-center gap-1 text-[0.62rem] font-black text-emerald-300 bg-emerald-500/20 px-1.5 py-0.5 rounded-md border border-emerald-400/30">
-                        <Unlock className="h-3 w-3" /> REVEALED
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-[0.62rem] font-black text-amber-300 bg-amber-500/15 px-1.5 py-0.5 rounded-md border border-amber-400/30">
-                        <Lock className="h-3 w-3" /> CONCEALED
-                      </span>
+              <span className="text-[0.65rem] font-black text-rose-300">({state.tricksWonByTeam["0"]})</span>
+            </div>
+            <span className="text-white/20">|</span>
+            {/* Team Blue compact indicators */}
+            <div className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-sky-400" />
+              <span className="text-[0.65rem] font-bold text-sky-200">Blue:</span>
+              <div className="flex gap-0.5">
+                {Array.from({ length: 8 }, (_, i) => (
+                  <span
+                    key={`blue-trick-${i}`}
+                    className={cn(
+                      "h-3 w-1.5 rounded-[1px]",
+                      i < state.tricksWonByTeam["1"]
+                        ? "bg-sky-400 shadow-[0_0_6px_rgba(56,189,248,0.7)]"
+                        : "bg-white/15"
                     )}
-                  </div>
-
-                  {state.singleHandPlayerId ? (
-                    <div className="text-xs font-black text-violet-300 flex items-center gap-1.5">
-                      <Swords className="h-3.5 w-3.5" /> Single Hand (No Trump)
-                    </div>
-                  ) : state.trumpRevealed && state.trumpSuit ? (
-                    <div>
-                      <div className="flex items-center gap-1.5 text-xs font-black text-emerald-300">
-                        <SuitMark suit={state.trumpSuit} size={15} />
-                        <span>{TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label} Active</span>
-                      </div>
-                      <span className="text-[0.58rem] text-emerald-400/70 block mt-0.5">
-                        Trump is active for all players
-                      </span>
-                    </div>
-                  ) : (
-                    <div>
-                      {isViewerDeclarer && state.trumpSuit ? (
-                        <>
-                          <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
-                            <SuitMark suit={state.trumpSuit} size={15} />
-                            <span>You set: {TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label}</span>
-                          </div>
-                          <span className="text-[0.58rem] text-amber-400/90 block mt-0.5 font-bold">
-                            ⚠️ HIDDEN: Table cannot see this yet!
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-white/70">
-                            <span>🂠 Hidden Face-Down Card</span>
-                          </div>
-                          <span className="text-[0.58rem] text-white/40 block mt-0.5">
-                            Must ask for trump if void in lead suit
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
+                  />
+                ))}
               </div>
-
-              {/* CARD POINTS PROGRESS BARS */}
-              <div className="flex flex-col gap-1.5 my-1">
-                {/* Team Red */}
-                <div className="rounded-xl border border-rose-500/25 bg-rose-950/40 p-2">
-                  <div className="flex items-center justify-between text-[0.68rem] font-black">
-                    <span className="text-rose-300">TEAM RED</span>
-                    <span className="text-white">
-                      {state.capturedPointsByTeam["0"]} <span className="text-[0.58rem] text-white/40">/28 pts</span>
-                    </span>
-                  </div>
-                  <div className="relative mt-1 h-1.5 w-full overflow-hidden rounded-full bg-black/60">
-                    <div
-                      className="h-full rounded-full bg-rose-500 transition-all duration-300"
-                      style={{ width: `${Math.min(100, (state.capturedPointsByTeam["0"] / 28) * 100)}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Team Blue */}
-                <div className="rounded-xl border border-sky-500/25 bg-sky-950/40 p-2">
-                  <div className="flex items-center justify-between text-[0.68rem] font-black">
-                    <span className="text-sky-300">TEAM BLUE</span>
-                    <span className="text-white">
-                      {state.capturedPointsByTeam["1"]} <span className="text-[0.58rem] text-white/40">/28 pts</span>
-                    </span>
-                  </div>
-                  <div className="relative mt-1 h-1.5 w-full overflow-hidden rounded-full bg-black/60">
-                    <div
-                      className="h-full rounded-full bg-sky-500 transition-all duration-300"
-                      style={{ width: `${Math.min(100, (state.capturedPointsByTeam["1"] / 28) * 100)}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* FOOTER: STAKES & MATCH GAME POINTS */}
-              <div className="mt-1 flex items-center justify-between border-t border-white/10 pt-1.5 text-[0.62rem] text-white/50">
-                <span>Stakes: <strong className="text-amber-300 font-extrabold">×{state.multiplier}</strong></span>
-                <span>Match: <strong className="text-white font-bold">{state.teamGamePoints["0"]} vs {state.teamGamePoints["1"]}</strong></span>
-              </div>
+              <span className="text-[0.65rem] font-black text-sky-300">({state.tricksWonByTeam["1"]})</span>
             </div>
           </div>
+
+          {/* Right Horizontal Capsule: Declarer, Trump & Points */}
+          <div className="flex items-center gap-2.5 rounded-full border border-white/10 bg-black/80 px-4 py-1.5 shadow-xl backdrop-blur-md">
+            {declarer ? (
+              <>
+                <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
+                  <Crown className="h-3.5 w-3.5 text-amber-400" />
+                  <span className="truncate max-w-[7rem]">{declarer.displayName}</span>
+                  <span className="rounded bg-amber-400/20 px-1.5 py-0.2 text-[0.6rem] font-extrabold text-amber-200 border border-amber-400/30">
+                    Target: {state.contractTarget ?? state.currentBid}
+                  </span>
+                </div>
+                <span className="text-white/20">|</span>
+              </>
+            ) : null}
+
+            {/* Trump Status */}
+            <div className="flex items-center gap-1 text-xs">
+              {state.singleHandPlayerId ? (
+                <span className="text-[0.62rem] font-black text-violet-300">Single Hand</span>
+              ) : state.trumpRevealed && state.trumpSuit ? (
+                <div className="flex items-center gap-1 text-emerald-300 font-black">
+                  <SuitMark suit={state.trumpSuit} size={14} />
+                  <span>{TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label}</span>
+                  <span className="text-[0.52rem] uppercase text-emerald-400 font-extrabold bg-emerald-500/20 px-1 rounded">Active</span>
+                </div>
+              ) : isViewerDeclarer && state.trumpSuit ? (
+                <div className="flex items-center gap-1 text-amber-300 font-bold text-[0.65rem]">
+                  <SuitMark suit={state.trumpSuit} size={13} />
+                  <span>{TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label}</span>
+                  <span className="text-[0.52rem] text-amber-400 font-extrabold uppercase bg-amber-500/20 px-1 rounded">(Secret)</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1 text-amber-300/80 font-bold text-[0.65rem]">
+                  <Lock className="h-3 w-3" />
+                  <span>Trump Concealed</span>
+                </div>
+              )}
+            </div>
+
+            <span className="text-white/20">|</span>
+
+            {/* Captured Points Telemetry */}
+            <div className="flex items-center gap-2 text-[0.68rem] font-bold">
+              <span className="text-rose-300 font-black">Red: {state.capturedPointsByTeam["0"]}/28 pts</span>
+              <span className="text-sky-300 font-black">Blue: {state.capturedPointsByTeam["1"]}/28 pts</span>
+            </div>
+
+            {state.multiplier > 1 ? (
+              <>
+                <span className="text-white/20">|</span>
+                <span className="rounded bg-rose-500/25 border border-rose-400/50 px-1.5 py-0.2 text-[0.6rem] font-black text-rose-200">
+                  ×{state.multiplier} Stakes
+                </span>
+              </>
+            ) : null}
+
+            <span className="text-white/20">|</span>
+            <span className="text-[0.62rem] text-white/50">
+              Match: <strong className="text-white font-bold">{state.teamGamePoints["0"]} vs {state.teamGamePoints["1"]}</strong>
+            </span>
+          </div>
+        </div>
+
+        {/* FULL-WIDTH LOCAL PLAYER HAND FAN */}
+        <section
+          ref={handRef}
+          className="relative z-40 flex w-full max-w-5xl flex-col items-center justify-center rounded-2xl border border-white/10 bg-black/75 px-4 py-2 shadow-2xl backdrop-blur-xl"
+        >
+          {/* Local Player Info Bar */}
+          <div className="mb-1 flex w-full items-center justify-between px-2 text-xs">
+            <div className="flex items-center gap-2">
+              <div
+                className={cn(
+                  "h-3 w-3 rounded-full shadow-md",
+                  me?.team === 0 ? "bg-rose-400 shadow-rose-500/50" : "bg-sky-400 shadow-sky-500/50"
+                )}
+              />
+              <span className="font-black text-white">{me?.displayName ?? "Your Hand"}</span>
+              <span className="text-white/40">·</span>
+              <span className="text-white/60">
+                {(me?.hand?.length ?? 0) + (state.privateSeventhCard ? 1 : 0)} cards in hand
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5 text-white/50 text-[0.68rem]">
+              <Shield className="h-3.5 w-3.5" />
+              <span>Follow lead suit when possible</span>
+            </div>
+          </div>
+
+          {/* Cards Fan or Sitting Out */}
+          {sittingOutSingleHand ? (
+            <div className="flex min-h-[7rem] flex-col items-center justify-center p-3 text-center">
+              <p className="text-sm font-black text-violet-200">
+                Sitting out — Partner is playing Single Hand alone!
+              </p>
+              <p className="mt-1 text-xs text-white/50">
+                Teammate must win all 8 tricks alone. Your hand stays out of play.
+              </p>
+            </div>
+          ) : (
+            <div className="relative flex min-h-[10.5rem] items-end justify-center overflow-visible pb-1 pt-3">
+              {sortedHand.map((card, index) => {
+                const canPlay = legalPlayIds.has(card.id) && isMyTurn && state.phase === "playing";
+                const offset = index - (sortedHand.length - 1) / 2;
+                const rotateDeg = offset * 2.5;
+                const translateY = Math.abs(offset) * 3;
+
+                return (
+                  <motion.button
+                    key={card.id}
+                    type="button"
+                    disabled={!canPlay}
+                    onClick={() => play(card)}
+                    initial={reduceMotion ? false : { opacity: 0, y: 20 }}
+                    animate={{
+                      opacity: 1,
+                      y: canPlay ? -15 - translateY : -translateY,
+                      rotate: rotateDeg,
+                      scale: canPlay ? 1.05 : 1
+                    }}
+                    {...(canPlay && !reduceMotion
+                      ? { whileHover: { y: -38, scale: 1.15, rotate: 0, zIndex: 120 } }
+                      : {})}
+                    {...(canPlay ? { whileTap: { scale: 0.95 } } : {})}
+                    transition={{ duration: 0.2 }}
+                    className={cn(
+                      "relative shrink-0 text-left outline-none transition-shadow",
+                      canPlay ? "cursor-pointer" : "cursor-default"
+                    )}
+                    style={{
+                      marginLeft: index === 0 ? 0 : "-2.2rem",
+                      zIndex: 10 + index
+                    }}
+                    title={canPlay ? `Play ${card.rank} of ${card.suit}` : `${card.rank} of ${card.suit}`}
+                  >
+                    <TwentyNineCardFace
+                      card={card}
+                      size="lg"
+                      playable={canPlay}
+                      muted={!canPlay && state.phase === "playing" && isMyTurn}
+                    />
+                  </motion.button>
+                );
+              })}
+
+              {/* 7th Trump Hidden Card */}
+              {state.privateSeventhCard &&
+              state.phase === "playing" &&
+              state.completedTricks.length === 7 &&
+              (me?.hand?.length ?? 0) === 0 ? (
+                <motion.button
+                  type="button"
+                  onClick={() => play(state.privateSeventhCard!)}
+                  className="relative cursor-pointer ring-2 ring-amber-400 rounded-2xl ml-2"
+                >
+                  <TwentyNineCardFace card={state.privateSeventhCard} size="lg" playable />
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-amber-400 px-2.5 py-0.5 text-[0.62rem] font-black text-black shadow-lg">
+                    7TH TRUMP
+                  </span>
+                </motion.button>
+              ) : null}
+
+              {!sortedHand.length && state.phase !== "finished" && !sittingOutSingleHand ? (
+                <div className="py-8 text-xs font-bold text-white/40">
+                  Your cards will appear here after the deal.
+                </div>
+              ) : null}
+            </div>
+          )}
+        </section>
         </footer>
       </div>
 

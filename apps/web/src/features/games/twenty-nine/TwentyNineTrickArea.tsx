@@ -88,6 +88,7 @@ export function TwentyNineTrickArea({
   persistedCompletedTrick,
   onRevealTrump,
   canRevealTrump = false,
+  onNextTrick,
   className
 }: {
   trick: TwentyNinePlayedCard[];
@@ -96,6 +97,7 @@ export function TwentyNineTrickArea({
   persistedCompletedTrick?: PersistedCompletedTrick | null;
   onRevealTrump?: () => void;
   canRevealTrump?: boolean;
+  onNextTrick?: () => void;
   className?: string;
 }) {
   const me = state.players.find((p) => p.userId === currentUserId);
@@ -204,10 +206,22 @@ export function TwentyNineTrickArea({
 
         {/* 2. PHYSICAL TRUMP CARD ON TABLE FELT */}
         <div className="flex flex-col items-center">
-          <span className="mb-1 text-[0.62rem] sm:text-xs font-black uppercase tracking-wider text-amber-300 flex items-center gap-1">
-            {state.trumpRevealed ? <Unlock className="h-3 w-3 text-emerald-400" /> : <Lock className="h-3 w-3 text-amber-300" />}
-            Trump
-          </span>
+          <div className="mb-1 flex items-center gap-1">
+            <span className="text-[0.62rem] sm:text-xs font-black uppercase tracking-wider text-amber-300 flex items-center gap-1">
+              {state.trumpRevealed ? <Unlock className="h-3 w-3 text-emerald-400" /> : <Lock className="h-3 w-3 text-amber-300" />}
+              Trump
+            </span>
+            <span
+              className={cn(
+                "rounded px-1.5 py-0.2 text-[0.52rem] font-black uppercase tracking-wider border",
+                state.trumpRevealed
+                  ? "border-emerald-400/50 bg-emerald-950/80 text-emerald-300"
+                  : "border-amber-400/50 bg-amber-950/80 text-amber-300"
+              )}
+            >
+              {state.trumpRevealed ? "Revealed" : "Concealed"}
+            </span>
+          </div>
 
           <div
             onClick={canRevealTrump && onRevealTrump ? onRevealTrump : undefined}
@@ -222,7 +236,7 @@ export function TwentyNineTrickArea({
               state.trumpRevealed && state.trumpSuit
                 ? `Trump: ${TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label}`
                 : isViewerDeclarer && state.trumpSuit
-                ? `You set: ${TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label} (Concealed from others)`
+                ? `You set: ${TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label} (Concealed - Hidden from Table)`
                 : canRevealTrump
                 ? "Click to ask/reveal Trump!"
                 : "Trump card (Concealed)"
@@ -245,13 +259,13 @@ export function TwentyNineTrickArea({
                 <TwentyNineCardBack className="h-full w-full rounded-lg" />
                 {/* Peek badge for Declarer so they know what they set */}
                 {isViewerDeclarer && state.trumpSuit ? (
-                  <div className="absolute inset-x-0 bottom-0 bg-black/85 py-1 px-0.5 flex flex-col items-center justify-center border-t border-amber-400/40">
+                  <div className="absolute inset-x-0 bottom-0 bg-black/90 py-1 px-0.5 flex flex-col items-center justify-center border-t border-amber-400/50">
                     <div className="flex items-center gap-1 text-[0.6rem] font-black text-amber-300">
                       <SuitMark suit={state.trumpSuit} size={12} />
                       <span>{TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label}</span>
                     </div>
-                    <span className="text-[0.45rem] font-bold text-white/50 uppercase tracking-tighter">
-                      (Secret)
+                    <span className="text-[0.45rem] font-bold text-amber-300 uppercase tracking-tighter">
+                      (Secret - Concealed)
                     </span>
                   </div>
                 ) : (
@@ -274,7 +288,7 @@ export function TwentyNineTrickArea({
         </div>
 
         {/* 3. CENTER TRICK FORMATION */}
-        <div className="relative flex items-center justify-center w-[13rem] sm:w-[16rem] md:w-[18rem] h-[13rem] sm:h-[15rem] md:h-[17rem]">
+        <div className="relative flex items-center justify-center w-[17rem] sm:w-[21rem] md:w-[23rem] h-[15rem] sm:h-[18rem] md:h-[20rem]">
           {/* Subtle felt target marker */}
           <div className="pointer-events-none absolute inset-3 rounded-full border border-dashed border-amber-300/15" />
 
@@ -282,25 +296,25 @@ export function TwentyNineTrickArea({
           <SlotCardContainer
             slot="north"
             data={playedBySlot.get("north")}
-            positionClass="top-1 left-1/2 -translate-x-1/2"
+            positionClass="top-0 left-1/2 -translate-x-1/2"
             rotationClass="rotate-[2deg]"
           />
           <SlotCardContainer
             slot="south"
             data={playedBySlot.get("south")}
-            positionClass="bottom-1 left-1/2 -translate-x-1/2"
+            positionClass="bottom-0 left-1/2 -translate-x-1/2"
             rotationClass="rotate-[-2deg]"
           />
           <SlotCardContainer
             slot="west"
             data={playedBySlot.get("west")}
-            positionClass="left-1 top-1/2 -translate-y-1/2"
+            positionClass="left-0 top-1/2 -translate-y-1/2"
             rotationClass="rotate-[-5deg]"
           />
           <SlotCardContainer
             slot="east"
             data={playedBySlot.get("east")}
-            positionClass="right-1 top-1/2 -translate-y-1/2"
+            positionClass="right-0 top-1/2 -translate-y-1/2"
             rotationClass="rotate-[4deg]"
           />
 
@@ -314,28 +328,41 @@ export function TwentyNineTrickArea({
             </div>
           ) : null}
 
-          {/* Winner Banner & Directional Arrow when Trick Settles */}
+          {/* Winner Banner, Next Trick Button & Directional Arrow when Trick Settles */}
           <AnimatePresence>
             {isHoldCompletedTrick && persistedCompletedTrick ? (
               <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
+                initial={{ opacity: 0, scale: 0.85 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                className="absolute z-40 flex flex-col items-center justify-center rounded-xl border border-amber-300/80 bg-black/90 px-3.5 py-2 shadow-[0_0_30px_rgba(251,191,36,0.6)] backdrop-blur-xl text-center"
+                className="absolute z-40 flex flex-col items-center justify-center rounded-2xl border-2 border-amber-300/90 bg-black/95 px-5 py-3 shadow-[0_0_35px_rgba(251,191,36,0.7)] backdrop-blur-xl text-center"
               >
-                <div className="flex items-center gap-1 text-[0.6rem] font-black uppercase tracking-widest text-amber-300">
-                  <Crown className="h-3.5 w-3.5 text-amber-300 animate-bounce" />
-                  <span>Trick Won</span>
+                <div className="flex items-center gap-1.5 text-[0.62rem] font-black uppercase tracking-widest text-amber-300">
+                  <Crown className="h-4 w-4 text-amber-300 animate-bounce" />
+                  <span>Trick {persistedCompletedTrick.trickNumber} Won</span>
                 </div>
                 <span className={cn(
-                  "text-xs sm:text-sm font-black truncate max-w-[10rem]",
+                  "text-sm sm:text-base font-black truncate max-w-[12rem] mt-0.5",
                   didMyTeamWinTrick ? "text-sky-300" : "text-rose-300"
                 )}>
                   {winnerPlayer?.displayName ?? "Player"}
                 </span>
-                <span className="text-[0.65rem] font-extrabold text-amber-300">
+                <span className="text-xs font-black text-amber-300 mt-0.5">
                   +{persistedCompletedTrick.points} pts
                 </span>
+
+                {/* MANUAL ADVANCE BUTTON (User Request!) */}
+                {onNextTrick ? (
+                  <button
+                    type="button"
+                    onClick={onNextTrick}
+                    className="mt-3 flex items-center gap-2 rounded-xl border border-amber-300 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 px-5 py-2 text-xs font-black uppercase tracking-wider text-black shadow-[0_0_20px_rgba(251,191,36,0.85)] transition hover:scale-105 active:scale-95 cursor-pointer ring-2 ring-amber-300/50"
+                  >
+                    <span>Next Trick</span>
+                    <ArrowRight className="h-4 w-4 stroke-[3]" />
+                  </button>
+                ) : null}
+                <span className="text-[0.55rem] font-semibold text-white/50 mt-1">or press [Space]</span>
               </motion.div>
             ) : null}
           </AnimatePresence>
@@ -432,7 +459,7 @@ function SlotCardContainer({
 
       {/* Card Face with organic rotation */}
       <div className={cn("relative transition-transform duration-300", rotationClass)}>
-        <TwentyNineCardFace card={entry.card} size="sm" isWinning={isWinning} />
+        <TwentyNineCardFace card={entry.card} size="md" isWinning={isWinning} />
         {isWinning ? (
           <div className="absolute top-full mt-1 left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded-full border border-amber-300/80 bg-gradient-to-r from-amber-400 to-amber-500 px-2 py-0.2 text-[0.52rem] font-black uppercase tracking-widest text-amber-950 shadow-[0_0_12px_rgba(251,191,36,0.9)]">
             👑 WINNING
