@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Trophy, RotateCcw, HelpCircle, Volume2, VolumeX, Flame } from "lucide-react";
+import { Sparkles, Trophy, RotateCcw, HelpCircle, Volume2, VolumeX, Flame, BookOpen, Coins, LogOut, Info } from "lucide-react";
 import type { BoardGameTableProps } from "../board-games/shared/types";
 import { CasinoChip, ChipStack, type ChipDenomination } from "../casino/CasinoChip";
 import { CasinoPlayingCard } from "../casino/CasinoPlayingCard";
@@ -109,11 +110,15 @@ function HandScoreBadge({ evaluation, className = "" }: { evaluation: HandEvalua
   }
 
   if (evaluation.isSoft) {
+    const hardVal = evaluation.total - 10;
     return (
       <span
-        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] sm:text-[11px] font-black tracking-wide bg-cyan-950/90 text-cyan-200 border border-cyan-400/60 shadow-md ${className}`}
+        title={`Ace counts as 1 or 11: either ${hardVal} or ${evaluation.total} without busting`}
+        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] sm:text-[11px] font-black tracking-wide bg-cyan-950/95 text-cyan-200 border border-cyan-400/70 shadow-md ${className}`}
       >
-        Soft {evaluation.total}
+        <span className="text-[9px] uppercase font-black text-amber-300">A = 1/11</span>
+        <span className="text-white/40">·</span>
+        <span className="text-cyan-100 font-mono">{hardVal} / {evaluation.total} (Soft)</span>
       </span>
     );
   }
@@ -129,12 +134,16 @@ function HandScoreBadge({ evaluation, className = "" }: { evaluation: HandEvalua
 
 export function BlackjackTable(props: BoardGameTableProps) {
   const { room, state, legalActions, currentUserId, onAction, onChat, onEndMatch } = props;
+  const router = useRouter();
 
   const [rulesOpen, setRulesOpen] = useState(false);
+  const [cashOutOpen, setCashOutOpen] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
 
   const me = state.players.find((p) => p.userId === currentUserId);
   const myChips = state.blackjackChips?.[currentUserId] ?? 0;
+  const startingBankroll = 1000;
+  const netEarnings = myChips - startingBankroll;
   const myHands = state.blackjackPlayerHands?.[currentUserId] ?? [[]];
   const myBets = state.blackjackBets?.[currentUserId] ?? [0];
   const myCurrentBet = myBets.reduce((a, b) => a + b, 0);
@@ -321,10 +330,21 @@ export function BlackjackTable(props: BoardGameTableProps) {
           <button
             type="button"
             onClick={() => setRulesOpen(true)}
-            className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-white/80 hover:bg-white/10"
+            className="flex items-center gap-1.5 rounded-xl border border-amber-400/50 bg-amber-400/15 px-3 py-1.5 text-xs font-black text-amber-200 hover:bg-amber-400/25 shadow-[0_0_12px_rgba(251,191,36,0.2)] transition active:scale-95"
+            title="View Blackjack Rules & Ace Card Values"
           >
-            <HelpCircle className="h-4 w-4 text-amber-300" />
-            <span className="hidden sm:inline">Rules</span>
+            <BookOpen className="h-4 w-4 text-amber-300" />
+            <span>Rules</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setCashOutOpen(true)}
+            className="flex items-center gap-1.5 rounded-xl border border-emerald-400/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-black text-emerald-200 hover:bg-emerald-500/25 shadow-[0_0_12px_rgba(16,185,129,0.15)] transition active:scale-95"
+            title="Cash out chips and exit to dashboard"
+          >
+            <Coins className="h-4 w-4 text-emerald-300" />
+            <span>Cash Out</span>
           </button>
         </div>
       </header>
@@ -694,6 +714,16 @@ export function BlackjackTable(props: BoardGameTableProps) {
               <div className="flex items-center gap-2 sm:gap-3">
                 <button
                   type="button"
+                  onClick={() => setCashOutOpen(true)}
+                  className="flex items-center gap-1.5 rounded-xl border border-emerald-400/40 bg-emerald-950/60 px-3 py-2 text-xs font-black text-emerald-300 hover:bg-emerald-900/60 active:scale-95 shadow-sm transition"
+                  title="Cash out your chips and leave table"
+                >
+                  <Coins className="h-3.5 w-3.5 text-emerald-300" />
+                  <span>Cash Out</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={handleClearBet}
                   disabled={myCurrentBet === 0}
                   className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-white/70 hover:bg-white/10 active:scale-95 disabled:opacity-30"
@@ -786,6 +816,17 @@ export function BlackjackTable(props: BoardGameTableProps) {
                   <span>✌️</span>
                 </button>
               ) : null}
+
+              {/* CASH OUT / LEAVE TABLE BUTTON */}
+              <button
+                type="button"
+                onClick={() => setCashOutOpen(true)}
+                className="group relative flex items-center gap-1.5 rounded-full px-4 py-2.5 text-xs font-bold text-white/60 hover:text-white border border-white/10 hover:border-white/20 bg-white/5 active:scale-95 transition"
+                title="Leave table and cash out"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Cash Out</span>
+              </button>
             </div>
           ) : null}
 
@@ -799,18 +840,30 @@ export function BlackjackTable(props: BoardGameTableProps) {
                 </span>
               </div>
 
-              {/* NEXT HAND 3D BUTTON */}
-              <button
-                type="button"
-                onClick={handleNextRound}
-                className="group relative flex items-center gap-2 rounded-full px-8 py-3 text-sm sm:text-base font-black tracking-wider uppercase text-slate-950 transition-all shadow-[0_6px_0_#78350f,0_12px_24px_rgba(245,158,11,0.4)] hover:brightness-110 active:translate-y-1 active:shadow-[0_2px_0_#78350f]"
-                style={{
-                  background: "linear-gradient(180deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%)"
-                }}
-              >
-                <RotateCcw className="h-5 w-5" />
-                <span>NEXT HAND</span>
-              </button>
+              {/* ACTION BUTTONS: CASH OUT & NEXT HAND */}
+              <div className="flex items-center gap-2 sm:gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCashOutOpen(true)}
+                  className="flex items-center gap-1.5 rounded-full border border-emerald-400/40 bg-emerald-950/70 px-4 sm:px-5 py-2.5 text-xs sm:text-sm font-black uppercase tracking-wider text-emerald-200 transition-all hover:bg-emerald-900/70 active:scale-95 shadow-[0_4px_12px_rgba(16,185,129,0.2)]"
+                >
+                  <Coins className="h-4 w-4 text-emerald-300" />
+                  <span>Cash Out & Leave</span>
+                </button>
+
+                {/* NEXT HAND 3D BUTTON */}
+                <button
+                  type="button"
+                  onClick={handleNextRound}
+                  className="group relative flex items-center gap-2 rounded-full px-7 sm:px-8 py-3 text-sm sm:text-base font-black tracking-wider uppercase text-slate-950 transition-all shadow-[0_6px_0_#78350f,0_12px_24px_rgba(245,158,11,0.4)] hover:brightness-110 active:translate-y-1 active:shadow-[0_2px_0_#78350f]"
+                  style={{
+                    background: "linear-gradient(180deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%)"
+                  }}
+                >
+                  <RotateCcw className="h-5 w-5" />
+                  <span>NEXT HAND</span>
+                </button>
+              </div>
             </div>
           ) : null}
         </div>
@@ -848,28 +901,182 @@ export function BlackjackTable(props: BoardGameTableProps) {
                 </button>
               </div>
 
-              <div className="space-y-3 text-xs text-white/80 leading-relaxed">
-                <p>
-                  <strong>Goal:</strong> Achieve a hand value closer to 21 than the dealer without going over 21.
-                </p>
-                <div className="rounded-xl bg-white/5 p-3 space-y-1 border border-white/10">
-                  <p className="font-bold text-amber-300 uppercase tracking-wider text-[11px]">Payouts:</p>
-                  <p>• <strong>Natural Blackjack</strong> (2 cards totaling 21): Pays <strong>3 to 2</strong></p>
-                  <p>• <strong>Standard Win</strong>: Pays <strong>1 to 1</strong> (Even money)</p>
-                  <p>• <strong>Push / Tie</strong>: Bet returned</p>
+              <div className="max-h-[70vh] overflow-y-auto space-y-3.5 pr-1 text-xs text-white/85 leading-relaxed">
+                {/* 1. OBJECTIVE */}
+                <div className="rounded-xl bg-white/5 p-3.5 border border-white/10 space-y-1">
+                  <p className="font-bold text-amber-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                    <span>🎯</span> Objective
+                  </p>
+                  <p>
+                    Beat the dealer's hand by getting your total hand score as close to <strong>21</strong> as possible without exceeding 21 (which is a <strong>Bust</strong>).
+                  </p>
                 </div>
-                <div className="rounded-xl bg-white/5 p-3 space-y-1 border border-white/10">
-                  <p className="font-bold text-emerald-300 uppercase tracking-wider text-[11px]">Dealer Rules:</p>
+
+                {/* 2. CARD VALUES & ACE EXPLAINED */}
+                <div className="rounded-xl bg-cyan-950/40 p-3.5 border border-cyan-400/30 space-y-2">
+                  <p className="font-bold text-cyan-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                    <span>🃏</span> Card Values & Ace (A) Scoring
+                  </p>
+                  <div className="space-y-1 text-white/80">
+                    <p>• <strong className="text-amber-300">Aces (A):</strong> Worth <strong>1 or 11 points</strong>, whichever gives you the better hand without busting!</p>
+                    <p className="pl-3 text-[11px] text-cyan-200">
+                      • <strong>Soft Hand:</strong> When an Ace counts as 11 (e.g. A + 6 = <em>Soft 17</em> or 7 / 17). If you hit and get a 10, the Ace automatically reduces to 1 (giving you 17) so you do not bust!
+                    </p>
+                    <p className="pl-3 text-[11px] text-cyan-200">
+                      • <strong>Hard Hand:</strong> When a hand has no Ace, or when an Ace must count as 1 to prevent exceeding 21.
+                    </p>
+                    <p>• <strong className="text-amber-300">Face Cards (J, Q, K):</strong> Worth <strong>10 points</strong> each.</p>
+                    <p>• <strong className="text-amber-300">Number Cards (2–10):</strong> Worth their exact face value.</p>
+                  </div>
+                </div>
+
+                {/* 3. CHIPS, BANKROLL & HOUSE BAILOUT */}
+                <div className="rounded-xl bg-emerald-950/40 p-3.5 border border-emerald-400/30 space-y-1.5">
+                  <p className="font-bold text-emerald-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                    <span>💰</span> Chips, Reloads & Cashing Out
+                  </p>
+                  <div className="space-y-1 text-white/80">
+                    <p>• <strong>Starting Bankroll:</strong> Every player receives <strong>$1,000 chips</strong> at the start of the table.</p>
+                    <p>• <strong>Table Limits:</strong> Minimum bet is <strong>$10</strong>; maximum bet is <strong>$500</strong> per hand.</p>
+                    <p>• <strong className="text-amber-300">House Bailout ($500 Reload):</strong> If your chips drop below the $10 minimum bet, the casino automatically provides an arcade <strong>$500 reload</strong> so you never get permanently stuck!</p>
+                    <p>• <strong className="text-emerald-300">Cashing Out:</strong> You don't have to play forever! Click the <strong>"Cash Out & Leave"</strong> button at the bottom of the table or top header to bank your chips and return to the dashboard with your stats.</p>
+                  </div>
+                </div>
+
+                {/* 4. PAYOUTS */}
+                <div className="rounded-xl bg-white/5 p-3.5 space-y-1 border border-white/10">
+                  <p className="font-bold text-amber-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                    <span>🏆</span> Standard Payouts
+                  </p>
+                  <p>• <strong>Natural Blackjack</strong> (Opening 2 cards totaling 21): Pays <strong>3 to 2</strong></p>
+                  <p>• <strong>Standard Win</strong> (Higher score than dealer): Pays <strong>1 to 1</strong> (Even money)</p>
+                  <p>• <strong>Push / Tie</strong> (Same score as dealer): Bet returned</p>
+                  <p>• <strong>Dealer Bust</strong>: All active players still in the hand win 1:1</p>
+                </div>
+
+                {/* 5. DEALER RULES */}
+                <div className="rounded-xl bg-white/5 p-3.5 space-y-1 border border-white/10">
+                  <p className="font-bold text-purple-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                    <span>🎰</span> Dealer Rules
+                  </p>
                   <p>• Dealer must draw cards until their hand reaches 17 or higher.</p>
                   <p>• Dealer stands on all 17s (both hard and soft 17).</p>
                 </div>
-                <div className="rounded-xl bg-white/5 p-3 space-y-1 border border-white/10">
-                  <p className="font-bold text-cyan-300 uppercase tracking-wider text-[11px]">Player Moves:</p>
+
+                {/* 6. PLAYER MOVES */}
+                <div className="rounded-xl bg-white/5 p-3.5 space-y-1 border border-white/10">
+                  <p className="font-bold text-cyan-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                    <span>⚡</span> Player Moves
+                  </p>
                   <p>• <strong>Hit:</strong> Draw another card.</p>
-                  <p>• <strong>Stand:</strong> Keep current hand and end your turn.</p>
-                  <p>• <strong>Double Down:</strong> Double original bet, receive exactly one more card, and stand.</p>
-                  <p>• <strong>Split:</strong> If dealt a pair of equal cards, split them into two separate hands with an equal bet.</p>
+                  <p>• <strong>Stand:</strong> Keep your current hand and end your turn.</p>
+                  <p>• <strong>Double Down:</strong> Double your initial bet, receive exactly one more card, and stand.</p>
+                  <p>• <strong>Split:</strong> When dealt a pair of equal cards, split them into two independent hands with matching bets.</p>
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        ) : null}
+      </AnimatePresence>
+
+      {/* ============================================================== */}
+      {/* CASH OUT & LEAVE CONFIRMATION MODAL                            */}
+      {/* ============================================================== */}
+      <AnimatePresence>
+        {cashOutOpen ? (
+          <div
+            className="fixed inset-0 z-50 grid place-items-center bg-black/85 p-4 backdrop-blur-md"
+            onClick={() => setCashOutOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md rounded-3xl border-2 border-emerald-400/40 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-950 p-6 sm:p-7 shadow-2xl space-y-5"
+            >
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-500/20 text-xl text-emerald-300">
+                    💰
+                  </span>
+                  <div>
+                    <h3 className="text-lg font-black text-white">Cash Out & Leave Table</h3>
+                    <p className="text-[11px] text-white/50">VIP Blackjack Session Summary</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCashOutOpen(false)}
+                  className="h-8 w-8 rounded-lg text-white/40 hover:bg-white/10 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Chip Balance Pod */}
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-emerald-400/30 bg-emerald-950/30 p-4 text-center">
+                <span className="text-[11px] font-black uppercase tracking-wider text-emerald-300/80">
+                  Your Ending Bankroll
+                </span>
+                <span className="font-mono text-3xl sm:text-4xl font-black text-emerald-300 mt-1">
+                  ${myChips.toLocaleString("en-US")}
+                </span>
+                <div className="mt-2 flex items-center gap-2">
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-black ${
+                      netEarnings > 0
+                        ? "bg-emerald-500/20 text-emerald-200 border border-emerald-400/40"
+                        : netEarnings < 0
+                        ? "bg-rose-500/20 text-rose-200 border border-rose-400/40"
+                        : "bg-white/10 text-white/70 border border-white/20"
+                    }`}
+                  >
+                    {netEarnings > 0 ? `+${netEarnings.toLocaleString("en-US")} Profit 🚀` : netEarnings < 0 ? `${netEarnings.toLocaleString("en-US")} Net` : "$0 Even"}
+                  </span>
+                  <span className="text-[11px] text-white/40">
+                    (Started with $1,000)
+                  </span>
+                </div>
+              </div>
+
+              {/* Session Details */}
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <span className="text-[10px] uppercase font-bold text-white/40">Rounds Played</span>
+                  <p className="mt-0.5 font-mono text-base font-black text-white">{state.blackjackRoundNumber ?? 1}</p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <span className="text-[10px] uppercase font-bold text-white/40">Table Minimum</span>
+                  <p className="mt-0.5 font-mono text-base font-black text-white">$10</p>
+                </div>
+              </div>
+
+              <p className="text-xs text-white/60 text-center leading-relaxed">
+                Ready to walk away from the table? Your chips will be banked and you will return to the dashboard.
+              </p>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setCashOutOpen(false)}
+                  className="flex-1 rounded-xl border border-white/20 bg-white/10 py-3 text-xs sm:text-sm font-bold text-white hover:bg-white/15 transition active:scale-95"
+                >
+                  Keep Playing
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onChat) {
+                      onChat(room.id, `💰 ${me?.displayName ?? "Player"} cashed out with $${myChips.toLocaleString("en-US")} chips!`);
+                    }
+                    router.push("/dashboard");
+                  }}
+                  className="flex-1 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 py-3 text-xs sm:text-sm font-black text-slate-950 shadow-[0_4px_16px_rgba(16,185,129,0.4)] hover:brightness-110 transition active:scale-95"
+                >
+                  💰 Cash Out & Exit
+                </button>
               </div>
             </motion.div>
           </div>

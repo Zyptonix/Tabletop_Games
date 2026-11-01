@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, Trophy, HelpCircle, Volume2, VolumeX, Sparkles, Flame, CheckCircle2 } from "lucide-react";
+import { Eye, EyeOff, Trophy, HelpCircle, Volume2, VolumeX, Sparkles, Flame, CheckCircle2, Coins, LogOut } from "lucide-react";
 import type { PokerLastHandResult } from "@tabletop/game-core";
 import type { AnyAction, BoardGameTableProps } from "../board-games/shared/types";
 import { CasinoChip, ChipStack, breakdownChips, type ChipDenomination } from "../casino/CasinoChip";
@@ -245,8 +246,10 @@ function TastefulPokerInfo({ actionText }: { actionText: string }) {
 
 export function PokerTable(props: BoardGameTableProps) {
   const { room, state, legalActions, currentUserId, onAction, onChat, onEndMatch } = props;
+  const router = useRouter();
 
   const [pokerRulesOpen, setPokerRulesOpen] = useState(false);
+  const [cashOutOpen, setCashOutOpen] = useState(false);
   const [hideMyCards, setHideMyCards] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [showWinnerModal, setShowWinnerModal] = useState(false);
@@ -274,6 +277,8 @@ export function PokerTable(props: BoardGameTableProps) {
 
   const myPaid = state.pokerBets[currentUserId] ?? 0;
   const myStack = state.pokerStacks[currentUserId] ?? 0;
+  const startingStack = 1000;
+  const netEarnings = myStack - startingStack;
   const callAmount = Math.min(Math.max(0, state.pokerBetToCall - myPaid), myStack);
 
   const canRaise = isMyTurn && legalActions.some((a) => isAction(a) && a.type === "poker_action" && a.choice === "raise");
@@ -387,6 +392,16 @@ export function PokerTable(props: BoardGameTableProps) {
           >
             <HelpCircle className="h-4 w-4 text-amber-300" />
             <span className="hidden sm:inline">Hand Rankings</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setCashOutOpen(true)}
+            className="flex items-center gap-1.5 rounded-xl border border-emerald-400/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-black text-emerald-200 hover:bg-emerald-500/25 shadow-[0_0_12px_rgba(16,185,129,0.15)] transition active:scale-95"
+            title="Cash out chips and exit to dashboard"
+          >
+            <Coins className="h-4 w-4 text-emerald-300" />
+            <span className="hidden sm:inline">Cash Out</span>
           </button>
         </div>
       </header>
@@ -718,8 +733,18 @@ export function PokerTable(props: BoardGameTableProps) {
               </div>
             </div>
 
-            {/* Action Buttons: FOLD, CHECK / CALL, RAISE, ALL-IN */}
+            {/* Action Buttons: FOLD, CHECK / CALL, RAISE, ALL-IN, CASH OUT */}
             <div className="flex items-center gap-2 sm:gap-3">
+              <button
+                type="button"
+                onClick={() => setCashOutOpen(true)}
+                className="group relative flex items-center gap-1.5 rounded-full px-4 py-2.5 text-xs font-black uppercase tracking-wider text-emerald-200 border border-emerald-400/40 bg-emerald-950/70 hover:bg-emerald-900/70 active:scale-95 transition shadow-[0_4px_12px_rgba(16,185,129,0.2)]"
+                title="Cash out chips and leave poker table"
+              >
+                <Coins className="h-3.5 w-3.5 text-emerald-300" />
+                <span>Cash Out</span>
+              </button>
+
               {legalActions
                 .filter(isAction)
                 .filter((action) => action.type === "poker_action")
@@ -993,6 +1018,111 @@ export function PokerTable(props: BoardGameTableProps) {
                     </div>
                   </div>
                 ))}
+              </div>
+            </motion.div>
+          </div>
+        ) : null}
+      </AnimatePresence>
+
+      {/* ============================================================== */}
+      {/* CASH OUT & LEAVE CONFIRMATION MODAL                            */}
+      {/* ============================================================== */}
+      <AnimatePresence>
+        {cashOutOpen ? (
+          <div
+            className="fixed inset-0 z-50 grid place-items-center bg-black/85 p-4 backdrop-blur-md"
+            onClick={() => setCashOutOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md rounded-3xl border-2 border-emerald-400/40 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-950 p-6 sm:p-7 shadow-2xl space-y-5"
+            >
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-500/20 text-xl text-emerald-300">
+                    💰
+                  </span>
+                  <div>
+                    <h3 className="text-lg font-black text-white">Cash Out & Leave Table</h3>
+                    <p className="text-[11px] text-white/50">Texas Hold'em Poker Session Summary</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCashOutOpen(false)}
+                  className="h-8 w-8 rounded-lg text-white/40 hover:bg-white/10 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Chip Balance Pod */}
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-emerald-400/30 bg-emerald-950/30 p-4 text-center">
+                <span className="text-[11px] font-black uppercase tracking-wider text-emerald-300/80">
+                  Your Ending Chip Stack
+                </span>
+                <span className="font-mono text-3xl sm:text-4xl font-black text-emerald-300 mt-1">
+                  ${myStack.toLocaleString("en-US")}
+                </span>
+                <div className="mt-2 flex items-center gap-2">
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-black ${
+                      netEarnings > 0
+                        ? "bg-emerald-500/20 text-emerald-200 border border-emerald-400/40"
+                        : netEarnings < 0
+                        ? "bg-rose-500/20 text-rose-200 border border-rose-400/40"
+                        : "bg-white/10 text-white/70 border border-white/20"
+                    }`}
+                  >
+                    {netEarnings > 0 ? `+${netEarnings.toLocaleString("en-US")} Profit 🚀` : netEarnings < 0 ? `${netEarnings.toLocaleString("en-US")} Net` : "$0 Even"}
+                  </span>
+                  <span className="text-[11px] text-white/40">
+                    (Started with $1,000)
+                  </span>
+                </div>
+              </div>
+
+              {/* Session Details */}
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <span className="text-[10px] uppercase font-bold text-white/40">Hand Number</span>
+                  <p className="mt-0.5 font-mono text-base font-black text-white">#{state.pokerHandNumber ?? 1}</p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <span className="text-[10px] uppercase font-bold text-white/40">Blinds</span>
+                  <p className="mt-0.5 font-mono text-base font-black text-white">$10 / $20</p>
+                </div>
+              </div>
+
+              <p className="text-xs text-white/60 text-center leading-relaxed">
+                Ready to leave the table? Your chip balance will be banked and you will return to the dashboard.
+              </p>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setCashOutOpen(false)}
+                  className="flex-1 rounded-xl border border-white/20 bg-white/10 py-3 text-xs sm:text-sm font-bold text-white hover:bg-white/15 transition active:scale-95"
+                >
+                  Keep Playing
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const me = state.players.find((p) => p.userId === currentUserId);
+                    if (onChat) {
+                      onChat(room.id, `💰 ${me?.displayName ?? "Player"} cashed out of poker with $${myStack.toLocaleString("en-US")} chips!`);
+                    }
+                    router.push("/dashboard");
+                  }}
+                  className="flex-1 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 py-3 text-xs sm:text-sm font-black text-slate-950 shadow-[0_4px_16px_rgba(16,185,129,0.4)] hover:brightness-110 transition active:scale-95"
+                >
+                  💰 Cash Out & Exit
+                </button>
               </div>
             </motion.div>
           </div>

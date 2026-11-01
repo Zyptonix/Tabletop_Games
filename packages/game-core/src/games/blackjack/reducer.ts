@@ -353,13 +353,19 @@ export function reduceBlackjackAction(
       state.currentPlayerId = state.players[0]?.userId ?? null;
 
       // Reload chips for broke players so game never stalls
+      const reloadedPlayerNames: string[] = [];
       for (const p of state.players) {
         if ((state.blackjackChips?.[p.userId] ?? 0) < MIN_BET) {
           state.blackjackChips![p.userId] = Math.floor(STARTING_CHIPS / 2);
+          reloadedPlayerNames.push(p.displayName ?? "Player");
         }
       }
 
-      message = `🎲 Round ${state.blackjackRoundNumber} started. Place your bets!`;
+      if (reloadedPlayerNames.length > 0) {
+        message = `💸 House Bailout: ${reloadedPlayerNames.join(", ")} was out of chips and received a $500 reload! Place your bets or cash out.`;
+      } else {
+        message = `🎲 Round ${state.blackjackRoundNumber} started. Place your bets!`;
+      }
       state.blackjackLastAction = message;
       return { accepted: true, message };
     }

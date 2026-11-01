@@ -121,5 +121,24 @@ describe("Blackjack module lifecycle", () => {
     const pub = blackjackModule.getPublicState({ state, viewerId: "p1" });
     expect(pub.blackjackDealerHand?.[1]).toBe("hidden");
   });
+
+  it("grants $500 house bailout reload when player is broke below MIN_BET", () => {
+    let state = startBlackjack(2);
+    // Set p1 chips to 0
+    state.blackjackChips!["p1"] = 0;
+    state.blackjackPhase = "round_end";
+
+    const res = blackjackModule.applyAction({
+      state,
+      playerId: "p1",
+      action: { type: "blackjack_action", choice: "next_round" },
+      now: new Date().toISOString()
+    });
+
+    const nextState = res.state as BoardGameState;
+    expect(nextState.blackjackChips?.["p1"]).toBe(500);
+    expect(nextState.blackjackLastAction).toContain("House Bailout");
+    expect(nextState.blackjackLastAction).toContain("received a $500 reload");
+  });
 });
 
