@@ -10,5 +10,6 @@ export const TWENTY_NINE_DEFAULT_SETTINGS = {
   turnSeconds: 45,
   allowSeventhCard: true,
   allowDoubleRedouble: true,
-  allowSingleHand: true
+  allowSingleHand: true,
+  biddingStyle: "circular"
 } as const;

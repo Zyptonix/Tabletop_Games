@@ -20,6 +20,7 @@ export interface TwentyNineSettings {
   allowSeventhCard: boolean;
   allowDoubleRedouble: boolean;
   allowSingleHand: boolean;
+  biddingStyle?: "circular" | "partner_takeover";
 }
 
 export interface TwentyNinePlayerState {

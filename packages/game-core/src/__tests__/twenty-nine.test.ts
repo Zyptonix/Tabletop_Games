@@ -130,6 +130,7 @@ describe("Bangladesh 29", () => {
 
   it("follows the Bangladesh partner-takeover bidding sequence", () => {
     let live = makeState();
+    live.settings = { ...live.settings, biddingStyle: "partner_takeover" };
     // Use the seat layout from the published South-deals example: East, North, West, South.
     live.dealerPlayerId = "p0";
     live.firstBidderId = "p1";
@@ -163,6 +164,32 @@ describe("Bangladesh 29", () => {
     expect(live.phase).toBe("trump");
     expect(live.declarerId).toBe("p0");
     expect(live.currentBid).toBe(20);
+  });
+
+  it("follows the circular clockwise bidding sequence", () => {
+    let live = makeState();
+    expect(live.settings.biddingStyle).toBe("circular");
+    live.dealerPlayerId = "p0";
+    live.firstBidderId = "p1";
+    live.currentPlayerId = "p1";
+    const order = (playerId: string, type: Parameters<typeof applyTwentyNineAction>[0]["action"]["type"], payload: Record<string, unknown> = {}) => {
+      const result = action(live, playerId, type, payload);
+      live = result.state;
+      return result;
+    };
+
+    order("p1", "bid", { value: 16 });
+    expect(live.currentPlayerId).toBe("p2");
+    order("p2", "bid", { value: 17 });
+    expect(live.currentPlayerId).toBe("p3");
+    order("p3", "pass_bid");
+    expect(live.currentPlayerId).toBe("p0");
+    order("p0", "pass_bid");
+    expect(live.currentPlayerId).toBe("p1");
+    order("p1", "pass_bid");
+    expect(live.phase).toBe("trump");
+    expect(live.declarerId).toBe("p2");
+    expect(live.currentBid).toBe(17);
   });
 
   it("finishes the auction, handles double passes, and deals the remaining four cards", () => {

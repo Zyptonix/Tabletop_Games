@@ -14,6 +14,8 @@ import {
   Sparkles,
   Swords,
   Trophy,
+  Lock,
+  Unlock,
   X
 } from "lucide-react";
 import type {
@@ -22,6 +24,8 @@ import type {
   PublicTwentyNineState,
   TwentyNineAction,
   TwentyNineCard,
+  TwentyNineHandResult,
+  TwentyNinePlayedCard,
   TwentyNineSuit
 } from "@tabletop/game-core";
 import type { RoomStateView } from "@tabletop/shared";
@@ -34,7 +38,8 @@ import {
   TWENTY_NINE_SUITS_INFO
 } from "./TwentyNineCard";
 import { TwentyNineSeat } from "./TwentyNineSeat";
-import { TwentyNineTrickArea } from "./TwentyNineTrickArea";
+import { TwentyNineTrickArea, getWinningCardId, type PersistedCompletedTrick } from "./TwentyNineTrickArea";
+import { TwentyNineHandScoringModal } from "./TwentyNineHandScoringModal";
 import { TwentyNineHUD } from "./TwentyNineHUD";
 import { TwentyNineEventOverlay } from "./TwentyNineEventOverlay";
 
@@ -282,6 +287,9 @@ export function TwentyNineTable({
   const [rulesOpen, setRulesOpen] = useState(false);
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [selectedBid, setSelectedBid] = useState<number | null>(null);
+  const [persistedTrick, setPersistedTrick] = useState<PersistedCompletedTrick | null>(null);
+  const [activeHandResult, setActiveHandResult] = useState<TwentyNineHandResult | null>(null);
+  const lastScoredHandNum = useRef<number | null>(null);
 
   // 4 Players: Always exactly 4
   const me = state.players.find((p) => p.userId === currentUserId);
@@ -290,6 +298,8 @@ export function TwentyNineTable({
     [state.players, currentUserId]
   );
   const partner = opponents.find((p) => me && p.team === me.team);
+  const declarer = state.players.find((p) => p.userId === state.declarerId);
+  const isViewerDeclarer = currentUserId === state.declarerId;
 
   // Relative seating: 0 = local, 1 = right, 2 = partner, 3 = left
   const westPlayer = useMemo(() => {
@@ -309,6 +319,21 @@ export function TwentyNineTable({
   const sittingOutSingleHand = Boolean(
     singleHandCaller && me && me.userId !== singleHandCaller.userId && me.team === singleHandCaller.team
   );
+
+  // Clear persistedTrick if a new trick begins with played cards
+  useEffect(() => {
+    if (state.currentTrick.length > 0) {
+      setPersistedTrick(null);
+    }
+  }, [state.currentTrick.length]);
+
+  // Track hand result updates to trigger the Hand Scoring Ceremony modal
+  useEffect(() => {
+    if (state.lastHandResult && state.lastHandResult.handNumber !== lastScoredHandNum.current) {
+      lastScoredHandNum.current = state.lastHandResult.handNumber;
+      setActiveHandResult(state.lastHandResult);
+    }
+  }, [state.lastHandResult]);
 
   // Hand cards sorted cleanly
   const sortedHand = useMemo(() => {
@@ -425,6 +450,23 @@ export function TwentyNineTable({
         const playedCards = Array.isArray(payload.cards) ? payload.cards : [];
         if (!winnerId || playedCards.length === 0) continue;
 
+        const trickNum = typeof payload.trickNumber === "number" ? payload.trickNumber : state.completedTricks.length;
+        const pts = typeof payload.points === "number" ? payload.points : 0;
+        const typedPlayedCards = playedCards.filter(
+          (p): p is TwentyNinePlayedCard => isRecord(p) && isRecord((p as any).card) && typeof (p as any).card.id === "string"
+        );
+        const winningCardId = getWinningCardId(typedPlayedCards, state.trumpSuit, state.trumpRevealed);
+
+        // Keep 4 cards on table for 2.3s hold with prominent winner announcement so players see what was played
+        setPersistedTrick({
+          cards: typedPlayedCards,
+          winnerPlayerId: winnerId,
+          winnerTeam: typeof payload.winnerTeam === "number" ? payload.winnerTeam : 0,
+          points: pts,
+          trickNumber: trickNum,
+          winningCardId: winningCardId ?? typedPlayedCards[0]?.card.id ?? ""
+        });
+
         const from = centerOf(container);
         const to =
           getCenter(seatRefs.current.get(winnerId) ?? null, container) ?? centerOf(container);
@@ -444,23 +486,42 @@ export function TwentyNineTable({
               to: { x: to.x + (index - 1.5) * 6, y: to.y },
               kind: "collect" as const,
               playerName: playerName(state, winnerId, currentUserId),
-              delay: reduceMotion ? 0 : 0.5
+              delay: 0
             }
           ];
         });
 
         if (arrivals.length === 0) continue;
         const arrivalIds = new Set(arrivals.map((f) => f.id));
-        setFlights((curr) => [...curr, ...arrivals].slice(-8));
 
-        const timeout = window.setTimeout(
-          () => {
-            setFlights((curr) => curr.filter((item) => !arrivalIds.has(item.id)));
-            timeoutRefs.current = timeoutRefs.current.filter((item) => item !== timeout);
-          },
-          reduceMotion ? 400 : 1400
-        );
-        timeoutRefs.current.push(timeout);
+        // Delay starting the flights until after the 2.3s hold period so players can inspect all 4 cards!
+        const holdDelayMs = reduceMotion ? 600 : 2300;
+        const holdTimeout = window.setTimeout(() => {
+          setPersistedTrick(null);
+          setFlights((curr) => [...curr, ...arrivals].slice(-8));
+
+          const flightTimeout = window.setTimeout(
+            () => {
+              setFlights((curr) => curr.filter((item) => !arrivalIds.has(item.id)));
+              timeoutRefs.current = timeoutRefs.current.filter((item) => item !== flightTimeout);
+            },
+            reduceMotion ? 350 : 1000
+          );
+          timeoutRefs.current.push(flightTimeout);
+          timeoutRefs.current = timeoutRefs.current.filter((item) => item !== holdTimeout);
+        }, holdDelayMs);
+
+        timeoutRefs.current.push(holdTimeout);
+        continue;
+      }
+
+      if (event.type.endsWith(":hand_scored") || event.type.endsWith(":single_hand_scored")) {
+        const handRes = (payload as any).handResult as TwentyNineHandResult | undefined;
+        if (handRes) {
+          setActiveHandResult(handRes);
+        } else if (state.lastHandResult) {
+          setActiveHandResult(state.lastHandResult);
+        }
       }
     }
   }, [gameEvents, currentUserId, reduceMotion, state]);
@@ -645,6 +706,7 @@ export function TwentyNineTable({
               trick={state.currentTrick}
               state={state}
               currentUserId={currentUserId}
+              persistedCompletedTrick={persistedTrick}
             />
           </div>
 
@@ -1025,32 +1087,143 @@ export function TwentyNineTable({
             </section>
 
             {/* Right Side: Card Points & Contract Telemetry */}
-            <div className="hidden lg:flex flex-col justify-between shrink-0 rounded-2xl border border-white/10 bg-black/75 p-3 shadow-2xl backdrop-blur-xl w-[14rem] sm:w-[15.5rem] self-stretch">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[0.62rem] font-black uppercase tracking-wider text-white/60">
-                  Card Points (28 Pts)
-                </span>
-                <span className="text-[0.62rem] font-black text-amber-300">
-                  Target: {state.contractTarget ?? state.currentBid ?? "—"}
-                </span>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between rounded-xl border border-rose-500/25 bg-rose-950/50 px-2.5 py-1.5">
-                  <span className="text-[0.68rem] font-black text-rose-300">TEAM RED</span>
-                  <span className="text-sm font-black text-white">
-                    {state.capturedPointsByTeam["0"]} <span className="text-[0.6rem] text-white/40">/28</span>
+            <div className="hidden lg:flex flex-col justify-between shrink-0 rounded-2xl border border-white/10 bg-black/80 p-3 shadow-2xl backdrop-blur-xl w-[15rem] sm:w-[16.5rem] self-stretch">
+              <div>
+                {/* Header: Declarer & Target */}
+                <div className="flex items-center justify-between pb-1.5 border-b border-white/10 mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <Crown className="h-3.5 w-3.5 text-amber-300" />
+                    <span className="text-[0.62rem] font-black uppercase tracking-wider text-amber-300">
+                      Declarer & Bid
+                    </span>
+                  </div>
+                  <span className="text-[0.62rem] font-black text-amber-200 bg-amber-500/20 border border-amber-400/30 px-2 py-0.5 rounded-full">
+                    Target: {state.contractTarget ?? state.currentBid ?? "—"}
                   </span>
                 </div>
-                <div className="flex items-center justify-between rounded-xl border border-sky-500/25 bg-sky-950/50 px-2.5 py-1.5">
-                  <span className="text-[0.68rem] font-black text-sky-300">TEAM BLUE</span>
-                  <span className="text-sm font-black text-white">
-                    {state.capturedPointsByTeam["1"]} <span className="text-[0.6rem] text-white/40">/28</span>
-                  </span>
+
+                {/* Declarer Info Box */}
+                {declarer ? (
+                  <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-1.5 mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className={cn(
+                        "h-2.5 w-2.5 rounded-full",
+                        declarer.team === 0 ? "bg-rose-500 shadow-sm shadow-rose-500" : "bg-sky-500 shadow-sm shadow-sky-500"
+                      )} />
+                      <span className="text-xs font-black text-white truncate max-w-[8rem]" title={declarer.displayName}>
+                        {declarer.displayName} {isViewerDeclarer ? "(You)" : ""}
+                      </span>
+                    </div>
+                    <span className={cn(
+                      "text-[0.6rem] font-black uppercase px-1.5 py-0.5 rounded",
+                      declarer.team === 0 ? "text-rose-300 bg-rose-950/60" : "text-sky-300 bg-sky-950/60"
+                    )}>
+                      {declarer.team === 0 ? "Team Red" : "Team Blue"}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="text-[0.65rem] text-white/40 italic mb-2">
+                    Bidding in progress...
+                  </div>
+                )}
+
+                {/* TRUMP STATUS - Crystal clear CONCEALED vs REVEALED */}
+                <div className="rounded-xl border border-white/10 bg-black/40 p-2 mb-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[0.58rem] font-black uppercase tracking-widest text-white/50">
+                      Trump Suit
+                    </span>
+                    {state.trumpRevealed ? (
+                      <span className="flex items-center gap-1 text-[0.62rem] font-black text-emerald-300 bg-emerald-500/20 px-1.5 py-0.5 rounded-md border border-emerald-400/30">
+                        <Unlock className="h-3 w-3" /> REVEALED
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-[0.62rem] font-black text-amber-300 bg-amber-500/15 px-1.5 py-0.5 rounded-md border border-amber-400/30">
+                        <Lock className="h-3 w-3" /> CONCEALED
+                      </span>
+                    )}
+                  </div>
+
+                  {state.singleHandPlayerId ? (
+                    <div className="text-xs font-black text-violet-300 flex items-center gap-1.5">
+                      <Swords className="h-3.5 w-3.5" /> Single Hand (No Trump)
+                    </div>
+                  ) : state.trumpRevealed && state.trumpSuit ? (
+                    <div>
+                      <div className="flex items-center gap-1.5 text-xs font-black text-emerald-300">
+                        <SuitMark suit={state.trumpSuit} size={15} />
+                        <span>{TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label} Active</span>
+                      </div>
+                      <span className="text-[0.58rem] text-emerald-400/70 block mt-0.5">
+                        Trump is active for all players
+                      </span>
+                    </div>
+                  ) : (
+                    <div>
+                      {isViewerDeclarer && state.trumpSuit ? (
+                        <>
+                          <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
+                            <SuitMark suit={state.trumpSuit} size={15} />
+                            <span>You set: {TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label}</span>
+                          </div>
+                          <span className="text-[0.58rem] text-amber-400/90 block mt-0.5 font-bold">
+                            ⚠️ HIDDEN: Table cannot see this yet!
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-white/70">
+                            <span>🂠 Hidden Face-Down Card</span>
+                          </div>
+                          <span className="text-[0.58rem] text-white/40 block mt-0.5">
+                            Must ask for trump if void in lead suit
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className="mt-1 flex items-center justify-between border-t border-white/10 pt-1 text-[0.62rem] text-white/50">
+
+              {/* CARD POINTS PROGRESS BARS */}
+              <div className="flex flex-col gap-1.5 my-1">
+                {/* Team Red */}
+                <div className="rounded-xl border border-rose-500/25 bg-rose-950/40 p-2">
+                  <div className="flex items-center justify-between text-[0.68rem] font-black">
+                    <span className="text-rose-300">TEAM RED</span>
+                    <span className="text-white">
+                      {state.capturedPointsByTeam["0"]} <span className="text-[0.58rem] text-white/40">/28 pts</span>
+                    </span>
+                  </div>
+                  <div className="relative mt-1 h-1.5 w-full overflow-hidden rounded-full bg-black/60">
+                    <div
+                      className="h-full rounded-full bg-rose-500 transition-all duration-300"
+                      style={{ width: `${Math.min(100, (state.capturedPointsByTeam["0"] / 28) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Team Blue */}
+                <div className="rounded-xl border border-sky-500/25 bg-sky-950/40 p-2">
+                  <div className="flex items-center justify-between text-[0.68rem] font-black">
+                    <span className="text-sky-300">TEAM BLUE</span>
+                    <span className="text-white">
+                      {state.capturedPointsByTeam["1"]} <span className="text-[0.58rem] text-white/40">/28 pts</span>
+                    </span>
+                  </div>
+                  <div className="relative mt-1 h-1.5 w-full overflow-hidden rounded-full bg-black/60">
+                    <div
+                      className="h-full rounded-full bg-sky-500 transition-all duration-300"
+                      style={{ width: `${Math.min(100, (state.capturedPointsByTeam["1"] / 28) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* FOOTER: STAKES & MATCH GAME POINTS */}
+              <div className="mt-1 flex items-center justify-between border-t border-white/10 pt-1.5 text-[0.62rem] text-white/50">
                 <span>Stakes: <strong className="text-amber-300 font-extrabold">×{state.multiplier}</strong></span>
-                <span>Score: <strong className="text-white font-bold">{state.teamGamePoints["0"]} vs {state.teamGamePoints["1"]}</strong></span>
+                <span>Match: <strong className="text-white font-bold">{state.teamGamePoints["0"]} vs {state.teamGamePoints["1"]}</strong></span>
               </div>
             </div>
           </div>
@@ -1149,6 +1322,14 @@ export function TwentyNineTable({
         gameEvents={gameEvents}
         state={state}
         currentUserId={currentUserId}
+      />
+
+      {/* HAND SCORING CEREMONY MODAL */}
+      <TwentyNineHandScoringModal
+        result={activeHandResult}
+        state={state}
+        currentUserId={currentUserId}
+        onDismiss={() => setActiveHandResult(null)}
       />
 
       {/* RULES MODAL */}

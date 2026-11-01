@@ -1,6 +1,6 @@
 "use client";
 
-import { Crown, Sparkles, Swords, Trophy } from "lucide-react";
+import { Crown, Sparkles, Swords, Trophy, Lock, Unlock } from "lucide-react";
 import type { PublicTwentyNineState, TwentyNineSuit } from "@tabletop/game-core";
 import { cn } from "@/lib/utils/cn";
 import { SuitMark, TWENTY_NINE_SUITS_INFO } from "./TwentyNineCard";
@@ -25,6 +25,7 @@ export function TwentyNineHUD({
 
   const declarer = state.players.find((p) => p.userId === state.declarerId);
   const isRedDeclarer = declarer?.team === 0;
+  const isViewerDeclarer = currentUserId === state.declarerId;
 
   return (
     <div
@@ -92,36 +93,49 @@ export function TwentyNineHUD({
           <>
             <div className="text-center">
               <span className="block text-[0.55rem] font-black uppercase tracking-widest text-white/40">
-                Bidder
+                Declarer
               </span>
               <span
                 className={cn(
-                  "text-xs font-black truncate max-w-[5rem] block",
+                  "text-xs font-black truncate max-w-[6rem] block",
                   isRedDeclarer ? "text-rose-300" : "text-sky-300"
                 )}
                 title={declarer.displayName}
               >
-                {declarer.displayName}
+                {declarer.displayName} {isViewerDeclarer ? "(You)" : ""}
               </span>
             </div>
             <div className="h-6 w-px bg-white/10" />
           </>
         ) : null}
 
-        {/* Trump Status Badge */}
+        {/* Trump Status Badge with explicit Concealed/Revealed indicators */}
         <div className="flex items-center gap-1.5 pl-1">
           {state.singleHandPlayerId ? (
-            <span className="inline-flex items-center gap-1 rounded-full border border-violet-400/40 bg-violet-500/20 px-2 py-0.5 text-[0.62rem] font-black text-violet-200">
-              <Swords className="h-3 w-3" /> SOLO
+            <span className="inline-flex items-center gap-1 rounded-full border border-violet-400/40 bg-violet-500/20 px-2.5 py-1 text-xs font-black text-violet-200">
+              <Swords className="h-3 w-3" /> SOLO (NO TRUMP)
             </span>
           ) : state.trumpRevealed && state.trumpSuit ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/50 bg-emerald-500/20 px-2.5 py-0.5 text-xs font-black text-emerald-200 shadow-[0_0_12px_rgba(52,211,153,0.3)]">
-              <SuitMark suit={state.trumpSuit} size={14} />
-              <span>{TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label}</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/60 bg-emerald-500/20 px-3 py-1 text-xs font-black text-emerald-200 shadow-[0_0_15px_rgba(52,211,153,0.35)]">
+              <Unlock className="h-3.5 w-3.5 text-emerald-300" />
+              <SuitMark suit={state.trumpSuit} size={15} />
+              <span>{TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label} (Active)</span>
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/[0.08] px-2 py-0.5 text-[0.62rem] font-black uppercase tracking-wider text-white/60">
-              🂠 Concealed
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-black shadow-sm",
+                isViewerDeclarer
+                  ? "border border-amber-400/50 bg-amber-500/15 text-amber-200"
+                  : "border border-white/20 bg-white/[0.08] text-white/70"
+              )}
+            >
+              <Lock className="h-3 w-3 text-amber-300" />
+              <span>
+                {isViewerDeclarer && state.trumpSuit
+                  ? `CONCEALED (${TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label})`
+                  : "TRUMP: CONCEALED"}
+              </span>
             </span>
           )}
         </div>
@@ -154,4 +168,3 @@ export function TwentyNineHUD({
     </div>
   );
 }
-

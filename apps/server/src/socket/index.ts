@@ -29,7 +29,27 @@ type IOServer = Server<ClientToServerEvents, ServerToClientEvents, Record<string
 type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData>;
 type BotTimer = { userId: string; timeout: ReturnType<typeof setTimeout> };
 
-function getBotTurnDelay(gameId: string): number {
+function getBotTurnDelay(gameId: string, gameState?: unknown): number {
+  if (gameId === "twenty-nine") {
+    const s = gameState as {
+      phase?: string;
+      handNumber?: number;
+      bidHistory?: unknown[];
+      currentTrick?: unknown[];
+      completedTricks?: unknown[];
+    } | undefined;
+
+    if (s?.phase === "bidding" && (s?.bidHistory?.length ?? 0) === 0 && (s?.handNumber ?? 1) > 1) {
+      // First bid of a new hand after previous hand scoring ceremony — give 5.2s - 5.8s
+      return 5200 + Math.floor(Math.random() * 600);
+    }
+    if (s?.phase === "playing" && (s?.currentTrick?.length ?? 0) === 0 && (s?.completedTricks?.length ?? 0) > 0) {
+      // Bot is leading a new trick immediately after previous trick was won — hold for 2.8s - 3.4s so trick review completes
+      return 2800 + Math.floor(Math.random() * 600);
+    }
+    // Standard turns in Twenty-Nine: thoughtful, readable 1.3s - 1.8s
+    return 1300 + Math.floor(Math.random() * 500);
+  }
   if (gameId === "uno-no-mercy") {
     // Fast, responsive 1.0s - 1.8s bot turns as requested
     return 1000 + Math.floor(Math.random() * 800);
@@ -145,7 +165,7 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
           console.warn(`[bot] failed room=${latestRoom.code} user=${currentPlayerId}: ${socketError(error).message}`);
         }
       })();
-    }, getBotTurnDelay(room.gameId));
+    }, getBotTurnDelay(room.gameId, room.gameState));
 
     botTimers.set(room.id, { userId: currentPlayerId, timeout });
   }
