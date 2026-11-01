@@ -79,6 +79,9 @@ export function getBlackjackLegalActions(state: BoardGameState, playerId: string
   }
 
   if (phase === "round_end") {
+    if (state.phase === "finished" || chips < MIN_BET) {
+      return [];
+    }
     return [{ type: "blackjack_action", choice: "next_round" }];
   }
 

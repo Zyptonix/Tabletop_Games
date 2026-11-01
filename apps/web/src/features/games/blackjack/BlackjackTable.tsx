@@ -149,6 +149,7 @@ export function BlackjackTable(props: BoardGameTableProps) {
   const myCurrentBet = myBets.reduce((a, b) => a + b, 0);
 
   const phase = state.blackjackPhase ?? "betting";
+  const isBankrupt = myChips < 10 && myCurrentBet === 0 && (phase === "betting" || phase === "round_end" || state.phase === "finished");
   const isMyTurn = state.currentPlayerId === currentUserId && phase === "player_turns";
 
   const dealerCards = state.blackjackDealerHand ?? [];
@@ -851,18 +852,36 @@ export function BlackjackTable(props: BoardGameTableProps) {
                   <span>Cash Out & Leave</span>
                 </button>
 
-                {/* NEXT HAND 3D BUTTON */}
-                <button
-                  type="button"
-                  onClick={handleNextRound}
-                  className="group relative flex items-center gap-2 rounded-full px-7 sm:px-8 py-3 text-sm sm:text-base font-black tracking-wider uppercase text-slate-950 transition-all shadow-[0_6px_0_#78350f,0_12px_24px_rgba(245,158,11,0.4)] hover:brightness-110 active:translate-y-1 active:shadow-[0_2px_0_#78350f]"
-                  style={{
-                    background: "linear-gradient(180deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%)"
-                  }}
-                >
-                  <RotateCcw className="h-5 w-5" />
-                  <span>NEXT HAND</span>
-                </button>
+                {/* NEXT HAND BUTTON (OR LEAVE IF BANKRUPT) */}
+                {myChips >= 10 ? (
+                  <button
+                    type="button"
+                    onClick={handleNextRound}
+                    className="group relative flex items-center gap-2 rounded-full px-7 sm:px-8 py-3 text-sm sm:text-base font-black tracking-wider uppercase text-slate-950 transition-all shadow-[0_6px_0_#78350f,0_12px_24px_rgba(245,158,11,0.4)] hover:brightness-110 active:translate-y-1 active:shadow-[0_2px_0_#78350f]"
+                    style={{
+                      background: "linear-gradient(180deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%)"
+                    }}
+                  >
+                    <RotateCcw className="h-5 w-5" />
+                    <span>NEXT HAND</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onChat) {
+                        onChat(room.id, `💥 ${me?.displayName ?? "Player"} went bankrupt and left the table.`);
+                      }
+                      router.push("/dashboard");
+                    }}
+                    className="group relative flex items-center gap-2 rounded-full px-7 sm:px-8 py-3 text-sm sm:text-base font-black tracking-wider uppercase text-white transition-all shadow-[0_6px_0_#4c0519,0_12px_24px_rgba(225,29,72,0.4)] hover:brightness-110 active:translate-y-1 active:shadow-[0_2px_0_#4c0519]"
+                    style={{
+                      background: "linear-gradient(180deg, #e11d48 0%, #be123c 50%, #9f1239 100%)"
+                    }}
+                  >
+                    <span>💥 BANKRUPT - LEAVE GAME</span>
+                  </button>
+                )}
               </div>
             </div>
           ) : null}
@@ -930,15 +949,15 @@ export function BlackjackTable(props: BoardGameTableProps) {
                   </div>
                 </div>
 
-                {/* 3. CHIPS, BANKROLL & HOUSE BAILOUT */}
+                {/* 3. CHIPS, BANKROLL & BANKRUPTCY */}
                 <div className="rounded-xl bg-emerald-950/40 p-3.5 border border-emerald-400/30 space-y-1.5">
                   <p className="font-bold text-emerald-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                    <span>💰</span> Chips, Reloads & Cashing Out
+                    <span>💰</span> Chips, Bankruptcy & Cashing Out
                   </p>
                   <div className="space-y-1 text-white/80">
                     <p>• <strong>Starting Bankroll:</strong> Every player receives <strong>$1,000 chips</strong> at the start of the table.</p>
                     <p>• <strong>Table Limits:</strong> Minimum bet is <strong>$10</strong>; maximum bet is <strong>$500</strong> per hand.</p>
-                    <p>• <strong className="text-amber-300">House Bailout ($500 Reload):</strong> If your chips drop below the $10 minimum bet, the casino automatically provides an arcade <strong>$500 reload</strong> so you never get permanently stuck!</p>
+                    <p>• <strong className="text-rose-400">Bankruptcy (Forced Leave):</strong> If your chips drop below the $10 minimum bet, you are out of chips! You must leave the table—no free bailouts!</p>
                     <p>• <strong className="text-emerald-300">Cashing Out:</strong> You don't have to play forever! Click the <strong>"Cash Out & Leave"</strong> button at the bottom of the table or top header to bank your chips and return to the dashboard with your stats.</p>
                   </div>
                 </div>
@@ -1078,6 +1097,65 @@ export function BlackjackTable(props: BoardGameTableProps) {
                   💰 Cash Out & Exit
                 </button>
               </div>
+            </motion.div>
+          </div>
+        ) : null}
+      </AnimatePresence>
+
+      {/* ============================================================== */}
+      {/* BANKRUPT / GAME OVER MODAL (FORCED LEAVE)                      */}
+      {/* ============================================================== */}
+      <AnimatePresence>
+        {isBankrupt ? (
+          <div className="fixed inset-0 z-50 grid place-items-center bg-black/90 p-4 backdrop-blur-lg">
+            <motion.div
+              initial={{ scale: 0.85, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="w-full max-w-md rounded-3xl border-2 border-rose-500/60 bg-gradient-to-b from-rose-950/90 via-slate-950 to-slate-950 p-7 text-center shadow-[0_0_50px_rgba(225,29,72,0.4)] space-y-5"
+            >
+              <div className="mx-auto grid h-20 w-20 place-items-center rounded-3xl bg-rose-500/20 text-4xl shadow-lg border border-rose-500/40 animate-bounce">
+                💥
+              </div>
+              <div className="space-y-1">
+                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-rose-400">
+                  Game Over
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-black text-white">
+                  YOU ARE BANKRUPT!
+                </h2>
+                <p className="text-xs text-white/60">
+                  You have run out of chips and cannot place the $10 minimum bet.
+                </p>
+              </div>
+
+              {/* Stats Pod */}
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <span className="text-[10px] uppercase font-bold text-white/40">Ending Chips</span>
+                  <p className="mt-0.5 font-mono text-xl font-black text-rose-400">$0</p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <span className="text-[10px] uppercase font-bold text-white/40">Rounds Played</span>
+                  <p className="mt-0.5 font-mono text-xl font-black text-white">{state.blackjackRoundNumber ?? 1}</p>
+                </div>
+              </div>
+
+              <p className="text-xs text-rose-200/80 leading-relaxed font-medium">
+                In a real casino, when your money runs out, the house shows you the door. You have been eliminated from the table.
+              </p>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (onChat) {
+                    onChat(room.id, `💥 ${me?.displayName ?? "Player"} went bankrupt and left the table.`);
+                  }
+                  router.push("/dashboard");
+                }}
+                className="w-full rounded-2xl bg-gradient-to-r from-rose-600 to-red-700 py-3.5 text-sm font-black uppercase tracking-wider text-white shadow-[0_6px_20px_rgba(225,29,72,0.5)] hover:brightness-110 active:scale-95 transition"
+              >
+                🚪 Leave Table & Return to Dashboard
+              </button>
             </motion.div>
           </div>
         ) : null}

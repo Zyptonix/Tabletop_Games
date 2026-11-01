@@ -139,9 +139,17 @@ function executeDealerTurnAndPayouts(state: BoardGameState, now: string) {
 
   state.blackjackRoundResults = results;
   state.blackjackPhase = "round_end";
-  state.blackjackLastAction = dEval.isBust
-    ? `Dealer busted with ${dEval.total}! Round ended.`
-    : `Dealer stands with ${dEval.total}. Round ended.`;
+
+  // Check if any player still has enough chips to meet MIN_BET
+  const playersWithChips = state.players.filter((p) => (state.blackjackChips?.[p.userId] ?? 0) >= MIN_BET);
+  if (playersWithChips.length === 0) {
+    state.phase = "finished";
+    state.blackjackLastAction = "💥 Game Over! All players have run out of chips and gone bankrupt.";
+  } else {
+    state.blackjackLastAction = dEval.isBust
+      ? `Dealer busted with ${dEval.total}! Round ended.`
+      : `Dealer stands with ${dEval.total}. Round ended.`;
+  }
 }
 
 export function reduceBlackjackAction(
@@ -341,6 +349,17 @@ export function reduceBlackjackAction(
   // -------------------------------------------------------------
   if (phase === "round_end") {
     if (action.choice === "next_round") {
+      const chips = state.blackjackChips?.[playerId] ?? 0;
+      if (chips < MIN_BET) {
+        return { accepted: false, message: "You are out of chips and cannot start another round. Please leave the table." };
+      }
+
+      const activePlayers = state.players.filter((p) => (state.blackjackChips?.[p.userId] ?? 0) >= MIN_BET);
+      if (activePlayers.length === 0) {
+        state.phase = "finished";
+        return { accepted: false, message: "Game over: all players are bankrupt." };
+      }
+
       // Clear hands and reset bets
       state.blackjackDealerHand = [];
       state.blackjackDealerHoleHidden = true;
@@ -350,22 +369,9 @@ export function reduceBlackjackAction(
       state.blackjackRoundResults = {};
       state.blackjackRoundNumber = (state.blackjackRoundNumber ?? 1) + 1;
       state.blackjackPhase = "betting";
-      state.currentPlayerId = state.players[0]?.userId ?? null;
+      state.currentPlayerId = activePlayers[0]?.userId ?? null;
 
-      // Reload chips for broke players so game never stalls
-      const reloadedPlayerNames: string[] = [];
-      for (const p of state.players) {
-        if ((state.blackjackChips?.[p.userId] ?? 0) < MIN_BET) {
-          state.blackjackChips![p.userId] = Math.floor(STARTING_CHIPS / 2);
-          reloadedPlayerNames.push(p.displayName ?? "Player");
-        }
-      }
-
-      if (reloadedPlayerNames.length > 0) {
-        message = `💸 House Bailout: ${reloadedPlayerNames.join(", ")} was out of chips and received a $500 reload! Place your bets or cash out.`;
-      } else {
-        message = `🎲 Round ${state.blackjackRoundNumber} started. Place your bets!`;
-      }
+      message = `🎲 Round ${state.blackjackRoundNumber} started. Place your bets!`;
       state.blackjackLastAction = message;
       return { accepted: true, message };
     }

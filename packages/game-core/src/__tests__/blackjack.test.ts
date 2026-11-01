@@ -122,11 +122,16 @@ describe("Blackjack module lifecycle", () => {
     expect(pub.blackjackDealerHand?.[1]).toBe("hidden");
   });
 
-  it("grants $500 house bailout reload when player is broke below MIN_BET", () => {
+  it("rejects next_round for bankrupt players and finishes match when all are broke", () => {
     let state = startBlackjack(2);
-    // Set p1 chips to 0
+    // Set p1 chips to 0, p2 has chips
     state.blackjackChips!["p1"] = 0;
+    state.blackjackChips!["p2"] = 500;
     state.blackjackPhase = "round_end";
+
+    // Bankrupt player p1 cannot call next_round
+    const p1Actions = blackjackModule.getLegalActions({ state, playerId: "p1" });
+    expect(p1Actions).toEqual([]);
 
     const res = blackjackModule.applyAction({
       state,
@@ -134,11 +139,25 @@ describe("Blackjack module lifecycle", () => {
       action: { type: "blackjack_action", choice: "next_round" },
       now: new Date().toISOString()
     });
+    // Rejected: state is unchanged and no events emitted
+    expect(res.events).toEqual([]);
+    expect((res.state as BoardGameState).blackjackPhase).toBe("round_end");
 
-    const nextState = res.state as BoardGameState;
-    expect(nextState.blackjackChips?.["p1"]).toBe(500);
-    expect(nextState.blackjackLastAction).toContain("House Bailout");
-    expect(nextState.blackjackLastAction).toContain("received a $500 reload");
+    // But player p2 with chips CAN advance the round
+    const p2Actions = blackjackModule.getLegalActions({ state, playerId: "p2" });
+    expect(p2Actions.some((a) => a.type === "blackjack_action" && a.choice === "next_round")).toBe(true);
+
+    const res2 = blackjackModule.applyAction({
+      state,
+      playerId: "p2",
+      action: { type: "blackjack_action", choice: "next_round" },
+      now: new Date().toISOString()
+    });
+    const nextState = res2.state as BoardGameState;
+    expect(nextState.blackjackPhase).toBe("betting");
+    // p1 stays broke at 0 chips (no bailout reload)
+    expect(nextState.blackjackChips?.["p1"]).toBe(0);
+    expect(nextState.blackjackChips?.["p2"]).toBe(500);
   });
 });
 
