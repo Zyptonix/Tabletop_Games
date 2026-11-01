@@ -198,6 +198,66 @@ function formatEventLog(
 }
 
 
+function TrickProgressWidget({
+  team,
+  count,
+  caption
+}: {
+  team: number;
+  count: number;
+  caption: string;
+}) {
+  const clampedCount = Math.max(0, Math.min(8, count));
+  const redTeam = team === 0;
+
+  return (
+    <div
+      className={cn(
+        "rounded-xl border px-2.5 py-1.5 backdrop-blur-md shadow-lg",
+        redTeam ? "border-rose-400/30 bg-rose-950/70" : "border-sky-400/30 bg-sky-950/70"
+      )}
+    >
+      <div className="mb-1 flex items-center justify-between gap-1">
+        <span
+          className={cn(
+            "text-[0.62rem] font-black uppercase tracking-wider",
+            redTeam ? "text-rose-200" : "text-sky-200"
+          )}
+        >
+          {caption}
+        </span>
+        <strong className="text-xs font-black tabular-nums text-white">
+          {clampedCount}
+          <span className="text-[0.58rem] text-white/40">/8</span>
+        </strong>
+      </div>
+
+      <div className="grid grid-cols-8 gap-1 w-36 sm:w-40">
+        {Array.from({ length: 8 }, (_, index) => {
+          const earned = index < clampedCount;
+          return (
+            <div
+              key={`${team}-trick-${index}`}
+              className={cn(
+                "relative aspect-[0.715] min-w-0 overflow-hidden rounded-[0.2rem] transition-all",
+                earned
+                  ? redTeam
+                    ? "ring-1 ring-rose-300 shadow-[0_0_8px_rgba(244,63,94,0.4)]"
+                    : "ring-1 ring-sky-300 shadow-[0_0_8px_rgba(56,189,248,0.4)]"
+                  : "border border-dashed border-white/20 bg-white/[0.04]"
+              )}
+            >
+              {earned ? (
+                <TwentyNineCardBack small className="h-full w-full rounded-[0.2rem] border-0 shadow-none" />
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function TwentyNineTable({
   room,
   state,
@@ -1041,226 +1101,274 @@ export function TwentyNineTable({
             ) : null}
           </div>
 
-        {/* BOTTOM HORIZONTAL TELEMETRY DOCK */}
-        <div className="z-30 flex flex-wrap items-center justify-between gap-2.5 w-full max-w-5xl px-2">
-          {/* Left Horizontal Capsule: Tricks Won (8 Max) */}
-          <div className="flex items-center gap-2.5 rounded-full border border-white/10 bg-black/80 px-4 py-1.5 shadow-xl backdrop-blur-md">
-            <span className="text-[0.62rem] font-black uppercase tracking-wider text-white/50">
-              Tricks ({state.completedTricks.length}/8)
-            </span>
-            <span className="text-white/20">|</span>
-            {/* Team Red compact indicators */}
-            <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-rose-400" />
-              <span className="text-[0.65rem] font-bold text-rose-200">Red:</span>
-              <div className="flex gap-0.5">
-                {Array.from({ length: 8 }, (_, i) => (
-                  <span
-                    key={`red-trick-${i}`}
-                    className={cn(
-                      "h-3 w-1.5 rounded-[1px]",
-                      i < state.tricksWonByTeam["0"]
-                        ? "bg-rose-400 shadow-[0_0_6px_rgba(244,63,94,0.7)]"
-                        : "bg-white/15"
-                    )}
-                  />
-                ))}
+          {/* Bottom Dock Row: [Tricks Won Tracker] -- [Player Hand Fan] -- [Card Points Panel] */}
+          <div className="flex w-full items-end justify-center gap-2.5 sm:gap-3.5 max-w-[96rem]">
+            {/* Left Side: Dedicated Tricks Won Panel (Red & Blue 8 Slots) */}
+            <div className="hidden lg:flex flex-col justify-between shrink-0 rounded-2xl border border-white/10 bg-black/75 p-3 shadow-2xl backdrop-blur-xl w-[14rem] sm:w-[15.5rem] self-stretch">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[0.62rem] font-black uppercase tracking-wider text-white/60">
+                  Tricks Won (8 Max)
+                </span>
+                <span className="text-[0.62rem] font-black text-emerald-400">
+                  {state.completedTricks.length}/8 Done
+                </span>
               </div>
-              <span className="text-[0.65rem] font-black text-rose-300">({state.tricksWonByTeam["0"]})</span>
-            </div>
-            <span className="text-white/20">|</span>
-            {/* Team Blue compact indicators */}
-            <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-sky-400" />
-              <span className="text-[0.65rem] font-bold text-sky-200">Blue:</span>
-              <div className="flex gap-0.5">
-                {Array.from({ length: 8 }, (_, i) => (
-                  <span
-                    key={`blue-trick-${i}`}
-                    className={cn(
-                      "h-3 w-1.5 rounded-[1px]",
-                      i < state.tricksWonByTeam["1"]
-                        ? "bg-sky-400 shadow-[0_0_6px_rgba(56,189,248,0.7)]"
-                        : "bg-white/15"
-                    )}
-                  />
-                ))}
+              <div className="flex flex-col gap-1.5">
+                <TrickProgressWidget team={0} count={state.tricksWonByTeam["0"]} caption="Team Red" />
+                <TrickProgressWidget team={1} count={state.tricksWonByTeam["1"]} caption="Team Blue" />
               </div>
-              <span className="text-[0.65rem] font-black text-sky-300">({state.tricksWonByTeam["1"]})</span>
             </div>
-          </div>
 
-          {/* Right Horizontal Capsule: Declarer, Trump & Points */}
-          <div className="flex items-center gap-2.5 rounded-full border border-white/10 bg-black/80 px-4 py-1.5 shadow-xl backdrop-blur-md">
-            {declarer ? (
-              <>
-                <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
-                  <Crown className="h-3.5 w-3.5 text-amber-400" />
-                  <span className="truncate max-w-[7rem]">{declarer.displayName}</span>
-                  <span className="rounded bg-amber-400/20 px-1.5 py-0.2 text-[0.6rem] font-extrabold text-amber-200 border border-amber-400/30">
-                    Target: {state.contractTarget ?? state.currentBid}
+            {/* Center: Local Player Hand Fan (Enlarged Cards) */}
+            <section
+              ref={handRef}
+              className="relative z-40 flex flex-1 min-w-0 max-w-4xl flex-col items-center justify-center rounded-2xl border border-white/10 bg-black/75 px-4 py-2 shadow-2xl backdrop-blur-xl"
+            >
+              {/* Local Player Info Bar */}
+              <div className="mb-1 flex w-full items-center justify-between px-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <div
+                    className={cn(
+                      "h-3 w-3 rounded-full shadow-md",
+                      me?.team === 0 ? "bg-rose-400 shadow-rose-500/50" : "bg-sky-400 shadow-sky-500/50"
+                    )}
+                  />
+                  <span className="font-black text-white">{me?.displayName ?? "Your Hand"}</span>
+                  <span className="text-white/40">·</span>
+                  <span className="text-white/60">
+                    {(me?.hand?.length ?? 0) + (state.privateSeventhCard ? 1 : 0)} cards in hand
                   </span>
                 </div>
-                <span className="text-white/20">|</span>
-              </>
-            ) : null}
 
-            {/* Trump Status */}
-            <div className="flex items-center gap-1 text-xs">
-              {state.singleHandPlayerId ? (
-                <span className="text-[0.62rem] font-black text-violet-300">Single Hand</span>
-              ) : state.trumpRevealed && state.trumpSuit ? (
-                <div className="flex items-center gap-1 text-emerald-300 font-black">
-                  <SuitMark suit={state.trumpSuit} size={14} />
-                  <span>{TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label}</span>
-                  <span className="text-[0.52rem] uppercase text-emerald-400 font-extrabold bg-emerald-500/20 px-1 rounded">Active</span>
+                <div className="flex items-center gap-1.5 text-white/50 text-[0.68rem]">
+                  <Shield className="h-3.5 w-3.5" />
+                  <span>Follow lead suit when possible</span>
                 </div>
-              ) : isViewerDeclarer && state.trumpSuit ? (
-                <div className="flex items-center gap-1 text-amber-300 font-bold text-[0.65rem]">
-                  <SuitMark suit={state.trumpSuit} size={13} />
-                  <span>{TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label}</span>
-                  <span className="text-[0.52rem] text-amber-400 font-extrabold uppercase bg-amber-500/20 px-1 rounded">(Secret)</span>
+              </div>
+
+              {/* Cards Fan or Sitting Out */}
+              {sittingOutSingleHand ? (
+                <div className="flex min-h-[7rem] flex-col items-center justify-center p-3 text-center">
+                  <p className="text-sm font-black text-violet-200">
+                    Sitting out — Partner is playing Single Hand alone!
+                  </p>
+                  <p className="mt-1 text-xs text-white/50">
+                    Teammate must win all 8 tricks alone. Your hand stays out of play.
+                  </p>
                 </div>
               ) : (
-                <div className="flex items-center gap-1 text-amber-300/80 font-bold text-[0.65rem]">
-                  <Lock className="h-3 w-3" />
-                  <span>Trump Concealed</span>
+                <div className="relative flex min-h-[10.5rem] items-end justify-center overflow-visible pb-1 pt-3">
+                  {sortedHand.map((card, index) => {
+                    const canPlay = legalPlayIds.has(card.id) && isMyTurn && state.phase === "playing";
+                    const offset = index - (sortedHand.length - 1) / 2;
+                    const rotateDeg = offset * 2.5;
+                    const translateY = Math.abs(offset) * 3;
+
+                    return (
+                      <motion.button
+                        key={card.id}
+                        type="button"
+                        disabled={!canPlay}
+                        onClick={() => play(card)}
+                        initial={reduceMotion ? false : { opacity: 0, y: 20 }}
+                        animate={{
+                          opacity: 1,
+                          y: canPlay ? -15 - translateY : -translateY,
+                          rotate: rotateDeg,
+                          scale: canPlay ? 1.05 : 1
+                        }}
+                        {...(canPlay && !reduceMotion
+                          ? { whileHover: { y: -38, scale: 1.15, rotate: 0, zIndex: 120 } }
+                          : {})}
+                        {...(canPlay ? { whileTap: { scale: 0.95 } } : {})}
+                        transition={{ duration: 0.2 }}
+                        className={cn(
+                          "relative shrink-0 text-left outline-none transition-shadow",
+                          canPlay ? "cursor-pointer" : "cursor-default"
+                        )}
+                        style={{
+                          marginLeft: index === 0 ? 0 : "-2.2rem",
+                          zIndex: 10 + index
+                        }}
+                        title={canPlay ? `Play ${card.rank} of ${card.suit}` : `${card.rank} of ${card.suit}`}
+                      >
+                        <TwentyNineCardFace
+                          card={card}
+                          size="lg"
+                          playable={canPlay}
+                          muted={!canPlay && state.phase === "playing" && isMyTurn}
+                        />
+                      </motion.button>
+                    );
+                  })}
+
+                  {/* 7th Trump Hidden Card */}
+                  {state.privateSeventhCard &&
+                  state.phase === "playing" &&
+                  state.completedTricks.length === 7 &&
+                  (me?.hand?.length ?? 0) === 0 ? (
+                    <motion.button
+                      type="button"
+                      onClick={() => play(state.privateSeventhCard!)}
+                      className="relative cursor-pointer ring-2 ring-amber-400 rounded-2xl ml-2"
+                    >
+                      <TwentyNineCardFace card={state.privateSeventhCard} size="lg" playable />
+                      <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-amber-400 px-2.5 py-0.5 text-[0.62rem] font-black text-black shadow-lg">
+                        7TH TRUMP
+                      </span>
+                    </motion.button>
+                  ) : null}
+
+                  {!sortedHand.length && state.phase !== "finished" && !sittingOutSingleHand ? (
+                    <div className="py-8 text-xs font-bold text-white/40">
+                      Your cards will appear here after the deal.
+                    </div>
+                  ) : null}
                 </div>
               )}
-            </div>
+            </section>
 
-            <span className="text-white/20">|</span>
-
-            {/* Captured Points Telemetry */}
-            <div className="flex items-center gap-2 text-[0.68rem] font-bold">
-              <span className="text-rose-300 font-black">Red: {state.capturedPointsByTeam["0"]}/28 pts</span>
-              <span className="text-sky-300 font-black">Blue: {state.capturedPointsByTeam["1"]}/28 pts</span>
-            </div>
-
-            {state.multiplier > 1 ? (
-              <>
-                <span className="text-white/20">|</span>
-                <span className="rounded bg-rose-500/25 border border-rose-400/50 px-1.5 py-0.2 text-[0.6rem] font-black text-rose-200">
-                  ×{state.multiplier} Stakes
-                </span>
-              </>
-            ) : null}
-
-            <span className="text-white/20">|</span>
-            <span className="text-[0.62rem] text-white/50">
-              Match: <strong className="text-white font-bold">{state.teamGamePoints["0"]} vs {state.teamGamePoints["1"]}</strong>
-            </span>
-          </div>
-        </div>
-
-        {/* FULL-WIDTH LOCAL PLAYER HAND FAN */}
-        <section
-          ref={handRef}
-          className="relative z-40 flex w-full max-w-5xl flex-col items-center justify-center rounded-2xl border border-white/10 bg-black/75 px-4 py-2 shadow-2xl backdrop-blur-xl"
-        >
-          {/* Local Player Info Bar */}
-          <div className="mb-1 flex w-full items-center justify-between px-2 text-xs">
-            <div className="flex items-center gap-2">
-              <div
-                className={cn(
-                  "h-3 w-3 rounded-full shadow-md",
-                  me?.team === 0 ? "bg-rose-400 shadow-rose-500/50" : "bg-sky-400 shadow-sky-500/50"
-                )}
-              />
-              <span className="font-black text-white">{me?.displayName ?? "Your Hand"}</span>
-              <span className="text-white/40">·</span>
-              <span className="text-white/60">
-                {(me?.hand?.length ?? 0) + (state.privateSeventhCard ? 1 : 0)} cards in hand
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1.5 text-white/50 text-[0.68rem]">
-              <Shield className="h-3.5 w-3.5" />
-              <span>Follow lead suit when possible</span>
-            </div>
-          </div>
-
-          {/* Cards Fan or Sitting Out */}
-          {sittingOutSingleHand ? (
-            <div className="flex min-h-[7rem] flex-col items-center justify-center p-3 text-center">
-              <p className="text-sm font-black text-violet-200">
-                Sitting out — Partner is playing Single Hand alone!
-              </p>
-              <p className="mt-1 text-xs text-white/50">
-                Teammate must win all 8 tricks alone. Your hand stays out of play.
-              </p>
-            </div>
-          ) : (
-            <div className="relative flex min-h-[10.5rem] items-end justify-center overflow-visible pb-1 pt-3">
-              {sortedHand.map((card, index) => {
-                const canPlay = legalPlayIds.has(card.id) && isMyTurn && state.phase === "playing";
-                const offset = index - (sortedHand.length - 1) / 2;
-                const rotateDeg = offset * 2.5;
-                const translateY = Math.abs(offset) * 3;
-
-                return (
-                  <motion.button
-                    key={card.id}
-                    type="button"
-                    disabled={!canPlay}
-                    onClick={() => play(card)}
-                    initial={reduceMotion ? false : { opacity: 0, y: 20 }}
-                    animate={{
-                      opacity: 1,
-                      y: canPlay ? -15 - translateY : -translateY,
-                      rotate: rotateDeg,
-                      scale: canPlay ? 1.05 : 1
-                    }}
-                    {...(canPlay && !reduceMotion
-                      ? { whileHover: { y: -38, scale: 1.15, rotate: 0, zIndex: 120 } }
-                      : {})}
-                    {...(canPlay ? { whileTap: { scale: 0.95 } } : {})}
-                    transition={{ duration: 0.2 }}
-                    className={cn(
-                      "relative shrink-0 text-left outline-none transition-shadow",
-                      canPlay ? "cursor-pointer" : "cursor-default"
-                    )}
-                    style={{
-                      marginLeft: index === 0 ? 0 : "-2.2rem",
-                      zIndex: 10 + index
-                    }}
-                    title={canPlay ? `Play ${card.rank} of ${card.suit}` : `${card.rank} of ${card.suit}`}
-                  >
-                    <TwentyNineCardFace
-                      card={card}
-                      size="lg"
-                      playable={canPlay}
-                      muted={!canPlay && state.phase === "playing" && isMyTurn}
-                    />
-                  </motion.button>
-                );
-              })}
-
-              {/* 7th Trump Hidden Card */}
-              {state.privateSeventhCard &&
-              state.phase === "playing" &&
-              state.completedTricks.length === 7 &&
-              (me?.hand?.length ?? 0) === 0 ? (
-                <motion.button
-                  type="button"
-                  onClick={() => play(state.privateSeventhCard!)}
-                  className="relative cursor-pointer ring-2 ring-amber-400 rounded-2xl ml-2"
-                >
-                  <TwentyNineCardFace card={state.privateSeventhCard} size="lg" playable />
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-amber-400 px-2.5 py-0.5 text-[0.62rem] font-black text-black shadow-lg">
-                    7TH TRUMP
+            {/* Right Side: Card Points & Contract Telemetry */}
+            <div className="hidden lg:flex flex-col justify-between shrink-0 rounded-2xl border border-white/10 bg-black/80 p-3 shadow-2xl backdrop-blur-xl w-[15rem] sm:w-[16.5rem] self-stretch">
+              <div>
+                {/* Header: Declarer & Target */}
+                <div className="flex items-center justify-between pb-1.5 border-b border-white/10 mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <Crown className="h-3.5 w-3.5 text-amber-300" />
+                    <span className="text-[0.62rem] font-black uppercase tracking-wider text-amber-300">
+                      Declarer & Bid
+                    </span>
+                  </div>
+                  <span className="text-[0.62rem] font-black text-amber-200 bg-amber-500/20 border border-amber-400/30 px-2 py-0.5 rounded-full">
+                    Target: {state.contractTarget ?? state.currentBid ?? "—"}
                   </span>
-                </motion.button>
-              ) : null}
-
-              {!sortedHand.length && state.phase !== "finished" && !sittingOutSingleHand ? (
-                <div className="py-8 text-xs font-bold text-white/40">
-                  Your cards will appear here after the deal.
                 </div>
-              ) : null}
+
+                {/* Declarer Info Box */}
+                {declarer ? (
+                  <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-1.5 mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className={cn(
+                        "h-2.5 w-2.5 rounded-full",
+                        declarer.team === 0 ? "bg-rose-500 shadow-sm shadow-rose-500" : "bg-sky-500 shadow-sm shadow-sky-500"
+                      )} />
+                      <span className="text-xs font-black text-white truncate max-w-[8rem]" title={declarer.displayName}>
+                        {declarer.displayName} {isViewerDeclarer ? "(You)" : ""}
+                      </span>
+                    </div>
+                    <span className={cn(
+                      "text-[0.6rem] font-black uppercase px-1.5 py-0.5 rounded",
+                      declarer.team === 0 ? "text-rose-300 bg-rose-950/60" : "text-sky-300 bg-sky-950/60"
+                    )}>
+                      {declarer.team === 0 ? "Team Red" : "Team Blue"}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="text-[0.65rem] text-white/40 italic mb-2">
+                    Bidding in progress...
+                  </div>
+                )}
+
+                {/* TRUMP STATUS - Crystal clear CONCEALED vs REVEALED */}
+                <div className="rounded-xl border border-white/10 bg-black/40 p-2 mb-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[0.58rem] font-black uppercase tracking-widest text-white/50">
+                      Trump Suit
+                    </span>
+                    {state.trumpRevealed ? (
+                      <span className="flex items-center gap-1 text-[0.62rem] font-black text-emerald-300 bg-emerald-500/20 px-1.5 py-0.5 rounded-md border border-emerald-400/30">
+                        <Unlock className="h-3 w-3" /> REVEALED
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-[0.62rem] font-black text-amber-300 bg-amber-500/15 px-1.5 py-0.5 rounded-md border border-amber-400/30">
+                        <Lock className="h-3 w-3" /> CONCEALED
+                      </span>
+                    )}
+                  </div>
+
+                  {state.singleHandPlayerId ? (
+                    <div className="text-xs font-black text-violet-300 flex items-center gap-1.5">
+                      <Swords className="h-3.5 w-3.5" /> Single Hand (No Trump)
+                    </div>
+                  ) : state.trumpRevealed && state.trumpSuit ? (
+                    <div>
+                      <div className="flex items-center gap-1.5 text-xs font-black text-emerald-300">
+                        <SuitMark suit={state.trumpSuit} size={15} />
+                        <span>{TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label} Active</span>
+                      </div>
+                      <span className="text-[0.58rem] text-emerald-400/70 block mt-0.5">
+                        Trump is active for all players
+                      </span>
+                    </div>
+                  ) : (
+                    <div>
+                      {isViewerDeclarer && state.trumpSuit ? (
+                        <>
+                          <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
+                            <SuitMark suit={state.trumpSuit} size={15} />
+                            <span>You set: {TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label}</span>
+                          </div>
+                          <span className="text-[0.58rem] text-amber-400/90 block mt-0.5 font-bold">
+                            ⚠️ HIDDEN: Table cannot see this yet!
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-white/70">
+                            <span>🂠 Hidden Face-Down Card</span>
+                          </div>
+                          <span className="text-[0.58rem] text-white/40 block mt-0.5">
+                            Must ask for trump if void in lead suit
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* CARD POINTS PROGRESS BARS */}
+              <div className="flex flex-col gap-1.5 my-1">
+                {/* Team Red */}
+                <div className="rounded-xl border border-rose-500/25 bg-rose-950/40 p-2">
+                  <div className="flex items-center justify-between text-[0.68rem] font-black">
+                    <span className="text-rose-300">TEAM RED</span>
+                    <span className="text-white">
+                      {state.capturedPointsByTeam["0"]} <span className="text-[0.58rem] text-white/40">/28 pts</span>
+                    </span>
+                  </div>
+                  <div className="relative mt-1 h-1.5 w-full overflow-hidden rounded-full bg-black/60">
+                    <div
+                      className="h-full rounded-full bg-rose-500 transition-all duration-300"
+                      style={{ width: `${Math.min(100, (state.capturedPointsByTeam["0"] / 28) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Team Blue */}
+                <div className="rounded-xl border border-sky-500/25 bg-sky-950/40 p-2">
+                  <div className="flex items-center justify-between text-[0.68rem] font-black">
+                    <span className="text-sky-300">TEAM BLUE</span>
+                    <span className="text-white">
+                      {state.capturedPointsByTeam["1"]} <span className="text-[0.58rem] text-white/40">/28 pts</span>
+                    </span>
+                  </div>
+                  <div className="relative mt-1 h-1.5 w-full overflow-hidden rounded-full bg-black/60">
+                    <div
+                      className="h-full rounded-full bg-sky-500 transition-all duration-300"
+                      style={{ width: `${Math.min(100, (state.capturedPointsByTeam["1"] / 28) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* FOOTER: STAKES & MATCH GAME POINTS */}
+              <div className="mt-1 flex items-center justify-between border-t border-white/10 pt-1.5 text-[0.62rem] text-white/50">
+                <span>Stakes: <strong className="text-amber-300 font-extrabold">×{state.multiplier}</strong></span>
+                <span>Match: <strong className="text-white font-bold">{state.teamGamePoints["0"]} vs {state.teamGamePoints["1"]}</strong></span>
+              </div>
             </div>
-          )}
-        </section>
+          </div>
         </footer>
       </div>
 
