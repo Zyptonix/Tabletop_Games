@@ -289,6 +289,8 @@ export function TwentyNineTable({
   const [selectedBid, setSelectedBid] = useState<number | null>(null);
   const [persistedTrick, setPersistedTrick] = useState<PersistedCompletedTrick | null>(null);
   const [activeHandResult, setActiveHandResult] = useState<TwentyNineHandResult | null>(null);
+  const [declinedSingleHand, setDeclinedSingleHand] = useState(false);
+  const [lastHandModalOpen, setLastHandModalOpen] = useState(false);
   const lastScoredHandNum = useRef<number | null>(null);
 
   // 4 Players: Always exactly 4
@@ -334,6 +336,11 @@ export function TwentyNineTable({
       setActiveHandResult(state.lastHandResult);
     }
   }, [state.lastHandResult]);
+
+  // Reset single hand declined state per hand
+  useEffect(() => {
+    setDeclinedSingleHand(false);
+  }, [state.handNumber]);
 
   // Hand cards sorted cleanly
   const sortedHand = useMemo(() => {
@@ -468,8 +475,15 @@ export function TwentyNineTable({
         });
 
         const from = centerOf(container);
-        const to =
-          getCenter(seatRefs.current.get(winnerId) ?? null, container) ?? centerOf(container);
+        const winnerTeam = typeof payload.winnerTeam === "number" ? payload.winnerTeam : 0;
+        const myTeam = me ? me.team : 0;
+        const didMyTeamWin = winnerTeam === myTeam;
+        const center = centerOf(container);
+        // Flow directly into the visible on-table felt deck: Right for Your Team, Left for Opponent!
+        const to = {
+          x: didMyTeamWin ? center.x + 160 : center.x - 160,
+          y: center.y
+        };
 
         const arrivals: Flight[] = playedCards.slice(0, 4).flatMap((played, index) => {
           if (!isRecord(played) || !isRecord(played.card)) return [];
@@ -636,7 +650,7 @@ export function TwentyNineTable({
 
         {/* TOP HUD SCOREBOARD */}
         <div className="mt-1.5 shrink-0">
-          <TwentyNineHUD state={state} currentUserId={currentUserId} />
+          <TwentyNineHUD state={state} currentUserId={currentUserId} onOpenLastHand={() => setLastHandModalOpen(true)} />
         </div>
 
         {/* CENTER ARENA: FELT STADIUM TABLE */}
@@ -648,7 +662,7 @@ export function TwentyNineTable({
           {partner ? (
             <div
               ref={(el) => registerSeat(partner.userId, el)}
-              className="absolute top-3 left-[28%] sm:left-[32%] -translate-x-1/2 z-20"
+              className="absolute top-3 left-1/2 -translate-x-1/2 z-20"
             >
               <TwentyNineSeat
                 player={partner}
@@ -700,6 +714,102 @@ export function TwentyNineTable({
             </div>
           ) : null}
 
+          {/* INTERACTIVE TRUMP SET & DOUBLING DIALOGUE (Screenshot 1) */}
+          <AnimatePresence>
+            {state.phase === "doubling" ? (
+              <motion.div
+                initial={{ scale: 0.85, opacity: 0, y: 12 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="absolute z-50 rounded-3xl border-4 border-[#8a5326] bg-gradient-to-b from-[#5c3012] via-[#3d1e0a] to-[#241105] p-5 shadow-[0_20px_50px_rgba(0,0,0,0.85)] text-center text-white max-w-sm w-full mx-4 backdrop-blur-md"
+              >
+                <div className="text-base sm:text-lg font-black text-amber-200">
+                  {declarer?.displayName ?? "Declarer"} Set Trump
+                </div>
+                <div className="text-sm font-bold text-white/90 mt-1">
+                  Target Point: <span className="text-amber-300 font-extrabold">{state.contractTarget ?? state.currentBid}</span>
+                </div>
+                <div className="text-xs text-white/60 mt-0.5">
+                  Trump Type: {state.selectedTrumpMode === "seventh" ? "7th Card" : "Hand Suit"}
+                </div>
+                {state.multiplier > 1 ? (
+                  <div className="mt-1 text-xs font-black text-rose-300">
+                    Stakes: ×{state.multiplier}
+                  </div>
+                ) : null}
+
+                <div className="mt-4 flex items-center justify-center gap-3">
+                  {isMyTurn && hasAction(legalActions, "double") ? (
+                    <button
+                      type="button"
+                      onClick={() => onAction("double")}
+                      className="rounded-xl border border-rose-400 bg-rose-600 px-5 py-2 text-xs font-black text-white shadow-lg hover:bg-rose-500 active:scale-95 transition"
+                    >
+                      Double (×2)
+                    </button>
+                  ) : null}
+
+                  {isMyTurn && hasAction(legalActions, "pass_double") ? (
+                    <button
+                      type="button"
+                      onClick={() => onAction("pass_double")}
+                      className="rounded-xl border border-amber-400/80 bg-amber-600 px-6 py-2 text-xs font-black text-white shadow-lg hover:bg-amber-500 active:scale-95 transition"
+                    >
+                      OK
+                    </button>
+                  ) : isMyTurn && hasAction(legalActions, "continue_contract") ? (
+                    <button
+                      type="button"
+                      onClick={() => onAction("continue_contract")}
+                      className="rounded-xl border border-amber-400/80 bg-amber-600 px-6 py-2 text-xs font-black text-white shadow-lg hover:bg-amber-500 active:scale-95 transition"
+                    >
+                      OK
+                    </button>
+                  ) : (
+                    <div className="text-xs text-white/50 italic animate-pulse">
+                      Waiting for {currentTurnName}…
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+
+          {/* INTERACTIVE SINGLE HAND PROMPT DIALOGUE (Screenshot 2) */}
+          <AnimatePresence>
+            {state.phase === "playing" && state.completedTricks.length === 0 && state.currentTrick.length === 0 && hasAction(legalActions, "declare_single_hand") && !declinedSingleHand ? (
+              <motion.div
+                initial={{ scale: 0.85, opacity: 0, y: 12 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="absolute z-50 rounded-3xl border-4 border-[#8a5326] bg-gradient-to-b from-[#5c3012] via-[#3d1e0a] to-[#241105] p-5 shadow-[0_20px_50px_rgba(0,0,0,0.85)] text-center text-white max-w-sm w-full mx-4 backdrop-blur-md"
+              >
+                <div className="text-base sm:text-lg font-black text-white">
+                  Do you want to play Single Hand?
+                </div>
+                <p className="text-xs text-white/60 mt-1">
+                  You must win all 8 tricks alone without a trump suit (±3 game points).
+                </p>
+                <div className="mt-4 flex items-center justify-center gap-4">
+                  <button
+                    type="button"
+                    onClick={() => onAction("declare_single_hand")}
+                    className="rounded-xl border border-emerald-400 bg-emerald-600 px-6 py-2 text-xs font-black text-white shadow-lg hover:bg-emerald-500 active:scale-95 transition"
+                  >
+                    Yes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeclinedSingleHand(true)}
+                    className="rounded-xl border border-white/20 bg-white/10 px-6 py-2 text-xs font-black text-white shadow-lg hover:bg-white/20 active:scale-95 transition"
+                  >
+                    No
+                  </button>
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+
           {/* CENTER TRICK ARENA (Enlarged Compass Cards, Points & Crown) */}
           <div className="relative z-10">
             <TwentyNineTrickArea
@@ -707,6 +817,8 @@ export function TwentyNineTable({
               state={state}
               currentUserId={currentUserId}
               persistedCompletedTrick={persistedTrick}
+              onRevealTrump={() => onAction("reveal_trump")}
+              canRevealTrump={hasAction(legalActions, "reveal_trump")}
             />
           </div>
 
@@ -948,6 +1060,19 @@ export function TwentyNineTable({
                   </button>
                 ) : null}
               </div>
+            ) : null}
+
+            {/* YOUR TURN FLOATING PROMPT (Screenshot 5) */}
+            {isMyTurn && state.phase === "playing" ? (
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: [1, 1.06, 1], opacity: 1 }}
+                transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                className="flex items-center gap-2 rounded-full border border-amber-300/90 bg-gradient-to-r from-amber-400 to-amber-500 px-5 py-1 text-xs font-black uppercase tracking-wider text-amber-950 shadow-[0_0_22px_rgba(251,191,36,0.85)] ring-2 ring-amber-200"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-amber-950 animate-spin" />
+                <span>Your Turn</span>
+              </motion.div>
             ) : null}
 
             {/* WAITING FOR ANOTHER PLAYER INDICATOR */}
@@ -1331,6 +1456,16 @@ export function TwentyNineTable({
         currentUserId={currentUserId}
         onDismiss={() => setActiveHandResult(null)}
       />
+
+      {/* LAST HAND REVIEW MODAL (Screenshot 5) */}
+      {lastHandModalOpen && state.lastHandResult ? (
+        <TwentyNineHandScoringModal
+          result={state.lastHandResult}
+          state={state}
+          currentUserId={currentUserId}
+          onDismiss={() => setLastHandModalOpen(false)}
+        />
+      ) : null}
 
       {/* RULES MODAL */}
       <AnimatePresence>
