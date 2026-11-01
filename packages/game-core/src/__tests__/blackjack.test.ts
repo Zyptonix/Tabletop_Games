@@ -51,21 +51,21 @@ describe("Blackjack module lifecycle", () => {
     expect(state.blackjackRoundNumber).toBe(1);
   });
 
-  it("allows betting and clearing bets", () => {
+  it("allows betting and clearing bets including 1000 chip", () => {
     const state = startBlackjack(2);
     const p1Actions = blackjackModule.getLegalActions({ state, playerId: "p1" });
-    expect(p1Actions.some((a) => a.type === "blackjack_action" && a.choice === "bet")).toBe(true);
+    expect(p1Actions.some((a) => a.type === "blackjack_action" && a.choice === "bet" && a.amount === 1000)).toBe(true);
 
     const betRes = blackjackModule.applyAction({
       state,
       playerId: "p1",
-      action: { type: "blackjack_action", choice: "bet", amount: 50 },
+      action: { type: "blackjack_action", choice: "bet", amount: 1000 },
       now: new Date().toISOString()
     });
 
     const nextState = betRes.state as BoardGameState;
-    expect(nextState.blackjackChips?.["p1"]).toBe(950);
-    expect(nextState.blackjackBets?.["p1"]?.[0]).toBe(50);
+    expect(nextState.blackjackChips?.["p1"]).toBe(0);
+    expect(nextState.blackjackBets?.["p1"]?.[0]).toBe(1000);
 
     // Clear bet
     const clearRes = blackjackModule.applyAction({

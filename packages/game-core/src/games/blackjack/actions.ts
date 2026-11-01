@@ -23,7 +23,7 @@ export function getBlackjackLegalActions(state: BoardGameState, playerId: string
 
     if (!ready) {
       // Betting increments
-      const increments = [5, 10, 25, 50, 100, 500];
+      const increments = [5, 10, 25, 50, 100, 500, 1000];
       for (const inc of increments) {
         if (chips >= inc && totalBet + inc <= MAX_BET) {
           actions.push({ type: "blackjack_action", choice: "bet", amount: inc });

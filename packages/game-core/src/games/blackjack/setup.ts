@@ -5,7 +5,7 @@ import { createBlackjackShoe } from "./deck";
 
 export const STARTING_CHIPS = 1000;
 export const MIN_BET = 10;
-export const MAX_BET = 500;
+export const MAX_BET = 10000;
 
 export function setupBlackjack(state: BoardGameState, players: GamePlayer[], rngState: number): number {
   const shoe = createBlackjackShoe(4);

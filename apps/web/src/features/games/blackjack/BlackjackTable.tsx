@@ -706,7 +706,7 @@ export function BlackjackTable(props: BoardGameTableProps) {
                     value={chip}
                     size="md"
                     onClick={() => handleBetChip(chip)}
-                    disabled={myChips < chip}
+                    disabled={myChips < chip || myCurrentBet + chip > 10000}
                   />
                 ))}
               </div>
@@ -889,109 +889,137 @@ export function BlackjackTable(props: BoardGameTableProps) {
       </main>
 
       {/* ============================================================== */}
-      {/* HOUSE RULES MODAL                                              */}
+      {/* HOUSE RULES MODAL (2-COLUMN RESPONSIVE & SMOOTHLY SCROLLABLE) */}
       {/* ============================================================== */}
       <AnimatePresence>
         {rulesOpen ? (
           <div
-            className="fixed inset-0 z-50 grid place-items-center bg-black/80 p-4 backdrop-blur-md"
+            className="fixed inset-0 z-50 overflow-y-auto p-3 sm:p-6 grid place-items-center bg-black/85 backdrop-blur-md"
             onClick={() => setRulesOpen(false)}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
+              exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg rounded-2xl border-2 border-amber-400/40 bg-slate-950 p-6 shadow-2xl space-y-4"
+              className="w-full max-w-4xl max-h-[88vh] flex flex-col rounded-3xl border-2 border-amber-400/40 bg-slate-950 p-4 sm:p-6 shadow-2xl overflow-hidden"
             >
-              <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">🎰</span>
-                  <h3 className="text-base sm:text-lg font-black text-amber-300">
-                    Vegas Blackjack House Rules
-                  </h3>
+              {/* FIXED MODAL HEADER */}
+              <div className="flex shrink-0 items-center justify-between border-b border-white/10 pb-3 mb-3">
+                <div className="flex items-center gap-3">
+                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-amber-400/20 text-2xl text-amber-300">
+                    🎰
+                  </span>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-black text-amber-300">
+                      Vegas Blackjack House Rules
+                    </h3>
+                    <p className="text-[11px] text-white/50">
+                      Standard table rules, card scoring, and player moves
+                    </p>
+                  </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setRulesOpen(false)}
-                  className="text-white/40 hover:text-white"
+                  className="grid h-8 w-8 place-items-center rounded-lg text-white/40 hover:bg-white/10 hover:text-white transition"
                 >
                   ✕
                 </button>
               </div>
 
-              <div className="max-h-[70vh] overflow-y-auto space-y-3.5 pr-1 text-xs text-white/85 leading-relaxed">
-                {/* 1. OBJECTIVE */}
-                <div className="rounded-xl bg-white/5 p-3.5 border border-white/10 space-y-1">
-                  <p className="font-bold text-amber-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                    <span>🎯</span> Objective
-                  </p>
-                  <p>
-                    Beat the dealer's hand by getting your total hand score as close to <strong>21</strong> as possible without exceeding 21 (which is a <strong>Bust</strong>).
-                  </p>
-                </div>
+              {/* 2-COLUMN SCROLLABLE CONTENT BODY */}
+              <div className="flex-1 min-h-0 overflow-y-auto pr-1 sm:pr-2 space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-3.5 text-xs text-white/85 leading-relaxed">
+                {/* LEFT COLUMN: OBJECTIVE, CARDS, BANKROLL */}
+                <div className="space-y-3">
+                  {/* 1. OBJECTIVE */}
+                  <div className="rounded-2xl bg-white/5 p-3.5 border border-white/10 space-y-1">
+                    <p className="font-bold text-amber-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                      <span>🎯</span> Objective
+                    </p>
+                    <p>
+                      Beat the dealer's hand by getting your total hand score as close to <strong>21</strong> as possible without exceeding 21 (which is a <strong>Bust</strong>).
+                    </p>
+                  </div>
 
-                {/* 2. CARD VALUES & ACE EXPLAINED */}
-                <div className="rounded-xl bg-cyan-950/40 p-3.5 border border-cyan-400/30 space-y-2">
-                  <p className="font-bold text-cyan-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                    <span>🃏</span> Card Values & Ace (A) Scoring
-                  </p>
-                  <div className="space-y-1 text-white/80">
-                    <p>• <strong className="text-amber-300">Aces (A):</strong> Worth <strong>1 or 11 points</strong>, whichever gives you the better hand without busting!</p>
-                    <p className="pl-3 text-[11px] text-cyan-200">
-                      • <strong>Soft Hand:</strong> When an Ace counts as 11 (e.g. A + 6 = <em>Soft 17</em> or 7 / 17). If you hit and get a 10, the Ace automatically reduces to 1 (giving you 17) so you do not bust!
+                  {/* 2. CARD VALUES & ACE SCORING */}
+                  <div className="rounded-2xl bg-cyan-950/40 p-3.5 border border-cyan-400/30 space-y-1.5">
+                    <p className="font-bold text-cyan-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                      <span>🃏</span> Card Values & Ace (A) Scoring
                     </p>
-                    <p className="pl-3 text-[11px] text-cyan-200">
-                      • <strong>Hard Hand:</strong> When a hand has no Ace, or when an Ace must count as 1 to prevent exceeding 21.
+                    <div className="space-y-1 text-white/80">
+                      <p>• <strong className="text-amber-300">Aces (A):</strong> Worth <strong>1 or 11 points</strong>, whichever gives the higher hand without busting!</p>
+                      <p className="pl-3 text-[11px] text-cyan-200">
+                        • <strong>Soft Hand:</strong> Ace counts as 11 (e.g. A + 6 = <em>Soft 17</em> or 7 / 17). If you hit and get a 10, the Ace automatically reverts to 1 (making 17 Hard) so you don't bust!
+                      </p>
+                      <p className="pl-3 text-[11px] text-cyan-200">
+                        • <strong>Hard Hand:</strong> No Ace, or all Aces must count as 1 to avoid exceeding 21.
+                      </p>
+                      <p>• <strong className="text-amber-300">Face Cards (J, Q, K):</strong> Worth <strong>10 points</strong> each.</p>
+                      <p>• <strong className="text-amber-300">Number Cards (2–10):</strong> Exact face value.</p>
+                    </div>
+                  </div>
+
+                  {/* 3. CHIPS, BANKROLL & BANKRUPTCY */}
+                  <div className="rounded-2xl bg-emerald-950/40 p-3.5 border border-emerald-400/30 space-y-1.5">
+                    <p className="font-bold text-emerald-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                      <span>💰</span> Chips, Bankruptcy & Cashing Out
                     </p>
-                    <p>• <strong className="text-amber-300">Face Cards (J, Q, K):</strong> Worth <strong>10 points</strong> each.</p>
-                    <p>• <strong className="text-amber-300">Number Cards (2–10):</strong> Worth their exact face value.</p>
+                    <div className="space-y-1 text-white/80">
+                      <p>• <strong>Starting Bankroll:</strong> Every player receives <strong>$1,000 chips</strong> at the start.</p>
+                      <p>• <strong>Table Limits:</strong> Minimum bet is <strong>$10</strong>; maximum bet is <strong>$10,000</strong>.</p>
+                      <p>• <strong className="text-rose-400">Bankruptcy:</strong> If your chips drop below the $10 minimum bet, you are out of chips! You must leave the table—no free bailouts.</p>
+                      <p>• <strong className="text-emerald-300">Cashing Out:</strong> Click the <strong>"Cash Out & Leave"</strong> button at the bottom of the table or top header at any time to bank your chips and return to dashboard.</p>
+                    </div>
                   </div>
                 </div>
 
-                {/* 3. CHIPS, BANKROLL & BANKRUPTCY */}
-                <div className="rounded-xl bg-emerald-950/40 p-3.5 border border-emerald-400/30 space-y-1.5">
-                  <p className="font-bold text-emerald-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                    <span>💰</span> Chips, Bankruptcy & Cashing Out
-                  </p>
-                  <div className="space-y-1 text-white/80">
-                    <p>• <strong>Starting Bankroll:</strong> Every player receives <strong>$1,000 chips</strong> at the start of the table.</p>
-                    <p>• <strong>Table Limits:</strong> Minimum bet is <strong>$10</strong>; maximum bet is <strong>$500</strong> per hand.</p>
-                    <p>• <strong className="text-rose-400">Bankruptcy (Forced Leave):</strong> If your chips drop below the $10 minimum bet, you are out of chips! You must leave the table—no free bailouts!</p>
-                    <p>• <strong className="text-emerald-300">Cashing Out:</strong> You don't have to play forever! Click the <strong>"Cash Out & Leave"</strong> button at the bottom of the table or top header to bank your chips and return to the dashboard with your stats.</p>
+                {/* RIGHT COLUMN: PLAYER MOVES, DEALER RULES, PAYOUTS */}
+                <div className="space-y-3">
+                  {/* 4. PLAYER MOVES */}
+                  <div className="rounded-2xl bg-white/5 p-3.5 space-y-1.5 border border-white/10">
+                    <p className="font-bold text-cyan-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                      <span>⚡</span> Player Moves
+                    </p>
+                    <div className="space-y-1 text-white/80">
+                      <p>• <strong>Hit:</strong> Draw another card to increase your total.</p>
+                      <p>• <strong>Stand:</strong> Keep your current hand and end your turn.</p>
+                      <p>• <strong>Double Down:</strong> Double your initial bet, receive exactly one more card, and stand.</p>
+                      <p>• <strong>Split:</strong> When dealt a pair of equal cards, split them into two independent hands with matching bets.</p>
+                    </div>
+                  </div>
+
+                  {/* 5. DEALER RULES */}
+                  <div className="rounded-2xl bg-white/5 p-3.5 space-y-1 border border-white/10">
+                    <p className="font-bold text-purple-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                      <span>🎰</span> Dealer Rules
+                    </p>
+                    <p>• Dealer must draw cards until their hand reaches 17 or higher.</p>
+                    <p>• Dealer stands on all 17s (both hard and soft 17).</p>
+                  </div>
+
+                  {/* 6. PAYOUTS */}
+                  <div className="rounded-2xl bg-amber-950/30 p-3.5 space-y-1 border border-amber-400/30">
+                    <p className="font-bold text-amber-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                      <span>🏆</span> Standard Payouts
+                    </p>
+                    <p>• <strong>Natural Blackjack</strong> (Opening 2 cards totaling 21): Pays <strong>3 to 2</strong></p>
+                    <p>• <strong>Standard Win</strong> (Higher score than dealer): Pays <strong>1 to 1</strong> (Even money)</p>
+                    <p>• <strong>Push / Tie</strong> (Same score as dealer): Bet returned</p>
+                    <p>• <strong>Dealer Bust</strong>: All active players still in the hand win 1:1</p>
                   </div>
                 </div>
+              </div>
 
-                {/* 4. PAYOUTS */}
-                <div className="rounded-xl bg-white/5 p-3.5 space-y-1 border border-white/10">
-                  <p className="font-bold text-amber-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                    <span>🏆</span> Standard Payouts
-                  </p>
-                  <p>• <strong>Natural Blackjack</strong> (Opening 2 cards totaling 21): Pays <strong>3 to 2</strong></p>
-                  <p>• <strong>Standard Win</strong> (Higher score than dealer): Pays <strong>1 to 1</strong> (Even money)</p>
-                  <p>• <strong>Push / Tie</strong> (Same score as dealer): Bet returned</p>
-                  <p>• <strong>Dealer Bust</strong>: All active players still in the hand win 1:1</p>
-                </div>
-
-                {/* 5. DEALER RULES */}
-                <div className="rounded-xl bg-white/5 p-3.5 space-y-1 border border-white/10">
-                  <p className="font-bold text-purple-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                    <span>🎰</span> Dealer Rules
-                  </p>
-                  <p>• Dealer must draw cards until their hand reaches 17 or higher.</p>
-                  <p>• Dealer stands on all 17s (both hard and soft 17).</p>
-                </div>
-
-                {/* 6. PLAYER MOVES */}
-                <div className="rounded-xl bg-white/5 p-3.5 space-y-1 border border-white/10">
-                  <p className="font-bold text-cyan-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                    <span>⚡</span> Player Moves
-                  </p>
-                  <p>• <strong>Hit:</strong> Draw another card.</p>
-                  <p>• <strong>Stand:</strong> Keep your current hand and end your turn.</p>
-                  <p>• <strong>Double Down:</strong> Double your initial bet, receive exactly one more card, and stand.</p>
-                  <p>• <strong>Split:</strong> When dealt a pair of equal cards, split them into two independent hands with matching bets.</p>
-                </div>
+              {/* FIXED MODAL FOOTER */}
+              <div className="flex shrink-0 items-center justify-end border-t border-white/10 pt-3 mt-3">
+                <button
+                  type="button"
+                  onClick={() => setRulesOpen(false)}
+                  className="rounded-xl border border-amber-400/40 bg-amber-400/15 px-5 py-2 text-xs font-bold text-amber-200 hover:bg-amber-400/25 active:scale-95 transition"
+                >
+                  Close Rules
+                </button>
               </div>
             </motion.div>
           </div>
