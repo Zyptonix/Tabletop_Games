@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Crown,
@@ -22,32 +22,44 @@ export interface TwentyNineHandScoringModalProps {
   state: PublicTwentyNineState;
   currentUserId: string | null;
   onDismiss: () => void;
+  isReview?: boolean;
 }
 
 export function TwentyNineHandScoringModal({
   result,
   state,
   currentUserId,
-  onDismiss
+  onDismiss,
+  isReview = false
 }: TwentyNineHandScoringModalProps) {
   // Staged revelation:
   // 0: Hand summary header & points tally
   // 1: Target comparison & outcome verdict (succeeded vs failed)
   // 2: Multiplier & Game points calculation
   // 3: Scoreboard update rollup & continue button
-  const [stage, setStage] = useState<number>(0);
+  const [stage, setStage] = useState<number>(isReview ? 3 : 0);
   const [dismissCountdown, setDismissCountdown] = useState<number>(10);
+
+  const onDismissRef = useRef(onDismiss);
+  onDismissRef.current = onDismiss;
+
+  const handNumber = result?.handNumber;
 
   useEffect(() => {
     if (!result) return;
 
+    if (isReview) {
+      setStage(3);
+      return;
+    }
+
     setStage(0);
     setDismissCountdown(10);
 
-    // Staged step progression
+    // Staged step progression:
+    // 0 -> 1 at 700ms (verdict reveals with audio)
     const t1 = setTimeout(() => {
       setStage(1);
-      // Play outcome audio
       try {
         if (result.succeeded) {
           casinoAudio.playWin();
@@ -57,8 +69,9 @@ export function TwentyNineHandScoringModal({
       } catch {
         // ignore audio errors
       }
-    }, 1300);
+    }, 700);
 
+    // 1 -> 2 at 1500ms (points math & award badge)
     const t2 = setTimeout(() => {
       setStage(2);
       try {
@@ -66,18 +79,19 @@ export function TwentyNineHandScoringModal({
       } catch {
         // ignore
       }
-    }, 2700);
+    }, 1500);
 
+    // 2 -> 3 at 2200ms (scoreboard progression & continue button)
     const t3 = setTimeout(() => {
       setStage(3);
-    }, 4000);
+    }, 2200);
 
     // Auto dismiss countdown
     const interval = setInterval(() => {
       setDismissCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
-          onDismiss();
+          onDismissRef.current();
           return 0;
         }
         return prev - 1;
@@ -90,7 +104,7 @@ export function TwentyNineHandScoringModal({
       clearTimeout(t3);
       clearInterval(interval);
     };
-  }, [result, onDismiss]);
+  }, [handNumber, isReview]);
 
   if (!result) return null;
 
@@ -129,8 +143,11 @@ export function TwentyNineHandScoringModal({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: 20 }}
           transition={{ type: "spring", stiffness: 300, damping: 25 }}
+          onClick={() => {
+            if (stage < 3) setStage(3);
+          }}
           className={cn(
-            "relative w-full max-w-2xl overflow-hidden rounded-3xl border p-6 shadow-2xl",
+            "relative w-full max-w-2xl overflow-hidden rounded-3xl border p-6 shadow-2xl cursor-pointer",
             didMyTeamWin
               ? "border-emerald-500/50 bg-gradient-to-b from-slate-900/95 via-emerald-950/40 to-slate-950/95 shadow-emerald-500/20"
               : "border-rose-500/40 bg-gradient-to-b from-slate-900/95 via-rose-950/30 to-slate-950/95 shadow-rose-500/20"
@@ -174,7 +191,10 @@ export function TwentyNineHandScoringModal({
                   </span>
                 )
               ) : (
-                "Calculating Hand Results..."
+                <span className="inline-flex items-center justify-center gap-2.5 text-amber-300 animate-pulse">
+                  <Sparkles className="h-6 w-6 animate-spin text-amber-300" />
+                  Calculating Hand Results…
+                </span>
               )}
             </h2>
             <p className="mt-1 text-xs sm:text-sm text-white/60">

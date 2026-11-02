@@ -1378,7 +1378,7 @@ body:has(.tt-game-viewport) {
 /* 3D Physical Felt Decks */
 .twenty-nine-felt-deck {
   position: relative;
-  width: 4.6rem;
+  width: 7.2rem;
   aspect-ratio: 0.715;
   border-radius: 0.5rem;
   box-shadow:

@@ -1068,7 +1068,7 @@ export function TwentyNineTable({
             {partner ? (
               <div
                 ref={(el) => registerSeat(partner.userId, el)}
-                className="absolute top-2.5 sm:top-3.5 left-4 sm:left-8 lg:left-14 z-20 pointer-events-auto"
+                className="absolute top-2.5 sm:top-3.5 left-40 sm:left-48 lg:left-60 z-20 pointer-events-auto"
               >
                   <TwentyNineSeat
                     player={partner}
@@ -1299,6 +1299,7 @@ export function TwentyNineTable({
                   state={state}
                   currentUserId={currentUserId}
                   onDismiss={() => setLastHandModalOpen(false)}
+                  isReview
                 />
               ) : null}
             </main>

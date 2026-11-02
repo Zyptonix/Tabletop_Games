@@ -166,7 +166,7 @@ export function TwentyNineTrickArea({
       )}
     >
       {/* Top Header Row: [Total Match Points] & [Trick Status Pill] */}
-      <div className="mb-2 z-20 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+      <div className="mb-4 z-20 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
         {/* Total Match Game Points (e.g. +1 / -1) */}
         <div className="flex items-center gap-2.5 rounded-full border border-white/15 bg-black/80 px-4 py-1 shadow-xl backdrop-blur-md">
           <span className="text-[0.62rem] font-black uppercase tracking-wider text-white/50">
