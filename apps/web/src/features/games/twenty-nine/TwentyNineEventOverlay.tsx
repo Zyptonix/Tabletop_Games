@@ -281,7 +281,7 @@ export function TwentyNineEventOverlay({
              - Vertical position: change `bottom-3` (e.g. `bottom-1`, `bottom-6`, `bottom-10`)
              - Horizontal position: change `right-4 sm:right-6 md:right-8` (e.g. `right-2`, `right-12`)
            ========================================================================= */
-        "pointer-events-none absolute bottom-3 right-4 sm:right-6 md:right-8 z-[70] flex flex-col items-end overflow-visible select-none",
+        "pointer-events-none absolute bottom-3 right-20 sm:right-24 md:right-26 z-[70] flex flex-col items-end overflow-visible select-none",
         className
       )}
     >

@@ -239,110 +239,9 @@ export function TwentyNineTrickArea({
         </div>
       </div>
 
-      {/* MAIN TABLE ROW: [Opponent Deck] --- [Trump Slot] --- [Center Trick Circle] --- [Your Team Deck] */}
-      <div className="relative flex items-center justify-center gap-3 sm:gap-6 md:gap-8 w-full">
-        {/* 1. OPPONENT CAPTURED DECK */}
-        <div className="flex flex-col items-center shrink-0">
-          <span className="mb-1 text-[0.62rem] sm:text-xs font-black uppercase tracking-wider text-rose-300">
-            Opponent
-          </span>
-          <div className="twenty-nine-felt-deck relative rounded-lg border border-white/20 overflow-hidden shadow-2xl transition hover:scale-105">
-            <TwentyNineCardBack className="h-full w-full rounded-lg" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-1 text-center">
-              <span className="text-[0.6rem] sm:text-[0.68rem] font-black text-rose-200">
-                {opponentTricks} Tricks
-              </span>
-              <span className="text-[0.55rem] font-bold text-white/50">
-                {opponentPoints} pts
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* 2. PHYSICAL TRUMP CARD ON TABLE FELT */}
-        <div className="flex flex-col items-center shrink-0">
-          <div className="mb-1 flex items-center gap-1">
-            <span className="text-[0.62rem] sm:text-xs font-black uppercase tracking-wider text-amber-300 flex items-center gap-1">
-              {state.trumpRevealed ? <Unlock className="h-3 w-3 text-emerald-400" /> : <Lock className="h-3 w-3 text-amber-300" />}
-              Trump
-            </span>
-            <span
-              className={cn(
-                "rounded px-1.5 py-0.2 text-[0.52rem] font-black uppercase tracking-wider border",
-                state.trumpRevealed
-                  ? "border-emerald-400/50 bg-emerald-950/80 text-emerald-300"
-                  : "border-amber-400/50 bg-amber-950/80 text-amber-300"
-              )}
-            >
-              {state.trumpRevealed ? "Revealed" : "Concealed"}
-            </span>
-          </div>
-
-          <div
-            onClick={canRevealTrump && onRevealTrump ? onRevealTrump : undefined}
-            className={cn(
-              "twenty-nine-felt-deck relative rounded-lg border overflow-hidden shadow-2xl transition duration-300",
-              state.trumpRevealed
-                ? "border-emerald-400/80 shadow-[0_0_20px_rgba(52,211,153,0.5)] ring-2 ring-emerald-300"
-                : "border-amber-400/50 shadow-lg",
-              canRevealTrump && "cursor-pointer hover:scale-110 hover:border-amber-300 animate-pulse ring-2 ring-amber-400"
-            )}
-            title={
-              state.trumpRevealed && state.trumpSuit
-                ? `Trump: ${TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label}`
-                : isViewerDeclarer && state.trumpSuit
-                ? `You set: ${TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label} (Concealed - Hidden from Table)`
-                : canRevealTrump
-                ? "Click to ask/reveal Trump!"
-                : "Trump card (Concealed)"
-            }
-          >
-            {/* If Trump is Revealed: Show the authentic card face or suit */}
-            {state.trumpRevealed && state.trumpSuit ? (
-              <div className="h-full w-full bg-white flex flex-col items-center justify-center p-1 relative">
-                <SuitMark suit={state.trumpSuit} size={28} />
-                <span className="text-[0.65rem] font-black text-neutral-900 leading-tight">
-                  {TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label}
-                </span>
-                <span className="text-[0.5rem] font-black uppercase tracking-widest text-emerald-700 mt-0.5">
-                  ACTIVE
-                </span>
-              </div>
-            ) : (
-              /* If Trump is Concealed: Show card back */
-              <div className="relative h-full w-full">
-                <TwentyNineCardBack className="h-full w-full rounded-lg" />
-                {/* Peek badge for Declarer so they know what they set */}
-                {isViewerDeclarer && state.trumpSuit ? (
-                  <div className="absolute inset-x-0 bottom-0 bg-black/90 py-1 px-0.5 flex flex-col items-center justify-center border-t border-amber-400/50">
-                    <div className="flex items-center gap-1 text-[0.6rem] font-black text-amber-300">
-                      <SuitMark suit={state.trumpSuit} size={12} />
-                      <span>{TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label}</span>
-                    </div>
-                    <span className="text-[0.45rem] font-bold text-amber-300 uppercase tracking-tighter">
-                      (Secret - Concealed)
-                    </span>
-                  </div>
-                ) : (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/30">
-                    <Lock className="h-4 w-4 text-amber-300 drop-shadow-md" />
-                  </div>
-                )}
-
-                {/* Prompt if local player can reveal */}
-                {canRevealTrump ? (
-                  <div className="absolute inset-0 bg-amber-500/30 flex items-center justify-center">
-                    <span className="rounded bg-amber-400 px-1 text-[0.55rem] font-black text-black">
-                      REVEAL
-                    </span>
-                  </div>
-                ) : null}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* 3. GRAND CENTRAL TRICK CIRCULAR FORMATION */}
+      {/* MAIN TABLE ROW: Centered around the Central Trick Table Circle (Center Table is strictly 100% Dead-Center) */}
+      <div className="relative flex items-center justify-center w-full">
+        {/* 3. GRAND CENTRAL TRICK CIRCULAR FORMATION (Center Anchor) */}
         <div className="relative flex items-center justify-center w-[22rem] sm:w-[27rem] md:w-[31rem] lg:w-[35rem] h-[19rem] sm:h-[23rem] md:h-[26rem] lg:h-[29rem] shrink-0">
           {/* Grand Circular Felt Disc Background */}
           <div className="pointer-events-none absolute inset-0 m-auto rounded-full bg-[radial-gradient(circle_at_center,#44220c_0%,#2a1305_55%,#140702_85%,#090301_100%)] border-2 border-amber-400/35 shadow-[inset_0_0_60px_rgba(0,0,0,0.9),0_20px_50px_rgba(0,0,0,0.85)]" />
@@ -433,22 +332,129 @@ export function TwentyNineTrickArea({
               )
             ) : null}
           </AnimatePresence>
-        </div>
 
-        {/* 4. YOUR TEAM CAPTURED DECK */}
-        <div className="flex flex-col items-center shrink-0">
-          <span className="mb-1 text-[0.62rem] sm:text-xs font-black uppercase tracking-wider text-sky-300">
-            Your Team
-          </span>
-          <div className="twenty-nine-felt-deck relative rounded-lg border border-white/20 overflow-hidden shadow-2xl transition hover:scale-105">
-            <TwentyNineCardBack className="h-full w-full rounded-lg" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-1 text-center">
-              <span className="text-[0.6rem] sm:text-[0.68rem] font-black text-sky-200">
-                {myTeamTricks} Tricks
+          {/* LEFT FLANK: [Opponent Captured Deck] & [Trump Slot] (Anchored outside left edge of table circle) */}
+          <div className="absolute right-full top-1/2 -translate-y-1/2 mr-3 sm:mr-5 md:mr-7 flex items-center gap-2.5 sm:gap-4 pointer-events-auto">
+            {/* 1. OPPONENT CAPTURED DECK */}
+            <div className="flex flex-col items-center shrink-0">
+              <span className="mb-1 text-[0.62rem] sm:text-xs font-black uppercase tracking-wider text-rose-300">
+                Opponent
               </span>
-              <span className="text-[0.55rem] font-bold text-white/50">
-                {myTeamPoints} pts
+              <div className="twenty-nine-felt-deck relative rounded-lg border border-white/20 overflow-hidden shadow-2xl transition hover:scale-105">
+                <TwentyNineCardBack className="h-full w-full rounded-lg" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-1 text-center">
+                  <span className="text-[0.6rem] sm:text-[0.68rem] font-black text-rose-200">
+                    {opponentTricks} Tricks
+                  </span>
+                  <span className="text-[0.55rem] font-bold text-white/50">
+                    {opponentPoints} pts
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. PHYSICAL TRUMP CARD ON TABLE FELT */}
+            <div className="flex flex-col items-center shrink-0">
+              <div className="mb-1 flex items-center gap-1">
+                <span className="text-[0.62rem] sm:text-xs font-black uppercase tracking-wider text-amber-300 flex items-center gap-1">
+                  {state.trumpRevealed ? <Unlock className="h-3 w-3 text-emerald-400" /> : <Lock className="h-3 w-3 text-amber-300" />}
+                  Trump
+                </span>
+                <span
+                  className={cn(
+                    "rounded px-1.5 py-0.2 text-[0.52rem] font-black uppercase tracking-wider border",
+                    state.trumpRevealed
+                      ? "border-emerald-400/50 bg-emerald-950/80 text-emerald-300"
+                      : "border-amber-400/50 bg-amber-950/80 text-amber-300"
+                  )}
+                >
+                  {state.trumpRevealed ? "Revealed" : "Concealed"}
+                </span>
+              </div>
+
+              <div
+                onClick={canRevealTrump && onRevealTrump ? onRevealTrump : undefined}
+                className={cn(
+                  "twenty-nine-felt-deck relative rounded-lg border overflow-hidden shadow-2xl transition duration-300",
+                  state.trumpRevealed
+                    ? "border-emerald-400/80 shadow-[0_0_20px_rgba(52,211,153,0.5)] ring-2 ring-emerald-300"
+                    : "border-amber-400/50 shadow-lg",
+                  canRevealTrump && "cursor-pointer hover:scale-110 hover:border-amber-300 animate-pulse ring-2 ring-amber-400"
+                )}
+                title={
+                  state.trumpRevealed && state.trumpSuit
+                    ? `Trump: ${TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label}`
+                    : isViewerDeclarer && state.trumpSuit
+                    ? `You set: ${TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label} (Concealed - Hidden from Table)`
+                    : canRevealTrump
+                    ? "Click to ask/reveal Trump!"
+                    : "Trump card (Concealed)"
+                }
+              >
+                {/* If Trump is Revealed: Show the authentic card face or suit */}
+                {state.trumpRevealed && state.trumpSuit ? (
+                  <div className="h-full w-full bg-white flex flex-col items-center justify-center p-1 relative">
+                    <SuitMark suit={state.trumpSuit} size={28} />
+                    <span className="text-[0.65rem] font-black text-neutral-900 leading-tight">
+                      {TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label}
+                    </span>
+                    <span className="text-[0.5rem] font-black uppercase tracking-widest text-emerald-700 mt-0.5">
+                      ACTIVE
+                    </span>
+                  </div>
+                ) : (
+                  /* If Trump is Concealed: Show card back */
+                  <div className="relative h-full w-full">
+                    <TwentyNineCardBack className="h-full w-full rounded-lg" />
+                    {/* Peek badge for Declarer so they know what they set */}
+                    {isViewerDeclarer && state.trumpSuit ? (
+                      <div className="absolute inset-x-0 bottom-0 bg-black/90 py-1 px-0.5 flex flex-col items-center justify-center border-t border-amber-400/50">
+                        <div className="flex items-center gap-1 text-[0.6rem] font-black text-amber-300">
+                          <SuitMark suit={state.trumpSuit} size={12} />
+                          <span>{TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label}</span>
+                        </div>
+                        <span className="text-[0.45rem] font-bold text-amber-300 uppercase tracking-tighter">
+                          (Secret - Concealed)
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/30">
+                        <Lock className="h-4 w-4 text-amber-300 drop-shadow-md" />
+                      </div>
+                    )}
+
+                    {/* Prompt if local player can reveal */}
+                    {canRevealTrump ? (
+                      <div className="absolute inset-0 bg-amber-500/30 flex items-center justify-center">
+                        <span className="rounded bg-amber-400 px-1 text-[0.55rem] font-black text-black">
+                          REVEAL
+                        </span>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT FLANK: [Your Team Captured Deck] (Anchored outside right edge of table circle) */}
+          <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 sm:ml-5 md:ml-7 flex items-center gap-2.5 sm:gap-4 pointer-events-auto">
+            {/* 4. YOUR TEAM CAPTURED DECK */}
+            <div className="flex flex-col items-center shrink-0">
+              <span className="mb-1 text-[0.62rem] sm:text-xs font-black uppercase tracking-wider text-sky-300">
+                Your Team
               </span>
+              <div className="twenty-nine-felt-deck relative rounded-lg border border-white/20 overflow-hidden shadow-2xl transition hover:scale-105">
+                <TwentyNineCardBack className="h-full w-full rounded-lg" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-1 text-center">
+                  <span className="text-[0.6rem] sm:text-[0.68rem] font-black text-sky-200">
+                    {myTeamTricks} Tricks
+                  </span>
+                  <span className="text-[0.55rem] font-bold text-white/50">
+                    {myTeamPoints} pts
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

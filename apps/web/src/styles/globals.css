@@ -1378,13 +1378,25 @@ body:has(.tt-game-viewport) {
 /* 3D Physical Felt Decks */
 .twenty-nine-felt-deck {
   position: relative;
-  width: 7.2rem;
+  width: 6.2rem;
   aspect-ratio: 0.715;
   border-radius: 0.5rem;
   box-shadow:
     0 6px 14px rgba(0, 0, 0, 0.65),
     0 12px 28px rgba(0, 0, 0, 0.5),
     inset 0 1px 2px rgba(255, 255, 255, 0.3);
+}
+
+@media (min-width: 1400px) {
+  .twenty-nine-felt-deck {
+    width: 7.2rem;
+  }
+}
+
+@media (max-width: 900px) {
+  .twenty-nine-felt-deck {
+    width: 5.2rem;
+  }
 }
 
 .twenty-nine-felt-deck::before {
