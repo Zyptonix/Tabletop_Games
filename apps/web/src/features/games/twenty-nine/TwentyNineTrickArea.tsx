@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ArrowRight, Crown, Eye, Lock, Sparkles, Trophy, Unlock } from "lucide-react";
+import { ArrowLeft, ArrowRight, Crown, Eye, Gavel, Lock, Sparkles, Trophy, Unlock } from "lucide-react";
 import type {
   PublicTwentyNinePlayer,
   PublicTwentyNineState,
@@ -209,11 +209,18 @@ export function TwentyNineTrickArea({
           </div>
         </div>
 
-        {/* Current Trick Number, Lead Suit & Card Points */}
+        {/* Current Trick Number / Auction Status Pill */}
         <div className="flex items-center gap-2 rounded-full border border-amber-400/40 bg-black/80 px-4 py-1 text-xs font-black shadow-xl backdrop-blur-md">
-          <span className="text-amber-300">
-            Trick {isHoldCompletedTrick && persistedCompletedTrick ? persistedCompletedTrick.trickNumber : state.completedTricks.length + 1} of 8
-          </span>
+          {state.phase === "bidding" ? (
+            <div className="flex items-center gap-1.5 text-amber-300">
+              <Gavel className="h-3.5 w-3.5" />
+              <span>Auction Phase · Hand #{state.handNumber}</span>
+            </div>
+          ) : (
+            <span className="text-amber-300">
+              Trick {isHoldCompletedTrick && persistedCompletedTrick ? persistedCompletedTrick.trickNumber : state.completedTricks.length + 1} of 8
+            </span>
+          )}
           {ledSuit ? (
             <>
               <span className="text-white/20">|</span>
@@ -373,14 +380,18 @@ export function TwentyNineTrickArea({
             rotationClass="rotate-[3deg]"
           />
 
-          {/* Empty Table Center Prompt or Live Points Watermark */}
+          {/* Empty Table Center Prompt, Live Points Watermark, or Bidding Arena */}
           {activeTrick.length === 0 ? (
-            <div className="flex flex-col items-center justify-center text-center p-3 z-10">
-              <span className="text-3xl opacity-35">🃏</span>
-              <span className="text-xs font-black uppercase tracking-wider text-amber-200/40 mt-1">
-                {state.phase === "playing" ? "Lead a Card" : "Waiting"}
-              </span>
-            </div>
+            state.phase === "bidding" ? (
+              <TwentyNineBiddingCenter state={state} currentUserId={currentUserId} />
+            ) : (
+              <div className="flex flex-col items-center justify-center text-center p-3 z-10">
+                <span className="text-3xl opacity-35">🃏</span>
+                <span className="text-xs font-black uppercase tracking-wider text-amber-200/40 mt-1">
+                  {state.phase === "playing" ? "Lead a Card" : "Waiting"}
+                </span>
+              </div>
+            )
           ) : (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-0">
               <div className="flex flex-col items-center justify-center rounded-full bg-black/45 border border-white/10 h-16 w-16 backdrop-blur-sm shadow-inner">
@@ -494,5 +505,160 @@ function SlotCardContainer({
         ) : null}
       </div>
     </motion.div>
+  );
+}
+
+function TwentyNineBiddingCenter({
+  state,
+  currentUserId
+}: {
+  state: PublicTwentyNineState;
+  currentUserId: string | null;
+}) {
+  const highestBidder = state.players.find((p) => p.userId === state.highestBidderId);
+  const isMeLeading = highestBidder?.userId === currentUserId;
+  const isRedLeading = highestBidder?.team === 0;
+
+  const currentTurnPlayer = state.players.find((p) => p.userId === state.currentPlayerId);
+  const isMyTurn = currentTurnPlayer?.userId === currentUserId;
+
+  return (
+    <div className="relative z-10 flex flex-col items-center justify-center text-center p-3 sm:p-4 max-w-sm sm:max-w-md select-none">
+      {/* Auction Phase Badge */}
+      <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-0.5 text-[0.62rem] font-black uppercase tracking-wider text-amber-300 mb-2 shadow-sm">
+        <Gavel className="h-3 w-3 text-amber-300" />
+        <span>Auction in Progress</span>
+      </div>
+
+      {highestBidder && state.currentBid !== null ? (
+        /* HIGHEST BIDDER SHOWCASE CARD */
+        <motion.div
+          key={state.currentBid}
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 350, damping: 25 }}
+          className={cn(
+            "relative flex flex-col items-center justify-center rounded-2xl border px-5 py-2.5 sm:px-7 sm:py-3.5 shadow-2xl backdrop-blur-md",
+            isMeLeading
+              ? "border-emerald-400/60 bg-gradient-to-b from-emerald-950/80 via-black/80 to-black/90 shadow-emerald-500/25"
+              : isRedLeading
+              ? "border-rose-400/60 bg-gradient-to-b from-rose-950/80 via-black/80 to-black/90 shadow-rose-500/25"
+              : "border-sky-400/60 bg-gradient-to-b from-sky-950/80 via-black/80 to-black/90 shadow-sky-500/25"
+          )}
+        >
+          {/* Glowing Ambient Glow */}
+          <div
+            className={cn(
+              "pointer-events-none absolute -inset-2 rounded-2xl blur-xl opacity-30",
+              isMeLeading ? "bg-emerald-400" : isRedLeading ? "bg-rose-500" : "bg-sky-400"
+            )}
+          />
+
+          {/* Crown & Leader Tag */}
+          <div className="flex items-center gap-1.5 text-xs font-black">
+            <Crown className="h-4 w-4 fill-amber-400 text-amber-400 animate-bounce" />
+            <span className="uppercase tracking-wider text-amber-300">Winning The Bid</span>
+          </div>
+
+          {/* Huge Bid Number */}
+          <div className="flex items-baseline justify-center gap-1.5 my-1">
+            <span className="text-4xl sm:text-5xl md:text-6xl font-black text-amber-300 tracking-tight drop-shadow-[0_0_25px_rgba(245,158,11,0.7)]">
+              {state.currentBid}
+            </span>
+            <span className="text-xs sm:text-sm font-extrabold uppercase text-amber-200/60">
+              points
+            </span>
+          </div>
+
+          {/* Winning Player Pill */}
+          <div className="flex items-center gap-2 mt-0.5">
+            <div
+              className={cn(
+                "h-2.5 w-2.5 rounded-full shadow-sm",
+                isRedLeading ? "bg-rose-500 shadow-rose-500/80" : "bg-sky-400 shadow-sky-400/80"
+              )}
+            />
+            <span className="text-sm font-black text-white">
+              {isMeLeading ? "You are Winning!" : `${highestBidder.displayName} is Winning`}
+            </span>
+            <span
+              className={cn(
+                "rounded-md border px-1.5 py-0.2 text-[0.58rem] font-black uppercase tracking-wider",
+                isRedLeading
+                  ? "border-rose-400/50 bg-rose-500/20 text-rose-200"
+                  : "border-sky-400/50 bg-sky-500/20 text-sky-200"
+              )}
+            >
+              {isRedLeading ? "Team Red" : "Team Blue"}
+            </span>
+          </div>
+        </motion.div>
+      ) : (
+        /* NO BIDS YET / OPENING BID PROMPT */
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-black/60 px-6 py-3 shadow-xl backdrop-blur-md">
+          <span className="text-[0.68rem] font-black uppercase tracking-wider text-amber-300/80">
+            Opening Bid Required
+          </span>
+          <div className="flex items-baseline justify-center gap-1.5 my-1">
+            <span className="text-4xl sm:text-5xl font-black text-white/90">16</span>
+            <span className="text-xs font-bold uppercase text-white/40">min</span>
+          </div>
+          <span className="text-xs text-white/50">
+            Waiting for first bid…
+          </span>
+        </div>
+      )}
+
+      {/* Turn Indicator */}
+      <div className="mt-2.5">
+        {isMyTurn ? (
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-gradient-to-r from-amber-400 to-yellow-400 px-4 py-1 text-xs font-black uppercase tracking-wider text-black shadow-[0_0_15px_rgba(251,191,36,0.8)] animate-pulse">
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>Your Turn to Bid or Pass!</span>
+          </div>
+        ) : (
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/60 px-3.5 py-1 text-xs font-bold text-white/60 backdrop-blur-md">
+            <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+            <span>
+              Turn: <strong className="text-white">{currentTurnPlayer?.displayName ?? "Player"}</strong>
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Recent Bid History Ticker */}
+      {state.bidHistory.length > 0 ? (
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 max-w-xs sm:max-w-sm">
+          {state.bidHistory.slice(-4).map((entry, idx) => {
+            const p = state.players.find((pl) => pl.userId === entry.playerId);
+            const pName = p?.userId === currentUserId ? "You" : p?.displayName ?? "Player";
+            const isRed = p?.team === 0;
+            const isLeader = entry.playerId === state.highestBidderId;
+
+            return (
+              <span
+                key={idx}
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-[0.62rem] font-bold border flex items-center gap-1 shadow-sm",
+                  entry.kind === "pass"
+                    ? "border-white/10 bg-black/60 text-white/40"
+                    : isLeader
+                    ? "border-amber-400/80 bg-amber-500/25 text-amber-200 font-black shadow-amber-500/20"
+                    : isRed
+                    ? "border-rose-400/30 bg-rose-950/40 text-rose-300"
+                    : "border-sky-400/30 bg-sky-950/40 text-sky-300"
+                )}
+              >
+                {isLeader ? <Crown className="h-2.5 w-2.5 text-amber-300 shrink-0" /> : null}
+                <span>{pName}:</span>
+                <span className="font-black">
+                  {entry.kind === "pass" ? "Pass" : entry.kind === "ditto" ? `Ditto (${entry.value})` : `${entry.value}`}
+                </span>
+              </span>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
   );
 }

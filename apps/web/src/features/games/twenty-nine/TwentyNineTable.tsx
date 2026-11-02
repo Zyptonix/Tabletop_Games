@@ -9,6 +9,7 @@ import {
   Crown,
   Eye,
   Flag,
+  Gavel,
   History,
   LogOut,
   MessageSquare,
@@ -340,6 +341,55 @@ export function TwentyNineTable({
   const sittingOutSingleHand = Boolean(
     singleHandCaller && me && me.userId !== singleHandCaller.userId && me.team === singleHandCaller.team
   );
+
+  const highestBidder = state.players.find((p) => p.userId === state.highestBidderId);
+  const isViewerHighestBidder = currentUserId === state.highestBidderId;
+
+  const getPlayerBidInfo = (p: PublicTwentyNinePlayer) => {
+    if (state.phase !== "bidding") {
+      return { isHighestBidder: false, hasPassed: false, bidStatus: undefined };
+    }
+    const isHighest = state.highestBidderId === p.userId;
+    const hasPassed = state.passedPlayerIds.includes(p.userId);
+
+    if (isHighest && state.currentBid !== null) {
+      return {
+        isHighestBidder: true,
+        hasPassed: false,
+        bidStatus: `${state.currentBid}`
+      };
+    }
+    if (hasPassed) {
+      return {
+        isHighestBidder: false,
+        hasPassed: true,
+        bidStatus: "Passed"
+      };
+    }
+    const recent = [...state.bidHistory].reverse().find((b) => b.playerId === p.userId);
+    if (recent) {
+      if (recent.kind === "bid" || recent.kind === "ditto") {
+        return {
+          isHighestBidder: false,
+          hasPassed: false,
+          bidStatus: `Outbid (${recent.value})`
+        };
+      }
+    }
+    if (p.isCurrentTurn) {
+      return {
+        isHighestBidder: false,
+        hasPassed: false,
+        bidStatus: "Bidding…"
+      };
+    }
+    return { isHighestBidder: false, hasPassed: false, bidStatus: undefined };
+  };
+
+  const partnerBidInfo = partner ? getPlayerBidInfo(partner) : null;
+  const westBidInfo = westPlayer ? getPlayerBidInfo(westPlayer) : null;
+  const eastBidInfo = eastPlayer ? getPlayerBidInfo(eastPlayer) : null;
+  const myBidInfo = me ? getPlayerBidInfo(me) : null;
 
   // Clear persistedTrick if a new trick begins with played cards
   useEffect(() => {
@@ -690,12 +740,35 @@ export function TwentyNineTable({
               </div>
             </>
           ) : state.phase === "bidding" ? (
-            <>
-              <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse ml-0.5" />
-              <span className="text-xs font-bold text-amber-200">
-                Bidding in progress…
-              </span>
-            </>
+            highestBidder && state.currentBid !== null ? (
+              <div className="flex items-center gap-1.5 font-bold">
+                <span className="flex items-center gap-1 rounded-full border border-amber-400/50 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 px-2.5 py-0.5 text-[0.62rem] font-black text-amber-300 shadow-sm">
+                  <Crown className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
+                  High Bid: {state.currentBid}
+                </span>
+                <span className="text-xs text-white">
+                  by{" "}
+                  <strong className={isViewerHighestBidder ? "text-emerald-300" : "text-white"}>
+                    {highestBidder.displayName}{isViewerHighestBidder ? " (You)" : ""}
+                  </strong>
+                </span>
+                <span
+                  className={cn(
+                    "text-[0.58rem] font-black uppercase px-2 py-0.5 rounded-full border",
+                    highestBidder.team === 0
+                      ? "bg-rose-500/20 text-rose-300 border-rose-400/30"
+                      : "bg-sky-500/20 text-sky-300 border-sky-400/30"
+                  )}
+                >
+                  {highestBidder.team === 0 ? "Team Red" : "Team Blue"}
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 text-xs font-bold text-amber-200">
+                <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+                <span>Bidding Opened (Min: 16)</span>
+              </div>
+            )
           ) : null}
 
           {/* Trump Suit if revealed */}
@@ -1090,6 +1163,9 @@ export function TwentyNineTable({
                       singleHandCaller.userId !== partner.userId &&
                       singleHandCaller.team === partner.team
                     }
+                    bidStatus={partnerBidInfo?.bidStatus}
+                    isHighestBidder={partnerBidInfo?.isHighestBidder}
+                    hasPassed={partnerBidInfo?.hasPassed}
                   />
                 </div>
               ) : null}
@@ -1107,6 +1183,9 @@ export function TwentyNineTable({
                     isDealer={state.dealerPlayerId === westPlayer.userId}
                     isDeclarer={state.declarerId === westPlayer.userId}
                     isSingleHand={state.singleHandPlayerId === westPlayer.userId}
+                    bidStatus={westBidInfo?.bidStatus}
+                    isHighestBidder={westBidInfo?.isHighestBidder}
+                    hasPassed={westBidInfo?.hasPassed}
                   />
                 </div>
               ) : null}
@@ -1124,6 +1203,9 @@ export function TwentyNineTable({
                     isDealer={state.dealerPlayerId === eastPlayer.userId}
                     isDeclarer={state.declarerId === eastPlayer.userId}
                     isSingleHand={state.singleHandPlayerId === eastPlayer.userId}
+                    bidStatus={eastBidInfo?.bidStatus}
+                    isHighestBidder={eastBidInfo?.isHighestBidder}
+                    hasPassed={eastBidInfo?.hasPassed}
                   />
                 </div>
               ) : null}
@@ -1318,79 +1400,108 @@ export function TwentyNineTable({
           <div className="z-30 flex flex-wrap items-center justify-center gap-2">
             {/* AUCTION BIDDING BAR */}
             {state.phase === "bidding" && isMyTurn && !sittingOutSingleHand ? (
-              <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-amber-400/40 bg-black/85 px-4 py-2 shadow-2xl backdrop-blur-xl">
-                {selectedBidValue !== null && lowestLegalBid !== null && highestLegalBid !== null ? (
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      disabled={selectedBidValue <= lowestLegalBid}
-                      onClick={() => setSelectedBid(Math.max(lowestLegalBid, selectedBidValue - 1))}
-                      className="grid h-9 w-9 place-items-center rounded-xl border border-white/20 bg-white/10 text-lg font-black text-white hover:bg-white/20 disabled:opacity-30"
-                    >
-                      −
-                    </button>
-
-                    <div className="px-3 text-center">
-                      <span className="block text-[0.6rem] font-black uppercase tracking-widest text-amber-300/70">
-                        Bid Value
+              <div className="flex flex-col items-center gap-2 rounded-2xl border border-amber-400/40 bg-black/85 px-4 py-2.5 shadow-2xl backdrop-blur-xl">
+                {/* Winning Bid Status Banner */}
+                <div className="flex items-center justify-between w-full border-b border-white/10 pb-1.5 gap-4 text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[0.62rem] font-black uppercase tracking-wider text-white/50">
+                      Winning Bid:
+                    </span>
+                    {highestBidder && state.currentBid !== null ? (
+                      <span className="flex items-center gap-1 font-black text-amber-300">
+                        <Crown className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                        <strong className="text-sm">{state.currentBid}</strong> by{" "}
+                        <span className={highestBidder.userId === currentUserId ? "text-emerald-300" : "text-white"}>
+                          {highestBidder.userId === currentUserId
+                            ? "You (Leading!)"
+                            : `${highestBidder.displayName} (${highestBidder.team === 0 ? "Team Red" : "Team Blue"})`}
+                        </span>
                       </span>
-                      <span className="text-xl font-black text-amber-300 leading-tight">
-                        {selectedBidValue}
+                    ) : (
+                      <span className="text-amber-300 font-bold">
+                        None yet · Minimum: <strong>16</strong>
                       </span>
-                    </div>
-
-                    <button
-                      type="button"
-                      disabled={selectedBidValue >= highestLegalBid}
-                      onClick={() => setSelectedBid(Math.min(highestLegalBid, selectedBidValue + 1))}
-                      className="grid h-9 w-9 place-items-center rounded-xl border border-white/20 bg-white/10 text-lg font-black text-white hover:bg-white/20 disabled:opacity-30"
-                    >
-                      +
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => onAction("bid", { value: selectedBidValue })}
-                      className="rounded-xl border border-amber-400/60 bg-gradient-to-r from-amber-500 to-amber-600 px-5 py-2 text-sm font-black text-black shadow-[0_0_20px_rgba(245,158,11,0.5)] transition hover:scale-105 active:scale-95"
-                    >
-                      Bid {selectedBidValue}
-                    </button>
+                    )}
                   </div>
-                ) : null}
+                  <span className="rounded-full bg-amber-400/20 border border-amber-400/40 px-2.5 py-0.5 text-[0.6rem] font-black uppercase tracking-wider text-amber-300 animate-pulse">
+                    Your Turn to Bid
+                  </span>
+                </div>
 
-                {/* PROMINENT DITTO BUTTON (Always visible; enabled when legal) */}
-                <button
-                  type="button"
-                  disabled={!isDittoLegal}
-                  onClick={() => onAction("ditto")}
-                  title={
-                    isDittoLegal
-                      ? `Call Ditto to match the current bid (${state.currentBid})`
-                      : state.currentBid === null
-                      ? "Ditto is only available to match an opponent's existing bid"
-                      : "Ditto is only available for the opening team to match an opposing bid"
-                  }
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-xl border px-4 py-2 text-xs font-black transition",
-                    isDittoLegal
-                      ? "border-violet-400/60 bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-[0_0_20px_rgba(168,85,247,0.55)] hover:scale-105 active:scale-95 cursor-pointer"
-                      : "border-white/10 bg-white/[0.04] text-white/35 cursor-not-allowed"
-                  )}
-                >
-                  <span>🤝 Ditto</span>
-                  {state.currentBid !== null ? (
-                    <span className="text-[0.68rem] opacity-80">({state.currentBid})</span>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  {selectedBidValue !== null && lowestLegalBid !== null && highestLegalBid !== null ? (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={selectedBidValue <= lowestLegalBid}
+                        onClick={() => setSelectedBid(Math.max(lowestLegalBid, selectedBidValue - 1))}
+                        className="grid h-9 w-9 place-items-center rounded-xl border border-white/20 bg-white/10 text-lg font-black text-white hover:bg-white/20 disabled:opacity-30"
+                      >
+                        −
+                      </button>
+
+                      <div className="px-3 text-center">
+                        <span className="block text-[0.6rem] font-black uppercase tracking-widest text-amber-300/70">
+                          Bid Value
+                        </span>
+                        <span className="text-xl font-black text-amber-300 leading-tight">
+                          {selectedBidValue}
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={selectedBidValue >= highestLegalBid}
+                        onClick={() => setSelectedBid(Math.min(highestLegalBid, selectedBidValue + 1))}
+                        className="grid h-9 w-9 place-items-center rounded-xl border border-white/20 bg-white/10 text-lg font-black text-white hover:bg-white/20 disabled:opacity-30"
+                      >
+                        +
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => onAction("bid", { value: selectedBidValue })}
+                        className="rounded-xl border border-amber-400/60 bg-gradient-to-r from-amber-500 to-amber-600 px-5 py-2 text-sm font-black text-black shadow-[0_0_20px_rgba(245,158,11,0.5)] transition hover:scale-105 active:scale-95"
+                      >
+                        Bid {selectedBidValue}
+                      </button>
+                    </div>
                   ) : null}
-                </button>
 
-                {/* PASS BUTTON */}
-                <button
-                  type="button"
-                  onClick={() => onAction("pass_bid")}
-                  className="rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-xs font-black text-white/80 transition hover:bg-white/20 active:scale-95"
-                >
-                  Pass
-                </button>
+                  {/* PROMINENT DITTO BUTTON (Always visible; enabled when legal) */}
+                  <button
+                    type="button"
+                    disabled={!isDittoLegal}
+                    onClick={() => onAction("ditto")}
+                    title={
+                      isDittoLegal
+                        ? `Call Ditto to match the current bid (${state.currentBid})`
+                        : state.currentBid === null
+                        ? "Ditto is only available to match an opponent's existing bid"
+                        : "Ditto is only available for the opening team to match an opposing bid"
+                    }
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-xl border px-4 py-2 text-xs font-black transition",
+                      isDittoLegal
+                        ? "border-violet-400/60 bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-[0_0_20px_rgba(168,85,247,0.55)] hover:scale-105 active:scale-95 cursor-pointer"
+                        : "border-white/10 bg-white/[0.04] text-white/35 cursor-not-allowed"
+                    )}
+                  >
+                    <span>🤝 Ditto</span>
+                    {state.currentBid !== null ? (
+                      <span className="text-[0.68rem] opacity-80">({state.currentBid})</span>
+                    ) : null}
+                  </button>
+
+                  {/* PASS BUTTON */}
+                  <button
+                    type="button"
+                    onClick={() => onAction("pass_bid")}
+                    className="rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-xs font-black text-white/80 transition hover:bg-white/20 active:scale-95"
+                  >
+                    Pass
+                  </button>
+                </div>
               </div>
             ) : null}
 
@@ -1524,10 +1635,25 @@ export function TwentyNineTable({
 
             {/* WAITING FOR ANOTHER PLAYER INDICATOR */}
             {!isMyTurn && state.phase !== "finished" && !hasAction(legalActions, "declare_single_hand") ? (
-              <div className="flex items-center gap-2 rounded-full border border-white/10 bg-black/60 px-4 py-1 text-xs font-bold text-white/50 backdrop-blur-md">
-                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span>Waiting for {currentTurnName}…</span>
-              </div>
+              state.phase === "bidding" ? (
+                <div className="flex items-center gap-2 rounded-full border border-amber-400/30 bg-black/80 px-4 py-1.5 text-xs font-bold text-white/80 shadow-lg backdrop-blur-md">
+                  <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+                  {highestBidder && state.currentBid !== null ? (
+                    <span>
+                      High Bid: <strong className="text-amber-300">{state.currentBid}</strong> by <strong className="text-white">{isViewerHighestBidder ? "You (Leading!)" : highestBidder.displayName}</strong> ({highestBidder.team === 0 ? "Red" : "Blue"}) · Waiting for <span className="text-amber-200">{currentTurnName}</span> to bid…
+                    </span>
+                  ) : (
+                    <span>
+                      Bidding Opened (Min: 16) · Waiting for <span className="text-amber-200">{currentTurnName}</span> to bid…
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 rounded-full border border-white/10 bg-black/60 px-4 py-1 text-xs font-bold text-white/50 backdrop-blur-md">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Waiting for {currentTurnName}…</span>
+                </div>
+              )
             ) : null}
           </div>
 
@@ -1548,6 +1674,20 @@ export function TwentyNineTable({
                     )}
                   />
                   <span className="font-black text-white">{me?.displayName ?? "Your Hand"}</span>
+                  {myBidInfo?.isHighestBidder ? (
+                    <span className="flex items-center gap-1 rounded-full border border-amber-300 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 px-2 py-0.5 text-[0.62rem] font-black uppercase text-black shadow-[0_0_10px_rgba(245,158,11,0.6)]">
+                      <Crown className="h-3 w-3 fill-black text-black shrink-0" />
+                      Winning Bid ({state.currentBid})
+                    </span>
+                  ) : myBidInfo?.hasPassed ? (
+                    <span className="rounded-full border border-white/10 bg-black/60 px-2 py-0.5 text-[0.62rem] font-black uppercase text-white/40">
+                      Passed
+                    </span>
+                  ) : myBidInfo?.bidStatus ? (
+                    <span className="rounded-full border border-white/15 bg-black/50 px-2 py-0.5 text-[0.62rem] font-bold text-white/70">
+                      {myBidInfo.bidStatus}
+                    </span>
+                  ) : null}
                   <span className="text-white/40">·</span>
                   <span className="text-white/60">
                     {(me?.hand?.length ?? 0) + (state.privateSeventhCard ? 1 : 0)} cards in hand
