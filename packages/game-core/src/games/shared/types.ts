@@ -253,6 +253,7 @@ export interface PublicBoardGameState {
   pokerFolded: string[];
   pokerBetToCall: number;
   pokerPot: number;
+  pokerContributions: Record<string, number>;
   pokerStreet: PokerStreet;
   pokerButtonSeat: number;
   pokerHandNumber: number;

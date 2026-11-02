@@ -8,6 +8,7 @@ export function getPokerPublicState(state:BoardGameState,viewerId:string):Public
     communityCards:state.communityCards.slice(),
     pokerStacks:{...state.pokerStacks},
     pokerBets:{...state.pokerBets},
+    pokerContributions:{...state.pokerContributions},
     pokerFolded:state.pokerFolded.slice(),
     pokerBetToCall:state.pokerBetToCall,
     pokerPot:state.pokerPot,

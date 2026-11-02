@@ -168,6 +168,7 @@ export function PokerTable(props: BoardGameTableProps) {
   const isSittingOut = Boolean(state.pokerSittingOut?.[currentUserId]);
 
   const myPaid = state.pokerBets[currentUserId] ?? 0;
+  const myTotalPaid = state.pokerContributions?.[currentUserId] ?? myPaid;
   const myStack = state.pokerStacks[currentUserId] ?? 0;
   const startingStack = 1000;
   const netEarnings = myStack - startingStack;
@@ -413,16 +414,58 @@ export function PokerTable(props: BoardGameTableProps) {
                     ) : null}
                   </div>
 
-                  {/* Opponent Stack / Status */}
-                  <span className="font-mono text-xs font-black text-emerald-300">
-                    {isEliminated
-                      ? "BUSTED"
-                      : player.folded
-                      ? "FOLDED"
-                      : playerAway
-                      ? "SITTING OUT"
-                      : `$${(player.stack ?? 0).toLocaleString("en-US")}`}
-                  </span>
+                  {/* Opponent Stack, Net Profit/Loss & Contribution Status */}
+                  <div className="flex flex-col items-center gap-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono text-xs font-black text-emerald-300">
+                        {isEliminated
+                          ? "BUSTED"
+                          : player.folded
+                          ? "FOLDED"
+                          : playerAway
+                          ? "SITTING OUT"
+                          : `$${(player.stack ?? 0).toLocaleString("en-US")}`}
+                      </span>
+                      {!isEliminated && !player.folded && (player.stack ?? 0) !== 1000 ? (
+                        <span
+                          className={`font-mono text-[9px] font-bold ${
+                            (player.stack ?? 0) > 1000 ? "text-emerald-400" : "text-rose-400"
+                          }`}
+                        >
+                          {(player.stack ?? 0) > 1000
+                            ? `+$${(player.stack ?? 0) - 1000}`
+                            : `-$${1000 - (player.stack ?? 0)}`}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    {/* Paid This Round & Total Paid into Pot Overall This Hand */}
+                    {(() => {
+                      const roundBet = state.pokerBets[player.userId] ?? player.bet ?? 0;
+                      const totalPaid = state.pokerContributions?.[player.userId] ?? roundBet;
+                      if ((roundBet <= 0 && totalPaid <= 0) || isEliminated) return null;
+                      return (
+                        <div className="flex items-center gap-1 mt-0.5">
+                          {roundBet > 0 ? (
+                            <span
+                              className="rounded bg-emerald-500/20 border border-emerald-400/40 px-1.5 py-0.5 font-mono text-[9px] font-black text-emerald-200 shadow-sm"
+                              title="Chips paid in current betting round"
+                            >
+                              Round: ${roundBet}
+                            </span>
+                          ) : null}
+                          {totalPaid > 0 ? (
+                            <span
+                              className="rounded bg-amber-400/20 border border-amber-400/40 px-1.5 py-0.5 font-mono text-[9px] font-black text-amber-200 shadow-sm"
+                              title="Total chips paid into this hand's pot overall"
+                            >
+                              In Pot: ${totalPaid}
+                            </span>
+                          ) : null}
+                        </div>
+                      );
+                    })()}
+                  </div>
 
                   {/* Hole Cards: Face-Down or Revealed at Showdown */}
                   <div className="flex items-center -space-x-3 sm:-space-x-4 mt-0.5">
@@ -444,11 +487,14 @@ export function PokerTable(props: BoardGameTableProps) {
                   </div>
 
                   {/* Active Bet Chips placed on table felt in front of seat */}
-                  {(player.bet ?? 0) > 0 ? (
-                    <div className="mt-1">
-                      <ChipStack amount={player.bet ?? 0} size="sm" />
-                    </div>
-                  ) : null}
+                  {(() => {
+                    const roundBet = state.pokerBets[player.userId] ?? player.bet ?? 0;
+                    return roundBet > 0 ? (
+                      <div className="mt-1">
+                        <ChipStack amount={roundBet} size="sm" />
+                      </div>
+                    ) : null;
+                  })()}
 
                   {/* Turn Status Pill */}
                   {isTurn ? (
@@ -673,15 +719,50 @@ export function PokerTable(props: BoardGameTableProps) {
 
             {/* Player Chips & Action Buttons */}
             <div className="flex w-full flex-wrap items-center justify-between gap-2 pt-0.5">
-              {/* Stack & Turn Info */}
-              <div className="flex items-center gap-3">
+              {/* Stack, Round Bet, Total in Pot & Turn Info */}
+              <div className="flex items-center gap-2.5 sm:gap-3">
                 <div className="flex flex-col">
                   <span className="text-[10px] font-black uppercase text-amber-400">Your Stack</span>
-                  <span className="font-mono text-base font-black text-emerald-300">
-                    ${myStack.toLocaleString("en-US")}
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="font-mono text-base font-black text-emerald-300">
+                      ${myStack.toLocaleString("en-US")}
+                    </span>
+                    <span
+                      className={`font-mono text-[10px] font-bold ${
+                        netEarnings > 0 ? "text-emerald-400" : netEarnings < 0 ? "text-rose-400" : "text-white/40"
+                      }`}
+                    >
+                      {netEarnings > 0 ? `+$${netEarnings}` : netEarnings < 0 ? `-$${Math.abs(netEarnings)}` : "$0"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="h-7 w-px bg-white/10" />
+
+                {/* Paid in current betting round */}
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black uppercase text-emerald-400" title="Chips paid in this round">
+                    This Round
+                  </span>
+                  <span className="font-mono text-sm font-black text-white">
+                    ${myPaid}
                   </span>
                 </div>
+
                 <div className="h-7 w-px bg-white/10" />
+
+                {/* Paid overall into this hand's pot */}
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black uppercase text-amber-400" title="Total chips paid into this hand overall">
+                    In Pot (Total)
+                  </span>
+                  <span className="font-mono text-sm font-black text-amber-300">
+                    ${myTotalPaid}
+                  </span>
+                </div>
+
+                <div className="h-7 w-px bg-white/10" />
+
                 <div className="flex flex-col">
                   <span className="text-[10px] font-black uppercase text-white/40">Turn</span>
                   <span className="text-xs font-bold text-white">
