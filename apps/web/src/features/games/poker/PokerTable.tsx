@@ -15,26 +15,50 @@ import {
   Clock,
   RotateCcw,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+  Trophy,
+  ArrowRight
 } from "lucide-react";
-import type { PokerLastHandResult } from "@tabletop/game-core";
+import {
+  bestPokerHandDetails,
+  type PokerLastHandResult
+} from "@tabletop/game-core";
 import type { AnyAction, BoardGameTableProps } from "../board-games/shared/types";
 import { CasinoChip, ChipStack, breakdownChips, type ChipDenomination } from "../casino/CasinoChip";
 import { CasinoPlayingCard } from "../casino/CasinoPlayingCard";
 import { casinoAudio } from "../casino/casinoAudio";
 import { owns, isAction } from "../board-games/shared/ui-utils";
 
+// Visual miniature card for the Hand Rankings reference modal
+function MiniCard({ card }: { card: string }) {
+  const suit = card.slice(-1);
+  const rank = card.slice(0, -1);
+  const isRed = suit === "♥" || suit === "♦";
+  return (
+    <div className="flex h-10 w-7 flex-col justify-between rounded border border-slate-300 bg-white p-1 shadow-sm select-none leading-none sm:h-11 sm:w-8">
+      <span className={`text-[10px] font-black sm:text-xs ${isRed ? "text-rose-600" : "text-slate-900"}`}>
+        {rank}
+      </span>
+      <span className={`text-center text-xs sm:text-sm ${isRed ? "text-rose-600" : "text-slate-900"}`}>
+        {suit}
+      </span>
+    </div>
+  );
+}
+
 const POKER_HAND_RANKINGS = [
-  { name: "Royal Flush", tier: "Top Tier", example: "A♠ K♠ Q♠ J♠ 10♠", detail: "A-K-Q-J-10 of the exact same suit." },
-  { name: "Straight Flush", tier: "Tier 2", example: "9♥ 8♥ 7♥ 6♥ 5♥", detail: "Five consecutive cards of the same suit." },
-  { name: "Four of a Kind", tier: "Tier 3", example: "Q♠ Q♥ Q♦ Q♣ A♦", detail: "Four cards of matching rank." },
-  { name: "Full House", tier: "Tier 4", example: "10♠ 10♥ 10♦ 4♣ 4♥", detail: "Three of a kind combined with a pair." },
-  { name: "Flush", tier: "Tier 5", example: "A♦ J♦ 8♦ 5♦ 2♦", detail: "Any five cards of the same suit, not in sequence." },
-  { name: "Straight", tier: "Tier 6", example: "9♠ 8♥ 7♦ 6♣ 5♠", detail: "Five cards in sequence of mixed suits." },
-  { name: "Three of a Kind", tier: "Tier 7", example: "7♠ 7♥ 7♦ A♣ 9♠", detail: "Three cards of identical rank." },
-  { name: "Two Pair", tier: "Tier 8", example: "K♠ K♥ 3♦ 3♣ A♠", detail: "Two distinct pairs of cards." },
-  { name: "One Pair", tier: "Tier 9", example: "J♠ J♥ A♦ 8♣ 4♠", detail: "Two cards of the same rank." },
-  { name: "High Card", tier: "Lowest", example: "A♠ J♥ 8♦ 5♣ 2♠", detail: "No combinations; highest individual card plays." }
+  { name: "Royal Flush", tier: "Top Tier", cards: ["A♠", "K♠", "Q♠", "J♠", "10♠"], detail: "A-K-Q-J-10 of the exact same suit." },
+  { name: "Straight Flush", tier: "Tier 2", cards: ["9♥", "8♥", "7♥", "6♥", "5♥"], detail: "Five consecutive cards of the same suit." },
+  { name: "Four of a Kind", tier: "Tier 3", cards: ["Q♠", "Q♥", "Q♦", "Q♣", "A♦"], detail: "Four cards of matching rank." },
+  { name: "Full House", tier: "Tier 4", cards: ["10♠", "10♥", "10♦", "4♣", "4♥"], detail: "Three of a kind combined with a pair." },
+  { name: "Flush", tier: "Tier 5", cards: ["A♦", "J♦", "8♦", "5♦", "2♦"], detail: "Any five cards of the same suit, not in sequence." },
+  { name: "Straight", tier: "Tier 6", cards: ["9♠", "8♥", "7♦", "6♣", "5♠"], detail: "Five cards in sequence of mixed suits." },
+  { name: "Three of a Kind", tier: "Tier 7", cards: ["7♠", "7♥", "7♦", "A♣", "9♠"], detail: "Three cards of identical rank." },
+  { name: "Two Pair", tier: "Tier 8", cards: ["K♠", "K♥", "3♦", "3♣", "A♠"], detail: "Two distinct pairs of cards." },
+  { name: "One Pair", tier: "Tier 9", cards: ["J♠", "J♥", "A♦", "8♣", "4♠"], detail: "Two cards of the same rank." },
+  { name: "High Card", tier: "Lowest", cards: ["A♠", "J♥", "8♦", "5♣", "2♠"], detail: "No combinations; highest individual card plays." }
 ];
 
 // Dynamic physical multi-stack chip cluster for the pot
@@ -144,6 +168,50 @@ function TastefulPokerInfo({ actionText }: { actionText: string }) {
   );
 }
 
+// Radial seat placement coordinates surrounding the table (Like in UNO and 29)
+function getOpponentSeatStyle(index: number, totalOpponents: number) {
+  if (totalOpponents === 1) {
+    // 2 Players Total (Heads-Up): Opponent Top-Center
+    return { left: "50%", top: "7%", transform: "translate(-50%, 0)" };
+  }
+  if (totalOpponents === 2) {
+    // 3 Players Total: Top-Left and Top-Right
+    const positions = [
+      { left: "24%", top: "10%", transform: "translate(-50%, 0)" },
+      { left: "76%", top: "10%", transform: "translate(-50%, 0)" }
+    ];
+    return positions[index]!;
+  }
+  if (totalOpponents === 3) {
+    // 4 Players Total: Mid-Left, Top-Center, Mid-Right
+    const positions = [
+      { left: "6%", top: "42%", transform: "translate(0, -50%)" },
+      { left: "50%", top: "7%", transform: "translate(-50%, 0)" },
+      { right: "6%", top: "42%", transform: "translate(0, -50%)" }
+    ];
+    return positions[index]!;
+  }
+  if (totalOpponents === 4) {
+    // 5 Players Total
+    const positions = [
+      { left: "5%", top: "48%", transform: "translate(0, -50%)" },
+      { left: "25%", top: "8%", transform: "translate(-50%, 0)" },
+      { left: "75%", top: "8%", transform: "translate(-50%, 0)" },
+      { right: "5%", top: "48%", transform: "translate(0, -50%)" }
+    ];
+    return positions[index]!;
+  }
+  // 6 Players Total (5 Opponents)
+  const positions = [
+    { left: "5%", top: "58%", transform: "translate(0, -50%)" },
+    { left: "20%", top: "9%", transform: "translate(-50%, 0)" },
+    { left: "50%", top: "6%", transform: "translate(-50%, 0)" },
+    { right: "20%", top: "9%", transform: "translate(50%, 0)" },
+    { right: "5%", top: "58%", transform: "translate(0, -50%)" }
+  ];
+  return positions[index % positions.length]!;
+}
+
 export function PokerTable(props: BoardGameTableProps) {
   const { room, state, legalActions, currentUserId, onAction, onChat, onEndMatch, timer } = props;
   const router = useRouter();
@@ -157,8 +225,9 @@ export function PokerTable(props: BoardGameTableProps) {
   const [preCheckFold, setPreCheckFold] = useState(false);
   const [preAutoCheck, setPreAutoCheck] = useState(false);
 
-  // Hand Showdown Modal
+  // Hand Showdown Modal & Carousel Slide State
   const [showWinnerModal, setShowWinnerModal] = useState(false);
+  const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [nextHandCountdown, setNextHandCountdown] = useState(6);
   const lastCelebratedHandRef = useRef<number | null>(null);
 
@@ -252,6 +321,7 @@ export function PokerTable(props: BoardGameTableProps) {
     if (state.pokerAwaitingNextHand && state.pokerLastHandResult) {
       if (lastCelebratedHandRef.current !== state.pokerLastHandResult.handNumber) {
         lastCelebratedHandRef.current = state.pokerLastHandResult.handNumber;
+        setActiveSlideIndex(0);
         setShowWinnerModal(true);
         setNextHandCountdown(6);
         if (soundEnabled) casinoAudio.playWin();
@@ -285,7 +355,7 @@ export function PokerTable(props: BoardGameTableProps) {
   }, [state.communityCards?.length, state.pokerStreet]);
 
   // Seating arrangement: Local player is at seat 0 (bottom center),
-  // other players are seated clockwise around the oval.
+  // other players are seated clockwise around the table.
   const seatedPlayers = useMemo(() => {
     const mySeat = me?.seat ?? 0;
     const count = state.players.length;
@@ -305,318 +375,352 @@ export function PokerTable(props: BoardGameTableProps) {
     setRaiseAmount(clamped);
   };
 
+  // Build list of all players who went to showdown for the interactive comparison carousel
+  const showdownPlayerList = useMemo(() => {
+    if (!state.pokerLastHandResult || state.pokerLastHandResult.byFold) return [];
+    const cardsMap = state.pokerLastHandResult.showdownCards ?? {};
+    const playerIds = Object.keys(cardsMap);
+    if (playerIds.length === 0) return [];
+
+    const winnerIds = state.pokerLastHandResult.winnerUserIds ?? [];
+    // Sort so the winner(s) appear first!
+    const sortedIds = [...playerIds].sort((a, b) => {
+      const aIsWinner = winnerIds.includes(a);
+      const bIsWinner = winnerIds.includes(b);
+      if (aIsWinner && !bIsWinner) return -1;
+      if (!aIsWinner && bIsWinner) return 1;
+      return 0;
+    });
+
+    const rankNames = [
+      "High Card", "One Pair", "Two Pair", "Three of a Kind",
+      "Straight", "Flush", "Full House", "Four of a Kind", "Straight Flush"
+    ];
+
+    return sortedIds.map((pid) => {
+      const playerObj = state.players.find((p) => p.userId === pid);
+      const holeCards = cardsMap[pid] ?? [];
+      const allCards = [...holeCards, ...(state.communityCards ?? [])];
+      let handName = "Hand";
+      let bestCards: string[] = [];
+      try {
+        const details = bestPokerHandDetails(allCards);
+        bestCards = details.bestCards;
+        handName = rankNames[details.handValue[0] ?? 0] ?? "Hand";
+      } catch {
+        bestCards = holeCards;
+      }
+      const isWinner = winnerIds.includes(pid);
+
+      return {
+        userId: pid,
+        displayName: playerObj?.displayName ?? (pid === currentUserId ? "You" : "Player"),
+        isWinner,
+        holeCards,
+        bestCards,
+        handName,
+        potWon: isWinner ? state.pokerLastHandResult!.potWon : 0
+      };
+    });
+  }, [state.pokerLastHandResult, state.players, state.communityCards, currentUserId]);
+
   return (
-    <div className="relative flex h-full min-h-0 w-full flex-col select-none overflow-hidden bg-[#040a08] text-white">
+    <div
+      className="relative flex h-full min-h-0 w-full flex-col select-none overflow-hidden text-white"
+      style={{
+        background: "radial-gradient(ellipse at 50% 45%, #085a44 0%, #054030 40%, #032b20 75%, #011610 100%)"
+      }}
+    >
       {/* ============================================================== */}
       {/* CASINO AMBIENCE & CHANDELIER LIGHTING                         */}
       {/* ============================================================== */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_20%,rgba(16,185,129,0.2),transparent_70%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_80%,rgba(245,158,11,0.12),transparent_65%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_15%,rgba(16,185,129,0.18),transparent_70%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_85%,rgba(245,158,11,0.1),transparent_65%)]" />
 
-      {/* ============================================================== */}
-      {/* MAIN CASINO POKER TABLE (EXTENDS DIRECTLY TO THE TOP!)         */}
-      {/* ============================================================== */}
-      <main className="relative flex flex-1 min-h-0 flex-col items-center justify-between p-1.5 sm:p-2.5 overflow-hidden">
-        {/* CASINO OVAL TABLE FELT */}
-        <div
-          className="relative flex h-full w-full max-w-[1720px] 2xl:max-w-[1850px] flex-col justify-between rounded-[50px] sm:rounded-[80px] border-[12px] sm:border-[16px] border-[#381e0b] p-3 sm:p-4 shadow-[inset_0_0_120px_rgba(0,0,0,0.85),0_25px_60px_rgba(0,0,0,0.95)] overflow-hidden"
-          style={{
-            background: "radial-gradient(ellipse at 50% 50%, #064e3b 0%, #043d2e 45%, #022c22 80%, #011913 100%)"
-          }}
+      {/* Subtle Casino Table Outer Perimeter Line */}
+      <div className="pointer-events-none absolute inset-2 sm:inset-4 rounded-3xl border border-amber-400/15" />
+
+      {/* FLOATING CORNER CONTROLS (Top Right of Table Felt) */}
+      <div className="absolute top-3 right-4 z-30 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setSoundEnabled((prev) => !prev)}
+          className="grid h-8 w-8 place-items-center rounded-xl border border-white/15 bg-black/60 text-white/80 hover:bg-black/80 backdrop-blur-md shadow"
+          title={soundEnabled ? "Mute audio" : "Enable audio"}
         >
-          {/* Inner Golden Racetrack Line */}
-          <div className="pointer-events-none absolute inset-4 sm:inset-6 rounded-[36px] sm:rounded-[65px] border-2 border-amber-300/20" />
+          {soundEnabled ? <Volume2 className="h-4 w-4 text-emerald-400" /> : <VolumeX className="h-4 w-4 text-rose-400" />}
+        </button>
 
-          {/* FLOATING CORNER CONTROLS (Top Right of Felt) */}
-          <div className="absolute top-3 right-4 z-20 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setSoundEnabled((prev) => !prev)}
-              className="grid h-8 w-8 place-items-center rounded-xl border border-white/15 bg-black/60 text-white/80 hover:bg-black/80 backdrop-blur-md shadow"
-              title={soundEnabled ? "Mute audio" : "Enable audio"}
+        <button
+          type="button"
+          onClick={() => setPokerRulesOpen(true)}
+          className="flex items-center gap-1.5 rounded-xl border border-white/15 bg-black/60 px-3 py-1.5 text-xs font-bold text-white/80 hover:bg-black/80 backdrop-blur-md shadow"
+        >
+          <HelpCircle className="h-3.5 w-3.5 text-amber-300" />
+          <span className="hidden sm:inline">Rankings</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setCashOutOpen(true)}
+          className="flex items-center gap-1.5 rounded-xl border border-emerald-400/40 bg-emerald-500/20 px-3 py-1.5 text-xs font-black text-emerald-200 hover:bg-emerald-500/30 backdrop-blur-md shadow transition active:scale-95"
+        >
+          <Coins className="h-3.5 w-3.5 text-emerald-300" />
+          <span>Cash Out</span>
+        </button>
+      </div>
+
+      {/* ============================================================== */}
+      {/* MAIN FULL-SCREEN TABLE PLAYING FIELD (NO BOUNDING OVAL BOX!)  */}
+      {/* ============================================================== */}
+      <main className="relative flex-1 min-h-0 w-full overflow-hidden flex flex-col justify-between p-2">
+        {/* ============================================================ */}
+        {/* SURROUNDING OPPONENT SEATS (SPATIAL POSITIONING LIKE UNO)    */}
+        {/* ============================================================ */}
+        {opponents.map((player, idx) => {
+          const seatStyle = getOpponentSeatStyle(idx, opponents.length);
+          const isEliminated = (player.stack ?? 0) <= 0 && player.folded;
+          const isTurn = state.currentPlayerId === player.userId && !state.pokerAwaitingNextHand;
+          const isDealer = player.seat === state.pokerButtonSeat;
+          const playerAway = Boolean(state.pokerSittingOut?.[player.userId]);
+
+          const roundBet = state.pokerBets[player.userId] ?? player.bet ?? 0;
+          const totalPaid = state.pokerContributions?.[player.userId] ?? roundBet;
+
+          return (
+            <div
+              key={player.userId}
+              style={seatStyle}
+              className="absolute z-20 transition-all duration-300"
             >
-              {soundEnabled ? <Volume2 className="h-4 w-4 text-emerald-400" /> : <VolumeX className="h-4 w-4 text-rose-400" />}
-            </button>
+              <div
+                className={`relative flex flex-col items-center gap-1 rounded-2xl border p-2 sm:p-2.5 backdrop-blur-md transition-all w-32 sm:w-36 ${
+                  isTurn
+                    ? "border-amber-400 bg-amber-500/25 ring-4 ring-amber-400/50 shadow-[0_0_30px_rgba(251,191,36,0.6)] scale-105 z-30"
+                    : "border-white/15 bg-black/65 shadow-xl"
+                } ${player.folded || isEliminated ? "opacity-35" : ""} ${playerAway ? "border-rose-400/40 bg-rose-950/25" : ""}`}
+              >
+                {/* Active Turn Timer Bar */}
+                {isTurn ? (
+                  <div className="w-full h-1 bg-black/60 rounded-full overflow-hidden mb-0.5">
+                    <div
+                      className={`h-full transition-all duration-1000 ${
+                        secondsRemaining <= 5 ? "bg-rose-500 animate-pulse" : secondsRemaining <= 10 ? "bg-amber-400" : "bg-emerald-400"
+                      }`}
+                      style={{ width: `${(secondsRemaining / turnDuration) * 100}%` }}
+                    />
+                  </div>
+                ) : null}
 
-            <button
-              type="button"
-              onClick={() => setPokerRulesOpen(true)}
-              className="flex items-center gap-1.5 rounded-xl border border-white/15 bg-black/60 px-3 py-1.5 text-xs font-bold text-white/80 hover:bg-black/80 backdrop-blur-md shadow"
-            >
-              <HelpCircle className="h-3.5 w-3.5 text-amber-300" />
-              <span className="hidden sm:inline">Rankings</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setCashOutOpen(true)}
-              className="flex items-center gap-1.5 rounded-xl border border-emerald-400/40 bg-emerald-500/20 px-3 py-1.5 text-xs font-black text-emerald-200 hover:bg-emerald-500/30 backdrop-blur-md shadow transition active:scale-95"
-            >
-              <Coins className="h-3.5 w-3.5 text-emerald-300" />
-              <span>Cash Out</span>
-            </button>
-          </div>
-
-          {/* ========================================================== */}
-          {/* TOP / RADIAL OPPONENTS ROW                                 */}
-          {/* ========================================================== */}
-          <div className="relative z-10 flex w-full items-start justify-around px-2 sm:px-6 pt-1">
-            {opponents.map((player) => {
-              const isEliminated = (player.stack ?? 0) <= 0 && player.folded;
-              const isTurn = state.currentPlayerId === player.userId && !state.pokerAwaitingNextHand;
-              const isDealer = player.seat === state.pokerButtonSeat;
-              const playerAway = Boolean(state.pokerSittingOut?.[player.userId]);
-
-              // Showdown card reveal
-              const showdownHand = state.pokerLastHandResult?.showdownCards?.[player.userId];
-              const showHoleCards = Boolean(showdownHand && showdownHand.length >= 2 && !state.pokerLastHandResult?.byFold);
-
-              return (
-                <div
-                  key={player.userId}
-                  className={`relative flex flex-col items-center gap-1 rounded-2xl border p-2 sm:p-2.5 backdrop-blur-md transition-all ${
-                    isTurn
-                      ? "border-amber-400 bg-amber-500/20 ring-4 ring-amber-400/50 shadow-[0_0_25px_rgba(251,191,36,0.5)] scale-105 z-20"
-                      : "border-white/10 bg-black/60 shadow-lg"
-                  } ${player.folded || isEliminated ? "opacity-40" : ""} ${playerAway ? "border-rose-400/40 bg-rose-950/20" : ""}`}
-                >
-                  {/* Active Turn Timer Bar */}
-                  {isTurn ? (
-                    <div className="w-full h-1 bg-black/60 rounded-full overflow-hidden mb-0.5">
-                      <div
-                        className={`h-full transition-all duration-1000 ${
-                          secondsRemaining <= 5 ? "bg-rose-500 animate-pulse" : secondsRemaining <= 10 ? "bg-amber-400" : "bg-emerald-400"
-                        }`}
-                        style={{ width: `${(secondsRemaining / turnDuration) * 100}%` }}
-                      />
-                    </div>
-                  ) : null}
-
-                  {/* Header: Name, Dealer Button, Bot / Away Badge */}
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-bold text-white truncate max-w-[85px] sm:max-w-[120px]">
-                      {player.displayName}
+                {/* Header: Name, Dealer Button, Bot / Away Badge */}
+                <div className="flex items-center gap-1.5 w-full justify-center">
+                  <span className="text-xs font-bold text-white truncate max-w-[80px] sm:max-w-[95px]">
+                    {player.displayName}
+                  </span>
+                  {isDealer ? (
+                    <span className="grid h-4 w-4 place-items-center rounded-full bg-amber-400 text-[9px] font-black text-slate-950 shadow">
+                      D
                     </span>
-                    {isDealer ? (
-                      <span className="grid h-4 w-4 place-items-center rounded-full bg-amber-400 text-[9px] font-black text-slate-950 shadow">
-                        D
-                      </span>
-                    ) : null}
-                    {player.isBot ? (
-                      <span className="rounded bg-sky-500/20 px-1 text-[8px] font-black text-sky-300 uppercase">
-                        BOT
-                      </span>
-                    ) : null}
-                    {playerAway ? (
-                      <span className="rounded bg-rose-500/20 px-1 text-[8px] font-black text-rose-300 uppercase">
-                        AWAY
-                      </span>
-                    ) : null}
-                  </div>
-
-                  {/* Opponent Stack, Net Profit/Loss & Contribution Status */}
-                  <div className="flex flex-col items-center gap-0.5">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-mono text-xs font-black text-emerald-300">
-                        {isEliminated
-                          ? "BUSTED"
-                          : player.folded
-                          ? "FOLDED"
-                          : playerAway
-                          ? "SITTING OUT"
-                          : `$${(player.stack ?? 0).toLocaleString("en-US")}`}
-                      </span>
-                      {!isEliminated && !player.folded && (player.stack ?? 0) !== 1000 ? (
-                        <span
-                          className={`font-mono text-[9px] font-bold ${
-                            (player.stack ?? 0) > 1000 ? "text-emerald-400" : "text-rose-400"
-                          }`}
-                        >
-                          {(player.stack ?? 0) > 1000
-                            ? `+$${(player.stack ?? 0) - 1000}`
-                            : `-$${1000 - (player.stack ?? 0)}`}
-                        </span>
-                      ) : null}
-                    </div>
-
-                    {/* Paid This Round & Total Paid into Pot Overall This Hand */}
-                    {(() => {
-                      const roundBet = state.pokerBets[player.userId] ?? player.bet ?? 0;
-                      const totalPaid = state.pokerContributions?.[player.userId] ?? roundBet;
-                      if ((roundBet <= 0 && totalPaid <= 0) || isEliminated) return null;
-                      return (
-                        <div className="flex items-center gap-1 mt-0.5">
-                          {roundBet > 0 ? (
-                            <span
-                              className="rounded bg-emerald-500/20 border border-emerald-400/40 px-1.5 py-0.5 font-mono text-[9px] font-black text-emerald-200 shadow-sm"
-                              title="Chips paid in current betting round"
-                            >
-                              Round: ${roundBet}
-                            </span>
-                          ) : null}
-                          {totalPaid > 0 ? (
-                            <span
-                              className="rounded bg-amber-400/20 border border-amber-400/40 px-1.5 py-0.5 font-mono text-[9px] font-black text-amber-200 shadow-sm"
-                              title="Total chips paid into this hand's pot overall"
-                            >
-                              In Pot: ${totalPaid}
-                            </span>
-                          ) : null}
-                        </div>
-                      );
-                    })()}
-                  </div>
-
-                  {/* Hole Cards: Face-Down or Revealed at Showdown */}
-                  <div className="flex items-center -space-x-3 sm:-space-x-4 mt-0.5">
-                    {player.folded || isEliminated ? (
-                      <div className="h-12 w-9 rounded border border-dashed border-white/20 grid place-items-center text-[10px] text-white/30">
-                        Muck
-                      </div>
-                    ) : showHoleCards ? (
-                      <>
-                        <CasinoPlayingCard card={showdownHand![0]} size="sm" className="shadow-lg ring-1 ring-amber-400" />
-                        <CasinoPlayingCard card={showdownHand![1]} size="sm" className="shadow-lg ring-1 ring-amber-400" />
-                      </>
-                    ) : (
-                      <>
-                        <CasinoPlayingCard hidden size="sm" className="shadow-md" />
-                        <CasinoPlayingCard hidden size="sm" className="shadow-md" />
-                      </>
-                    )}
-                  </div>
-
-                  {/* Active Bet Chips placed on table felt in front of seat */}
-                  {(() => {
-                    const roundBet = state.pokerBets[player.userId] ?? player.bet ?? 0;
-                    return roundBet > 0 ? (
-                      <div className="mt-1">
-                        <ChipStack amount={roundBet} size="sm" />
-                      </div>
-                    ) : null;
-                  })()}
-
-                  {/* Turn Status Pill */}
-                  {isTurn ? (
-                    <span className="text-[10px] font-bold text-amber-300 flex items-center gap-1 mt-0.5 animate-pulse">
-                      <Clock className="h-3 w-3" />
-                      <span>{secondsRemaining}s</span>
+                  ) : null}
+                  {player.isBot ? (
+                    <span className="rounded bg-sky-500/20 px-1 text-[8px] font-black text-sky-300 uppercase">
+                      BOT
+                    </span>
+                  ) : null}
+                  {playerAway ? (
+                    <span className="rounded bg-rose-500/20 px-1 text-[8px] font-black text-rose-300 uppercase">
+                      AWAY
                     </span>
                   ) : null}
                 </div>
+
+                {/* Stack, Status & Net Session P/L */}
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono text-xs font-black text-emerald-300">
+                    {isEliminated
+                      ? "BUSTED"
+                      : player.folded
+                      ? "FOLDED"
+                      : playerAway
+                      ? "SITTING OUT"
+                      : `$${(player.stack ?? 0).toLocaleString("en-US")}`}
+                  </span>
+                  {!isEliminated && !player.folded && (player.stack ?? 0) !== 1000 ? (
+                    <span
+                      className={`font-mono text-[9px] font-bold ${
+                        (player.stack ?? 0) > 1000 ? "text-emerald-400" : "text-rose-400"
+                      }`}
+                    >
+                      {(player.stack ?? 0) > 1000 ? `+$${(player.stack ?? 0) - 1000}` : `-$${1000 - (player.stack ?? 0)}`}
+                    </span>
+                  ) : null}
+                </div>
+
+                {/* Paid This Round & Total Paid into Pot Overall */}
+                {(roundBet > 0 || totalPaid > 0) && !isEliminated ? (
+                  <div className="flex items-center gap-1 mt-0.5">
+                    {roundBet > 0 ? (
+                      <span
+                        className="rounded-full bg-emerald-500/20 border border-emerald-400/40 px-1.5 py-0.5 font-mono text-[9px] font-black text-emerald-200 shadow-sm"
+                        title="Chips paid in current betting round"
+                      >
+                        Round: ${roundBet}
+                      </span>
+                    ) : null}
+                    {totalPaid > 0 ? (
+                      <span
+                        className="rounded-full bg-amber-400/20 border border-amber-400/40 px-1.5 py-0.5 font-mono text-[9px] font-black text-amber-200 shadow-sm"
+                        title="Total chips paid into this hand's pot overall"
+                      >
+                        In Pot: ${totalPaid}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {/* Opponents' Hole Cards: Always Face-Down on Seats (NO LEAKING!) */}
+                <div className="flex items-center -space-x-3 sm:-space-x-4 mt-0.5">
+                  {player.folded || isEliminated ? (
+                    <div className="h-11 w-8 rounded border border-dashed border-white/20 grid place-items-center text-[9px] text-white/30">
+                      Muck
+                    </div>
+                  ) : (
+                    <>
+                      <CasinoPlayingCard hidden size="xs" className="shadow-md" />
+                      <CasinoPlayingCard hidden size="xs" className="shadow-md" />
+                    </>
+                  )}
+                </div>
+
+                {/* Active Bet Chips placed physically on table felt in front of seat */}
+                {roundBet > 0 ? (
+                  <div className="mt-1">
+                    <ChipStack amount={roundBet} size="sm" />
+                  </div>
+                ) : null}
+
+                {/* Turn Countdown Pill */}
+                {isTurn ? (
+                  <span className="text-[10px] font-bold text-amber-300 flex items-center gap-1 mt-0.5 animate-pulse">
+                    <Clock className="h-3 w-3" />
+                    <span>{secondsRemaining}s</span>
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          );
+        })}
+
+        {/* ============================================================ */}
+        {/* CENTER TABLE AREA: POT CLUSTER & HELLA BIG COMMUNITY CARDS   */}
+        {/* ============================================================ */}
+        <div className="relative z-10 flex flex-col items-center justify-center my-auto py-2">
+          {/* Main Pot Cluster */}
+          <div className="mb-3">
+            <DynamicPotCluster potAmount={state.pokerPot} callAmount={callAmount} />
+          </div>
+
+          {/* 5 EXTRA LARGE COMMUNITY CARDS (HELLA BIG!) */}
+          <div className="flex items-center justify-center gap-2.5 sm:gap-4" aria-label="Community Board Cards">
+            {Array.from({ length: 5 }, (_, i) => {
+              const card = state.communityCards[i] ?? null;
+              const isWinningCard = Boolean(
+                card && state.pokerLastHandResult?.winningCards?.includes(card)
+              );
+              const isUnusedAtShowdown = Boolean(
+                card &&
+                state.pokerAwaitingNextHand &&
+                state.pokerLastHandResult?.winningCards &&
+                !state.pokerLastHandResult.winningCards.includes(card)
+              );
+
+              return (
+                <motion.div
+                  key={`${i}-${card ?? "empty"}`}
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{
+                    scale: isWinningCard ? 1.08 : 1,
+                    y: isWinningCard ? -8 : 0,
+                    opacity: isUnusedAtShowdown ? 0.45 : 1
+                  }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  className={isWinningCard ? "relative z-20" : ""}
+                >
+                  <CasinoPlayingCard
+                    card={card}
+                    hidden={!card}
+                    size="xl"
+                    className={`shadow-2xl transition-all ${
+                      isWinningCard
+                        ? "ring-4 ring-amber-400 shadow-[0_0_35px_rgba(251,191,36,0.85)]"
+                        : "ring-1 ring-white/10"
+                    }`}
+                  />
+                </motion.div>
               );
             })}
           </div>
 
-          {/* ========================================================== */}
-          {/* CENTER TABLE FELT: HELLA BIG COMMUNITY CARDS & POT         */}
-          {/* ========================================================== */}
-          <div className="relative z-10 flex flex-col items-center justify-center my-auto py-2">
-            {/* Center Pot Cluster */}
-            <div className="mb-3">
-              <DynamicPotCluster potAmount={state.pokerPot} callAmount={callAmount} />
-            </div>
-
-            {/* 5 EXTRA LARGE COMMUNITY CARDS (HELLA BIG!) */}
-            <div className="flex items-center justify-center gap-2 sm:gap-4" aria-label="Community Board Cards">
-              {Array.from({ length: 5 }, (_, i) => {
-                const card = state.communityCards[i] ?? null;
-                const isWinningCard = Boolean(
-                  card && state.pokerLastHandResult?.winningCards?.includes(card)
-                );
-                const isUnusedAtShowdown = Boolean(
-                  card &&
-                  state.pokerAwaitingNextHand &&
-                  state.pokerLastHandResult?.winningCards &&
-                  !state.pokerLastHandResult.winningCards.includes(card)
-                );
-
-                return (
-                  <motion.div
-                    key={`${i}-${card ?? "empty"}`}
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{
-                      scale: isWinningCard ? 1.08 : 1,
-                      y: isWinningCard ? -8 : 0,
-                      opacity: isUnusedAtShowdown ? 0.45 : 1
-                    }}
-                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                    className={isWinningCard ? "relative z-20" : ""}
-                  >
-                    <CasinoPlayingCard
-                      card={card}
-                      hidden={!card}
-                      size="xl"
-                      className={`shadow-2xl transition-all ${
-                        isWinningCard
-                          ? "ring-4 ring-amber-400 shadow-[0_0_35px_rgba(251,191,36,0.85)]"
-                          : "ring-1 ring-white/10"
-                      }`}
-                    />
-                  </motion.div>
-                );
-              })}
-            </div>
-
-            <span className="mt-2 text-[11px] font-black tracking-widest uppercase text-emerald-300/50">
-              Community Board · {state.pokerStreet}
-            </span>
-          </div>
-
-          {/* ========================================================== */}
-          {/* FELT FOOTER: LIVE TABLE FEED TICKER                        */}
-          {/* ========================================================== */}
-          <div className="relative z-10 flex items-center justify-between px-4 pb-0.5">
-            <TastefulPokerInfo actionText={state.pokerLastAction} />
-
-            <div className="flex items-center gap-2">
-              <span className="rounded-xl border border-white/10 bg-black/60 px-3 py-1 font-mono text-xs font-bold text-emerald-300 backdrop-blur-md">
-                Current Bet: ${state.pokerBetToCall}
-              </span>
-              {callAmount > 0 ? (
-                <span className="rounded-xl border border-amber-400/40 bg-black/60 px-3 py-1 font-mono text-xs font-bold text-amber-300 backdrop-blur-md">
-                  To Call: ${callAmount}
-                </span>
-              ) : null}
-            </div>
-          </div>
+          <span className="mt-2 text-[11px] font-black tracking-widest uppercase text-emerald-300/60">
+            Community Board · {state.pokerStreet}
+          </span>
         </div>
 
-        {/* ============================================================== */}
-        {/* SITTING OUT BANNER (IF HERO IS SITTING OUT)                    */}
-        {/* ============================================================== */}
-        {isSittingOut ? (
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            className="relative z-30 mt-2 flex w-full max-w-4xl items-center justify-between rounded-2xl border-2 border-rose-500 bg-gradient-to-r from-rose-950/90 via-slate-950/95 to-slate-950/95 px-5 py-3 shadow-[0_0_30px_rgba(244,63,94,0.4)] backdrop-blur-xl"
-          >
-            <div className="flex items-center gap-3">
-              <AlertTriangle className="h-6 w-6 text-rose-400 animate-pulse" />
-              <div>
-                <h4 className="text-sm font-black text-rose-200">You are currently Sitting Out (AFK)</h4>
-                <p className="text-xs text-white/60">Your turns will automatically check or fold.</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => dispatch({ type: "poker_action", choice: "resume_play" })}
-              className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-5 py-2.5 text-xs font-black uppercase tracking-wider text-slate-950 shadow-lg hover:brightness-110 active:scale-95 transition"
-            >
-              I&apos;m Back / Resume Play 🟢
-            </button>
-          </motion.div>
-        ) : null}
+        {/* ============================================================ */}
+        {/* FELT FOOTER: LIVE TABLE FEED TICKER                          */}
+        {/* ============================================================ */}
+        <div className="relative z-10 flex items-center justify-between px-4 pb-0.5">
+          <TastefulPokerInfo actionText={state.pokerLastAction} />
 
-        {/* ============================================================== */}
-        {/* UNIFIED BOTTOM ACTION COCKPIT (BETTING LEFT + CARDS ON RIGHT)  */}
-        {/* ============================================================== */}
-        <div className="relative z-20 mt-1.5 flex w-full max-w-5xl items-center justify-between gap-3 sm:gap-4 rounded-2xl border border-amber-500/25 bg-slate-950/95 p-2.5 sm:p-3.5 shadow-2xl backdrop-blur-xl">
-          {/* LEFT / CENTER: PRO BETTING CONTROLS */}
+          <div className="flex items-center gap-2">
+            <span className="rounded-xl border border-white/10 bg-black/60 px-3 py-1 font-mono text-xs font-bold text-emerald-300 backdrop-blur-md">
+              Current Bet: ${state.pokerBetToCall}
+            </span>
+            {callAmount > 0 ? (
+              <span className="rounded-xl border border-amber-400/40 bg-black/60 px-3 py-1 font-mono text-xs font-bold text-amber-300 backdrop-blur-md">
+                To Call: ${callAmount}
+              </span>
+            ) : null}
+          </div>
+        </div>
+      </main>
+
+      {/* ============================================================== */}
+      {/* SITTING OUT BANNER (IF HERO IS SITTING OUT)                    */}
+      {/* ============================================================== */}
+      {isSittingOut ? (
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="relative z-30 mx-auto mb-2 flex w-full max-w-4xl items-center justify-between rounded-2xl border-2 border-rose-500 bg-gradient-to-r from-rose-950/90 via-slate-950/95 to-slate-950/95 px-5 py-3 shadow-[0_0_30px_rgba(244,63,94,0.4)] backdrop-blur-xl"
+        >
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="h-6 w-6 text-rose-400 animate-pulse" />
+            <div>
+              <h4 className="text-sm font-black text-rose-200">You are currently Sitting Out (AFK)</h4>
+              <p className="text-xs text-white/60">Your turns will automatically check or fold.</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => dispatch({ type: "poker_action", choice: "resume_play" })}
+            className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-5 py-2.5 text-xs font-black uppercase tracking-wider text-slate-950 shadow-lg hover:brightness-110 active:scale-95 transition"
+          >
+            I&apos;m Back / Resume Play 🟢
+          </button>
+        </motion.div>
+      ) : null}
+
+      {/* ============================================================== */}
+      {/* UNIFIED BOTTOM ACTION COCKPIT (POLISHED GLASS DOCK)           */}
+      {/* ============================================================== */}
+      <footer className="relative z-30 p-2 sm:p-3 flex justify-center">
+        <div className="flex w-full max-w-5xl items-center justify-between gap-3 sm:gap-4 rounded-3xl border border-amber-500/35 bg-gradient-to-b from-slate-950/95 via-black/95 to-slate-950/95 p-3 sm:p-4 shadow-[0_15px_50px_rgba(0,0,0,0.85)] backdrop-blur-2xl">
+          {/* LEFT / CENTER: BETTING CONSOLE */}
           <div className="flex flex-1 flex-col gap-2 min-w-0">
             {/* Quick Pot Sizing & Pre-actions Row */}
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-1.5">
-              {/* Quick Pot Fraction Buttons */}
+              {/* Quick Pot Buttons */}
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 mr-1 hidden sm:inline">
                   Quick Bets:
@@ -628,7 +732,7 @@ export function PokerTable(props: BoardGameTableProps) {
                     playSound("chip");
                     setRaiseAmount(20);
                   }}
-                  className="rounded-lg border border-white/15 bg-white/5 px-2 py-1 text-[11px] font-bold text-white hover:bg-white/15 disabled:opacity-30 active:scale-95"
+                  className="rounded-lg border border-white/15 bg-white/5 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-white/15 disabled:opacity-30 active:scale-95"
                 >
                   Min ($20)
                 </button>
@@ -636,7 +740,7 @@ export function PokerTable(props: BoardGameTableProps) {
                   type="button"
                   disabled={!canRaise}
                   onClick={() => handleQuickPot(0.5)}
-                  className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-2 py-1 text-[11px] font-bold text-amber-300 hover:bg-amber-400/20 disabled:opacity-30 active:scale-95"
+                  className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-2.5 py-1 text-[11px] font-bold text-amber-300 hover:bg-amber-400/20 disabled:opacity-30 active:scale-95"
                 >
                   1/2 Pot
                 </button>
@@ -644,7 +748,7 @@ export function PokerTable(props: BoardGameTableProps) {
                   type="button"
                   disabled={!canRaise}
                   onClick={() => handleQuickPot(0.75)}
-                  className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-2 py-1 text-[11px] font-bold text-amber-300 hover:bg-amber-400/20 disabled:opacity-30 active:scale-95"
+                  className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-2.5 py-1 text-[11px] font-bold text-amber-300 hover:bg-amber-400/20 disabled:opacity-30 active:scale-95"
                 >
                   3/4 Pot
                 </button>
@@ -652,7 +756,7 @@ export function PokerTable(props: BoardGameTableProps) {
                   type="button"
                   disabled={!canRaise}
                   onClick={() => handleQuickPot(1.0)}
-                  className="rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-[11px] font-bold text-emerald-300 hover:bg-emerald-400/20 disabled:opacity-30 active:scale-95"
+                  className="rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-bold text-emerald-300 hover:bg-emerald-400/20 disabled:opacity-30 active:scale-95"
                 >
                   Pot
                 </button>
@@ -663,7 +767,7 @@ export function PokerTable(props: BoardGameTableProps) {
                     playSound("chip");
                     setRaiseAmount(maxAllowedRaise);
                   }}
-                  className="rounded-lg border border-rose-500/40 bg-rose-500/15 px-2 py-1 text-[11px] font-black text-rose-300 hover:bg-rose-500/25 disabled:opacity-30 active:scale-95"
+                  className="rounded-lg border border-rose-500/40 bg-rose-500/15 px-2.5 py-1 text-[11px] font-black text-rose-300 hover:bg-rose-500/25 disabled:opacity-30 active:scale-95"
                 >
                   All-In
                 </button>
@@ -698,10 +802,17 @@ export function PokerTable(props: BoardGameTableProps) {
               </div>
             </div>
 
-            {/* Raise Slider (When raise is available) */}
+            {/* Raise Slider */}
             {canRaise ? (
               <div className="flex items-center gap-3 py-0.5">
                 <span className="text-[10px] font-bold text-white/50 whitespace-nowrap">Raise Slider:</span>
+                <button
+                  type="button"
+                  onClick={() => setRaiseAmount((prev) => Math.max(20, prev - 20))}
+                  className="grid h-6 w-6 place-items-center rounded bg-white/10 text-xs font-bold hover:bg-white/20"
+                >
+                  -
+                </button>
                 <input
                   type="range"
                   min={20}
@@ -711,15 +822,22 @@ export function PokerTable(props: BoardGameTableProps) {
                   onChange={(e) => setRaiseAmount(Number(e.target.value))}
                   className="w-full accent-amber-400 h-1.5 bg-white/10 rounded-lg cursor-pointer"
                 />
+                <button
+                  type="button"
+                  onClick={() => setRaiseAmount((prev) => Math.min(maxAllowedRaise, prev + 20))}
+                  className="grid h-6 w-6 place-items-center rounded bg-white/10 text-xs font-bold hover:bg-white/20"
+                >
+                  +
+                </button>
                 <span className="font-mono text-xs font-black text-amber-300 whitespace-nowrap">
                   +${effectiveRaise}
                 </span>
               </div>
             ) : null}
 
-            {/* Player Chips & Action Buttons */}
+            {/* Metrics & Action Buttons */}
             <div className="flex w-full flex-wrap items-center justify-between gap-2 pt-0.5">
-              {/* Stack, Round Bet, Total in Pot & Turn Info */}
+              {/* Stack, Round Bet, In Pot (Total) & Turn Info */}
               <div className="flex items-center gap-2.5 sm:gap-3">
                 <div className="flex flex-col">
                   <span className="text-[10px] font-black uppercase text-amber-400">Your Stack</span>
@@ -739,7 +857,6 @@ export function PokerTable(props: BoardGameTableProps) {
 
                 <div className="h-7 w-px bg-white/10" />
 
-                {/* Paid in current betting round */}
                 <div className="flex flex-col">
                   <span className="text-[10px] font-black uppercase text-emerald-400" title="Chips paid in this round">
                     This Round
@@ -751,7 +868,6 @@ export function PokerTable(props: BoardGameTableProps) {
 
                 <div className="h-7 w-px bg-white/10" />
 
-                {/* Paid overall into this hand's pot */}
                 <div className="flex flex-col">
                   <span className="text-[10px] font-black uppercase text-amber-400" title="Total chips paid into this hand overall">
                     In Pot (Total)
@@ -870,11 +986,10 @@ export function PokerTable(props: BoardGameTableProps) {
           </div>
 
           {/* RIGHT: INTEGRATED HERO HOLE CARDS DOCK */}
-          {/* Note: NO cheat text ('One Pair', 'Full House') - player calculates their own cards! */}
           <div className="flex items-center gap-2.5 sm:gap-3 pl-3 sm:pl-4 border-l border-white/10 shrink-0">
             <div className="flex flex-col items-end">
               <span className="text-[10px] font-black uppercase tracking-wider text-amber-300">
-                Your Cards
+                Your Hand
               </span>
               <button
                 type="button"
@@ -908,15 +1023,15 @@ export function PokerTable(props: BoardGameTableProps) {
             </div>
           </div>
         </div>
-      </main>
+      </footer>
 
       {/* ============================================================== */}
-      {/* SHOWDOWN & WINNER CEREMONY MODAL                               */}
+      {/* SHOWDOWN & WINNER CAROUSEL MODAL (ALL PLAYERS VS RIVER!)       */}
       {/* ============================================================== */}
       <AnimatePresence>
         {showWinnerModal && state.pokerLastHandResult ? (
           <div
-            className="fixed inset-0 z-50 grid place-items-center bg-black/80 p-4 backdrop-blur-md"
+            className="fixed inset-0 z-50 grid place-items-center bg-black/85 p-3 sm:p-4 backdrop-blur-md"
             onClick={() => setShowWinnerModal(false)}
           >
             <motion.div
@@ -925,7 +1040,7 @@ export function PokerTable(props: BoardGameTableProps) {
               exit={{ scale: 0.88, opacity: 0, y: 20 }}
               transition={{ type: "spring", damping: 18, stiffness: 280 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-lg overflow-hidden rounded-3xl border-2 border-amber-400 bg-gradient-to-b from-[#14231b] via-[#0b1612] to-[#040807] p-6 text-center shadow-[0_0_90px_rgba(251,191,36,0.45)]"
+              className="relative w-full max-w-2xl overflow-hidden rounded-3xl border-2 border-amber-400 bg-gradient-to-b from-[#14231b] via-[#0b1612] to-[#040807] p-5 sm:p-6 text-center shadow-[0_0_90px_rgba(251,191,36,0.45)]"
             >
               {/* Radial Golden Background Rays */}
               <div className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 h-64 w-64 rounded-full bg-amber-400/20 blur-3xl" />
@@ -933,73 +1048,183 @@ export function PokerTable(props: BoardGameTableProps) {
               {/* Hand Completion Badge */}
               <div className="relative z-10 inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-400/10 px-4 py-1 text-xs font-black uppercase tracking-widest text-amber-300">
                 <Sparkles className="h-3.5 w-3.5 text-amber-300" />
-                <span>Hand #{state.pokerLastHandResult.handNumber} Complete</span>
+                <span>Hand #{state.pokerLastHandResult.handNumber} Showdown</span>
                 <Sparkles className="h-3.5 w-3.5 text-amber-300" />
               </div>
 
-              {/* Animated Trophy Icon */}
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: [1, 1.15, 1], rotate: [0, 8, -8, 0] }}
-                transition={{ repeat: Infinity, duration: 2.2 }}
-                className="relative z-10 mx-auto mt-4 grid h-20 w-20 place-items-center rounded-3xl bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 text-4xl shadow-[0_0_40px_rgba(251,191,36,0.5)] border border-amber-200/50"
-              >
-                🏆
-              </motion.div>
-
-              {/* Winner Headline */}
-              <div className="relative z-10 mt-4">
-                <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white drop-shadow">
-                  {state.pokerLastHandResult.winnerUserIds.includes(currentUserId) ? (
-                    <span className="bg-gradient-to-r from-emerald-300 via-yellow-200 to-amber-300 bg-clip-text text-transparent">
-                      🎉 YOU WON THE POT! 🎉
-                    </span>
-                  ) : (
-                    <span className="bg-gradient-to-r from-amber-200 via-yellow-100 to-amber-400 bg-clip-text text-transparent">
-                      {state.pokerLastHandResult.winnerNames.join(", ")} WINS!
-                    </span>
-                  )}
-                </h2>
-
-                {/* Pot Amount */}
-                <div className="mt-2 font-mono text-3xl sm:text-4xl font-black text-amber-300 drop-shadow-[0_2px_12px_rgba(251,191,36,0.5)]">
-                  +${state.pokerLastHandResult.potWon.toLocaleString("en-US")}
-                </div>
-
-                {/* Hand Type or Fold Notice */}
-                <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 shadow">
-                  <span className="text-xs font-bold text-white/60 uppercase tracking-wider">
-                    {state.pokerLastHandResult.byFold ? "Result:" : "Winning Hand:"}
-                  </span>
-                  <span className="text-xs font-black text-amber-300">{state.pokerLastHandResult.handName}</span>
-                </div>
-
-                {/* Showdown Hole Cards (Only shown if NOT won by fold!) */}
-                {!state.pokerLastHandResult.byFold &&
-                state.pokerLastHandResult.winnerUserIds.length > 0 &&
-                state.pokerLastHandResult.showdownCards?.[state.pokerLastHandResult.winnerUserIds[0]!] ? (
-                  <div className="mt-4 flex flex-col items-center">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-1.5">
-                      Winning Hole Cards
-                    </span>
-                    <div className="flex items-center justify-center gap-2">
-                      {state.pokerLastHandResult.showdownCards[state.pokerLastHandResult.winnerUserIds[0]!]!.map((c, i) => (
-                        <CasinoPlayingCard key={i} card={c} size="md" className="shadow-xl ring-2 ring-amber-400/70" />
-                      ))}
-                    </div>
+              {/* If Win By Fold: Opponents Folded Result */}
+              {state.pokerLastHandResult.byFold ? (
+                <div className="relative z-10 mt-4">
+                  <div className="mx-auto grid h-16 w-16 place-items-center rounded-3xl bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 text-3xl shadow-[0_0_35px_rgba(251,191,36,0.5)] border border-amber-200/50">
+                    🏆
                   </div>
-                ) : null}
+                  <h2 className="mt-3 text-2xl font-black text-white">
+                    {state.pokerLastHandResult.winnerUserIds.includes(currentUserId)
+                      ? "🎉 YOU WON THE POT! 🎉"
+                      : `${state.pokerLastHandResult.winnerNames.join(", ")} WINS!`}
+                  </h2>
+                  <div className="mt-1 font-mono text-3xl font-black text-amber-300">
+                    +${state.pokerLastHandResult.potWon.toLocaleString("en-US")}
+                  </div>
+                  <p className="mt-2 text-xs text-white/70">
+                    Won because every opponent folded. Cards remain mucked (hidden).
+                  </p>
+                </div>
+              ) : (
+                /* Interactive Showdown Carousel for All Players Still in Game */
+                <div className="relative z-10 mt-3">
+                  {/* Top Pot Winner Banner */}
+                  <div className="flex items-center justify-center gap-2">
+                    <Trophy className="h-5 w-5 text-amber-400" />
+                    <span className="text-sm font-black text-amber-300">
+                      {state.pokerLastHandResult.winnerNames.join(", ")} takes the pot of ${state.pokerLastHandResult.potWon}!
+                    </span>
+                  </div>
 
-                {/* Summary Text */}
-                <p className="mt-3 text-xs text-white/70">{state.pokerLastHandResult.summary}</p>
-              </div>
+                  {/* Carousel Navigation Bar */}
+                  {showdownPlayerList.length > 1 ? (
+                    <div className="mt-3 flex items-center justify-between border-y border-white/10 py-1.5 px-2">
+                      <button
+                        type="button"
+                        disabled={activeSlideIndex === 0}
+                        onClick={() => setActiveSlideIndex((prev) => Math.max(0, prev - 1))}
+                        className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-bold text-white/80 hover:bg-white/10 disabled:opacity-30 transition"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        <span>Previous</span>
+                      </button>
+
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-black uppercase text-amber-400">
+                          Player {activeSlideIndex + 1} of {showdownPlayerList.length}
+                        </span>
+                        <div className="flex items-center gap-1 ml-1">
+                          {showdownPlayerList.map((_, dotIdx) => (
+                            <button
+                              key={dotIdx}
+                              type="button"
+                              onClick={() => setActiveSlideIndex(dotIdx)}
+                              className={`h-2 rounded-full transition-all ${
+                                dotIdx === activeSlideIndex ? "w-5 bg-amber-400" : "w-2 bg-white/30"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={activeSlideIndex === showdownPlayerList.length - 1}
+                        onClick={() => setActiveSlideIndex((prev) => Math.min(showdownPlayerList.length - 1, prev + 1))}
+                        className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-bold text-white/80 hover:bg-white/10 disabled:opacity-30 transition"
+                      >
+                        <span>Next</span>
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : null}
+
+                  {/* Slide Content: Active Player Hand vs River */}
+                  {(() => {
+                    const activePlayer = showdownPlayerList[activeSlideIndex] ?? showdownPlayerList[0];
+                    if (!activePlayer) return null;
+
+                    return (
+                      <motion.div
+                        key={activePlayer.userId}
+                        initial={{ opacity: 0, x: 15 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -15 }}
+                        className="mt-3 rounded-2xl border border-white/10 bg-black/40 p-3 sm:p-4 text-center"
+                      >
+                        {/* Player Name, Winner Badge & Hand Name */}
+                        <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-black text-white">
+                              {activePlayer.displayName}
+                            </span>
+                            {activePlayer.isWinner ? (
+                              <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-black text-slate-950 uppercase shadow">
+                                🏆 WINNER (+${activePlayer.potWon})
+                              </span>
+                            ) : (
+                              <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold text-white/60 uppercase">
+                                Showdown
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs font-black text-amber-300">
+                            {activePlayer.handName}
+                          </span>
+                        </div>
+
+                        {/* Player's 2 Hole Cards */}
+                        <div className="mt-3 flex flex-col items-center">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-white/50 mb-1">
+                            {activePlayer.displayName}&apos;s Hole Cards
+                          </span>
+                          <div className="flex items-center justify-center gap-2">
+                            {activePlayer.holeCards.map((c, i) => {
+                              const isKey = activePlayer.bestCards.includes(c);
+                              return (
+                                <CasinoPlayingCard
+                                  key={i}
+                                  card={c}
+                                  size="md"
+                                  className={`shadow-xl transition-all ${
+                                    isKey
+                                      ? "ring-2 ring-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.6)]"
+                                      : "opacity-60"
+                                  }`}
+                                />
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Matched Against The 5 River Cards */}
+                        <div className="mt-3 flex flex-col items-center">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400/80 mb-1">
+                            Matched with Community Board Cards
+                          </span>
+                          <div className="flex items-center justify-center gap-1.5 sm:gap-2">
+                            {state.communityCards.map((c, i) => {
+                              const isKey = activePlayer.bestCards.includes(c);
+                              return (
+                                <CasinoPlayingCard
+                                  key={i}
+                                  card={c}
+                                  size="sm"
+                                  className={`shadow-md transition-all ${
+                                    isKey
+                                      ? "ring-2 ring-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.5)] -translate-y-1"
+                                      : "opacity-40"
+                                  }`}
+                                />
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Best 5 Cards Explanation */}
+                        <div className="mt-2.5 text-xs text-white/70">
+                          Best 5 cards:{" "}
+                          <span className="font-mono font-bold text-amber-300">
+                            {activePlayer.bestCards.join(" ")}
+                          </span>
+                        </div>
+                      </motion.div>
+                    );
+                  })()}
+                </div>
+              )}
 
               {/* Action Button: Next Hand with Live Countdown */}
-              <div className="relative z-10 mt-6 flex flex-col items-center gap-2">
+              <div className="relative z-10 mt-5 flex flex-col items-center gap-2">
                 <button
                   type="button"
                   onClick={() => dispatch({ type: "poker_action", choice: "next_hand" })}
-                  className="w-full max-w-xs rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 py-3 text-sm font-black tracking-wider uppercase text-slate-950 shadow-lg hover:brightness-110 active:scale-95 transition-all"
+                  className="w-full max-w-sm rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 py-3 text-sm font-black tracking-wider uppercase text-slate-950 shadow-lg hover:brightness-110 active:scale-95 transition-all"
                 >
                   Continue to Hand #{(state.pokerHandNumber ?? 1) + 1} ({nextHandCountdown}s) →
                 </button>
@@ -1011,12 +1236,12 @@ export function PokerTable(props: BoardGameTableProps) {
       </AnimatePresence>
 
       {/* ============================================================== */}
-      {/* HAND RANKINGS MODAL                                            */}
+      {/* HAND RANKINGS MODAL (WITH REAL VISUAL MINI CARDS!)             */}
       {/* ============================================================== */}
       <AnimatePresence>
         {pokerRulesOpen ? (
           <div
-            className="fixed inset-0 z-50 grid place-items-center bg-black/80 p-4 backdrop-blur-md"
+            className="fixed inset-0 z-50 grid place-items-center bg-black/85 p-3 sm:p-4 backdrop-blur-md"
             onClick={() => setPokerRulesOpen(false)}
           >
             <motion.div
@@ -1024,12 +1249,12 @@ export function PokerTable(props: BoardGameTableProps) {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-3xl rounded-2xl border border-amber-400/30 bg-slate-950 p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto"
+              className="w-full max-w-3xl rounded-2xl border border-amber-400/40 bg-slate-950 p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto"
             >
               <div className="flex items-center justify-between border-b border-white/10 pb-3">
                 <div>
                   <h3 className="text-xl font-black text-amber-300">Poker Hand Rankings</h3>
-                  <p className="text-xs text-white/50">Highest to lowest standard 5-card poker combinations.</p>
+                  <p className="text-xs text-white/50">Highest to lowest standard 5-card poker combinations with visual examples.</p>
                 </div>
                 <button
                   type="button"
@@ -1040,20 +1265,27 @@ export function PokerTable(props: BoardGameTableProps) {
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {POKER_HAND_RANKINGS.map((hand, idx) => (
-                  <div key={hand.name} className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
-                    <span className="grid h-6 w-6 place-items-center rounded-lg bg-amber-400/20 text-xs font-black text-amber-300 shrink-0">
-                      {idx + 1}
-                    </span>
-                    <div>
+                  <div key={hand.name} className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/5 p-3">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
+                        <span className="grid h-6 w-6 place-items-center rounded-lg bg-amber-400/20 text-xs font-black text-amber-300 shrink-0">
+                          {idx + 1}
+                        </span>
                         <strong className="text-xs text-white font-black">{hand.name}</strong>
-                        <span className="text-[9px] font-bold text-amber-400 uppercase tracking-wider">{hand.tier}</span>
                       </div>
-                      <p className="font-mono text-[11px] font-bold text-emerald-300 mt-0.5">{hand.example}</p>
-                      <p className="text-[10px] text-white/60 leading-snug mt-0.5">{hand.detail}</p>
+                      <span className="text-[9px] font-bold text-amber-400 uppercase tracking-wider">{hand.tier}</span>
                     </div>
+
+                    {/* Real visual playing cards! */}
+                    <div className="flex items-center gap-1.5 py-0.5">
+                      {hand.cards.map((c, i) => (
+                        <MiniCard key={i} card={c} />
+                      ))}
+                    </div>
+
+                    <p className="text-[10px] text-white/60 leading-snug">{hand.detail}</p>
                   </div>
                 ))}
               </div>
