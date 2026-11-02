@@ -1367,7 +1367,7 @@ export function TwentyNineTable({
                 })}
               </AnimatePresence>
 
-              {/* CINEMATIC ORGANIC EVENT OVERLAY (Centered directly on Table Felt) */}
+              {/* EVENT POPUP OVERLAY (Positioned directly above the hand cards, anchored to the right) */}
               <TwentyNineEventOverlay
                 gameEvents={gameEvents}
                 state={state}

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { GameEvent, PublicTwentyNineState, TwentyNineSuit } from "@tabletop/game-core";
 import { SuitMark, TWENTY_NINE_SUITS_INFO } from "./TwentyNineCard";
+import { cn } from "@/lib/utils/cn";
 
 interface NormalizedEvent {
   id: string;
@@ -215,11 +216,13 @@ const TONE_CONFIGS = {
 export function TwentyNineEventOverlay({
   gameEvents,
   state,
-  currentUserId
+  currentUserId,
+  className
 }: {
   gameEvents: GameEvent[];
   state: PublicTwentyNineState;
   currentUserId: string | null;
+  className?: string;
 }) {
   const reduceMotion = useReducedMotion();
   const [currentSpotlight, setCurrentSpotlight] = useState<NormalizedEvent | null>(null);
@@ -269,57 +272,52 @@ export function TwentyNineEventOverlay({
   const tone = currentSpotlight ? TONE_CONFIGS[currentSpotlight.tone] ?? TONE_CONFIGS.amber : TONE_CONFIGS.amber;
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-[70] grid place-items-center overflow-hidden">
+    <div
+      className={cn(
+        /* =========================================================================
+           POPUP ANIMATION OVERLAY POSITIONING:
+           Anchored directly above the local player's hand cards and to the right.
+           To manually tweak:
+             - Vertical position: change `bottom-3` (e.g. `bottom-1`, `bottom-6`, `bottom-10`)
+             - Horizontal position: change `right-4 sm:right-6 md:right-8` (e.g. `right-2`, `right-12`)
+           ========================================================================= */
+        "pointer-events-none absolute bottom-3 right-4 sm:right-6 md:right-8 z-[70] flex flex-col items-end overflow-visible select-none",
+        className
+      )}
+    >
       <AnimatePresence mode="popLayout">
         {currentSpotlight ? (
           <motion.div
             key={currentSpotlight.id}
-            initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.8, y: 16 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: reduceMotion ? 1 : 1.12, filter: "blur(12px)" }}
-            transition={{ duration: reduceMotion ? 0.15 : 0.32, ease: [0.16, 1, 0.3, 1] }}
-            className="relative flex flex-col items-center justify-center p-6 text-center select-none"
+            initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.88, y: 14, x: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
+            exit={{ opacity: 0, scale: reduceMotion ? 1 : 0.9, y: 8, filter: "blur(6px)" }}
+            transition={{ duration: reduceMotion ? 0.15 : 0.28, ease: [0.16, 1, 0.3, 1] }}
+            className="relative flex flex-col items-end text-right rounded-2xl border border-white/15 bg-black/85 px-4 py-2.5 shadow-2xl backdrop-blur-xl max-w-xs sm:max-w-sm select-none"
           >
-            {/* Soft Radial Glow Halo - NO dark opaque rectangular box blocking the table */}
+            {/* Soft Ambient Glow */}
             <div
-              className="pointer-events-none absolute -inset-24"
+              className="pointer-events-none absolute -inset-1 rounded-2xl opacity-60"
               style={{
-                background: `radial-gradient(ellipse at 50% 50%, ${tone.soft} 0%, rgba(0, 0, 0, 0.4) 45%, transparent 75%)`,
-                filter: "blur(24px)"
+                background: `radial-gradient(circle at 85% 50%, ${tone.soft} 0%, transparent 70%)`,
+                filter: "blur(10px)"
               }}
             />
 
-            {/* Expanding Shockwave Ripple across table */}
+            {/* Compact Shockwave Ripple */}
             {!reduceMotion ? (
               <motion.div
-                className="pointer-events-none absolute rounded-full border-2"
+                className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 rounded-full border"
                 style={{ borderColor: tone.color }}
-                initial={{ width: 60, height: 60, opacity: 0.9, scale: 0.4 }}
-                animate={{ width: 440, height: 440, opacity: 0, scale: 1.5 }}
-                transition={{ duration: 0.85, ease: "easeOut" }}
+                initial={{ width: 24, height: 24, opacity: 0.8, scale: 0.5 }}
+                animate={{ width: 120, height: 120, opacity: 0, scale: 1.3 }}
+                transition={{ duration: 0.7, ease: "easeOut" }}
               />
             ) : null}
 
-            {/* Badge Pill */}
-            <span
-              className="relative z-10 mb-2 rounded-full border px-3 py-0.5 text-[0.62rem] font-black uppercase tracking-[0.24em] shadow-lg backdrop-blur-md"
-              style={{
-                borderColor: tone.color,
-                backgroundColor: tone.soft,
-                color: "#fff"
-              }}
-            >
-              {currentSpotlight.badge}
-            </span>
-
-            {/* Huge Suit Emblem (if trump revealed) */}
-            {currentSpotlight.suit ? (
-              <motion.div
-                className="relative z-10 my-1 flex items-center justify-center"
-                initial={{ scale: 0.6, rotate: -12 }}
-                animate={{ scale: [0.75, 1.18, 1], rotate: 0 }}
-                transition={{ duration: 0.4 }}
-              >
+            {/* Header Badge & Suit Pill */}
+            <div className="relative z-10 flex items-center gap-1.5 mb-1">
+              {currentSpotlight.suit ? (
                 <SuitMark
                   suit={currentSpotlight.suit}
                   color={
@@ -327,23 +325,35 @@ export function TwentyNineEventOverlay({
                       ? "#fb7185"
                       : "#34d399"
                   }
-                  size={68}
+                  size={18}
                 />
-              </motion.div>
-            ) : null}
+              ) : null}
+              <span
+                className="rounded-full border px-2 py-0.5 text-[0.58rem] font-black uppercase tracking-[0.16em] shadow-sm backdrop-blur-md"
+                style={{
+                  borderColor: tone.color,
+                  backgroundColor: tone.soft,
+                  color: "#fff"
+                }}
+              >
+                {currentSpotlight.badge}
+              </span>
+            </div>
 
-            {/* Massive Glowing Title (Like UNO No Mercy) */}
-            <h1
-              className="relative z-10 text-4xl sm:text-5xl md:text-6xl font-black tracking-tight leading-none text-white drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]"
+            {/* Popup Title:
+                Adjust font size here: `text-base sm:text-lg md:text-xl` */}
+            <h3
+              className="relative z-10 text-base sm:text-lg md:text-xl font-black tracking-tight leading-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)]"
               style={{
-                textShadow: `0 0 28px ${tone.glow}, 0 0 55px ${tone.glow}`
+                textShadow: `0 0 16px ${tone.glow}`
               }}
             >
               {currentSpotlight.hugeTitle}
-            </h1>
+            </h3>
 
-            {/* Subtitle Details */}
-            <p className="relative z-10 mt-2 max-w-md text-xs sm:text-sm font-black uppercase tracking-[0.2em] text-white/90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+            {/* Subtitle Details:
+                Adjust font size here: `text-[0.68rem] sm:text-xs` */}
+            <p className="relative z-10 mt-0.5 max-w-[260px] sm:max-w-[320px] text-[0.68rem] sm:text-xs font-semibold text-white/85 tracking-wide drop-shadow-sm leading-snug">
               {currentSpotlight.subtitle}
             </p>
           </motion.div>
