@@ -25,7 +25,7 @@ export function reducePokerAction(
 
   // 2. Advance to Next Hand after Showdown / Win by Fold
   if (action.choice === "next_hand") {
-    if (!state.pokerAwaitingNextHand) return { accepted: false, message: "" };
+    if (!state.pokerAwaitingNextHand) return { accepted: true, message: "" };
     state.pokerAwaitingNextHand = false;
     startNextPokerHand(state, now, state.pokerLastAction);
     return { accepted: true, message: `🃏 Hand #${state.pokerHandNumber} begins.` };

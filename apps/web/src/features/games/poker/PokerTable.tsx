@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Eye,
   EyeOff,
@@ -183,31 +183,31 @@ function getOpponentSeatStyle(index: number, totalOpponents: number) {
     return positions[index]!;
   }
   if (totalOpponents === 3) {
-    // 4 Players Total: Mid-Left, Top-Center, Mid-Right
+    // 4 Players Total: Mid-Left, Top-Left, Top-Right (Leaves center vertical column 100% open for Pot & Board!)
     const positions = [
-      { left: "4%", top: "35%", transform: "translate(0, -50%)" },
-      { left: "50%", top: "8px", transform: "translate(-50%, 0)" },
-      { right: "4%", top: "35%", transform: "translate(0, -50%)" }
+      { left: "4%", top: "42%", transform: "translate(0, -50%)" },
+      { left: "26%", top: "10px", transform: "translate(-50%, 0)" },
+      { left: "74%", top: "10px", transform: "translate(-50%, 0)" }
     ];
     return positions[index]!;
   }
   if (totalOpponents === 4) {
-    // 5 Players Total
+    // 5 Players Total: Mid-Left, Top-Left, Top-Right, Mid-Right
     const positions = [
-      { left: "4%", top: "40%", transform: "translate(0, -50%)" },
-      { left: "26%", top: "10px", transform: "translate(-50%, 0)" },
-      { left: "74%", top: "10px", transform: "translate(-50%, 0)" },
-      { right: "4%", top: "40%", transform: "translate(0, -50%)" }
+      { left: "4%", top: "44%", transform: "translate(0, -50%)" },
+      { left: "24%", top: "10px", transform: "translate(-50%, 0)" },
+      { left: "76%", top: "10px", transform: "translate(-50%, 0)" },
+      { right: "4%", top: "44%", transform: "translate(0, -50%)" }
     ];
     return positions[index]!;
   }
   // 6 Players Total (5 Opponents)
   const positions = [
-    { left: "4%", top: "48%", transform: "translate(0, -50%)" },
+    { left: "3%", top: "48%", transform: "translate(0, -50%)" },
     { left: "20%", top: "10px", transform: "translate(-50%, 0)" },
-    { left: "50%", top: "8px", transform: "translate(-50%, 0)" },
-    { right: "20%", top: "10px", transform: "translate(50%, 0)" },
-    { right: "4%", top: "48%", transform: "translate(0, -50%)" }
+    { left: "50%", top: "6px", transform: "translate(-50%, 0)" },
+    { left: "80%", top: "10px", transform: "translate(-50%, 0)" },
+    { right: "3%", top: "48%", transform: "translate(0, -50%)" }
   ];
   return positions[index % positions.length]!;
 }
@@ -718,7 +718,39 @@ export function PokerTable(props: BoardGameTableProps) {
       {/* UNIFIED BOTTOM ACTION COCKPIT (POLISHED GLASS DOCK)           */}
       {/* ============================================================== */}
       <footer className="relative z-30 p-2 sm:p-3 flex justify-center">
-        <div className="flex w-full max-w-5xl items-center justify-between gap-3 sm:gap-4 rounded-3xl border border-amber-500/35 bg-gradient-to-b from-slate-950/95 via-black/95 to-slate-950/95 p-3 sm:p-4 shadow-[0_15px_50px_rgba(0,0,0,0.85)] backdrop-blur-2xl">
+        {myStack <= 0 ? (
+          <div className="flex w-full max-w-5xl flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 rounded-3xl border border-rose-500/40 bg-gradient-to-r from-rose-950/70 via-slate-950/95 to-rose-950/70 p-3 sm:p-4 shadow-[0_15px_50px_rgba(0,0,0,0.85)] backdrop-blur-2xl">
+            <div className="flex items-center gap-3">
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-rose-500/20 border border-rose-400/40 text-2xl shadow-lg shrink-0">
+                💀
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-black uppercase tracking-wider text-rose-300">
+                    Tournament Eliminated ($0 Stack)
+                  </span>
+                  <span className="rounded-full bg-rose-500/20 border border-rose-400/30 px-2.5 py-0.5 text-[10px] font-bold text-rose-200 uppercase tracking-widest">
+                    Spectating Mode
+                  </span>
+                </div>
+                <p className="text-xs text-white/70 mt-0.5">
+                  You lost all your chips. Watching remaining table players ({state.players.filter((p) => (state.pokerStacks[p.userId] ?? 0) > 0).length} active) fight for the championship!
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => router.push("/dashboard")}
+                className="rounded-xl bg-gradient-to-r from-rose-500 to-rose-600 px-5 py-2.5 text-xs font-black uppercase text-white shadow-[0_4px_16px_rgba(244,63,94,0.4)] hover:brightness-110 transition active:scale-95"
+              >
+                🚪 Leave Table
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex w-full max-w-5xl items-center justify-between gap-3 sm:gap-4 rounded-3xl border border-amber-500/35 bg-gradient-to-b from-slate-950/95 via-black/95 to-slate-950/95 p-3 sm:p-4 shadow-[0_15px_50px_rgba(0,0,0,0.85)] backdrop-blur-2xl">
           {/* LEFT / CENTER: BETTING CONSOLE */}
           <div className="flex flex-1 flex-col gap-2 min-w-0">
             {/* Quick Pot Sizing & Pre-actions Row */}
@@ -1015,22 +1047,7 @@ export function PokerTable(props: BoardGameTableProps) {
 
             {/* The 2 Hole Cards */}
             <div className="flex items-center gap-1.5 sm:gap-2">
-              {myStack <= 0 ? (
-                <div className="flex items-center gap-2.5 rounded-2xl border border-rose-500/40 bg-rose-950/50 px-3 py-1.5 shadow-lg">
-                  <span className="text-base">💀</span>
-                  <div className="flex flex-col">
-                    <span className="text-[10px] font-black uppercase text-rose-300">Busted ($0)</span>
-                    <span className="text-[9px] text-white/50">Eliminated</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => router.push("/dashboard")}
-                    className="ml-1 rounded-xl border border-rose-400/30 bg-rose-500/20 px-2 py-1 text-[10px] font-black uppercase text-rose-200 hover:bg-rose-500/30 transition active:scale-95"
-                  >
-                    Leave
-                  </button>
-                </div>
-              ) : (state.myPokerCards ?? []).length > 0 ? (
+              {(state.myPokerCards ?? []).length > 0 ? (
                 (state.myPokerCards ?? []).map((card, i) => {
                   const isWinningCard = Boolean(
                     card && state.pokerLastHandResult?.winningCards?.includes(card)
@@ -1060,31 +1077,23 @@ export function PokerTable(props: BoardGameTableProps) {
             </div>
           </div>
         </div>
+        )}
       </footer>
 
       {/* ============================================================== */}
       {/* SHOWDOWN & WINNER CAROUSEL MODAL (ALL PLAYERS VS RIVER!)       */}
       {/* ============================================================== */}
-      <AnimatePresence>
-        {showWinnerModal && state.pokerLastHandResult ? (
-          <motion.div
-            key="poker-winner-modal-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
-            style={{ pointerEvents: showWinnerModal ? "auto" : "none" }}
-            className={`fixed inset-0 z-50 grid place-items-center bg-black/85 p-3 sm:p-4 backdrop-blur-md ${!showWinnerModal ? "pointer-events-none" : ""}`}
+      {showWinnerModal && state.pokerLastHandResult ? (
+        <div
+          key="poker-winner-modal-backdrop"
+          style={{ pointerEvents: showWinnerModal ? "auto" : "none" }}
+          className={`fixed inset-0 z-50 grid place-items-center bg-black/85 p-3 sm:p-4 backdrop-blur-md animate-in fade-in duration-150 ${!showWinnerModal ? "pointer-events-none" : ""}`}
+        >
+          <div
+            key="poker-winner-modal-dialog"
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-2xl overflow-hidden rounded-3xl border-2 border-amber-400 bg-gradient-to-b from-[#14231b] via-[#0b1612] to-[#040807] p-5 sm:p-6 text-center shadow-[0_0_90px_rgba(251,191,36,0.45)] animate-in zoom-in-95 duration-150"
           >
-            <motion.div
-              key="poker-winner-modal-dialog"
-              initial={{ scale: 0.85, opacity: 0, y: 25 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.88, opacity: 0, y: 20 }}
-              transition={{ type: "spring", damping: 18, stiffness: 280 }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-2xl overflow-hidden rounded-3xl border-2 border-amber-400 bg-gradient-to-b from-[#14231b] via-[#0b1612] to-[#040807] p-5 sm:p-6 text-center shadow-[0_0_90px_rgba(251,191,36,0.45)]"
-            >
               {/* Radial Golden Background Rays */}
               <div className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 h-64 w-64 rounded-full bg-amber-400/20 blur-3xl" />
 
@@ -1262,200 +1271,251 @@ export function PokerTable(props: BoardGameTableProps) {
                 </div>
               )}
 
-              {/* Action Button: Next Hand with Live Countdown */}
-              <div className="relative z-10 mt-5 flex flex-col items-center gap-2">
+            {/* Busted Notice if current user ran out of chips */}
+            {myStack <= 0 ? (
+              <div className="relative z-10 mt-4 rounded-xl border border-rose-500/40 bg-rose-950/60 p-3 text-center">
+                <div className="flex items-center justify-center gap-1.5 text-xs font-black uppercase text-rose-300">
+                  <span>💀</span>
+                  <span>You Have Been Eliminated ($0 Remaining)</span>
+                </div>
+                <p className="text-[11px] text-white/60 mt-1">
+                  You lost all your chips! You can leave to the lobby now, or click continue to spectate the remaining bot showdowns.
+                </p>
+              </div>
+            ) : null}
+
+            {/* Action Buttons: Next Hand with Live Countdown */}
+            <div className="relative z-10 mt-4 flex flex-col items-center gap-2">
+              <div className="flex items-center gap-3 w-full max-w-sm">
+                {myStack <= 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => router.push("/dashboard")}
+                    className="flex-1 rounded-xl border border-rose-400/30 bg-rose-500/20 py-3 text-xs font-black tracking-wider uppercase text-rose-200 hover:bg-rose-500/30 active:scale-95 transition-all"
+                  >
+                    🚪 Leave Table
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={() => {
                     setShowWinnerModal(false);
                     dispatch({ type: "poker_action", choice: "next_hand" });
                   }}
-                  className="w-full max-w-sm rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 py-3 text-sm font-black tracking-wider uppercase text-slate-950 shadow-lg hover:brightness-110 active:scale-95 transition-all"
+                  className="flex-1 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 py-3 text-sm font-black tracking-wider uppercase text-slate-950 shadow-lg hover:brightness-110 active:scale-95 transition-all"
                 >
-                  Continue to Hand #{(state.pokerHandNumber ?? 1) + 1} ({nextHandCountdown}s) →
+                  {myStack <= 0 ? `Spectate Hand #${(state.pokerHandNumber ?? 1) + 1}` : `Continue to Hand #${(state.pokerHandNumber ?? 1) + 1}`} ({nextHandCountdown}s) →
                 </button>
-                <span className="text-[11px] text-white/40">Auto-advances when countdown finishes</span>
               </div>
-            </motion.div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+              <span className="text-[11px] text-white/40">Auto-advances when countdown finishes</span>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {/* ============================================================== */}
       {/* HAND RANKINGS MODAL (WITH REAL VISUAL MINI CARDS!)             */}
       {/* ============================================================== */}
-      <AnimatePresence>
-        {pokerRulesOpen ? (
-          <motion.div
-            key="poker-rules-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
-            style={{ pointerEvents: pokerRulesOpen ? "auto" : "none" }}
-            className={`fixed inset-0 z-50 grid place-items-center bg-black/85 p-3 sm:p-4 backdrop-blur-md ${!pokerRulesOpen ? "pointer-events-none" : ""}`}
-            onClick={() => setPokerRulesOpen(false)}
+      {pokerRulesOpen ? (
+        <div
+          key="poker-rules-backdrop"
+          style={{ pointerEvents: pokerRulesOpen ? "auto" : "none" }}
+          className={`fixed inset-0 z-50 grid place-items-center bg-black/85 p-3 sm:p-4 backdrop-blur-md animate-in fade-in duration-150 ${!pokerRulesOpen ? "pointer-events-none" : ""}`}
+          onClick={() => setPokerRulesOpen(false)}
+        >
+          <div
+            key="poker-rules-dialog"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-3xl rounded-2xl border border-amber-400/40 bg-slate-950 p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-150"
           >
-            <motion.div
-              key="poker-rules-dialog"
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-3xl rounded-2xl border border-amber-400/40 bg-slate-950 p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto"
-            >
-              <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                <div>
-                  <h3 className="text-xl font-black text-amber-300">Poker Hand Rankings</h3>
-                  <p className="text-xs text-white/50">Highest to lowest standard 5-card poker combinations with visual examples.</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setPokerRulesOpen(false)}
-                  className="text-white/40 hover:text-white"
-                >
-                  ✕
-                </button>
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div>
+                <h3 className="text-xl font-black text-amber-300">Poker Hand Rankings</h3>
+                <p className="text-xs text-white/50">Highest to lowest standard 5-card poker combinations with visual examples.</p>
               </div>
+              <button
+                type="button"
+                onClick={() => setPokerRulesOpen(false)}
+                className="text-white/40 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {POKER_HAND_RANKINGS.map((hand, idx) => (
-                  <div key={hand.name} className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/5 p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="grid h-6 w-6 place-items-center rounded-lg bg-amber-400/20 text-xs font-black text-amber-300 shrink-0">
-                          {idx + 1}
-                        </span>
-                        <strong className="text-xs text-white font-black">{hand.name}</strong>
-                      </div>
-                      <span className="text-[9px] font-bold text-amber-400 uppercase tracking-wider">{hand.tier}</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {POKER_HAND_RANKINGS.map((hand, idx) => (
+                <div key={hand.name} className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/5 p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="grid h-6 w-6 place-items-center rounded-lg bg-amber-400/20 text-xs font-black text-amber-300 shrink-0">
+                        {idx + 1}
+                      </span>
+                      <strong className="text-xs text-white font-black">{hand.name}</strong>
                     </div>
-
-                    {/* Real visual playing cards! */}
-                    <div className="flex items-center gap-1.5 py-0.5">
-                      {hand.cards.map((c, i) => (
-                        <MiniCard key={i} card={c} />
-                      ))}
-                    </div>
-
-                    <p className="text-[10px] text-white/60 leading-snug">{hand.detail}</p>
+                    <span className="text-[9px] font-bold text-amber-400 uppercase tracking-wider">{hand.tier}</span>
                   </div>
-                ))}
-              </div>
-            </motion.div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+
+                  {/* Real visual playing cards! */}
+                  <div className="flex items-center gap-1.5 py-0.5">
+                    {hand.cards.map((c, i) => (
+                      <MiniCard key={i} card={c} />
+                    ))}
+                  </div>
+
+                  <p className="text-[10px] text-white/60 leading-snug">{hand.detail}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {/* ============================================================== */}
       {/* CASH OUT & LEAVE MODAL                                         */}
       {/* ============================================================== */}
-      <AnimatePresence>
-        {cashOutOpen ? (
-          <motion.div
-            key="poker-cashout-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
-            style={{ pointerEvents: cashOutOpen ? "auto" : "none" }}
-            className={`fixed inset-0 z-50 grid place-items-center bg-black/85 p-4 backdrop-blur-md ${!cashOutOpen ? "pointer-events-none" : ""}`}
-            onClick={() => setCashOutOpen(false)}
+      {cashOutOpen ? (
+        <div
+          key="poker-cashout-backdrop"
+          style={{ pointerEvents: cashOutOpen ? "auto" : "none" }}
+          className={`fixed inset-0 z-50 grid place-items-center bg-black/85 p-4 backdrop-blur-md animate-in fade-in duration-150 ${!cashOutOpen ? "pointer-events-none" : ""}`}
+          onClick={() => setCashOutOpen(false)}
+        >
+          <div
+            key="poker-cashout-dialog"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md rounded-3xl border-2 border-emerald-400/40 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-950 p-6 sm:p-7 shadow-2xl space-y-5 animate-in zoom-in-95 duration-150"
           >
-            <motion.div
-              key="poker-cashout-dialog"
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md rounded-3xl border-2 border-emerald-400/40 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-950 p-6 sm:p-7 shadow-2xl space-y-5"
-            >
-              <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-500/20 text-xl text-emerald-300">
-                    💰
-                  </span>
-                  <div>
-                    <h3 className="text-lg font-black text-white">Cash Out & Leave Table</h3>
-                    <p className="text-[11px] text-white/50">Texas Hold'em Poker Session Summary</p>
-                  </div>
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="grid h-9 w-9 place-items-center rounded-xl bg-emerald-500/20 text-xl text-emerald-300">
+                  💰
+                </span>
+                <div>
+                  <h3 className="text-lg font-black text-white">Cash Out & Leave Table</h3>
+                  <p className="text-[11px] text-white/50">Texas Hold'em Poker Session Summary</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setCashOutOpen(false)}
-                  className="h-8 w-8 rounded-lg text-white/40 hover:bg-white/10 hover:text-white"
+              </div>
+              <button
+                type="button"
+                onClick={() => setCashOutOpen(false)}
+                className="h-8 w-8 rounded-lg text-white/40 hover:bg-white/10 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Chip Balance Pod */}
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-emerald-400/30 bg-emerald-950/30 p-4 text-center">
+              <span className="text-[11px] font-black uppercase tracking-wider text-emerald-300/80">
+                Your Ending Chip Stack
+              </span>
+              <span className="font-mono text-3xl sm:text-4xl font-black text-emerald-300 mt-1">
+                ${myStack.toLocaleString("en-US")}
+              </span>
+              <div className="mt-2 flex items-center gap-2">
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-black ${
+                    netEarnings > 0
+                      ? "bg-emerald-500/20 text-emerald-200 border border-emerald-400/40"
+                      : netEarnings < 0
+                      ? "bg-rose-500/20 text-rose-200 border border-rose-400/40"
+                      : "bg-white/10 text-white/70 border border-white/20"
+                  }`}
                 >
-                  ✕
-                </button>
-              </div>
-
-              {/* Chip Balance Pod */}
-              <div className="flex flex-col items-center justify-center rounded-2xl border border-emerald-400/30 bg-emerald-950/30 p-4 text-center">
-                <span className="text-[11px] font-black uppercase tracking-wider text-emerald-300/80">
-                  Your Ending Chip Stack
+                  {netEarnings > 0 ? `+${netEarnings.toLocaleString("en-US")} Profit 🚀` : netEarnings < 0 ? `${netEarnings.toLocaleString("en-US")} Net` : "$0 Even"}
                 </span>
-                <span className="font-mono text-3xl sm:text-4xl font-black text-emerald-300 mt-1">
-                  ${myStack.toLocaleString("en-US")}
-                </span>
-                <div className="mt-2 flex items-center gap-2">
-                  <span
-                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-black ${
-                      netEarnings > 0
-                        ? "bg-emerald-500/20 text-emerald-200 border border-emerald-400/40"
-                        : netEarnings < 0
-                        ? "bg-rose-500/20 text-rose-200 border border-rose-400/40"
-                        : "bg-white/10 text-white/70 border border-white/20"
-                    }`}
-                  >
-                    {netEarnings > 0 ? `+${netEarnings.toLocaleString("en-US")} Profit 🚀` : netEarnings < 0 ? `${netEarnings.toLocaleString("en-US")} Net` : "$0 Even"}
-                  </span>
-                  <span className="text-[11px] text-white/40">(Started with $1,000)</span>
-                </div>
+                <span className="text-[11px] text-white/40">(Started with $1,000)</span>
               </div>
+            </div>
 
-              {/* Session Details */}
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                  <span className="text-[10px] uppercase font-bold text-white/40">Hand Number</span>
-                  <p className="mt-0.5 font-mono text-base font-black text-white">#{state.pokerHandNumber ?? 1}</p>
-                </div>
-                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                  <span className="text-[10px] uppercase font-bold text-white/40">Blinds</span>
-                  <p className="mt-0.5 font-mono text-base font-black text-white">$10 / $20</p>
-                </div>
+            {/* Session Details */}
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <span className="text-[10px] uppercase font-bold text-white/40">Hand Number</span>
+                <p className="mt-0.5 font-mono text-base font-black text-white">#{state.pokerHandNumber ?? 1}</p>
               </div>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <span className="text-[10px] uppercase font-bold text-white/40">Blinds</span>
+                <p className="mt-0.5 font-mono text-base font-black text-white">$10 / $20</p>
+              </div>
+            </div>
 
-              <p className="text-xs text-white/60 text-center leading-relaxed">
-                Ready to leave the table? Your chip balance will be banked and you will return to the dashboard.
+            <p className="text-xs text-white/60 text-center leading-relaxed">
+              Ready to leave the table? Your chip balance will be banked and you will return to the dashboard.
+            </p>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setCashOutOpen(false)}
+                className="flex-1 rounded-xl border border-white/20 bg-white/10 py-3 text-xs sm:text-sm font-bold text-white hover:bg-white/15 transition active:scale-95"
+              >
+                Keep Playing
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const me = state.players.find((p) => p.userId === currentUserId);
+                  if (onChat) {
+                    onChat(room.id, `💰 ${me?.displayName ?? "Player"} cashed out of poker with $${myStack.toLocaleString("en-US")} chips!`);
+                  }
+                  router.push("/dashboard");
+                }}
+                className="flex-1 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 py-3 text-xs sm:text-sm font-black text-slate-950 shadow-[0_4px_16px_rgba(16,185,129,0.4)] hover:brightness-110 transition active:scale-95"
+              >
+                💰 Cash Out & Exit
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* ============================================================== */}
+      {/* TOURNAMENT COMPLETED / CHAMPION MODAL                          */}
+      {/* ============================================================== */}
+      {state.phase === "finished" ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/90 p-4 backdrop-blur-md animate-in fade-in duration-200">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg rounded-3xl border-2 border-amber-400 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-950 p-6 sm:p-8 shadow-[0_0_80px_rgba(251,191,36,0.5)] text-center space-y-5 animate-in zoom-in-95 duration-200"
+          >
+            <div className="mx-auto grid h-20 w-20 place-items-center rounded-3xl bg-amber-400 text-4xl shadow-xl">
+              👑
+            </div>
+            <div>
+              <span className="text-xs font-black uppercase tracking-widest text-amber-300">
+                Tournament Concluded
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-black text-white mt-1">
+                {state.winnerUserId === currentUserId
+                  ? "🎉 You Are The Tournament Champion! 🎉"
+                  : `${state.players.find((p) => p.userId === state.winnerUserId)?.displayName ?? "A Player"} Wins The Tournament!`}
+              </h2>
+              <p className="text-xs text-white/60 mt-2">
+                {state.pokerLastAction || "All other players have been eliminated."}
               </p>
+            </div>
 
-              {/* Action Buttons */}
-              <div className="flex items-center gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setCashOutOpen(false)}
-                  className="flex-1 rounded-xl border border-white/20 bg-white/10 py-3 text-xs sm:text-sm font-bold text-white hover:bg-white/15 transition active:scale-95"
-                >
-                  Keep Playing
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const me = state.players.find((p) => p.userId === currentUserId);
-                    if (onChat) {
-                      onChat(room.id, `💰 ${me?.displayName ?? "Player"} cashed out of poker with $${myStack.toLocaleString("en-US")} chips!`);
-                    }
-                    router.push("/dashboard");
-                  }}
-                  className="flex-1 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 py-3 text-xs sm:text-sm font-black text-slate-950 shadow-[0_4px_16px_rgba(16,185,129,0.4)] hover:brightness-110 transition active:scale-95"
-                >
-                  💰 Cash Out & Exit
-                </button>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-400">Total Hands Played</span>
+              <div className="font-mono text-2xl font-black text-white mt-0.5">
+                #{state.pokerHandNumber ?? 1} Hands
               </div>
-            </motion.div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+            </div>
+
+            <div className="pt-2 flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => router.push("/dashboard")}
+                className="w-full max-w-xs rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 py-3.5 text-sm font-black uppercase text-slate-950 shadow-lg hover:brightness-110 active:scale-95 transition"
+              >
+                Return to Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
