@@ -172,42 +172,42 @@ function TastefulPokerInfo({ actionText }: { actionText: string }) {
 function getOpponentSeatStyle(index: number, totalOpponents: number) {
   if (totalOpponents === 1) {
     // 2 Players Total (Heads-Up): Opponent Top-Center
-    return { left: "50%", top: "7%", transform: "translate(-50%, 0)" };
+    return { left: "50%", top: "8px", transform: "translate(-50%, 0)" };
   }
   if (totalOpponents === 2) {
     // 3 Players Total: Top-Left and Top-Right
     const positions = [
-      { left: "24%", top: "10%", transform: "translate(-50%, 0)" },
-      { left: "76%", top: "10%", transform: "translate(-50%, 0)" }
+      { left: "24%", top: "10px", transform: "translate(-50%, 0)" },
+      { left: "76%", top: "10px", transform: "translate(-50%, 0)" }
     ];
     return positions[index]!;
   }
   if (totalOpponents === 3) {
     // 4 Players Total: Mid-Left, Top-Center, Mid-Right
     const positions = [
-      { left: "6%", top: "42%", transform: "translate(0, -50%)" },
-      { left: "50%", top: "7%", transform: "translate(-50%, 0)" },
-      { right: "6%", top: "42%", transform: "translate(0, -50%)" }
+      { left: "4%", top: "35%", transform: "translate(0, -50%)" },
+      { left: "50%", top: "8px", transform: "translate(-50%, 0)" },
+      { right: "4%", top: "35%", transform: "translate(0, -50%)" }
     ];
     return positions[index]!;
   }
   if (totalOpponents === 4) {
     // 5 Players Total
     const positions = [
-      { left: "5%", top: "48%", transform: "translate(0, -50%)" },
-      { left: "25%", top: "8%", transform: "translate(-50%, 0)" },
-      { left: "75%", top: "8%", transform: "translate(-50%, 0)" },
-      { right: "5%", top: "48%", transform: "translate(0, -50%)" }
+      { left: "4%", top: "40%", transform: "translate(0, -50%)" },
+      { left: "26%", top: "10px", transform: "translate(-50%, 0)" },
+      { left: "74%", top: "10px", transform: "translate(-50%, 0)" },
+      { right: "4%", top: "40%", transform: "translate(0, -50%)" }
     ];
     return positions[index]!;
   }
   // 6 Players Total (5 Opponents)
   const positions = [
-    { left: "5%", top: "58%", transform: "translate(0, -50%)" },
-    { left: "20%", top: "9%", transform: "translate(-50%, 0)" },
-    { left: "50%", top: "6%", transform: "translate(-50%, 0)" },
-    { right: "20%", top: "9%", transform: "translate(50%, 0)" },
-    { right: "5%", top: "58%", transform: "translate(0, -50%)" }
+    { left: "4%", top: "48%", transform: "translate(0, -50%)" },
+    { left: "20%", top: "10px", transform: "translate(-50%, 0)" },
+    { left: "50%", top: "8px", transform: "translate(-50%, 0)" },
+    { right: "20%", top: "10px", transform: "translate(50%, 0)" },
+    { right: "4%", top: "48%", transform: "translate(0, -50%)" }
   ];
   return positions[index % positions.length]!;
 }
@@ -494,7 +494,7 @@ export function PokerTable(props: BoardGameTableProps) {
               className="absolute z-20 transition-all duration-300"
             >
               <div
-                className={`relative flex flex-col items-center gap-1 rounded-2xl border p-2 sm:p-2.5 backdrop-blur-md transition-all w-32 sm:w-36 ${
+                className={`relative flex flex-col items-center gap-0.5 sm:gap-1 rounded-2xl border p-1.5 sm:p-2 backdrop-blur-md transition-all w-32 sm:w-36 ${
                   isTurn
                     ? "border-amber-400 bg-amber-500/25 ring-4 ring-amber-400/50 shadow-[0_0_30px_rgba(251,191,36,0.6)] scale-105 z-30"
                     : "border-white/15 bg-black/65 shadow-xl"
@@ -614,7 +614,7 @@ export function PokerTable(props: BoardGameTableProps) {
         {/* ============================================================ */}
         {/* CENTER TABLE AREA: POT CLUSTER & HELLA BIG COMMUNITY CARDS   */}
         {/* ============================================================ */}
-        <div className="relative z-10 flex flex-col items-center justify-center my-auto py-2">
+        <div className="relative z-10 flex flex-col items-center justify-center mt-auto mb-2 sm:mb-4 py-1">
           {/* Main Pot Cluster */}
           <div className="mb-3">
             <DynamicPotCluster potAmount={state.pokerPot} callAmount={callAmount} />
