@@ -338,6 +338,7 @@ export function PokerTable(props: BoardGameTableProps) {
       setNextHandCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
+          setShowWinnerModal(false);
           dispatch({ type: "poker_action", choice: "next_hand" });
           return 0;
         }
@@ -1030,11 +1031,17 @@ export function PokerTable(props: BoardGameTableProps) {
       {/* ============================================================== */}
       <AnimatePresence>
         {showWinnerModal && state.pokerLastHandResult ? (
-          <div
+          <motion.div
+            key="poker-winner-modal-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
             className="fixed inset-0 z-50 grid place-items-center bg-black/85 p-3 sm:p-4 backdrop-blur-md"
             onClick={() => setShowWinnerModal(false)}
           >
             <motion.div
+              key="poker-winner-modal-dialog"
               initial={{ scale: 0.85, opacity: 0, y: 25 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.88, opacity: 0, y: 20 }}
@@ -1223,7 +1230,10 @@ export function PokerTable(props: BoardGameTableProps) {
               <div className="relative z-10 mt-5 flex flex-col items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => dispatch({ type: "poker_action", choice: "next_hand" })}
+                  onClick={() => {
+                    setShowWinnerModal(false);
+                    dispatch({ type: "poker_action", choice: "next_hand" });
+                  }}
                   className="w-full max-w-sm rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 py-3 text-sm font-black tracking-wider uppercase text-slate-950 shadow-lg hover:brightness-110 active:scale-95 transition-all"
                 >
                   Continue to Hand #{(state.pokerHandNumber ?? 1) + 1} ({nextHandCountdown}s) →
@@ -1231,7 +1241,7 @@ export function PokerTable(props: BoardGameTableProps) {
                 <span className="text-[11px] text-white/40">Auto-advances when countdown finishes</span>
               </div>
             </motion.div>
-          </div>
+          </motion.div>
         ) : null}
       </AnimatePresence>
 
@@ -1240,11 +1250,17 @@ export function PokerTable(props: BoardGameTableProps) {
       {/* ============================================================== */}
       <AnimatePresence>
         {pokerRulesOpen ? (
-          <div
+          <motion.div
+            key="poker-rules-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
             className="fixed inset-0 z-50 grid place-items-center bg-black/85 p-3 sm:p-4 backdrop-blur-md"
             onClick={() => setPokerRulesOpen(false)}
           >
             <motion.div
+              key="poker-rules-dialog"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
@@ -1290,7 +1306,7 @@ export function PokerTable(props: BoardGameTableProps) {
                 ))}
               </div>
             </motion.div>
-          </div>
+          </motion.div>
         ) : null}
       </AnimatePresence>
 
@@ -1299,11 +1315,17 @@ export function PokerTable(props: BoardGameTableProps) {
       {/* ============================================================== */}
       <AnimatePresence>
         {cashOutOpen ? (
-          <div
+          <motion.div
+            key="poker-cashout-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
             className="fixed inset-0 z-50 grid place-items-center bg-black/85 p-4 backdrop-blur-md"
             onClick={() => setCashOutOpen(false)}
           >
             <motion.div
+              key="poker-cashout-dialog"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
@@ -1393,7 +1415,7 @@ export function PokerTable(props: BoardGameTableProps) {
                 </button>
               </div>
             </motion.div>
-          </div>
+          </motion.div>
         ) : null}
       </AnimatePresence>
     </div>
