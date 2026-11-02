@@ -318,6 +318,14 @@ export function PokerTable(props: BoardGameTableProps) {
 
   // Showdown & Hand End Ceremony trigger
   useEffect(() => {
+    if (state.pokerAwaitingNextHand) {
+      setPreCheckFold(false);
+      setPreAutoCheck(false);
+    }
+  }, [state.pokerAwaitingNextHand, state.pokerHandNumber]);
+
+  // Showdown & Hand End Ceremony trigger
+  useEffect(() => {
     if (state.pokerAwaitingNextHand && state.pokerLastHandResult) {
       if (lastCelebratedHandRef.current !== state.pokerLastHandResult.handNumber) {
         lastCelebratedHandRef.current = state.pokerLastHandResult.handNumber;
@@ -898,6 +906,12 @@ export function PokerTable(props: BoardGameTableProps) {
 
               {/* The Action Buttons: FOLD | CHECK | CALL | RAISE | ALL-IN */}
               <div className="flex items-center gap-2">
+                {legalActions.filter(isAction).filter((a) => a.type === "poker_action").length === 0 ? (
+                  <div className="flex items-center gap-2 text-xs font-semibold text-white/50 px-3 py-1.5 bg-white/5 rounded-xl border border-white/10">
+                    <Clock className="h-3.5 w-3.5 animate-spin text-amber-400" />
+                    <span>Waiting for {currentPlayer?.displayName ?? "next player"} to act...</span>
+                  </div>
+                ) : null}
                 {legalActions
                   .filter(isAction)
                   .filter((action) => action.type === "poker_action")

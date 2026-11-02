@@ -93,10 +93,11 @@ export function evaluateTexasHoldemHand(cards: string[]): PokerHandValue {
 
 export function nextPokerActor(state: BoardGameState, fromId: string | null = state.currentPlayerId): string | null {
   if (!state.players.length) return null;
-  const startIndex = state.players.findIndex((player) => player.userId === fromId);
+  const ordered = state.players.slice().sort((a, b) => a.seat - b.seat);
+  const startIndex = ordered.findIndex((player) => player.userId === fromId);
   const index = startIndex < 0 ? -1 : startIndex;
-  for (let offset = 1; offset <= state.players.length; offset += 1) {
-    const player = state.players[(index + offset + state.players.length) % state.players.length];
+  for (let offset = 1; offset <= ordered.length; offset += 1) {
+    const player = ordered[(index + offset + ordered.length) % ordered.length];
     if (!player || state.pokerFolded.includes(player.userId)) continue;
     if ((state.pokerStacks[player.userId] ?? 0) <= 0) continue;
     return player.userId;

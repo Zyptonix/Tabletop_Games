@@ -589,36 +589,58 @@ function choosePoker(actions: RecordValue[], gameState: unknown, playerId: strin
 
   // Preflop Strategy
   if (isPreflop) {
-    // Monster (AA, KK, QQ, JJ, AKs)
-    if (chenScore >= 10) {
-      if (raiseAction) {
-        const raiseAmt = Math.min(myStack, Math.max(20, Math.floor(pot * 0.75)));
+    // 1. Free check if available (e.g. Big Blind unraised)
+    if (toCall === 0) {
+      if (chenScore >= 8 && raiseAction && Math.random() < 0.4) {
+        return { ...raiseAction, amount: Math.min(myStack, 40) };
+      }
+      return checkAction ?? actions[0] ?? null;
+    }
+
+    // 2. Facing standard Big Blind limp/call (toCall <= 20)
+    if (toCall <= 20) {
+      // Monster (AA, KK, QQ, JJ, AKs) -> Raise / 3-Bet!
+      if (chenScore >= 9.5 && raiseAction) {
+        const raiseAmt = Math.min(myStack, Math.max(30, Math.floor(pot * 0.75)));
         return { ...raiseAction, amount: raiseAmt };
       }
-      return callAction ?? checkAction ?? actions[0] ?? null;
-    }
-    // Strong (TT, 99, 88, AKo, AQs, AJs, KQs)
-    if (chenScore >= 7.5) {
-      if (raiseAction && toCall <= 40) {
-        const raiseAmt = Math.min(myStack, 40);
-        return { ...raiseAction, amount: raiseAmt };
+      // Strong (TT, 99, 88, AKo, AQs, AJs, KQs) -> Raise 40% of the time, Call 60%
+      if (chenScore >= 7.0 && raiseAction && Math.random() < 0.4) {
+        return { ...raiseAction, amount: Math.min(myStack, 40) };
       }
-      return callAction ?? checkAction ?? actions[0] ?? null;
-    }
-    // Playable (77-55, QJs, JTs, ATs, KJs, AQo)
-    if (chenScore >= 6.0) {
-      if (toCall <= 60) return callAction ?? checkAction ?? actions[0] ?? null;
+      // Playable hands: any pair, suited cards, connectors (gap <= 2), broadways (10+), or Chen >= 2.5
+      // ALWAYS call $20 to see the flop!
+      if (isPair || isSuited || highRank >= 10 || gap <= 2 || chenScore >= 2.5) {
+        return callAction ?? checkAction ?? actions[0] ?? null;
+      }
+      // Even with weak offsuit cards (like 9-3o or 7-4o), call 65% of the time to see the flop!
+      if (Math.random() < 0.65) {
+        return callAction ?? checkAction ?? actions[0] ?? null;
+      }
       return foldAction ?? checkAction ?? actions[0] ?? null;
     }
-    // Marginal (small pairs, suited cards)
-    if (chenScore >= 4.5) {
-      if (toCall === 0) return checkAction ?? actions[0] ?? null;
-      if (toCall <= 20) return callAction ?? actions[0] ?? null; // Defend big blind or min-bet
+
+    // 3. Facing a Raise (toCall > 20)
+    // Monster (AA, KK, QQ, JJ, AKs) -> Re-raise or Call all-in
+    if (chenScore >= 9.5) {
+      if (raiseAction && toCall <= myStack * 0.35) {
+        const raiseAmt = Math.min(myStack, Math.max(40, toCall * 2));
+        return { ...raiseAction, amount: raiseAmt };
+      }
+      return callAction ?? allInAction ?? actions[0] ?? null;
+    }
+    // Strong (TT-88, AK, AQ, AJs, KQs) -> Call up to medium raise
+    if (chenScore >= 7.0) {
+      if (toCall <= 80 || toCall <= myStack * 0.25) return callAction ?? actions[0] ?? null;
       return foldAction ?? actions[0] ?? null;
     }
-    // Junk
-    if (toCall === 0) return checkAction ?? actions[0] ?? null;
-    return foldAction ?? actions[0] ?? null;
+    // Playable (77-55, QJs, JTs, ATs, KJs) -> Call small raise
+    if (chenScore >= 5.0) {
+      if (toCall <= 40) return callAction ?? actions[0] ?? null;
+      return foldAction ?? actions[0] ?? null;
+    }
+    // Marginal / Junk facing a raise -> Fold
+    return foldAction ?? checkAction ?? actions[0] ?? null;
   }
 
   // Post-Flop Strategy
