@@ -156,6 +156,13 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
         clearBotTurn(room.id);
         return;
       }
+
+      // 3. Hand acknowledge wait: if a hand completed and new hand started, wait for human to click Continue!
+      const isHandTransition = s?.phase === "bidding" && (s?.handNumber ?? 1) > 1;
+      if (hasHuman && isHandTransition && !(room as any).handAckConfirmed) {
+        clearBotTurn(room.id);
+        return;
+      }
     }
 
     const active = botTimers.get(room.id);
@@ -188,6 +195,14 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
               clientCreatedAt: new Date().toISOString()
             }
           });
+          if (result.room.gameId === "twenty-nine") {
+            const hasScoredHand = result.events.some((e: any) =>
+              e.type === "twenty-nine:hand_scored" || e.type === "twenty-nine:single_hand_scored"
+            );
+            if (hasScoredHand) {
+              (result.room as any).handAckConfirmed = false;
+            }
+          }
           if (result.shouldBroadcast) emitRoom(result.room, result.events);
         } catch (error) {
           console.warn(`[bot] failed room=${latestRoom.code} user=${currentPlayerId}: ${socketError(error).message}`);
@@ -460,6 +475,12 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
         });
         if (result.room.gameId === "twenty-nine") {
           (result.room as any).singleHandConfirmed = true;
+          const hasScoredHand = result.events.some((e: any) =>
+            e.type === "twenty-nine:hand_scored" || e.type === "twenty-nine:single_hand_scored"
+          );
+          if (hasScoredHand) {
+            (result.room as any).handAckConfirmed = false;
+          }
         }
         if (result.shouldBroadcast) emitRoom(result.room, result.events);
       } catch (error) {
@@ -516,6 +537,16 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
         const room = manager.getRoom(roomId);
         if (room && room.gameId === "twenty-nine") {
           (room as any).trickAckConfirmed = true;
+          scheduleBotTurn(room);
+        }
+      }
+    });
+
+    socket.on("twenty-nine:ready_next_hand", () => {
+      for (const roomId of socket.rooms) {
+        const room = manager.getRoom(roomId);
+        if (room && room.gameId === "twenty-nine") {
+          (room as any).handAckConfirmed = true;
           scheduleBotTurn(room);
         }
       }

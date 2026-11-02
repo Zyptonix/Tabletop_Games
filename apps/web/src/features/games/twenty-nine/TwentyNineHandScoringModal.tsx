@@ -38,10 +38,6 @@ export function TwentyNineHandScoringModal({
   // 2: Multiplier & Game points calculation
   // 3: Scoreboard update rollup & continue button
   const [stage, setStage] = useState<number>(isReview ? 3 : 0);
-  const [dismissCountdown, setDismissCountdown] = useState<number>(10);
-
-  const onDismissRef = useRef(onDismiss);
-  onDismissRef.current = onDismiss;
 
   const handNumber = result?.handNumber;
 
@@ -54,7 +50,6 @@ export function TwentyNineHandScoringModal({
     }
 
     setStage(0);
-    setDismissCountdown(10);
 
     // Staged step progression:
     // 0 -> 1 at 700ms (verdict reveals with audio)
@@ -86,23 +81,10 @@ export function TwentyNineHandScoringModal({
       setStage(3);
     }, 2200);
 
-    // Auto dismiss countdown
-    const interval = setInterval(() => {
-      setDismissCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          onDismissRef.current();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
-      clearInterval(interval);
     };
   }, [handNumber, isReview]);
 
@@ -383,17 +365,19 @@ export function TwentyNineHandScoringModal({
               {/* Continue Button */}
               <button
                 type="button"
-                onClick={onDismiss}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDismiss();
+                }}
                 className={cn(
-                  "flex items-center gap-2 rounded-2xl border px-6 py-2.5 text-sm font-black shadow-xl transition hover:scale-105 active:scale-95",
+                  "flex items-center gap-2 rounded-2xl border px-6 py-2.5 text-sm font-black shadow-xl transition hover:scale-105 active:scale-95 cursor-pointer",
                   didMyTeamWin
                     ? "border-emerald-400/80 bg-gradient-to-r from-emerald-500 to-teal-600 text-black shadow-emerald-500/40"
                     : "border-white/20 bg-white/10 text-white hover:bg-white/20"
                 )}
               >
-                <span>Continue to Hand #{result.handNumber + 1}</span>
-                <span className="text-xs opacity-60">({dismissCountdown}s)</span>
-                <ArrowRight className="h-4 w-4" />
+                <span>{isReview ? "Close Review" : `Continue to Hand #${result.handNumber + 1}`}</span>
+                {isReview ? <X className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
               </button>
             </motion.div>
           ) : null}

@@ -50,4 +50,5 @@ export interface ClientToServerEvents {
   "debug:uno-scenario": (payload: unknown) => void;
   "twenty-nine:confirm_single_hand": () => void;
   "twenty-nine:ready_next_trick": () => void;
+  "twenty-nine:ready_next_hand": () => void;
 }

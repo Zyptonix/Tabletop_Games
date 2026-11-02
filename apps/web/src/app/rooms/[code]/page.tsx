@@ -202,6 +202,7 @@ export default function RoomPage() {
             onEndMatch={socketState.endRoom}
             onReadyNextTrick={() => socketState.socket?.emit("twenty-nine:ready_next_trick")}
             onConfirmSingleHand={() => socketState.socket?.emit("twenty-nine:confirm_single_hand")}
+            onReadyNextHand={() => socketState.socket?.emit("twenty-nine:ready_next_hand")}
           />
         ) : boardGameState ? (
           <BoardGameTable

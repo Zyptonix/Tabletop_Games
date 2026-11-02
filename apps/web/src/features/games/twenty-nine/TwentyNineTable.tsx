@@ -270,7 +270,8 @@ export function TwentyNineTable({
   onChat,
   onEndMatch,
   onReadyNextTrick,
-  onConfirmSingleHand
+  onConfirmSingleHand,
+  onReadyNextHand
 }: {
   room: RoomStateView;
   state: PublicTwentyNineState;
@@ -282,6 +283,7 @@ export function TwentyNineTable({
   onEndMatch?: ((roomId: string) => void) | undefined;
   onReadyNextTrick?: () => void;
   onConfirmSingleHand?: () => void;
+  onReadyNextHand?: () => void;
 }) {
   const reduceMotion = useReducedMotion();
   const tableRef = useRef<HTMLDivElement | null>(null);
@@ -401,6 +403,12 @@ export function TwentyNineTable({
 
     setPersistedTrick(null);
     onReadyNextTrick?.();
+  };
+
+  const handleDismissHandScoring = () => {
+    setActiveHandResult(null);
+    setPersistedTrick(null);
+    onReadyNextHand?.();
   };
 
   useEffect(() => {
@@ -1289,7 +1297,7 @@ export function TwentyNineTable({
                 result={activeHandResult}
                 state={state}
                 currentUserId={currentUserId}
-                onDismiss={() => setActiveHandResult(null)}
+                onDismiss={handleDismissHandScoring}
               />
 
               {/* LAST HAND REVIEW MODAL (Centered directly on Table Felt) */}
