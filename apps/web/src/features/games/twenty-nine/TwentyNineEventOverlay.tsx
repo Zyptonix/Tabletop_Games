@@ -269,7 +269,7 @@ export function TwentyNineEventOverlay({
   const tone = currentSpotlight ? TONE_CONFIGS[currentSpotlight.tone] ?? TONE_CONFIGS.amber : TONE_CONFIGS.amber;
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-[70] grid place-items-center overflow-hidden">
+    <div className="pointer-events-none absolute inset-0 z-[70] grid place-items-center overflow-hidden">
       <AnimatePresence mode="popLayout">
         {currentSpotlight ? (
           <motion.div

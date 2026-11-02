@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
+  ArrowRight,
   BookOpen,
   Copy,
   Crown,
@@ -595,17 +596,70 @@ export function TwentyNineTable({
         </div>
 
         {/* Center: In-Game Status Alert Plaque */}
-        <div className="hidden md:flex items-center gap-2 rounded-full border border-amber-400/30 bg-black/40 px-4 py-1 shadow-inner backdrop-blur-md">
-          <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
-          <span className="text-xs font-black text-amber-200">
-            {state.phase === "bidding"
-              ? `Bidding Round · Target: ${state.currentBid ?? 16}`
-              : state.phase === "trump"
-              ? `Trump Selection by ${declarer?.displayName ?? "Declarer"}`
-              : state.phase === "doubling"
-              ? `Stakes Doubling (×${state.multiplier})`
-              : `Hand #${state.handNumber} · Target: ${state.contractTarget ?? state.currentBid ?? "—"}${state.multiplier > 1 ? ` · ×${state.multiplier} Stakes` : ""}`}
+        <div className="hidden md:flex items-center gap-2.5 rounded-full border border-white/10 bg-black/50 px-4 py-1.5 shadow-inner backdrop-blur-md">
+          {/* Hand # Badge */}
+          <span className="text-[0.68rem] font-black uppercase tracking-wider text-white/70">
+            Hand #{state.handNumber}
           </span>
+
+          <span className="h-3 w-px bg-white/20" />
+
+          {/* Target */}
+          <span className="text-xs font-black text-amber-300">
+            Target: {state.contractTarget ?? state.currentBid ?? "—"}
+            {state.multiplier > 1 ? (
+              <span className="ml-1 text-[0.62rem] font-extrabold text-rose-400">
+                ×{state.multiplier}
+              </span>
+            ) : null}
+          </span>
+
+          {/* Declarer & Winning Team */}
+          {declarer ? (
+            <>
+              <span className="h-3 w-px bg-white/20" />
+              <div className="flex items-center gap-1.5">
+                <span className="text-[0.68rem] font-bold text-white/50">Declarer:</span>
+                <span
+                  className={cn(
+                    "text-xs font-black",
+                    declarer.team === 0 ? "text-rose-300" : "text-sky-300"
+                  )}
+                >
+                  {declarer.displayName}{isViewerDeclarer ? " (You)" : ""}
+                </span>
+                <span
+                  className={cn(
+                    "text-[0.58rem] font-black uppercase px-2 py-0.5 rounded-full border",
+                    declarer.team === 0
+                      ? "bg-rose-500/20 text-rose-300 border-rose-400/30"
+                      : "bg-sky-500/20 text-sky-300 border-sky-400/30"
+                  )}
+                >
+                  {declarer.team === 0 ? "Team Red" : "Team Blue"}
+                </span>
+              </div>
+            </>
+          ) : state.phase === "bidding" ? (
+            <>
+              <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse ml-0.5" />
+              <span className="text-xs font-bold text-amber-200">
+                Bidding in progress…
+              </span>
+            </>
+          ) : null}
+
+          {/* Trump Suit if revealed */}
+          {state.trumpRevealed && state.trumpSuit ? (
+            <>
+              <span className="h-3 w-px bg-white/20" />
+              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/40 bg-emerald-500/20 px-2 py-0.5 text-[0.62rem] font-black text-emerald-200">
+                <Unlock className="h-2.5 w-2.5 text-emerald-300" />
+                <SuitMark suit={state.trumpSuit} size={11} />
+                <span>{TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label}</span>
+              </span>
+            </>
+          ) : null}
         </div>
 
         {/* Right: Room ID Card & Action Tools */}
@@ -923,52 +977,69 @@ export function TwentyNineTable({
         </aside>
 
         {/* MAIN ARENA COLUMN - Resizes smoothly when chat panel opens */}
-        <div className="relative z-10 flex flex-1 min-w-0 flex-col justify-between p-2 sm:p-3 transition-all duration-300 overflow-hidden">
-          {/* TOP PARTNER SEAT (Separated completely above center table, zero overlap!) */}
-          <div className="flex justify-center items-center py-0.5 shrink-0 z-20">
-          {partner ? (
-            <div ref={(el) => registerSeat(partner.userId, el)}>
-              <TwentyNineSeat
-                player={partner}
-                roomPlayer={room.players.find((p) => p.userId === partner.userId)}
-                roleLabel="🤝 Teammate"
-                isDealer={state.dealerPlayerId === partner.userId}
-                isDeclarer={state.declarerId === partner.userId}
-                isSingleHand={state.singleHandPlayerId === partner.userId}
-                isSittingOut={
-                  singleHandCaller !== null &&
-                  singleHandCaller.userId !== partner.userId &&
-                  singleHandCaller.team === partner.team
-                }
-              />
-            </div>
-          ) : null}
-        </div>
-
-        {/* MIDDLE ARENA: [WEST SEAT] --- [CENTER WOOD STADIUM TABLE (~50% width)] --- [EAST SEAT] */}
-        <div className="relative flex flex-1 items-center justify-between w-full min-h-0 px-2 sm:px-6 my-1">
-          {/* West Left Opponent Seat (Outside Table) */}
-          <div className="shrink-0 flex items-center justify-center w-24 sm:w-28 z-20">
-            {westPlayer ? (
-              <div ref={(el) => registerSeat(westPlayer.userId, el)}>
-                <TwentyNineSeat
-                  player={westPlayer}
-                  roomPlayer={room.players.find((p) => p.userId === westPlayer.userId)}
-                  roleLabel="⚔️ Opponent"
-                  isDealer={state.dealerPlayerId === westPlayer.userId}
-                  isDeclarer={state.declarerId === westPlayer.userId}
-                  isSingleHand={state.singleHandPlayerId === westPlayer.userId}
-                />
-              </div>
-            ) : null}
-          </div>
-
-          {/* Center Dedicated Felt Stadium Table (GRAND CENTERPIECE) */}
-          <div className="flex-1 flex items-center justify-center h-full min-h-0 w-full max-w-5xl xl:max-w-6xl mx-auto px-1 sm:px-3">
+        <div className="relative z-10 flex flex-1 min-w-0 flex-col justify-between p-1.5 sm:p-2.5 transition-all duration-300 overflow-hidden">
+          {/* GRAND STADIUM FELT TABLE (Occupies all available space above player hand) */}
+          <div className="relative flex-1 min-h-0 w-full flex items-center justify-center">
             <main
               ref={tableRef}
-              className="twenty-nine-stadium-table relative flex flex-col items-center justify-center w-full h-full max-h-[28rem] sm:max-h-[34rem] lg:max-h-[38rem] rounded-[4.5rem] p-3 overflow-hidden shadow-2xl"
+              className="twenty-nine-stadium-table relative flex flex-col items-center justify-center w-full h-full rounded-[3.5rem] sm:rounded-[4.5rem] p-3 overflow-hidden shadow-2xl"
             >
+              {/* TOP (NORTH) PARTNER SEAT - Embedded inside stadium felt perimeter */}
+              {partner ? (
+                <div
+                  ref={(el) => registerSeat(partner.userId, el)}
+                  className="absolute top-2 sm:top-3.5 inset-x-0 flex justify-center z-20 pointer-events-auto"
+                >
+                  <TwentyNineSeat
+                    player={partner}
+                    roomPlayer={room.players.find((p) => p.userId === partner.userId)}
+                    roleLabel="🤝 Teammate"
+                    isDealer={state.dealerPlayerId === partner.userId}
+                    isDeclarer={state.declarerId === partner.userId}
+                    isSingleHand={state.singleHandPlayerId === partner.userId}
+                    isSittingOut={
+                      singleHandCaller !== null &&
+                      singleHandCaller.userId !== partner.userId &&
+                      singleHandCaller.team === partner.team
+                    }
+                  />
+                </div>
+              ) : null}
+
+              {/* WEST OPPONENT SEAT - Embedded inside stadium felt left perimeter */}
+              {westPlayer ? (
+                <div
+                  ref={(el) => registerSeat(westPlayer.userId, el)}
+                  className="absolute left-3 sm:left-5 lg:left-8 top-1/2 -translate-y-1/2 z-20 pointer-events-auto"
+                >
+                  <TwentyNineSeat
+                    player={westPlayer}
+                    roomPlayer={room.players.find((p) => p.userId === westPlayer.userId)}
+                    roleLabel="⚔️ Opponent"
+                    isDealer={state.dealerPlayerId === westPlayer.userId}
+                    isDeclarer={state.declarerId === westPlayer.userId}
+                    isSingleHand={state.singleHandPlayerId === westPlayer.userId}
+                  />
+                </div>
+              ) : null}
+
+              {/* EAST OPPONENT SEAT - Embedded inside stadium felt right perimeter */}
+              {eastPlayer ? (
+                <div
+                  ref={(el) => registerSeat(eastPlayer.userId, el)}
+                  className="absolute right-3 sm:right-5 lg:right-8 top-1/2 -translate-y-1/2 z-20 pointer-events-auto"
+                >
+                  <TwentyNineSeat
+                    player={eastPlayer}
+                    roomPlayer={room.players.find((p) => p.userId === eastPlayer.userId)}
+                    roleLabel="⚔️ Opponent"
+                    isDealer={state.dealerPlayerId === eastPlayer.userId}
+                    isDeclarer={state.declarerId === eastPlayer.userId}
+                    isSingleHand={state.singleHandPlayerId === eastPlayer.userId}
+                  />
+                </div>
+              ) : null}
+
               {/* INTERACTIVE TRUMP SET & DOUBLING DIALOGUE (Screenshot 1) */}
               <AnimatePresence>
                 {state.phase === "doubling" ? (
@@ -1072,7 +1143,7 @@ export function TwentyNineTable({
               </AnimatePresence>
 
               {/* CENTER TRICK ARENA (Enlarged Compass Cards, Points & Crown) */}
-              <div className="relative z-10">
+              <div className="relative z-10 flex items-center justify-center my-auto">
                 <TwentyNineTrickArea
                   trick={state.currentTrick}
                   state={state}
@@ -1125,25 +1196,33 @@ export function TwentyNineTable({
                   );
                 })}
               </AnimatePresence>
+
+              {/* CINEMATIC ORGANIC EVENT OVERLAY (Centered directly on Table Felt) */}
+              <TwentyNineEventOverlay
+                gameEvents={gameEvents}
+                state={state}
+                currentUserId={currentUserId}
+              />
+
+              {/* HAND SCORING CEREMONY MODAL (Centered directly on Table Felt) */}
+              <TwentyNineHandScoringModal
+                result={activeHandResult}
+                state={state}
+                currentUserId={currentUserId}
+                onDismiss={() => setActiveHandResult(null)}
+              />
+
+              {/* LAST HAND REVIEW MODAL (Centered directly on Table Felt) */}
+              {lastHandModalOpen && state.lastHandResult ? (
+                <TwentyNineHandScoringModal
+                  result={state.lastHandResult}
+                  state={state}
+                  currentUserId={currentUserId}
+                  onDismiss={() => setLastHandModalOpen(false)}
+                />
+              ) : null}
             </main>
           </div>
-
-          {/* East Right Opponent Seat (Outside Table) */}
-          <div className="shrink-0 flex items-center justify-center w-24 sm:w-28 z-20">
-            {eastPlayer ? (
-              <div ref={(el) => registerSeat(eastPlayer.userId, el)}>
-                <TwentyNineSeat
-                  player={eastPlayer}
-                  roomPlayer={room.players.find((p) => p.userId === eastPlayer.userId)}
-                  roleLabel="⚔️ Opponent"
-                  isDealer={state.dealerPlayerId === eastPlayer.userId}
-                  isDeclarer={state.declarerId === eastPlayer.userId}
-                  isSingleHand={state.singleHandPlayerId === eastPlayer.userId}
-                />
-              </div>
-            ) : null}
-          </div>
-        </div>
 
         {/* BOTTOM DOCK: ACTIONS & PLAYER'S HAND */}
         <footer className="shrink-0 flex flex-col items-center gap-2">
@@ -1473,6 +1552,36 @@ export function TwentyNineTable({
                   ) : null}
                 </div>
               )}
+
+              {/* Clickable Transparent Veil to Advance to Next Trick */}
+              <AnimatePresence>
+                {persistedTrick ? (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.98 }}
+                    transition={{ duration: 0.2 }}
+                    onClick={handleNextTrick}
+                    className="absolute inset-0 z-50 flex flex-col items-center justify-center rounded-2xl bg-black/80 backdrop-blur-md border-2 border-amber-400/50 shadow-[0_0_40px_rgba(251,191,36,0.35)] cursor-pointer transition hover:bg-black/70 group select-none p-3"
+                  >
+                    <div className="flex items-center gap-2 text-amber-300 font-black text-xs sm:text-sm uppercase tracking-wider drop-shadow-md">
+                      <Crown className="h-4 w-4 text-amber-300 animate-bounce" />
+                      <span>
+                        Trick {persistedTrick.trickNumber} Won by {playerName(state, persistedTrick.winnerPlayerId, currentUserId)} (+{persistedTrick.points} pts)
+                      </span>
+                    </div>
+
+                    <div className="mt-2.5 flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 px-6 py-2 text-xs font-black uppercase tracking-wider text-black shadow-lg ring-2 ring-amber-300/60 group-hover:scale-105 group-active:scale-95 transition-transform">
+                      <span>Next Trick</span>
+                      <ArrowRight className="h-4 w-4 stroke-[3]" />
+                    </div>
+
+                    <span className="text-[0.62rem] font-semibold text-white/50 mt-1.5">
+                      Click anywhere on your hand or press <kbd className="rounded border border-white/20 bg-white/10 px-1 py-0.5 font-mono text-[0.6rem] text-amber-200">Space</kbd> to continue
+                    </span>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
             </section>
           </div>
         </footer>
@@ -1565,31 +1674,6 @@ export function TwentyNineTable({
         ) : null}
       </AnimatePresence>
       </div>
-
-      {/* CINEMATIC ORGANIC EVENT OVERLAY (UNO No Mercy Style, non-blocking) */}
-      <TwentyNineEventOverlay
-        gameEvents={gameEvents}
-        state={state}
-        currentUserId={currentUserId}
-      />
-
-      {/* HAND SCORING CEREMONY MODAL */}
-      <TwentyNineHandScoringModal
-        result={activeHandResult}
-        state={state}
-        currentUserId={currentUserId}
-        onDismiss={() => setActiveHandResult(null)}
-      />
-
-      {/* LAST HAND REVIEW MODAL (Screenshot 5) */}
-      {lastHandModalOpen && state.lastHandResult ? (
-        <TwentyNineHandScoringModal
-          result={state.lastHandResult}
-          state={state}
-          currentUserId={currentUserId}
-          onDismiss={() => setLastHandModalOpen(false)}
-        />
-      ) : null}
 
       {/* RULES MODAL */}
       <AnimatePresence>

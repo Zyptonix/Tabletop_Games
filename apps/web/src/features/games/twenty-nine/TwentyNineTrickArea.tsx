@@ -328,45 +328,6 @@ export function TwentyNineTrickArea({
             </div>
           ) : null}
 
-          {/* Winner Banner, Next Trick Button & Directional Arrow when Trick Settles */}
-          <AnimatePresence>
-            {isHoldCompletedTrick && persistedCompletedTrick ? (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.85 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="absolute z-40 flex flex-col items-center justify-center rounded-2xl border-2 border-amber-300/90 bg-black/95 px-5 py-3 shadow-[0_0_35px_rgba(251,191,36,0.7)] backdrop-blur-xl text-center"
-              >
-                <div className="flex items-center gap-1.5 text-[0.62rem] font-black uppercase tracking-widest text-amber-300">
-                  <Crown className="h-4 w-4 text-amber-300 animate-bounce" />
-                  <span>Trick {persistedCompletedTrick.trickNumber} Won</span>
-                </div>
-                <span className={cn(
-                  "text-sm sm:text-base font-black truncate max-w-[12rem] mt-0.5",
-                  didMyTeamWinTrick ? "text-sky-300" : "text-rose-300"
-                )}>
-                  {winnerPlayer?.displayName ?? "Player"}
-                </span>
-                <span className="text-xs font-black text-amber-300 mt-0.5">
-                  +{persistedCompletedTrick.points} pts
-                </span>
-
-                {/* MANUAL ADVANCE BUTTON (User Request!) */}
-                {onNextTrick ? (
-                  <button
-                    type="button"
-                    onClick={onNextTrick}
-                    className="mt-3 flex items-center gap-2 rounded-xl border border-amber-300 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 px-5 py-2 text-xs font-black uppercase tracking-wider text-black shadow-[0_0_20px_rgba(251,191,36,0.85)] transition hover:scale-105 active:scale-95 cursor-pointer ring-2 ring-amber-300/50"
-                  >
-                    <span>Next Trick</span>
-                    <ArrowRight className="h-4 w-4 stroke-[3]" />
-                  </button>
-                ) : null}
-                <span className="text-[0.55rem] font-semibold text-white/50 mt-1">or press [Space]</span>
-              </motion.div>
-            ) : null}
-          </AnimatePresence>
-
           {/* Directional Arrow (Screenshot 4 style!) */}
           <AnimatePresence>
             {isHoldCompletedTrick && persistedCompletedTrick ? (
