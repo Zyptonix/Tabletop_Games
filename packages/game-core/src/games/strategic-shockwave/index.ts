@@ -236,7 +236,10 @@ function blastReachesCell(state: StrategicShockwaveState, bomb: StrategicShockwa
 }
 
 function isCellThreatened(state: StrategicShockwaveState, x: number, y: number, _nowMs?: number): boolean {
-  return state.bombs.some((bomb) => blastReachesCell(state, bomb, x, y));
+  return (
+    state.bombs.some((bomb) => blastReachesCell(state, bomb, x, y)) ||
+    state.explosions.some((explosion) => explosion.cells.some((cell) => cell.x === x && cell.y === y))
+  );
 }
 
 function hasClearLineToPlayer(state: StrategicShockwaveState, from: StrategicShockwavePlayer, target: StrategicShockwavePlayer): boolean {
@@ -268,26 +271,194 @@ function hasClearLineToPlayer(state: StrategicShockwaveState, from: StrategicSho
   })();
 }
 
+function findSafeEscapeBfs(
+  state: StrategicShockwaveState,
+  bot: StrategicShockwavePlayer,
+  nowMs: number
+): ShockwaveCell | null {
+  const startX = Math.round(bot.x);
+  const startY = Math.round(bot.y);
+
+  if (!isCellThreatened(state, startX, startY, nowMs)) {
+    return { x: 0, y: 0 };
+  }
+
+  const queue: Array<{ x: number; y: number; firstDir: ShockwaveCell; dist: number }> = [];
+  const visited = new Set<string>();
+  visited.add(`${startX},${startY}`);
+
+  for (const dir of DIRECTIONS) {
+    const nx = startX + dir.x;
+    const ny = startY + dir.y;
+    if (tileAt(state, nx, ny) !== "floor") continue;
+    if (isOccupiedByBomb(state, bot.userId, nx, ny)) continue;
+    visited.add(`${nx},${ny}`);
+    queue.push({ x: nx, y: ny, firstDir: dir, dist: 1 });
+  }
+
+  while (queue.length > 0) {
+    const curr = queue.shift()!;
+    if (!isCellThreatened(state, curr.x, curr.y, nowMs)) {
+      return curr.firstDir;
+    }
+    if (curr.dist >= 9) continue;
+
+    for (const dir of DIRECTIONS) {
+      const nx = curr.x + dir.x;
+      const ny = curr.y + dir.y;
+      const key = `${nx},${ny}`;
+      if (visited.has(key)) continue;
+      visited.add(key);
+      if (tileAt(state, nx, ny) !== "floor") continue;
+      if (isOccupiedByBomb(state, bot.userId, nx, ny)) continue;
+      queue.push({ x: nx, y: ny, firstDir: curr.firstDir, dist: curr.dist + 1 });
+    }
+  }
+
+  return null;
+}
+
+function canSafelyPlantBomb(
+  state: StrategicShockwaveState,
+  bot: StrategicShockwavePlayer,
+  nowMs: number
+): boolean {
+  const bx = Math.round(bot.x);
+  const by = Math.round(bot.y);
+
+  if (state.bombs.some((b) => b.x === bx && b.y === by)) return false;
+  if (isCellThreatened(state, bx, by, nowMs)) return false;
+
+  const hypoBomb: StrategicShockwaveBomb = {
+    id: "hypo",
+    ownerId: bot.userId,
+    x: bx,
+    y: by,
+    blastRange: bot.blastRange,
+    placedAt: nowMs,
+    explodeAt: nowMs + 3000,
+    ownerCanLeave: true
+  };
+
+  const queue: Array<{ x: number; y: number; dist: number }> = [{ x: bx, y: by, dist: 0 }];
+  const visited = new Set<string>();
+  visited.add(`${bx},${by}`);
+
+  while (queue.length > 0) {
+    const curr = queue.shift()!;
+    if (
+      curr.dist > 0 &&
+      tileAt(state, curr.x, curr.y) === "floor" &&
+      !blastReachesCell(state, hypoBomb, curr.x, curr.y) &&
+      !isCellThreatened(state, curr.x, curr.y, nowMs)
+    ) {
+      return true;
+    }
+    if (curr.dist >= 7) continue;
+
+    for (const dir of DIRECTIONS) {
+      const nx = curr.x + dir.x;
+      const ny = curr.y + dir.y;
+      const key = `${nx},${ny}`;
+      if (visited.has(key)) continue;
+      visited.add(key);
+      if (tileAt(state, nx, ny) !== "floor") continue;
+      if (state.bombs.some((b) => b.x === nx && b.y === ny)) continue;
+      queue.push({ x: nx, y: ny, dist: curr.dist + 1 });
+    }
+  }
+
+  return false;
+}
+
+function findSafePathToTarget(
+  state: StrategicShockwaveState,
+  bot: StrategicShockwavePlayer,
+  isTarget: (x: number, y: number) => boolean,
+  nowMs: number
+): ShockwaveCell | null {
+  const startX = Math.round(bot.x);
+  const startY = Math.round(bot.y);
+
+  const queue: Array<{ x: number; y: number; firstDir: ShockwaveCell; dist: number }> = [];
+  const visited = new Set<string>();
+  visited.add(`${startX},${startY}`);
+
+  for (const dir of DIRECTIONS) {
+    const nx = startX + dir.x;
+    const ny = startY + dir.y;
+    if (tileAt(state, nx, ny) !== "floor") continue;
+    if (isOccupiedByBomb(state, bot.userId, nx, ny)) continue;
+    if (isCellThreatened(state, nx, ny, nowMs)) continue;
+    visited.add(`${nx},${ny}`);
+    queue.push({ x: nx, y: ny, firstDir: dir, dist: 1 });
+  }
+
+  while (queue.length > 0) {
+    const curr = queue.shift()!;
+    if (isTarget(curr.x, curr.y)) {
+      return curr.firstDir;
+    }
+    if (curr.dist >= 14) continue;
+
+    for (const dir of DIRECTIONS) {
+      const nx = curr.x + dir.x;
+      const ny = curr.y + dir.y;
+      const key = `${nx},${ny}`;
+      if (visited.has(key)) continue;
+      visited.add(key);
+      if (tileAt(state, nx, ny) !== "floor") continue;
+      if (isOccupiedByBomb(state, bot.userId, nx, ny)) continue;
+      if (isCellThreatened(state, nx, ny, nowMs)) continue;
+      queue.push({ x: nx, y: ny, firstDir: curr.firstDir, dist: curr.dist + 1 });
+    }
+  }
+
+  return null;
+}
+
 function thinkForBots(state: StrategicShockwaveState, nowMs: number, events: GameEvent[]): boolean {
   let changed = false;
   for (const bot of state.players) {
-    if (!bot.isBot || !bot.alive || nowMs - bot.lastBotThinkAt < 180) continue;
+    if (!bot.isBot || !bot.alive || nowMs - bot.lastBotThinkAt < 120) continue;
     bot.lastBotThinkAt = nowMs;
     changed = true;
 
     const botTileX = Math.round(bot.x);
     const botTileY = Math.round(bot.y);
+    const inDanger = isCellThreatened(state, botTileX, botTileY, nowMs);
+
+    // 1. SURVIVAL: If in explosion danger, escape via BFS shortest path to safety immediately!
+    if (inDanger) {
+      const escapeDir = findSafeEscapeBfs(state, bot, nowMs);
+      if (escapeDir) {
+        bot.inputX = escapeDir.x;
+        bot.inputY = escapeDir.y;
+        // Corridor smoothing
+        if (escapeDir.x !== 0 && Math.abs(bot.y - (botTileY + 0.5)) > 0.08) {
+          bot.inputY = Math.sign(botTileY + 0.5 - bot.y) * 0.5;
+        } else if (escapeDir.y !== 0 && Math.abs(bot.x - (botTileX + 0.5)) > 0.08) {
+          bot.inputX = Math.sign(botTileX + 0.5 - bot.x) * 0.5;
+        }
+      } else {
+        bot.inputX = 0;
+        bot.inputY = 0;
+      }
+      bot.inputUpdatedAt = nowMs;
+      continue;
+    }
+
+    // 2. TACTICAL BOMB PLANTING (Only when guaranteed safe escape exists!)
     const activeBotBombs = state.bombs.filter((b) => b.ownerId === bot.userId).length;
-    const canPlant = activeBotBombs < bot.bombsCapacity && !state.bombs.some((b) => b.x === botTileX && b.y === botTileY);
+    const canPlant = activeBotBombs < bot.bombsCapacity && canSafelyPlantBomb(state, bot, nowMs);
 
     const enemies = state.players.filter((player) => player.alive && player.userId !== bot.userId);
-    const nearest = enemies.sort((left, right) => {
-      const leftDistance = Math.abs(left.x - bot.x) + Math.abs(left.y - bot.y);
-      const rightDistance = Math.abs(right.x - bot.x) + Math.abs(right.y - bot.y);
-      return leftDistance - rightDistance;
+    const nearestEnemy = enemies.slice().sort((a, b) => {
+      const distA = Math.hypot(a.x - bot.x, a.y - bot.y);
+      const distB = Math.hypot(b.x - bot.x, b.y - bot.y);
+      return distA - distB;
     })[0];
 
-    // Count adjacent destructible blocks
     let adjacentBlocks = 0;
     for (const dir of DIRECTIONS) {
       if (tileAt(state, botTileX + dir.x, botTileY + dir.y) === "block") {
@@ -295,103 +466,52 @@ function thinkForBots(state: StrategicShockwaveState, nowMs: number, events: Gam
       }
     }
 
-    // Check safe retreat route if planting here
-    let hasSafeRetreat = false;
-    const hypotheticalBomb: StrategicShockwaveBomb = {
-      id: "hypo",
-      ownerId: bot.userId,
-      x: botTileX,
-      y: botTileY,
-      blastRange: bot.blastRange,
-      placedAt: nowMs,
-      explodeAt: nowMs + 3000,
-      ownerCanLeave: true
-    };
+    const enemyInLine = nearestEnemy && hasClearLineToPlayer(state, bot, nearestEnemy) && Math.abs(nearestEnemy.x - bot.x) + Math.abs(nearestEnemy.y - bot.y) <= bot.blastRange + 0.5;
+    const enemyClose = nearestEnemy && Math.hypot(nearestEnemy.x - bot.x, nearestEnemy.y - bot.y) <= 1.8;
 
-    for (const dir of DIRECTIONS) {
-      const nX = botTileX + dir.x;
-      const nY = botTileY + dir.y;
-      if (tileAt(state, nX, nY) === "floor" && !state.bombs.some((b) => b.x === nX && b.y === nY)) {
-        for (const dir2 of DIRECTIONS) {
-          const escapeX = nX + dir2.x;
-          const escapeY = nY + dir2.y;
-          if (
-            tileAt(state, escapeX, escapeY) === "floor" &&
-            !blastReachesCell(state, hypotheticalBomb, escapeX, escapeY) &&
-            !isCellThreatened(state, escapeX, escapeY, nowMs)
-          ) {
-            hasSafeRetreat = true;
-            break;
-          }
-        }
-      }
-      if (hasSafeRetreat) break;
-    }
-
-    const hasEnemyInLine = nearest && hasClearLineToPlayer(state, bot, nearest) && Math.abs(nearest.x - bot.x) + Math.abs(nearest.y - bot.y) <= bot.blastRange + 0.5;
-    const shouldBreakWall = adjacentBlocks > 0 && hasSafeRetreat && !isCellThreatened(state, botTileX, botTileY, nowMs);
-
-    if (canPlant && (hasEnemyInLine || shouldBreakWall)) {
+    if (canPlant && (enemyInLine || enemyClose || adjacentBlocks > 0)) {
       makeBomb(state, bot, nowMs, events);
+      const retreatDir = findSafeEscapeBfs(state, bot, nowMs);
+      if (retreatDir) {
+        bot.inputX = retreatDir.x;
+        bot.inputY = retreatDir.y;
+      }
+      bot.inputUpdatedAt = nowMs;
+      continue;
     }
 
-    let best: ShockwaveCell = { x: 0, y: 0 };
-    let bestScore = -Infinity;
-    const currentlyInDanger = isCellThreatened(state, botTileX, botTileY, nowMs);
+    // 3. TARGET SEEKING & NAVIGATION (Power-ups -> Enemies -> Blocks)
+    let moveDir: ShockwaveCell | null = null;
 
-    const nearestPowerUp = state.powerUps.slice().sort((a, b) => {
-      const distA = Math.abs(a.x - bot.x) + Math.abs(a.y - bot.y);
-      const distB = Math.abs(b.x - bot.x) + Math.abs(b.y - bot.y);
-      return distA - distB;
-    })[0];
-
-    for (const direction of BOT_DIRECTIONS) {
-      const testX = bot.x + direction.x * 0.7;
-      const testY = bot.y + direction.y * 0.7;
-      if (!canOccupy(state, bot.userId, testX, testY)) continue;
-
-      const cellX = Math.round(testX);
-      const cellY = Math.round(testY);
-      const cellThreatened = isCellThreatened(state, cellX, cellY, nowMs);
-
-      let score = 0;
-
-      if (cellThreatened) {
-        score -= 500;
-      } else if (currentlyInDanger) {
-        score += 350;
-      }
-
-      if (nearest && !currentlyInDanger) {
-        const enemyDist = Math.abs(nearest.x - testX) + Math.abs(nearest.y - testY);
-        score -= enemyDist * 1.5;
-      }
-
-      if (nearestPowerUp && !currentlyInDanger) {
-        const puDist = Math.abs(nearestPowerUp.x - testX) + Math.abs(nearestPowerUp.y - testY);
-        score += Math.max(0, 10 - puDist) * 2.5;
-      }
-
-      let nearbyBlocks = 0;
-      for (const candidate of DIRECTIONS) {
-        if (tileAt(state, cellX + candidate.x, cellY + candidate.y) === "block") {
-          nearbyBlocks += 1;
-        }
-      }
-      if (!currentlyInDanger) {
-        score += nearbyBlocks * 0.9;
-      }
-
-      score += nextRandomValue(state) * 0.6;
-
-      if (score > bestScore) {
-        bestScore = score;
-        best = direction;
-      }
+    // A) Seek Power-ups
+    if (state.powerUps.length > 0) {
+      moveDir = findSafePathToTarget(state, bot, (x, y) => state.powerUps.some((p) => p.x === x && p.y === y), nowMs);
     }
 
-    bot.inputX = best.x;
-    bot.inputY = best.y;
+    // B) Hunt Nearest Enemy
+    if (!moveDir && nearestEnemy) {
+      moveDir = findSafePathToTarget(state, bot, (x, y) => enemies.some((e) => Math.round(e.x) === x && Math.round(e.y) === y), nowMs);
+    }
+
+    // C) Seek Destructible Blocks to break open
+    if (!moveDir && adjacentBlocks === 0) {
+      moveDir = findSafePathToTarget(state, bot, (x, y) => DIRECTIONS.some((d) => tileAt(state, x + d.x, y + d.y) === "block"), nowMs);
+    }
+
+    if (moveDir) {
+      bot.inputX = moveDir.x;
+      bot.inputY = moveDir.y;
+      // Corridor smoothing
+      if (moveDir.x !== 0 && Math.abs(bot.y - (botTileY + 0.5)) > 0.08) {
+        bot.inputY = Math.sign(botTileY + 0.5 - bot.y) * 0.5;
+      } else if (moveDir.y !== 0 && Math.abs(bot.x - (botTileX + 0.5)) > 0.08) {
+        bot.inputX = Math.sign(botTileX + 0.5 - bot.x) * 0.5;
+      }
+    } else {
+      bot.inputX = 0;
+      bot.inputY = 0;
+    }
+
     bot.inputUpdatedAt = nowMs;
   }
   return changed;
