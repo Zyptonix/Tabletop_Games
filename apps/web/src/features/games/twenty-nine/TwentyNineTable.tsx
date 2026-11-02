@@ -12,6 +12,7 @@ import {
   History,
   LogOut,
   MessageSquare,
+  PanelLeft,
   Shield,
   Sparkles,
   Swords,
@@ -301,6 +302,7 @@ export function TwentyNineTable({
   const [flights, setFlights] = useState<Flight[]>([]);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
+  const [leftSidebarOpen, setLeftSidebarOpen] = useState(false);
   const [selectedBid, setSelectedBid] = useState<number | null>(null);
   const [persistedTrick, setPersistedTrick] = useState<PersistedCompletedTrick | null>(null);
   const [activeHandResult, setActiveHandResult] = useState<TwentyNineHandResult | null>(null);
@@ -580,23 +582,62 @@ export function TwentyNineTable({
 
       {/* TOP TRANSPARENT IN-GAME HEADER (Spans edge-to-edge, never overlapped) */}
       <header className="relative z-30 flex shrink-0 items-center justify-between gap-3 px-3 sm:px-6 py-2 border-b border-white/[0.08] bg-black/35 backdrop-blur-md">
-        {/* Left: Logo & Game Name (Clean branding, room code moved to the right) */}
+        {/* Left: Logo & Game Name + Match Stats Toggle Button */}
         <div className="flex items-center gap-2.5">
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-emerald-400/40 bg-emerald-500/15 shadow-[0_0_14px_rgba(52,211,153,0.3)]">
             <span className="text-sm font-black text-emerald-300">29</span>
           </div>
-          <div>
-            <h1 className="text-sm font-black tracking-tight text-white sm:text-base">
+          <div className="hidden sm:block">
+            <h1 className="text-sm font-black tracking-tight text-white">
               Twenty-Nine
             </h1>
             <p className="text-[0.58rem] font-bold uppercase tracking-wider text-white/40">
               Bangladesh Arena
             </p>
           </div>
+
+          {/* Collapsible Stats Toggle Button */}
+          <button
+            type="button"
+            onClick={() => setLeftSidebarOpen((prev) => !prev)}
+            className={cn(
+              "flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-black transition cursor-pointer ml-1 sm:ml-2",
+              leftSidebarOpen
+                ? "border-amber-400/80 bg-amber-500/20 text-amber-200 shadow-[0_0_12px_rgba(251,191,36,0.25)]"
+                : "border-white/10 bg-black/40 text-white/70 hover:bg-white/10 hover:text-white"
+            )}
+            title={leftSidebarOpen ? "Collapse Match Stats" : "Open Match Stats"}
+          >
+            <PanelLeft className="h-4 w-4" />
+            <span className="hidden md:inline">Stats</span>
+          </button>
         </div>
 
         {/* Center: In-Game Status Alert Plaque */}
         <div className="hidden md:flex items-center gap-2.5 rounded-full border border-white/10 bg-black/50 px-4 py-1.5 shadow-inner backdrop-blur-md">
+          {/* Match Score (Total Points: Red vs Blue) */}
+          <div className="flex items-center gap-1.5">
+            <span className={cn(
+              "text-[0.68rem] font-black px-2 py-0.5 rounded-full border",
+              state.teamGamePoints["0"] > 0
+                ? "border-rose-400/50 bg-rose-950/70 text-rose-300"
+                : "border-white/10 bg-white/5 text-white/70"
+            )}>
+              Red {state.teamGamePoints["0"] > 0 ? `+${state.teamGamePoints["0"]}` : state.teamGamePoints["0"]}
+            </span>
+            <span className="text-[0.58rem] text-white/30 font-bold">vs</span>
+            <span className={cn(
+              "text-[0.68rem] font-black px-2 py-0.5 rounded-full border",
+              state.teamGamePoints["1"] > 0
+                ? "border-sky-400/50 bg-sky-950/70 text-sky-300"
+                : "border-white/10 bg-white/5 text-white/70"
+            )}>
+              Blue {state.teamGamePoints["1"] > 0 ? `+${state.teamGamePoints["1"]}` : state.teamGamePoints["1"]}
+            </span>
+          </div>
+
+          <span className="h-3 w-px bg-white/20" />
+
           {/* Hand # Badge */}
           <span className="text-[0.68rem] font-black uppercase tracking-wider text-white/70">
             Hand #{state.handNumber}
@@ -742,10 +783,35 @@ export function TwentyNineTable({
       </div>
     </header>
 
-      {/* MAIN BODY ROW: [PERMANENT LEFT SIDEBAR] --- [CENTER ARENA] --- [RIGHT CHAT DRAWER] */}
+      {/* MAIN BODY ROW: [COLLAPSIBLE LEFT SIDEBAR] --- [CENTER ARENA] --- [RIGHT CHAT DRAWER] */}
       <div className="relative z-10 flex flex-1 min-h-0 w-full overflow-hidden">
-        {/* PERMANENT LEFT TELEMETRY SIDEBAR (Docked cleanly below the top bar!) */}
-        <aside className="w-64 sm:w-72 lg:w-80 h-full shrink-0 flex flex-col justify-between border-r border-white/10 bg-black/65 shadow-2xl backdrop-blur-2xl p-3 z-20 overflow-y-auto gap-2.5">
+        {/* COLLAPSIBLE LEFT TELEMETRY SIDEBAR */}
+        <AnimatePresence initial={false}>
+          {leftSidebarOpen ? (
+            <motion.aside
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: 288, opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 320, damping: 28 }}
+              className="w-72 shrink-0 flex flex-col justify-between border-r border-white/10 bg-black/80 shadow-2xl backdrop-blur-2xl p-3 z-20 overflow-y-auto gap-2.5"
+            >
+              {/* Header: Title + Close Button */}
+              <div className="flex items-center justify-between pb-1.5 border-b border-white/10">
+                <div className="flex items-center gap-1.5">
+                  <PanelLeft className="h-4 w-4 text-amber-300" />
+                  <span className="text-xs font-black uppercase tracking-wider text-amber-300">
+                    Match Telemetry
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setLeftSidebarOpen(false)}
+                  className="grid h-7 w-7 place-items-center rounded-lg border border-white/10 text-white/50 hover:bg-white/10 hover:text-white transition cursor-pointer"
+                  title="Collapse Sidebar"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
           {/* 1. MATCH RACE / GAME POINTS */}
           <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 shadow-lg">
             <div className="flex items-center justify-between mb-2">
@@ -956,13 +1022,13 @@ export function TwentyNineTable({
             </div>
           </div>
 
-          {/* 4. LAST HAND REVIEW BUTTON */}
+          {/* 4. LAST HAND REVIEW ACTION */}
           <div className="pt-1">
             {state.lastHandResult ? (
               <button
                 type="button"
                 onClick={() => setLastHandModalOpen(true)}
-                className="flex items-center justify-center gap-2 rounded-xl border border-amber-400/40 bg-gradient-to-r from-amber-500/20 to-amber-600/20 py-2.5 px-3 text-xs font-black uppercase tracking-wider text-amber-200 hover:from-amber-500/30 hover:to-amber-600/30 transition shadow-lg w-full active:scale-95"
+                className="flex items-center justify-center gap-2 rounded-xl border border-amber-400/40 bg-gradient-to-r from-amber-500/20 to-amber-600/20 py-2.5 px-3 text-xs font-black uppercase tracking-wider text-amber-200 hover:from-amber-500/30 hover:to-amber-600/30 transition shadow-lg w-full active:scale-95 cursor-pointer"
                 title="Review Last Hand Results"
               >
                 <History className="h-4 w-4 text-amber-300" />
@@ -974,22 +1040,36 @@ export function TwentyNineTable({
               </div>
             )}
           </div>
-        </aside>
+        </motion.aside>
+          ) : null}
+        </AnimatePresence>
 
-        {/* MAIN ARENA COLUMN - Resizes smoothly when chat panel opens */}
+        {/* Floating Toggle Button when Collapsed */}
+        {!leftSidebarOpen ? (
+          <button
+            type="button"
+            onClick={() => setLeftSidebarOpen(true)}
+            className="absolute left-2.5 top-3 z-30 flex items-center gap-1.5 rounded-xl border border-white/15 bg-black/80 px-2.5 py-1.5 text-[0.68rem] font-black text-amber-300 shadow-xl backdrop-blur-md transition hover:bg-black/90 hover:border-amber-400/50 cursor-pointer"
+            title="Open Match Statistics"
+          >
+            <PanelLeft className="h-3.5 w-3.5 text-amber-400" />
+            <span className="hidden sm:inline">Stats</span>
+          </button>
+        ) : null}
+
+        {/* MAIN ARENA COLUMN - 100% Open Space, No Rectangular Table Enclosure */}
         <div className="relative z-10 flex flex-1 min-w-0 flex-col justify-between p-1.5 sm:p-2.5 transition-all duration-300 overflow-hidden">
-          {/* GRAND STADIUM FELT TABLE (Occupies all available space above player hand) */}
-          <div className="relative flex-1 min-h-0 w-full flex items-center justify-center">
-            <main
-              ref={tableRef}
-              className="twenty-nine-stadium-table relative flex flex-col items-center justify-center w-full h-full rounded-[3.5rem] sm:rounded-[4.5rem] p-3 overflow-hidden shadow-2xl"
-            >
-              {/* TOP (NORTH) PARTNER SEAT - Embedded inside stadium felt perimeter */}
-              {partner ? (
-                <div
-                  ref={(el) => registerSeat(partner.userId, el)}
-                  className="absolute top-2 sm:top-3.5 inset-x-0 flex justify-center z-20 pointer-events-auto"
-                >
+          {/* OPEN PLAY ARENA */}
+          <main
+            ref={tableRef}
+            className="relative flex-1 min-h-0 w-full flex flex-col items-center justify-center p-1 sm:p-2 overflow-hidden select-none"
+          >
+            {/* TOP (NORTH) PARTNER SEAT - Shifted Top-Left so vertical center is 100% open */}
+            {partner ? (
+              <div
+                ref={(el) => registerSeat(partner.userId, el)}
+                className="absolute top-2.5 sm:top-3.5 left-4 sm:left-8 lg:left-14 z-20 pointer-events-auto"
+              >
                   <TwentyNineSeat
                     player={partner}
                     roomPlayer={room.players.find((p) => p.userId === partner.userId)}
@@ -1222,7 +1302,6 @@ export function TwentyNineTable({
                 />
               ) : null}
             </main>
-          </div>
 
         {/* BOTTOM DOCK: ACTIONS & PLAYER'S HAND */}
         <footer className="shrink-0 flex flex-col items-center gap-2">

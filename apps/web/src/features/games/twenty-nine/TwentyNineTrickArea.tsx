@@ -155,39 +155,87 @@ export function TwentyNineTrickArea({
     return map;
   }, [activeTrick, currentUserId, state.players, winningCardId]);
 
+  const redGamePoints = state.teamGamePoints["0"] ?? 0;
+  const blueGamePoints = state.teamGamePoints["1"] ?? 0;
+
   return (
     <div
       className={cn(
-        "relative flex flex-col items-center justify-center w-full max-w-5xl select-none",
+        "relative flex flex-col items-center justify-center w-full max-w-6xl select-none my-auto",
         className
       )}
     >
-      {/* Top Trick Status Pill */}
-      <div className="mb-2 z-20 flex items-center gap-2 rounded-full border border-amber-400/30 bg-black/75 px-3.5 py-1 text-xs font-black shadow-xl backdrop-blur-md">
-        <span className="text-amber-300">
-          Trick {isHoldCompletedTrick && persistedCompletedTrick ? persistedCompletedTrick.trickNumber : state.completedTricks.length + 1} of 8
-        </span>
-        {ledSuit ? (
-          <>
-            <span className="text-white/20">|</span>
-            <div className="flex items-center gap-1 text-white">
-              <SuitMark suit={ledSuit} size={14} />
-              <span>Lead: {TWENTY_NINE_SUITS_INFO[ledSuit]?.label}</span>
-            </div>
-          </>
-        ) : null}
-        {currentTrickPoints > 0 ? (
-          <>
-            <span className="text-white/20">|</span>
-            <span className="text-amber-300">+{currentTrickPoints} pts</span>
-          </>
-        ) : null}
+      {/* Top Header Row: [Total Match Points] & [Trick Status Pill] */}
+      <div className="mb-2 z-20 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+        {/* Total Match Game Points (e.g. +1 / -1) */}
+        <div className="flex items-center gap-2.5 rounded-full border border-white/15 bg-black/80 px-4 py-1 shadow-xl backdrop-blur-md">
+          <span className="text-[0.62rem] font-black uppercase tracking-wider text-white/50">
+            Match Score:
+          </span>
+          <div className="flex items-center gap-1.5 font-black">
+            <span className="h-2 w-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]" />
+            <span className="text-[0.68rem] text-rose-300 font-extrabold">Red</span>
+            <span
+              className={cn(
+                "text-xs sm:text-sm font-black tabular-nums",
+                redGamePoints > 0
+                  ? "text-emerald-300"
+                  : redGamePoints < 0
+                  ? "text-rose-400"
+                  : "text-white"
+              )}
+            >
+              {redGamePoints > 0 ? `+${redGamePoints}` : redGamePoints}
+            </span>
+          </div>
+
+          <span className="text-white/20 font-bold">vs</span>
+
+          <div className="flex items-center gap-1.5 font-black">
+            <span
+              className={cn(
+                "text-xs sm:text-sm font-black tabular-nums",
+                blueGamePoints > 0
+                  ? "text-emerald-300"
+                  : blueGamePoints < 0
+                  ? "text-rose-400"
+                  : "text-white"
+              )}
+            >
+              {blueGamePoints > 0 ? `+${blueGamePoints}` : blueGamePoints}
+            </span>
+            <span className="text-[0.68rem] text-sky-300 font-extrabold">Blue</span>
+            <span className="h-2 w-2 rounded-full bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.8)]" />
+          </div>
+        </div>
+
+        {/* Current Trick Number, Lead Suit & Card Points */}
+        <div className="flex items-center gap-2 rounded-full border border-amber-400/40 bg-black/80 px-4 py-1 text-xs font-black shadow-xl backdrop-blur-md">
+          <span className="text-amber-300">
+            Trick {isHoldCompletedTrick && persistedCompletedTrick ? persistedCompletedTrick.trickNumber : state.completedTricks.length + 1} of 8
+          </span>
+          {ledSuit ? (
+            <>
+              <span className="text-white/20">|</span>
+              <div className="flex items-center gap-1 text-white">
+                <SuitMark suit={ledSuit} size={14} />
+                <span>Lead: {TWENTY_NINE_SUITS_INFO[ledSuit]?.label}</span>
+              </div>
+            </>
+          ) : null}
+          {currentTrickPoints > 0 ? (
+            <>
+              <span className="text-white/20">|</span>
+              <span className="text-amber-300">+{currentTrickPoints} pts</span>
+            </>
+          ) : null}
+        </div>
       </div>
 
-      {/* MAIN TABLE ROW: [Opponent Deck] --- [Trump Slot] --- [Center Trick Area] --- [Your Team Deck] */}
+      {/* MAIN TABLE ROW: [Opponent Deck] --- [Trump Slot] --- [Center Trick Circle] --- [Your Team Deck] */}
       <div className="relative flex items-center justify-center gap-3 sm:gap-6 md:gap-8 w-full">
         {/* 1. OPPONENT CAPTURED DECK */}
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center shrink-0">
           <span className="mb-1 text-[0.62rem] sm:text-xs font-black uppercase tracking-wider text-rose-300">
             Opponent
           </span>
@@ -205,7 +253,7 @@ export function TwentyNineTrickArea({
         </div>
 
         {/* 2. PHYSICAL TRUMP CARD ON TABLE FELT */}
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center shrink-0">
           <div className="mb-1 flex items-center gap-1">
             <span className="text-[0.62rem] sm:text-xs font-black uppercase tracking-wider text-amber-300 flex items-center gap-1">
               {state.trumpRevealed ? <Unlock className="h-3 w-3 text-emerald-400" /> : <Lock className="h-3 w-3 text-amber-300" />}
@@ -287,46 +335,64 @@ export function TwentyNineTrickArea({
           </div>
         </div>
 
-        {/* 3. CENTER TRICK FORMATION */}
-        <div className="relative flex items-center justify-center w-[17rem] sm:w-[21rem] md:w-[23rem] h-[15rem] sm:h-[18rem] md:h-[20rem]">
-          {/* Subtle felt target marker */}
-          <div className="pointer-events-none absolute inset-3 rounded-full border border-dashed border-amber-300/15" />
+        {/* 3. GRAND CENTRAL TRICK CIRCULAR FORMATION */}
+        <div className="relative flex items-center justify-center w-[22rem] sm:w-[27rem] md:w-[31rem] lg:w-[35rem] h-[19rem] sm:h-[23rem] md:h-[26rem] lg:h-[29rem] shrink-0">
+          {/* Grand Circular Felt Disc Background */}
+          <div className="pointer-events-none absolute inset-0 m-auto rounded-full bg-[radial-gradient(circle_at_center,#44220c_0%,#2a1305_55%,#140702_85%,#090301_100%)] border-2 border-amber-400/35 shadow-[inset_0_0_60px_rgba(0,0,0,0.9),0_20px_50px_rgba(0,0,0,0.85)]" />
+          {/* Inner Golden Dashed Inlay */}
+          <div className="pointer-events-none absolute inset-3 sm:inset-4 rounded-full border border-dashed border-amber-300/25" />
+          {/* Subtle Compass Points */}
+          <span className="pointer-events-none absolute top-2 text-[0.65rem] font-black text-amber-200/25 uppercase tracking-widest">N</span>
+          <span className="pointer-events-none absolute bottom-2 text-[0.65rem] font-black text-amber-200/25 uppercase tracking-widest">S</span>
+          <span className="pointer-events-none absolute left-3 text-[0.65rem] font-black text-amber-200/25 uppercase tracking-widest">W</span>
+          <span className="pointer-events-none absolute right-3 text-[0.65rem] font-black text-amber-200/25 uppercase tracking-widest">E</span>
 
-          {/* Compass Cards */}
+          {/* Compass Cards (Large size="lg" cards for maximum visibility) */}
           <SlotCardContainer
             slot="north"
             data={playedBySlot.get("north")}
-            positionClass="top-0 left-1/2 -translate-x-1/2"
-            rotationClass="rotate-[2deg]"
+            positionClass="top-1 sm:top-2 left-1/2 -translate-x-1/2"
+            rotationClass="rotate-[1deg]"
           />
           <SlotCardContainer
             slot="south"
             data={playedBySlot.get("south")}
-            positionClass="bottom-0 left-1/2 -translate-x-1/2"
-            rotationClass="rotate-[-2deg]"
+            positionClass="bottom-1 sm:bottom-2 left-1/2 -translate-x-1/2"
+            rotationClass="rotate-[-1deg]"
           />
           <SlotCardContainer
             slot="west"
             data={playedBySlot.get("west")}
-            positionClass="left-0 top-1/2 -translate-y-1/2"
-            rotationClass="rotate-[-5deg]"
+            positionClass="left-1 sm:left-3 top-1/2 -translate-y-1/2"
+            rotationClass="rotate-[-4deg]"
           />
           <SlotCardContainer
             slot="east"
             data={playedBySlot.get("east")}
-            positionClass="right-0 top-1/2 -translate-y-1/2"
-            rotationClass="rotate-[4deg]"
+            positionClass="right-1 sm:right-3 top-1/2 -translate-y-1/2"
+            rotationClass="rotate-[3deg]"
           />
 
-          {/* Empty Table Center Prompt */}
+          {/* Empty Table Center Prompt or Live Points Watermark */}
           {activeTrick.length === 0 ? (
-            <div className="flex flex-col items-center justify-center text-center p-3">
-              <span className="text-2xl opacity-40">🃏</span>
-              <span className="text-[0.62rem] font-black uppercase tracking-wider text-white/40 mt-1">
+            <div className="flex flex-col items-center justify-center text-center p-3 z-10">
+              <span className="text-3xl opacity-35">🃏</span>
+              <span className="text-xs font-black uppercase tracking-wider text-amber-200/40 mt-1">
                 {state.phase === "playing" ? "Lead a Card" : "Waiting"}
               </span>
             </div>
-          ) : null}
+          ) : (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-0">
+              <div className="flex flex-col items-center justify-center rounded-full bg-black/45 border border-white/10 h-16 w-16 backdrop-blur-sm shadow-inner">
+                <span className="text-sm font-black text-amber-300 drop-shadow">
+                  {currentTrickPoints > 0 ? `+${currentTrickPoints}` : "0"}
+                </span>
+                <span className="text-[0.52rem] font-extrabold uppercase tracking-widest text-white/40">
+                  PTS
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Directional Arrow (Screenshot 4 style!) */}
           <AnimatePresence>
@@ -359,7 +425,7 @@ export function TwentyNineTrickArea({
         </div>
 
         {/* 4. YOUR TEAM CAPTURED DECK */}
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center shrink-0">
           <span className="mb-1 text-[0.62rem] sm:text-xs font-black uppercase tracking-wider text-sky-300">
             Your Team
           </span>
@@ -420,9 +486,9 @@ function SlotCardContainer({
 
       {/* Card Face with organic rotation */}
       <div className={cn("relative transition-transform duration-300", rotationClass)}>
-        <TwentyNineCardFace card={entry.card} size="md" isWinning={isWinning} />
+        <TwentyNineCardFace card={entry.card} size="lg" isWinning={isWinning} />
         {isWinning ? (
-          <div className="absolute top-full mt-1 left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded-full border border-amber-300/80 bg-gradient-to-r from-amber-400 to-amber-500 px-2 py-0.2 text-[0.52rem] font-black uppercase tracking-widest text-amber-950 shadow-[0_0_12px_rgba(251,191,36,0.9)]">
+          <div className="absolute top-full mt-1.5 left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded-full border border-amber-300/80 bg-gradient-to-r from-amber-400 to-amber-500 px-2.5 py-0.5 text-[0.58rem] font-black uppercase tracking-widest text-amber-950 shadow-[0_0_15px_rgba(251,191,36,0.9)]">
             👑 WINNING
           </div>
         ) : null}
