@@ -11,6 +11,7 @@ import {
   XCircle,
   ArrowRight,
   TrendingUp,
+  TrendingDown,
   X
 } from "lucide-react";
 import type { PublicTwentyNineState, TwentyNineHandResult } from "@tabletop/game-core";
@@ -105,13 +106,7 @@ export function TwentyNineHandScoringModal({
   const didMyTeamWin = result.succeeded ? isMyTeamDeclarer : !isMyTeamDeclarer;
 
   const scoreChangeMagnitude = Math.abs(result.scoreChange);
-  const winningTeamName = result.succeeded
-    ? isRedDeclarer
-      ? "Team Red"
-      : "Team Blue"
-    : isRedDeclarer
-    ? "Team Blue"
-    : "Team Red";
+  const declarerTeamName = isRedDeclarer ? "Team Red" : "Team Blue";
 
   // Scoreboard calculation
   const currentRedGamePts = state.teamGamePoints["0"] ?? 0;
@@ -322,13 +317,25 @@ export function TwentyNineHandScoringModal({
                         : "border-rose-400/60 bg-rose-500/20 text-rose-200 shadow-rose-500/30"
                     )}
                   >
-                    <TrendingUp className="h-5 w-5" />
+                    {result.succeeded ? (
+                      <TrendingUp className="h-5 w-5 text-emerald-300" />
+                    ) : (
+                      <TrendingDown className="h-5 w-5 text-rose-300" />
+                    )}
                     <div>
                       <span className="block text-[0.6rem] font-black uppercase tracking-widest opacity-80">
-                        Match Score Award
+                        {result.succeeded ? "Match Score Award" : "Match Score Penalty"}
                       </span>
-                      <span className="text-base sm:text-lg font-black">
-                        {winningTeamName}: +{scoreChangeMagnitude} Game Point{scoreChangeMagnitude === 1 ? "" : "s"}
+                      <span className="text-base sm:text-lg font-black flex items-center gap-1.5">
+                        <span
+                          className={cn(
+                            "h-2.5 w-2.5 rounded-full shrink-0",
+                            isRedDeclarer ? "bg-rose-400" : "bg-sky-400"
+                          )}
+                        />
+                        <span>
+                          {declarerTeamName}: {result.scoreChange > 0 ? `+${result.scoreChange}` : result.scoreChange} Game Point{scoreChangeMagnitude === 1 ? "" : "s"}
+                        </span>
                       </span>
                     </div>
                   </motion.div>

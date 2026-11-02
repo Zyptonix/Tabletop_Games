@@ -159,7 +159,7 @@ function normalizeTwentyNineEvent(
       return {
         id: event.id,
         badge: "HAND SCORED",
-        hugeTitle: `${winnerTeamName} WINS HAND`,
+        hugeTitle: result.succeeded ? `${winnerTeamName} WINS HAND` : "CONTRACT DEFEATED (SET)",
         subtitle: `Team ${biddingTeamName} needed ${target} pts, took ${points} pts · Game pts: ${change}`,
         tone: winnerTeam === 0 ? "rose" : "sky",
         durationMs: 3600
