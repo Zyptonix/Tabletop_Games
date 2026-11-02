@@ -228,7 +228,7 @@ export function PokerTable(props: BoardGameTableProps) {
   // Hand Showdown Modal & Carousel Slide State
   const [showWinnerModal, setShowWinnerModal] = useState(false);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
-  const [nextHandCountdown, setNextHandCountdown] = useState(6);
+  const [nextHandCountdown, setNextHandCountdown] = useState(20);
   const lastCelebratedHandRef = useRef<number | null>(null);
 
   const me = state.players.find((p) => p.userId === currentUserId);
@@ -323,7 +323,7 @@ export function PokerTable(props: BoardGameTableProps) {
         lastCelebratedHandRef.current = state.pokerLastHandResult.handNumber;
         setActiveSlideIndex(0);
         setShowWinnerModal(true);
-        setNextHandCountdown(6);
+        setNextHandCountdown(20);
         if (soundEnabled) casinoAudio.playWin();
       }
     } else {
@@ -883,7 +883,9 @@ export function PokerTable(props: BoardGameTableProps) {
                 <div className="flex flex-col">
                   <span className="text-[10px] font-black uppercase text-white/40">Turn</span>
                   <span className="text-xs font-bold text-white">
-                    {isMyTurn ? (
+                    {myStack <= 0 ? (
+                      <span className="text-rose-400 font-bold">Busted ($0)</span>
+                    ) : isMyTurn ? (
                       <span className="text-emerald-300 flex items-center gap-1 font-black">
                         🟢 Your Turn ({secondsRemaining}s)
                       </span>
@@ -980,6 +982,21 @@ export function PokerTable(props: BoardGameTableProps) {
                       );
                     }
 
+                    if (choice === "rebuy") {
+                      return (
+                        <button
+                          key={choice}
+                          type="button"
+                          onClick={() => dispatch(action)}
+                          className="group relative flex items-center gap-1.5 rounded-xl px-5 py-2 text-xs font-black tracking-wider uppercase text-slate-950 transition-all shadow-[0_4px_0_#065f46] hover:brightness-110 active:translate-y-0.5"
+                          style={{ background: "linear-gradient(180deg, #34d399 0%, #10b981 100%)" }}
+                        >
+                          <Coins className="h-3.5 w-3.5 text-emerald-950" />
+                          <span>REBUY ($1,000)</span>
+                        </button>
+                      );
+                    }
+
                     return null;
                   })}
               </div>
@@ -1005,22 +1022,47 @@ export function PokerTable(props: BoardGameTableProps) {
 
             {/* The 2 Hole Cards */}
             <div className="flex items-center gap-1.5 sm:gap-2">
-              {(state.myPokerCards ?? []).map((card, i) => {
-                const isWinningCard = Boolean(
-                  card && state.pokerLastHandResult?.winningCards?.includes(card)
-                );
-                return (
-                  <CasinoPlayingCard
-                    key={`${i}-${card}`}
-                    card={card}
-                    hidden={hideMyCards}
-                    size="md"
-                    className={`shadow-xl ${
-                      isWinningCard ? "ring-2 ring-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.6)]" : "ring-1 ring-white/10"
-                    }`}
-                  />
-                );
-              })}
+              {myStack <= 0 ? (
+                <div className="flex items-center gap-2 rounded-2xl border border-rose-500/40 bg-rose-950/40 px-3 py-1.5 shadow-lg">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black uppercase text-rose-300">Busted ($0)</span>
+                    <span className="text-[9px] text-white/50">Out of chips</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => dispatch({ type: "poker_action", choice: "rebuy" })}
+                    className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-3 py-1.5 text-xs font-black uppercase text-slate-950 shadow-md hover:brightness-110 active:scale-95 transition"
+                  >
+                    + Rebuy $1,000 🪙
+                  </button>
+                </div>
+              ) : (state.myPokerCards ?? []).length > 0 ? (
+                (state.myPokerCards ?? []).map((card, i) => {
+                  const isWinningCard = Boolean(
+                    card && state.pokerLastHandResult?.winningCards?.includes(card)
+                  );
+                  return (
+                    <CasinoPlayingCard
+                      key={`${i}-${card}`}
+                      card={card}
+                      hidden={hideMyCards}
+                      size="md"
+                      className={`shadow-xl ${
+                        isWinningCard ? "ring-2 ring-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.6)]" : "ring-1 ring-white/10"
+                      }`}
+                    />
+                  );
+                })
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <div className="h-16 w-11 rounded-xl border border-dashed border-white/20 grid place-items-center text-[9px] font-bold text-white/30 bg-white/5 text-center p-1 leading-tight">
+                    Wait Hand
+                  </div>
+                  <div className="h-16 w-11 rounded-xl border border-dashed border-white/20 grid place-items-center text-[9px] font-bold text-white/30 bg-white/5 text-center p-1 leading-tight">
+                    Next Deal
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1038,7 +1080,6 @@ export function PokerTable(props: BoardGameTableProps) {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
             className="fixed inset-0 z-50 grid place-items-center bg-black/85 p-3 sm:p-4 backdrop-blur-md"
-            onClick={() => setShowWinnerModal(false)}
           >
             <motion.div
               key="poker-winner-modal-dialog"
