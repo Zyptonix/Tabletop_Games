@@ -166,8 +166,60 @@ describe("Bangladesh 29", () => {
     expect(live.currentBid).toBe(20);
   });
 
+
+  it("follows Bangladesh house rules: clockwise challengers duel with highest bidder back-and-forth until one passes", () => {
+    let live = makeState();
+    expect(live.settings.biddingStyle).toBe("bangladesh");
+    live.dealerPlayerId = "p0";
+    live.firstBidderId = "p1";
+    live.currentPlayerId = "p1";
+    const order = (playerId: string, type: Parameters<typeof applyTwentyNineAction>[0]["action"]["type"], payload: Record<string, unknown> = {}) => {
+      const result = action(live, playerId, type, payload);
+      live = result.state;
+      return result;
+    };
+
+    // 1. P1 opens at 16
+    order("p1", "bid", { value: 16 });
+    // Turn goes to next in clockwise order: P2
+    expect(live.currentPlayerId).toBe("p2");
+
+    // 2. P2 dittos at 16 (matching P1)
+    order("p2", "ditto");
+    // Turn goes back to P1!
+    expect(live.currentPlayerId).toBe("p1");
+
+    // 3. P1 raises to 17
+    order("p1", "bid", { value: 17 });
+    // Turn goes back to P2!
+    expect(live.currentPlayerId).toBe("p2");
+
+    // 4. P2 passes
+    order("p2", "pass_bid");
+    // P1 won the duel. Turn goes to next bidder in clockwise order: P3!
+    expect(live.currentPlayerId).toBe("p3");
+
+    // 5. P3 passes on P1's 17
+    order("p3", "pass_bid");
+    // Turn goes to next bidder in clockwise order: P0 (P4)!
+    expect(live.currentPlayerId).toBe("p0");
+
+    // 6. P0 raises to 18
+    order("p0", "bid", { value: 18 });
+    // Turn goes back to P1!
+    expect(live.currentPlayerId).toBe("p1");
+
+    // 7. P1 passes
+    order("p1", "pass_bid");
+    // Auction ends! P0 is Declarer with 18.
+    expect(live.phase).toBe("trump");
+    expect(live.declarerId).toBe("p0");
+    expect(live.currentBid).toBe(18);
+  });
+
   it("follows the circular clockwise bidding sequence", () => {
     let live = makeState();
+    live.settings = { ...live.settings, biddingStyle: "circular" };
     expect(live.settings.biddingStyle).toBe("circular");
     live.dealerPlayerId = "p0";
     live.firstBidderId = "p1";

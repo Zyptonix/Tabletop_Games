@@ -5,6 +5,7 @@ import type { BoardGameState } from "../games/shared/types";
 function startBlackjack(playerCount = 2): BoardGameState {
   const players = Array.from({ length: playerCount }, (_, i) => ({
     userId: `p${i + 1}`,
+    username: `player_${i + 1}`,
     displayName: `Player ${i + 1}`,
     seat: i
   }));
@@ -118,7 +119,7 @@ describe("Blackjack module lifecycle", () => {
     expect(state.blackjackPlayerHands?.["p2"]?.[0]).toHaveLength(2);
 
     // Public state conceals the dealer's hole card
-    const pub = blackjackModule.getPublicState({ state, viewerId: "p1" });
+    const pub = blackjackModule.getPublicState({ state, viewerId: "p1" }) as BoardGameState;
     expect(pub.blackjackDealerHand?.[1]).toBe("hidden");
   });
 

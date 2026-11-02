@@ -105,6 +105,8 @@ export function createTwentyNineDeal(params: {
     turnStartedAt: params.now,
     currentBid: null,
     highestBidderId: null,
+    biddingDefenderId: null,
+    biddingChallengerIndex: 1,
     passedPlayerIds: [],
     firstBidderId: firstBidder.userId,
     lastBidWasDitto: false,

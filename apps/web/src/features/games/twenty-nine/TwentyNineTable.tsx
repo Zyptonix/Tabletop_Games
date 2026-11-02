@@ -1478,7 +1478,7 @@ export function TwentyNineTable({
                         ? `Call Ditto to match the current bid (${state.currentBid})`
                         : state.currentBid === null
                         ? "Ditto is only available to match an opponent's existing bid"
-                        : "Ditto is only available for the opening team to match an opposing bid"
+                        : "Ditto is only available to match an opposing team's bid"
                     }
                     className={cn(
                       "flex items-center gap-1.5 rounded-xl border px-4 py-2 text-xs font-black transition",
@@ -1945,7 +1945,7 @@ export function TwentyNineTable({
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
                   <h4 className="font-black text-amber-300">Bidding Auction & Ditto</h4>
                   <p className="mt-1 text-white/70">
-                    Bids range 16 to 28. Opening team has priority to match an opponent's bid using Ditto. Highest bidder sets contract.
+                    Bids range 16 to 28. Bidding proceeds clockwise in head-to-head duels. Opponents can raise or match with Ditto until one passes. Last remaining bidder sets the contract.
                   </p>
                 </div>
 

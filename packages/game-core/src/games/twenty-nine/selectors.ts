@@ -54,7 +54,7 @@ export function getLegalTwentyNineActions(params: { state: TwentyNineState; play
       state.currentBid !== null &&
       !state.lastBidWasDitto &&
       state.highestBidderId !== null &&
-      teamOf(state, playerId) === teamOf(state, state.firstBidderId) &&
+
       teamOf(state, playerId) !== teamOf(state, state.highestBidderId)
     ) bids.push({ type: "ditto" });
     bids.push({ type: "pass_bid" });

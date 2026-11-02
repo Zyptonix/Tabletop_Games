@@ -11,5 +11,5 @@ export const TWENTY_NINE_DEFAULT_SETTINGS = {
   allowSeventhCard: true,
   allowDoubleRedouble: true,
   allowSingleHand: true,
-  biddingStyle: "circular"
+  biddingStyle: "bangladesh"
 } as const;

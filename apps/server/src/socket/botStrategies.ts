@@ -238,8 +238,19 @@ export function chooseBotAction(legalActions: unknown[], gameId: string, gameSta
     const ditto = actions.find((action) => action.type === "ditto");
     const passBid = actions.find((action) => action.type === "pass_bid");
     const lowestBid = bids[0];
-    if (lowestBid && Number(lowestBid.value) <= 19) {
-      preferred = ditto && Number(lowestBid.value) >= 18 && Math.random() < 0.18 ? ditto : lowestBid;
+    const s = gameState as any;
+    const isPartnerHighest =
+      s?.highestBidderId &&
+      s?.players?.find((p: any) => p.userId === s.highestBidderId)?.team ===
+        s?.players?.find((p: any) => p.userId === playerId)?.team &&
+      s.highestBidderId !== playerId;
+
+    if (isPartnerHighest && passBid) {
+      preferred = passBid;
+    } else if (ditto && Math.random() < 0.35) {
+      preferred = ditto;
+    } else if (lowestBid && Number(lowestBid.value) <= 19) {
+      preferred = lowestBid;
     } else if (passBid) {
       preferred = passBid;
     }

@@ -94,6 +94,101 @@ function nextCircularAuctionPlayer(state: TwentyNineState, currentPlayerId: stri
   return sequence.find((player) => !state.passedPlayerIds.includes(player.userId) && player.userId !== currentPlayerId)?.userId ?? null;
 }
 
+
+function getSpeakingOrder(state: TwentyNineState): TwentyNineState["players"] {
+  const ordered = state.players.slice().sort((a, b) => a.seat - b.seat);
+  return orderAfterDealer(ordered, state.dealerPlayerId);
+}
+
+function advanceBangladeshAuctionOnBid(
+  state: TwentyNineState,
+  playerId: string,
+  kind: "bid" | "ditto",
+  value: number
+): void {
+  const speakingOrder = getSpeakingOrder(state);
+  state.currentBid = value;
+  state.lastBidWasDitto = kind === "ditto";
+  state.bidHistory.push({ playerId, kind, value });
+
+  if (state.highestBidderId === null) {
+    state.highestBidderId = playerId;
+    state.biddingDefenderId = playerId;
+    state.biddingChallengerIndex = 1;
+    state.currentPlayerId = speakingOrder[1]?.userId ?? null;
+    return;
+  }
+
+  state.highestBidderId = playerId;
+  const challenger = speakingOrder[state.biddingChallengerIndex ?? 1];
+  const defenderId = state.biddingDefenderId;
+
+  if (challenger && playerId === challenger.userId) {
+    state.currentPlayerId = defenderId ?? null;
+  } else if (defenderId && playerId === defenderId) {
+    state.currentPlayerId = challenger?.userId ?? null;
+  } else {
+    state.currentPlayerId = defenderId === playerId ? challenger?.userId ?? null : defenderId ?? null;
+  }
+}
+
+function advanceBangladeshAuctionOnPass(
+  state: TwentyNineState,
+  playerId: string,
+  now: string,
+  events: ReturnType<typeof createGameEvent>[]
+): TwentyNineState {
+  state.passedPlayerIds.push(playerId);
+  state.bidHistory.push({ playerId, kind: "pass", value: null });
+
+  if (state.passedPlayerIds.length >= 3) {
+    if (state.highestBidderId === null) {
+      return cancelAndRedeal(state, now, events, "The first three players passed");
+    }
+    return startTrumpChoice(state, now, events);
+  }
+
+  const speakingOrder = getSpeakingOrder(state);
+  const challenger = speakingOrder[state.biddingChallengerIndex ?? 1];
+
+  if (state.highestBidderId === null) {
+    let nextIdx = state.biddingChallengerIndex ?? 1;
+    while (nextIdx < speakingOrder.length && state.passedPlayerIds.includes(speakingOrder[nextIdx]!.userId)) {
+      nextIdx += 1;
+    }
+    state.biddingChallengerIndex = nextIdx;
+    state.currentPlayerId = speakingOrder[nextIdx]?.userId ?? null;
+    state.turnStartedAt = now;
+    return state;
+  }
+
+  if (challenger && playerId === challenger.userId) {
+    state.highestBidderId = state.biddingDefenderId;
+  } else if (state.biddingDefenderId && playerId === state.biddingDefenderId) {
+    state.biddingDefenderId = challenger?.userId ?? null;
+    state.highestBidderId = challenger?.userId ?? null;
+  }
+
+  let nextIdx = (state.biddingChallengerIndex ?? 1) + 1;
+  while (nextIdx < speakingOrder.length) {
+    const candidate = speakingOrder[nextIdx];
+    if (candidate && !state.passedPlayerIds.includes(candidate.userId) && candidate.userId !== state.biddingDefenderId) {
+      break;
+    }
+    nextIdx += 1;
+  }
+
+  state.biddingChallengerIndex = nextIdx;
+
+  if (nextIdx >= speakingOrder.length || state.passedPlayerIds.length >= 3) {
+    return startTrumpChoice(state, now, events);
+  }
+
+  state.currentPlayerId = speakingOrder[nextIdx]?.userId ?? null;
+  state.turnStartedAt = now;
+  return state;
+}
+
 function appendEvent(events: ReturnType<typeof createGameEvent>[], type: string, message: string, payload?: unknown): void {
   events.push(createGameEvent(type, { message, ...(payload === undefined ? {} : { payload }) }));
 }
@@ -485,57 +580,45 @@ export function applyTwentyNineAction(params: {
   const actorName = actor?.displayName ?? "A player";
 
   if (action.type === "bid") {
-    state.currentBid = action.value;
-    state.highestBidderId = playerId;
-    state.lastBidWasDitto = false;
-    state.bidHistory.push({ playerId, kind: "bid", value: action.value });
-    state.currentPlayerId = state.settings.biddingStyle === "partner_takeover" ? nextAuctionPlayerAfterBid(state, playerId) : nextCircularAuctionPlayer(state, playerId);
+    if (state.settings.biddingStyle === "circular") {
+      state.currentBid = action.value;
+      state.highestBidderId = playerId;
+      state.lastBidWasDitto = false;
+      state.bidHistory.push({ playerId, kind: "bid", value: action.value });
+      state.currentPlayerId = nextCircularAuctionPlayer(state, playerId);
+    } else {
+      advanceBangladeshAuctionOnBid(state, playerId, "bid", action.value);
+    }
     state.turnStartedAt = now;
     appendEvent(events, "twenty-nine:bid", `${actorName} bid ${action.value}.`, { playerId, value: action.value });
   } else if (action.type === "ditto") {
-    state.highestBidderId = playerId;
-    state.lastBidWasDitto = true;
-    state.bidHistory.push({ playerId, kind: "ditto", value: state.currentBid });
-    state.currentPlayerId = state.settings.biddingStyle === "partner_takeover" ? nextAuctionPlayerAfterBid(state, playerId) : nextCircularAuctionPlayer(state, playerId);
+    if (state.settings.biddingStyle === "circular") {
+      state.highestBidderId = playerId;
+      state.lastBidWasDitto = true;
+      state.bidHistory.push({ playerId, kind: "ditto", value: state.currentBid });
+      state.currentPlayerId = nextCircularAuctionPlayer(state, playerId);
+    } else {
+      advanceBangladeshAuctionOnBid(state, playerId, "ditto", state.currentBid!);
+    }
     state.turnStartedAt = now;
     appendEvent(events, "twenty-nine:ditto", `${actorName} said Ditto at ${state.currentBid}.`, { playerId, value: state.currentBid });
   } else if (action.type === "pass_bid") {
-    state.passedPlayerIds.push(playerId);
-    state.bidHistory.push({ playerId, kind: "pass", value: null });
     appendEvent(events, "twenty-nine:pass_bid", `${actorName} passed on the auction.`, { playerId });
-    if (state.passedPlayerIds.length >= 3) {
-      if (state.highestBidderId === null) {
-        state = cancelAndRedeal(state, now, events, "The first three players passed");
-      } else {
-        state = startTrumpChoice(state, now, events);
-      }
-    } else if (state.settings.biddingStyle !== "partner_takeover") {
-      state.currentPlayerId = nextCircularAuctionPlayer(state, playerId);
-      state.turnStartedAt = now;
-    } else {
-      const partner = availablePartner(state, playerId);
-      if (partner) {
-        // The partner immediately takes over this team's auction turn.
-        state.currentPlayerId = partner.userId;
-        appendEvent(events, "twenty-nine:partner_takeover", `${partner.displayName} took over bidding for ${actorName}'s team.`, {
-          fromPlayerId: playerId, toPlayerId: partner.userId, team: partner.team, reason: "pass"
-        });
-      } else if (state.highestBidderId) {
-        // If the other team is out, the bidder's partner still gets a chance to bid over them.
-        const highestBidder = playerById(state, state.highestBidderId);
-        const bidderPartner = highestBidder ? availablePartner(state, highestBidder.userId) : undefined;
-        const otherTeam = actor?.team === 0 ? 1 : 0;
-        state.currentPlayerId = bidderPartner?.userId ?? activeAuctionPlayerForTeam(state, otherTeam as TwentyNineTeam);
-        if (bidderPartner) {
-          appendEvent(events, "twenty-nine:partner_takeover", `${bidderPartner.displayName} gets a chance to bid over teammate ${highestBidder?.displayName ?? "the current bidder"}.`, {
-            fromPlayerId: highestBidder?.userId, toPlayerId: bidderPartner.userId, team: bidderPartner.team, reason: "partner_challenge"
-          });
+    if (state.settings.biddingStyle === "circular") {
+      state.passedPlayerIds.push(playerId);
+      state.bidHistory.push({ playerId, kind: "pass", value: null });
+      if (state.passedPlayerIds.length >= 3) {
+        if (state.highestBidderId === null) {
+          state = cancelAndRedeal(state, now, events, "The first three players passed");
+        } else {
+          state = startTrumpChoice(state, now, events);
         }
       } else {
-        const otherTeam = actor?.team === 0 ? 1 : 0;
-        state.currentPlayerId = activeAuctionPlayerForTeam(state, otherTeam as TwentyNineTeam);
+        state.currentPlayerId = nextCircularAuctionPlayer(state, playerId);
+        state.turnStartedAt = now;
       }
-      state.turnStartedAt = now;
+    } else {
+      state = advanceBangladeshAuctionOnPass(state, playerId, now, events);
     }
   } else if (action.type === "choose_trump_suit") {
     state = beginContractAfterTrump(state, "suit", action.suit, now, events);

@@ -20,7 +20,7 @@ export interface TwentyNineSettings {
   allowSeventhCard: boolean;
   allowDoubleRedouble: boolean;
   allowSingleHand: boolean;
-  biddingStyle?: "circular" | "partner_takeover";
+  biddingStyle?: "circular" | "partner_takeover" | "bangladesh";
 }
 
 export interface TwentyNinePlayerState {
@@ -88,6 +88,8 @@ export interface TwentyNineState {
 
   currentBid: number | null;
   highestBidderId: string | null;
+  biddingDefenderId: string | null;
+  biddingChallengerIndex: number;
   passedPlayerIds: string[];
   firstBidderId: string;
   lastBidWasDitto: boolean;
@@ -142,6 +144,8 @@ export interface PublicTwentyNineState {
   actionNumber: number;
   currentBid: number | null;
   highestBidderId: string | null;
+  biddingDefenderId: string | null;
+  biddingChallengerIndex: number;
   passedPlayerIds: string[];
   bidHistory: TwentyNineBidEntry[];
   declarerId: string | null;

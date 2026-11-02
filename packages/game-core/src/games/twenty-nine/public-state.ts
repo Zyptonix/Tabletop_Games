@@ -33,6 +33,8 @@ export function getPublicTwentyNineState(params: { state: TwentyNineState; viewe
     actionNumber: state.actionNumber,
     currentBid: state.currentBid,
     highestBidderId: state.highestBidderId,
+    biddingDefenderId: state.biddingDefenderId,
+    biddingChallengerIndex: state.biddingChallengerIndex,
     passedPlayerIds: state.passedPlayerIds,
     bidHistory: state.bidHistory,
     declarerId: state.declarerId,
