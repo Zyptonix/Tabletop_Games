@@ -579,31 +579,19 @@ export function TwentyNineTable({
 
       {/* TOP TRANSPARENT IN-GAME HEADER (Spans edge-to-edge, never overlapped) */}
       <header className="relative z-30 flex shrink-0 items-center justify-between gap-3 px-3 sm:px-6 py-2 border-b border-white/[0.08] bg-black/35 backdrop-blur-md">
-        {/* Left: Logo & Room Code */}
+        {/* Left: Logo & Game Name (Clean branding, room code moved to the right) */}
         <div className="flex items-center gap-2.5">
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-emerald-400/40 bg-emerald-500/15 shadow-[0_0_14px_rgba(52,211,153,0.3)]">
             <span className="text-sm font-black text-emerald-300">29</span>
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-black text-white">Twenty-Nine</span>
-              <span className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-0.5 text-[0.6rem] font-black text-emerald-300">
-                Room {room.code}
-              </span>
-            </div>
+            <h1 className="text-sm font-black tracking-tight text-white sm:text-base">
+              Twenty-Nine
+            </h1>
             <p className="text-[0.58rem] font-bold uppercase tracking-wider text-white/40">
               Bangladesh Arena
             </p>
           </div>
-
-          <button
-            type="button"
-            onClick={() => navigator.clipboard.writeText(room.code)}
-            className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/[0.04] text-white/70 transition hover:bg-white/15 hover:text-white"
-            title="Copy Room Code"
-          >
-            <Copy className="h-3.5 w-3.5" />
-          </button>
         </div>
 
         {/* Center: In-Game Status Alert Plaque */}
@@ -620,8 +608,32 @@ export function TwentyNineTable({
           </span>
         </div>
 
-        {/* Right: Header Action Tools */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
+        {/* Right: Room ID Card & Action Tools */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Prominent Dedicated Room ID Div */}
+          <div className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-950/40 px-3 py-1 shadow-sm backdrop-blur-md">
+            <div>
+              <span className="block text-[0.5rem] font-black uppercase tracking-widest text-emerald-400">
+                Room Code
+              </span>
+              <span className="font-mono text-xs sm:text-sm font-black tracking-wider text-white">
+                {room.code}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigator.clipboard.writeText(room.code)}
+              className="grid h-7 w-7 place-items-center rounded-lg border border-emerald-400/30 bg-emerald-500/20 text-emerald-200 transition hover:bg-emerald-500/35 hover:text-white active:scale-95"
+              title="Copy Room Code"
+            >
+              <Copy className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          <div className="h-6 w-px bg-white/10" />
+
+          {/* Action Tools */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
           <button
             type="button"
             onClick={() => setRulesOpen(true)}
@@ -673,7 +685,8 @@ export function TwentyNineTable({
             <LogOut className="h-4 w-4" />
           </button>
         </div>
-      </header>
+      </div>
+    </header>
 
       {/* MAIN BODY ROW: [PERMANENT LEFT SIDEBAR] --- [CENTER ARENA] --- [RIGHT CHAT DRAWER] */}
       <div className="relative z-10 flex flex-1 min-h-0 w-full overflow-hidden">
@@ -703,9 +716,6 @@ export function TwentyNineTable({
                     style={{ width: `${Math.min(100, (Math.max(0, state.teamGamePoints["0"]) / 6) * 100)}%` }}
                   />
                 </div>
-                <span className="text-[0.55rem] text-white/40 block mt-1">
-                  {state.capturedPointsByTeam["0"]}/28 card pts
-                </span>
               </div>
 
               {/* Blue Team */}
@@ -722,9 +732,59 @@ export function TwentyNineTable({
                     style={{ width: `${Math.min(100, (Math.max(0, state.teamGamePoints["1"]) / 6) * 100)}%` }}
                   />
                 </div>
-                <span className="text-[0.55rem] text-white/40 block mt-1">
-                  {state.capturedPointsByTeam["1"]}/28 card pts
+              </div>
+            </div>
+          </div>
+
+          {/* 2. CARD POINTS (THIS HAND - 28 PTS MAX) */}
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 shadow-lg flex flex-col gap-2">
+            <div className="flex items-center justify-between pb-1.5 border-b border-white/10">
+              <div className="flex items-center gap-1.5">
+                <Crown className="h-3.5 w-3.5 text-amber-300" />
+                <span className="text-[0.65rem] font-black uppercase tracking-wider text-amber-300">
+                  Card Points
                 </span>
+              </div>
+              <span className="text-[0.6rem] font-bold text-white/40">28 Total Pts</span>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              {/* Team Red Points Bar */}
+              <div className="rounded-xl border border-rose-500/25 bg-rose-950/40 p-2">
+                <div className="flex items-center justify-between text-[0.65rem] font-black">
+                  <span className="text-rose-300">TEAM RED</span>
+                  <span className="text-white tabular-nums">
+                    {state.capturedPointsByTeam["0"]}{" "}
+                    <span className="text-[0.55rem] text-white/40">/28 pts</span>
+                  </span>
+                </div>
+                <div className="relative mt-1 h-1.5 w-full overflow-hidden rounded-full bg-black/60">
+                  <div
+                    className="h-full rounded-full bg-rose-500 transition-all duration-300"
+                    style={{
+                      width: `${Math.min(100, (state.capturedPointsByTeam["0"] / 28) * 100)}%`
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Team Blue Points Bar */}
+              <div className="rounded-xl border border-sky-500/25 bg-sky-950/40 p-2">
+                <div className="flex items-center justify-between text-[0.65rem] font-black">
+                  <span className="text-sky-300">TEAM BLUE</span>
+                  <span className="text-white tabular-nums">
+                    {state.capturedPointsByTeam["1"]}{" "}
+                    <span className="text-[0.55rem] text-white/40">/28 pts</span>
+                  </span>
+                </div>
+                <div className="relative mt-1 h-1.5 w-full overflow-hidden rounded-full bg-black/60">
+                  <div
+                    className="h-full rounded-full bg-sky-500 transition-all duration-300"
+                    style={{
+                      width: `${Math.min(100, (state.capturedPointsByTeam["1"] / 28) * 100)}%`
+                    }}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -1304,8 +1364,8 @@ export function TwentyNineTable({
             ) : null}
           </div>
 
-          {/* Bottom Dock Row: [Player Hand Fan] -- [Card Points Panel] */}
-          <div className="flex w-full items-end justify-center gap-3 sm:gap-4 max-w-5xl">
+          {/* Bottom Dock Row: [Player Hand Fan] */}
+          <div className="flex w-full items-end justify-center max-w-4xl">
             {/* Center: Local Player Hand Fan (Enlarged Cards) */}
             <section
               ref={handRef}
@@ -1414,77 +1474,6 @@ export function TwentyNineTable({
                 </div>
               )}
             </section>
-
-            {/* Right Side: Round Card Points Telemetry */}
-            <div
-              style={{ height: handHeight, maxHeight: handHeight }}
-              className="hidden lg:flex flex-col justify-between shrink-0 rounded-2xl border border-white/10 bg-black/85 p-3 shadow-2xl backdrop-blur-xl w-60 sm:w-68 overflow-hidden"
-            >
-              {/* Header: Card Points */}
-              <div className="flex shrink-0 items-center justify-between pb-1.5 border-b border-white/10 mb-1.5">
-                <div className="flex items-center gap-1.5">
-                  <Crown className="h-3.5 w-3.5 text-amber-300" />
-                  <span className="text-[0.65rem] font-black uppercase tracking-wider text-amber-300">
-                    Card Points
-                  </span>
-                </div>
-                <span className="text-[0.6rem] font-bold text-white/40">28 Total Pts</span>
-              </div>
-
-              {/* Progress Bars */}
-              <div className="flex flex-col justify-between gap-1.5 flex-1 min-h-0">
-                {/* Team Red Points Bar */}
-                <div className="rounded-xl border border-rose-500/25 bg-rose-950/40 p-2">
-                  <div className="flex items-center justify-between text-[0.65rem] font-black">
-                    <span className="text-rose-300">TEAM RED</span>
-                    <span className="text-white tabular-nums">
-                      {state.capturedPointsByTeam["0"]}{" "}
-                      <span className="text-[0.55rem] text-white/40">/28 pts</span>
-                    </span>
-                  </div>
-                  <div className="relative mt-1 h-1.5 w-full overflow-hidden rounded-full bg-black/60">
-                    <div
-                      className="h-full rounded-full bg-rose-500 transition-all duration-300"
-                      style={{
-                        width: `${Math.min(100, (state.capturedPointsByTeam["0"] / 28) * 100)}%`
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Team Blue Points Bar */}
-                <div className="rounded-xl border border-sky-500/25 bg-sky-950/40 p-2">
-                  <div className="flex items-center justify-between text-[0.65rem] font-black">
-                    <span className="text-sky-300">TEAM BLUE</span>
-                    <span className="text-white tabular-nums">
-                      {state.capturedPointsByTeam["1"]}{" "}
-                      <span className="text-[0.55rem] text-white/40">/28 pts</span>
-                    </span>
-                  </div>
-                  <div className="relative mt-1 h-1.5 w-full overflow-hidden rounded-full bg-black/60">
-                    <div
-                      className="h-full rounded-full bg-sky-500 transition-all duration-300"
-                      style={{
-                        width: `${Math.min(100, (state.capturedPointsByTeam["1"] / 28) * 100)}%`
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Stakes & Target Pill */}
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-2 py-1.5 flex items-center justify-between text-[0.6rem] text-white/60">
-                  <span>
-                    Stakes: <strong className="text-amber-300 font-black">×{state.multiplier}</strong>
-                  </span>
-                  <span>
-                    Target:{" "}
-                    <strong className="text-white font-black">
-                      {state.contractTarget ?? state.currentBid ?? "—"}
-                    </strong>
-                  </span>
-                </div>
-              </div>
-            </div>
           </div>
         </footer>
       </div>
