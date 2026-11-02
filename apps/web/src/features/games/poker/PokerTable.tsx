@@ -26,7 +26,7 @@ import {
   type PokerLastHandResult
 } from "@tabletop/game-core";
 import type { AnyAction, BoardGameTableProps } from "../board-games/shared/types";
-import { CasinoChip, ChipStack, breakdownChips, type ChipDenomination } from "../casino/CasinoChip";
+import { CasinoChip, breakdownChips, type ChipDenomination } from "../casino/CasinoChip";
 import { CasinoPlayingCard } from "../casino/CasinoPlayingCard";
 import { casinoAudio } from "../casino/casinoAudio";
 import { owns, isAction } from "../board-games/shared/ui-utils";
@@ -570,10 +570,11 @@ export function PokerTable(props: BoardGameTableProps) {
                   <div className="flex items-center gap-1 mt-0.5">
                     {roundBet > 0 ? (
                       <span
-                        className="rounded-full bg-emerald-500/20 border border-emerald-400/40 px-1.5 py-0.5 font-mono text-[9px] font-black text-emerald-200 shadow-sm"
+                        className="rounded-full bg-emerald-500/20 border border-emerald-400/40 px-1.5 py-0.5 font-mono text-[9px] font-black text-emerald-200 shadow-sm flex items-center gap-0.5"
                         title="Chips paid in current betting round"
                       >
-                        Round: ${roundBet}
+                        <span>🪙</span>
+                        <span>Round: ${roundBet}</span>
                       </span>
                     ) : null}
                     {totalPaid > 0 ? (
@@ -584,27 +585,6 @@ export function PokerTable(props: BoardGameTableProps) {
                         In Pot: ${totalPaid}
                       </span>
                     ) : null}
-                  </div>
-                ) : null}
-
-                {/* Opponents' Hole Cards: Always Face-Down on Seats (NO LEAKING!) */}
-                <div className="flex items-center -space-x-3 sm:-space-x-4 mt-0.5">
-                  {player.folded || isEliminated ? (
-                    <div className="h-11 w-8 rounded border border-dashed border-white/20 grid place-items-center text-[9px] text-white/30">
-                      Muck
-                    </div>
-                  ) : (
-                    <>
-                      <CasinoPlayingCard hidden size="xs" className="shadow-md" />
-                      <CasinoPlayingCard hidden size="xs" className="shadow-md" />
-                    </>
-                  )}
-                </div>
-
-                {/* Active Bet Chips placed physically on table felt in front of seat */}
-                {roundBet > 0 ? (
-                  <div className="mt-1">
-                    <ChipStack amount={roundBet} size="sm" />
                   </div>
                 ) : null}
 
@@ -1093,7 +1073,8 @@ export function PokerTable(props: BoardGameTableProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
-            className="fixed inset-0 z-50 grid place-items-center bg-black/85 p-3 sm:p-4 backdrop-blur-md"
+            style={{ pointerEvents: showWinnerModal ? "auto" : "none" }}
+            className={`fixed inset-0 z-50 grid place-items-center bg-black/85 p-3 sm:p-4 backdrop-blur-md ${!showWinnerModal ? "pointer-events-none" : ""}`}
           >
             <motion.div
               key="poker-winner-modal-dialog"
@@ -1196,7 +1177,7 @@ export function PokerTable(props: BoardGameTableProps) {
                         key={activePlayer.userId}
                         initial={{ opacity: 0, x: 15 }}
                         animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -15 }}
+                        transition={{ duration: 0.15 }}
                         className="mt-3 rounded-2xl border border-white/10 bg-black/40 p-3 sm:p-4 text-center"
                       >
                         {/* Player Name, Winner Badge & Hand Name */}
@@ -1311,7 +1292,8 @@ export function PokerTable(props: BoardGameTableProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
-            className="fixed inset-0 z-50 grid place-items-center bg-black/85 p-3 sm:p-4 backdrop-blur-md"
+            style={{ pointerEvents: pokerRulesOpen ? "auto" : "none" }}
+            className={`fixed inset-0 z-50 grid place-items-center bg-black/85 p-3 sm:p-4 backdrop-blur-md ${!pokerRulesOpen ? "pointer-events-none" : ""}`}
             onClick={() => setPokerRulesOpen(false)}
           >
             <motion.div
@@ -1376,7 +1358,8 @@ export function PokerTable(props: BoardGameTableProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
-            className="fixed inset-0 z-50 grid place-items-center bg-black/85 p-4 backdrop-blur-md"
+            style={{ pointerEvents: cashOutOpen ? "auto" : "none" }}
+            className={`fixed inset-0 z-50 grid place-items-center bg-black/85 p-4 backdrop-blur-md ${!cashOutOpen ? "pointer-events-none" : ""}`}
             onClick={() => setCashOutOpen(false)}
           >
             <motion.div
