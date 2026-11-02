@@ -207,7 +207,19 @@ describe("Poker tournament hand lifecycle v4", () => {
       action: { type: "poker_action", choice: "fold" },
       now: "2026-10-25T00:03:00.000Z"
     });
-    const next = result.state as BoardGameState;
+    const foldState = result.state as BoardGameState;
+    expect(foldState.pokerAwaitingNextHand).toBe(true);
+    expect(foldState.pokerLastHandResult?.byFold).toBe(true);
+    expect(foldState.pokerLastHandResult?.showdownCards).toBeUndefined();
+
+    // Now advance to the next hand via next_hand
+    const nextHandResult = pokerModule.applyAction({
+      state: foldState,
+      playerId: actor!,
+      action: { type: "poker_action", choice: "next_hand" },
+      now: "2026-10-25T00:03:01.000Z"
+    });
+    const next = nextHandResult.state as BoardGameState;
     const afterChips = Object.values(next.pokerStacks).reduce((sum, stack) => sum + stack, 0) + next.pokerPot;
     expect(next.phase).toBe("playing");
     expect(next.pokerHandNumber).toBe(beforeHand + 1);

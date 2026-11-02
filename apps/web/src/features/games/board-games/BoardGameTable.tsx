@@ -79,7 +79,28 @@ export function BoardGameTable({ room, state, legalActions, gameEvents, currentU
   return <div className="board-game-screen h-dvh min-h-0 overflow-hidden bg-[#050a0f] text-slate-100">
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex h-[64px] shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-[#08121b] px-4 lg:px-6">
-        <div className="flex min-w-0 items-center gap-3"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/[.045] text-xl">{meta.icon}</div><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h1 className="truncate text-lg font-black tracking-tight lg:text-xl">{meta.title}</h1></div><p className="hidden text-[11px] font-semibold text-white/40 sm:block">Room {room.code} · {meta.description}</p></div></div>
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/[.045] text-xl">{meta.icon}</div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="truncate text-lg font-black tracking-tight lg:text-xl">{meta.title}</h1>
+              {state.gameId === "poker" ? (
+                <>
+                  <span className="rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-black text-amber-300">
+                    Hand #{state.pokerHandNumber ?? 1}
+                  </span>
+                  <span className="hidden sm:inline-flex rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-mono font-bold text-emerald-300">
+                    Blinds $10 / $20
+                  </span>
+                  <span className="rounded-full border border-amber-400/40 bg-black/60 px-2.5 py-0.5 text-xs font-mono font-black text-amber-300 shadow">
+                    POT: ${state.pokerPot.toLocaleString("en-US")}
+                  </span>
+                </>
+              ) : null}
+            </div>
+            <p className="hidden text-[11px] font-semibold text-white/40 sm:block">Room {room.code} · {meta.description}</p>
+          </div>
+        </div>
         <div className="flex shrink-0 items-center gap-2">
           <span className={`hidden rounded-full border px-3 py-2 text-xs font-bold sm:inline-flex ${isMyTurn ? "border-emerald-200/25 bg-emerald-300/10 text-emerald-100" : "border-white/10 bg-white/[.035] text-white/55"}`}>{isMyTurn ? "🟢 Your turn" : `⏳ ${currentPlayer?.displayName ?? "No active player"}`}</span>
           <button type="button" onClick={() => setSidebarOpen((prev) => !prev)} className={`min-h-10 rounded-xl border px-3 text-xs font-black transition ${sidebarOpen ? "border-cyan-400/30 bg-cyan-500/10 text-cyan-200" : "border-white/10 bg-white/[.055] text-white/80 hover:bg-white/[.09]"}`}>💬 {sidebarOpen ? "Hide Panel" : "Chat & Log"}</button>

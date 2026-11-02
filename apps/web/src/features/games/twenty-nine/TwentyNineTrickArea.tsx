@@ -296,7 +296,7 @@ export function TwentyNineTrickArea({
               {/* CURRENT TRICK POINTS WATERMARK:
                   Position: Shifted to the left of dead-center.
                   To adjust: change `-translate-x-10 sm:-translate-x-14` (e.g. `-translate-x-6` for less, `-translate-x-20` for more left) */}
-              <div className="flex flex-col items-center justify-center rounded-full bg-black/45 border border-white/10 h-16 w-16 backdrop-blur-sm shadow-inner -translate-x-10 sm:-translate-x-14 transition-transform">
+              <div className="flex flex-col items-center justify-center rounded-full bg-black/45 border border-white/10 h-16 w-16 backdrop-blur-sm shadow-inner -translate-x-4 sm:-translate-x-8 transition-transform">
                 <span className="text-sm font-black text-amber-300 drop-shadow">
                   {currentTrickPoints > 0 ? `+${currentTrickPoints}` : "0"}
                 </span>

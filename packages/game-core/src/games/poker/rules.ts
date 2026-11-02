@@ -55,14 +55,21 @@ export function comparePokerHandValues(left: PokerHandValue, right: PokerHandVal
   return 0;
 }
 
-export function bestPokerHandValue(cards: string[]): PokerHandValue {
-  if (cards.length < 5) return evaluateFiveCardPokerHand(cards.concat(Array.from({ length: 5 - cards.length }, () => "2♣")));
+export function bestPokerHandDetails(cards: string[]): { handValue: PokerHandValue; bestCards: string[] } {
+  if (cards.length < 5) {
+    const padded = cards.concat(Array.from({ length: 5 - cards.length }, () => "2♣"));
+    return { handValue: evaluateFiveCardPokerHand(padded), bestCards: cards.slice() };
+  }
   let best: PokerHandValue = [-1];
+  let bestCards: string[] = [];
   const chosen: string[] = [];
   const visit = (start: number) => {
     if (chosen.length === 5) {
       const value = evaluateFiveCardPokerHand(chosen);
-      if (comparePokerHandValues(value, best) > 0) best = value;
+      if (comparePokerHandValues(value, best) > 0) {
+        best = value;
+        bestCards = chosen.slice();
+      }
       return;
     }
     const needed = 5 - chosen.length;
@@ -73,7 +80,11 @@ export function bestPokerHandValue(cards: string[]): PokerHandValue {
     }
   };
   visit(0);
-  return best;
+  return { handValue: best, bestCards };
+}
+
+export function bestPokerHandValue(cards: string[]): PokerHandValue {
+  return bestPokerHandDetails(cards).handValue;
 }
 
 export function evaluateTexasHoldemHand(cards: string[]): PokerHandValue {
@@ -122,6 +133,7 @@ export function startNextPokerHand(state: BoardGameState, now: string, previousH
 
   state.phase = "playing";
   state.winnerUserId = null;
+  state.pokerAwaitingNextHand = false;
   state.pokerHandNumber = (state.pokerHandNumber ?? 1) + 1;
   state.pokerButtonSeat = button.seat;
   state.pokerStreet = "preflop";
@@ -175,7 +187,8 @@ export function startNextPokerHand(state: BoardGameState, now: string, previousH
 
 export function settlePokerShowdown(state: BoardGameState, now: string): void {
   const active = state.players.filter((player) => !state.pokerFolded.includes(player.userId));
-  const values = new Map(active.map((player) => [player.userId, bestPokerHandValue([...(state.pokerCardsByPlayer[player.userId] ?? []), ...state.communityCards])]));
+  const handDetails = new Map(active.map((player) => [player.userId, bestPokerHandDetails([...(state.pokerCardsByPlayer[player.userId] ?? []), ...state.communityCards])]));
+  const values = new Map(active.map((player) => [player.userId, handDetails.get(player.userId)!.handValue]));
   const contributions = state.players.map((player) => ({ player, amount: Math.max(0, state.pokerContributions[player.userId] ?? 0) }));
   const levels = [...new Set(contributions.map((entry) => entry.amount).filter((amount) => amount > 0))].sort((a, b) => a - b);
   let previousLevel = 0;
@@ -240,6 +253,8 @@ export function settlePokerShowdown(state: BoardGameState, now: string): void {
     showdownCards[player.userId] = (state.pokerCardsByPlayer[player.userId] ?? []).slice();
   }
 
+  const winningCards = mainPotWinners[0] ? (handDetails.get(mainPotWinners[0].userId)?.bestCards ?? []) : [];
+
   if (mainPotWinners.length === 1) {
     const winner = mainPotWinners[0]!;
     state.pokerLastAction = `${winner.displayName} takes the main pot with ${bestHandName.toLowerCase()}; side pots are settled.`;
@@ -258,12 +273,15 @@ export function settlePokerShowdown(state: BoardGameState, now: string): void {
     summary: mainPotWinners.length === 1
       ? `${mainPotWinners[0]!.displayName} takes the main pot of $${totalPot} with ${bestHandName}.`
       : `Main pot ($${totalPot}) split between ${mainPotWinners.map((p) => p.displayName).join(", ")}.`,
-    showdownCards
+    showdownCards,
+    winningCards
   };
 
-  // Only the tournament end condition finalizes a match. A normal showdown pays
-  // the pots and immediately starts the next hand while at least two stacks remain.
-  startNextPokerHand(state, now, state.pokerLastAction);
+  // Pause at showdown for players to review; don't immediately start next hand!
+  state.pokerAwaitingNextHand = true;
+  state.currentPlayerId = null;
+  state.updatedAt = now;
+  state.turnStartedAt = now;
 }
 
 export function advancePokerStreet(state: BoardGameState, now: string): void {
@@ -286,7 +304,10 @@ export function advancePokerStreet(state: BoardGameState, now: string): void {
         summary: `${winner.displayName} won $${winningPot} because every opponent folded.`
       };
     }
-    startNextPokerHand(state, now, state.pokerLastAction);
+    state.pokerAwaitingNextHand = true;
+    state.currentPlayerId = null;
+    state.updatedAt = now;
+    state.turnStartedAt = now;
     return;
   }
 

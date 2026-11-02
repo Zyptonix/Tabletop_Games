@@ -40,7 +40,7 @@ export type BoardGameAction =
   | { type: "reveal_word"; index: number }
   | { type: "give_clue"; clue: string; number: number }
   | { type: "end_codenames_turn" }
-  | { type: "poker_action"; choice: "fold" | "check" | "call" | "raise" | "all_in"; amount?: number | undefined }
+  | { type: "poker_action"; choice: "fold" | "check" | "call" | "raise" | "all_in" | "next_hand" | "resume_play"; amount?: number | undefined }
   | { type: "blackjack_action"; choice: "bet" | "clear_bet" | "deal" | "hit" | "stand" | "double" | "split" | "next_round"; amount?: number };
 
 export interface BattleshipPlacedShip {
@@ -103,6 +103,7 @@ export interface PokerLastHandResult {
   isSplit: boolean;
   summary: string;
   showdownCards?: Record<string, string[]> | undefined;
+  winningCards?: string[] | undefined;
 }
 
 export interface BoardGameState {
@@ -172,6 +173,9 @@ export interface BoardGameState {
   pokerStreet: PokerStreet;
   pokerLastAction: string;
   pokerLastHandResult?: PokerLastHandResult | undefined;
+  pokerSittingOut: Record<string, boolean>;
+  pokerConsecutiveTimeouts: Record<string, number>;
+  pokerAwaitingNextHand: boolean;
   blackjackDealerHand?: string[] | undefined;
   blackjackDealerHoleHidden?: boolean | undefined;
   blackjackPlayerHands?: Record<string, string[][]> | undefined;
@@ -210,6 +214,7 @@ export interface PublicBoardGameState {
   turnNumber: number;
   actionNumber: number;
   updatedAt: string;
+  turnStartedAt?: string | undefined;
   board: Array<Array<string | null>>;
   pawns: Record<string, { x: number; y: number }>;
   walls: Wall[];
@@ -253,6 +258,8 @@ export interface PublicBoardGameState {
   pokerHandNumber: number;
   pokerLastAction: string;
   pokerLastHandResult?: PokerLastHandResult | undefined;
+  pokerSittingOut: Record<string, boolean>;
+  pokerAwaitingNextHand: boolean;
   blackjackDealerHand?: string[] | undefined;
   blackjackDealerHoleHidden?: boolean | undefined;
   blackjackDealerScore?: number | undefined;

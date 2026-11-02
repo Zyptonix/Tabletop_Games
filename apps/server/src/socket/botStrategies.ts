@@ -1,3 +1,5 @@
+import { evaluateTexasHoldemHand } from "@tabletop/game-core";
+
 /** Small, deterministic-rule-aware bot policies for turn-based board games. */
 type RecordValue = Record<string, unknown>;
 type BotAction = { type: string; payload: Record<string, unknown> } | null;
@@ -510,6 +512,215 @@ function chooseTwentyNine(
   return actions[0];
 }
 
+function choosePoker(actions: RecordValue[], gameState: unknown, playerId: string): RecordValue | null {
+  const state = isRecord(gameState) ? gameState : null;
+  if (!state) return actions[0] ?? null;
+
+  // 1. Resume play if sitting out
+  const resume = actions.find((a) => a.type === "poker_action" && a.choice === "resume_play");
+  if (resume) return resume;
+
+  // 2. Next hand during showdown pause:
+  // Bots shouldn't prematurely skip showdown so human player can enjoy the reveal
+  const nextHand = actions.find((a) => a.type === "poker_action" && a.choice === "next_hand");
+  if (nextHand) {
+    const players = Array.isArray(state.players) ? state.players : [];
+    const hasHuman = players.some((p: any) => !p.isBot && !(state.pokerSittingOut as any)?.[p.userId]);
+    if (!hasHuman) return nextHand;
+    return null; // Let human click next hand or let server timer advance
+  }
+
+  const checkAction = actions.find((a) => a.type === "poker_action" && a.choice === "check");
+  const callAction = actions.find((a) => a.type === "poker_action" && a.choice === "call");
+  const raiseAction = actions.find((a) => a.type === "poker_action" && a.choice === "raise");
+  const allInAction = actions.find((a) => a.type === "poker_action" && a.choice === "all_in");
+  const foldAction = actions.find((a) => a.type === "poker_action" && a.choice === "fold");
+
+  // Get bot cards
+  const cardsByPlayer = state.pokerCardsByPlayer as Record<string, string[]> | undefined;
+  const botCards: string[] = cardsByPlayer?.[playerId] ?? (Array.isArray(state.myPokerCards) ? (state.myPokerCards as string[]) : []);
+  const communityCards: string[] = Array.isArray(state.communityCards) ? (state.communityCards as string[]) : [];
+  const pot = typeof state.pokerPot === "number" ? state.pokerPot : 0;
+  const betToCall = typeof state.pokerBetToCall === "number" ? state.pokerBetToCall : 0;
+  const myBets = (state.pokerBets as Record<string, number> | undefined)?.[playerId] ?? 0;
+  const myStack = (state.pokerStacks as Record<string, number> | undefined)?.[playerId] ?? 0;
+  const toCall = Math.max(0, betToCall - myBets);
+  const potOdds = toCall > 0 ? toCall / (pot + toCall) : 0;
+
+  // If no cards known, fallback safely
+  if (botCards.length < 2) {
+    return checkAction ?? callAction ?? foldAction ?? actions[0] ?? null;
+  }
+
+  const RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
+  const parseCard = (c: string) => {
+    const suit = c.slice(-1);
+    const rankStr = c.slice(0, -1);
+    const rankIdx = RANKS.indexOf(rankStr);
+    return { rank: rankIdx >= 0 ? rankIdx + 2 : 2, rankStr, suit };
+  };
+
+  const c1 = parseCard(botCards[0]!);
+  const c2 = parseCard(botCards[1]!);
+  const highRank = Math.max(c1.rank, c2.rank);
+  const lowRank = Math.min(c1.rank, c2.rank);
+  const isPair = c1.rank === c2.rank;
+  const isSuited = c1.suit === c2.suit;
+  const gap = isPair ? 0 : highRank - lowRank - 1;
+
+  // Pre-flop evaluation (Chen score)
+  let chenScore = 0;
+  if (highRank === 14) chenScore = 10;
+  else if (highRank === 13) chenScore = 8;
+  else if (highRank === 12) chenScore = 7;
+  else if (highRank === 11) chenScore = 6;
+  else chenScore = highRank / 2;
+
+  if (isPair) {
+    chenScore = Math.max(5, chenScore * 2);
+  }
+  if (isSuited) chenScore += 2;
+  if (gap === 1) chenScore -= 1;
+  else if (gap === 2) chenScore -= 2;
+  else if (gap >= 3) chenScore -= 4;
+  if (gap < 2 && highRank < 12 && !isPair) chenScore += 1; // Connector bonus for medium cards
+
+  const isPreflop = communityCards.length === 0;
+
+  // Preflop Strategy
+  if (isPreflop) {
+    // Monster (AA, KK, QQ, JJ, AKs)
+    if (chenScore >= 10) {
+      if (raiseAction) {
+        const raiseAmt = Math.min(myStack, Math.max(20, Math.floor(pot * 0.75)));
+        return { ...raiseAction, amount: raiseAmt };
+      }
+      return callAction ?? checkAction ?? actions[0] ?? null;
+    }
+    // Strong (TT, 99, 88, AKo, AQs, AJs, KQs)
+    if (chenScore >= 7.5) {
+      if (raiseAction && toCall <= 40) {
+        const raiseAmt = Math.min(myStack, 40);
+        return { ...raiseAction, amount: raiseAmt };
+      }
+      return callAction ?? checkAction ?? actions[0] ?? null;
+    }
+    // Playable (77-55, QJs, JTs, ATs, KJs, AQo)
+    if (chenScore >= 6.0) {
+      if (toCall <= 60) return callAction ?? checkAction ?? actions[0] ?? null;
+      return foldAction ?? checkAction ?? actions[0] ?? null;
+    }
+    // Marginal (small pairs, suited cards)
+    if (chenScore >= 4.5) {
+      if (toCall === 0) return checkAction ?? actions[0] ?? null;
+      if (toCall <= 20) return callAction ?? actions[0] ?? null; // Defend big blind or min-bet
+      return foldAction ?? actions[0] ?? null;
+    }
+    // Junk
+    if (toCall === 0) return checkAction ?? actions[0] ?? null;
+    return foldAction ?? actions[0] ?? null;
+  }
+
+  // Post-Flop Strategy
+  const allCards = [...botCards, ...communityCards];
+  let handRank = 0;
+  try {
+    const value = evaluateTexasHoldemHand(allCards);
+    handRank = value[0] ?? 0;
+  } catch {
+    handRank = 0;
+  }
+
+  // Draw checking (Flop & Turn)
+  const isDrawStreet = communityCards.length >= 3 && communityCards.length <= 4;
+  let outs = 0;
+  if (isDrawStreet) {
+    const suitCounts: Record<string, number> = {};
+    for (const c of allCards) {
+      const s = c.slice(-1);
+      suitCounts[s] = (suitCounts[s] ?? 0) + 1;
+    }
+    if (Object.values(suitCounts).some((count) => count === 4)) {
+      outs += 9; // 4-flush = 9 outs
+    }
+    const distinctRanks = [...new Set(allCards.map((c) => parseCard(c).rank))].sort((a, b) => a - b);
+    for (let i = 0; i < distinctRanks.length - 3; i++) {
+      if (distinctRanks[i + 3]! - distinctRanks[i]! === 3) outs += 8; // Open-ended straight draw
+      else if (distinctRanks[i + 3]! - distinctRanks[i]! === 4) outs += 4; // Gutshot straight draw
+    }
+  }
+
+  const drawEquity = outs * (communityCards.length === 3 ? 0.04 : 0.02);
+
+  // Post-Flop Decisions:
+  // 1. Monster: Straight (4), Flush (5), Full House (6), Quads (7), Straight Flush (8)
+  if (handRank >= 4) {
+    if (raiseAction && myStack > toCall + 20) {
+      const raiseAmt = Math.min(myStack, Math.max(40, Math.floor(pot * 0.75)));
+      return { ...raiseAction, amount: raiseAmt };
+    }
+    if (allInAction && toCall >= myStack * 0.7) return allInAction;
+    return callAction ?? checkAction ?? actions[0] ?? null;
+  }
+
+  // 2. Strong: Three of a Kind (3), Two Pair (2)
+  if (handRank >= 2) {
+    if (toCall === 0 && raiseAction) {
+      const betAmt = Math.min(myStack, Math.max(20, Math.floor(pot * 0.5)));
+      return { ...raiseAction, amount: betAmt };
+    }
+    if (toCall <= pot * 0.8) {
+      return callAction ?? checkAction ?? actions[0] ?? null;
+    }
+    if (raiseAction && toCall <= pot * 0.3) {
+      const raiseAmt = Math.min(myStack, Math.max(20, Math.floor(pot * 0.5)));
+      return { ...raiseAction, amount: raiseAmt };
+    }
+    return callAction ?? foldAction ?? actions[0] ?? null;
+  }
+
+  // 3. Medium: One Pair (1)
+  if (handRank === 1) {
+    const communityRanks = communityCards.map((c) => parseCard(c).rank);
+    const maxCommunityRank = Math.max(...communityRanks, 0);
+    const isOverpairOrTopPair = (isPair && c1.rank > maxCommunityRank) || (c1.rank === maxCommunityRank || c2.rank === maxCommunityRank);
+
+    if (toCall === 0) {
+      if (isOverpairOrTopPair && raiseAction && Math.random() < 0.6) {
+        const betAmt = Math.min(myStack, Math.max(20, Math.floor(pot * 0.4)));
+        return { ...raiseAction, amount: betAmt };
+      }
+      return checkAction ?? actions[0] ?? null;
+    }
+
+    if (isOverpairOrTopPair && toCall <= pot * 0.5) {
+      return callAction ?? foldAction ?? actions[0] ?? null;
+    }
+    if (toCall <= pot * 0.25 || (outs >= 4 && potOdds <= drawEquity + 0.15)) {
+      return callAction ?? foldAction ?? actions[0] ?? null;
+    }
+    return foldAction ?? checkAction ?? actions[0] ?? null;
+  }
+
+  // 4. Weak / Trash (HandRank 0 = High Card)
+  if (toCall === 0) {
+    // Bluff in late position occasionally (12% of time) if checked to us
+    if (raiseAction && Math.random() < 0.12 && communityCards.length >= 3) {
+      const bluffAmt = Math.min(myStack, Math.max(20, Math.floor(pot * 0.35)));
+      return { ...raiseAction, amount: bluffAmt };
+    }
+    return checkAction ?? actions[0] ?? null;
+  }
+
+  // Has a strong draw (Flush draw or Open-ended straight draw)
+  if (outs >= 8 && potOdds <= drawEquity + 0.05) {
+    return callAction ?? foldAction ?? actions[0] ?? null;
+  }
+
+  // Otherwise, fold junk!
+  return foldAction ?? checkAction ?? actions[0] ?? null;
+}
+
 export function chooseBotAction(legalActions: unknown[], gameId: string, gameState: unknown, playerId: string): BotAction {
   const actions = toActions(legalActions);
   let preferred: RecordValue | undefined;
@@ -567,7 +778,7 @@ export function chooseBotAction(legalActions: unknown[], gameId: string, gameSta
     } else if (gameId === "risk" || gameId === "world-conquest") {
       preferred = actions.find((action) => action.type === "claim_territory") ?? actions.find((action) => action.type === "attack_territory") ?? actions.find((action) => action.type === "reinforce_territory") ?? actions.find((action) => action.type === "end_turn");
     } else if (gameId === "poker") {
-      preferred = actions.find((action) => action.type === "poker_action" && action.choice === "check") ?? actions.find((action) => action.type === "poker_action" && action.choice === "call") ?? actions.find((action) => action.type === "poker_action" && action.choice === "raise") ?? actions.find((action) => action.type === "poker_action" && action.choice === "all_in") ?? actions.find((action) => action.type === "poker_action" && action.choice === "fold");
+      preferred = choosePoker(actions, gameState, playerId) ?? undefined;
     } else if (gameId === "blackjack") {
       const stateObj = isRecord(gameState) ? gameState : null;
       const hands = stateObj?.blackjackPlayerHands as Record<string, string[][]> | undefined;
