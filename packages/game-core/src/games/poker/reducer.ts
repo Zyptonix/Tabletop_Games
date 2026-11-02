@@ -31,17 +31,6 @@ export function reducePokerAction(
     return { accepted: true, message: `🃏 Hand #${state.pokerHandNumber} begins.` };
   }
 
-  // 3. Rebuy / Reload Chips if Busted ($0 Stack)
-  if (action.choice === "rebuy") {
-    const rebuyAmount = 1000;
-    state.pokerStacks[playerId] = (state.pokerStacks[playerId] ?? 0) + rebuyAmount;
-    state.pokerFolded = state.pokerFolded.filter((id) => id !== playerId);
-    state.pokerConsecutiveTimeouts[playerId] = 0;
-    const msg = `💰 ${player.displayName} rebought for $${rebuyAmount} chips!`;
-    state.pokerLastAction = msg;
-    return { accepted: true, message: msg };
-  }
-
   // Any active player action clears consecutive timeouts
   state.pokerConsecutiveTimeouts[playerId] = 0;
 

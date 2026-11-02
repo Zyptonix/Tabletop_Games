@@ -6,18 +6,15 @@ import { currentPlayer } from "../shared/utils";
 export const pokerActionSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("poker_action"),
-    choice: z.enum(["fold", "check", "call", "raise", "all_in", "next_hand", "resume_play", "rebuy"]),
+    choice: z.enum(["fold", "check", "call", "raise", "all_in", "next_hand", "resume_play"]),
     amount: z.number().int().min(1).max(100000).optional()
   })
 ]) as unknown as z.ZodType<BoardGameAction, z.ZodTypeDef, unknown>;
 
 export function getPokerLegalActions(state: BoardGameState, playerId: string): BoardGameAction[] {
   if (state.phase !== "playing") return [];
+  if ((state.pokerStacks[playerId] ?? 0) <= 0) return [];
   const actions: BoardGameAction[] = [];
-  
-  if ((state.pokerStacks[playerId] ?? 0) <= 0) {
-    actions.push({ type: "poker_action", choice: "rebuy" });
-  }
 
   if (state.pokerSittingOut?.[playerId]) {
     actions.push({ type: "poker_action", choice: "resume_play" });
@@ -64,10 +61,6 @@ export function validatePokerAction({
   if (action.choice === "next_hand") {
     if (state.pokerAwaitingNextHand) return { ok: true };
     return { ok: false, code: "ILLEGAL_ACTION", message: "Hand is still in progress." };
-  }
-
-  if (action.choice === "rebuy") {
-    return { ok: true };
   }
 
   if (state.currentPlayerId !== playerId) {

@@ -252,30 +252,13 @@ describe("Poker tournament hand lifecycle v4", () => {
     expect(invalid.ok).toBe(false);
   });
 
-  it("allows busted players to rebuy $1,000 chips and rejoin the game", () => {
+  it("treats busted players with $0 stack as eliminated with no legal actions", () => {
     const state = start(pokerModule);
     state.pokerStacks["p1"] = 0;
     state.pokerFolded.push("p1");
 
     const legal = pokerModule.getLegalActions({ state, playerId: "p1" });
-    expect(legal).toContainEqual({ type: "poker_action", choice: "rebuy" });
-
-    const validation = pokerModule.validateAction({
-      state,
-      playerId: "p1",
-      action: { type: "poker_action", choice: "rebuy" }
-    });
-    expect(validation.ok).toBe(true);
-
-    const result = pokerModule.applyAction({
-      state,
-      playerId: "p1",
-      action: { type: "poker_action", choice: "rebuy" },
-      now: "2026-10-25T00:05:00.000Z"
-    });
-    const next = result.state as BoardGameState;
-    expect(next.pokerStacks["p1"]).toBe(1000);
-    expect(next.pokerFolded).not.toContain("p1");
+    expect(legal).toHaveLength(0);
   });
 });
 

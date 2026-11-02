@@ -503,7 +503,7 @@ export function PokerTable(props: BoardGameTableProps) {
               className="absolute z-20 transition-all duration-300"
             >
               <div
-                className={`relative flex flex-col items-center gap-0.5 sm:gap-1 rounded-2xl border p-1.5 sm:p-2 backdrop-blur-md transition-all w-32 sm:w-36 ${
+                className={`relative flex flex-col items-center gap-0.5 sm:gap-1 rounded-2xl border p-1.5 sm:p-2 backdrop-blur-md transition-all w-36 sm:w-44 ${
                   isTurn
                     ? "border-amber-400 bg-amber-500/25 ring-4 ring-amber-400/50 shadow-[0_0_30px_rgba(251,191,36,0.6)] scale-105 z-30"
                     : "border-white/15 bg-black/65 shadow-xl"
@@ -523,7 +523,7 @@ export function PokerTable(props: BoardGameTableProps) {
 
                 {/* Header: Name, Dealer Button, Bot / Away Badge */}
                 <div className="flex items-center gap-1.5 w-full justify-center">
-                  <span className="text-xs font-bold text-white truncate max-w-[80px] sm:max-w-[95px]">
+                  <span className="text-xs font-bold text-white truncate max-w-[90px] sm:max-w-[115px]">
                     {player.displayName}
                   </span>
                   {isDealer ? (
@@ -565,26 +565,40 @@ export function PokerTable(props: BoardGameTableProps) {
                   ) : null}
                 </div>
 
-                {/* Paid This Round & Total Paid into Pot Overall */}
+                {/* Opponents' Hole Cards: Always Face-Down on Seats (Never face-up leak) */}
+                <div className="flex items-center justify-center -space-x-3 my-0.5">
+                  {isEliminated ? (
+                    <div className="h-9 px-2 rounded-lg border border-dashed border-rose-500/30 bg-rose-950/30 grid place-items-center text-[9px] font-black text-rose-300 uppercase tracking-wider">
+                      Busted ($0)
+                    </div>
+                  ) : player.folded ? (
+                    <div className="h-9 px-2 rounded-lg border border-dashed border-white/20 bg-white/5 grid place-items-center text-[9px] font-bold text-white/40 uppercase tracking-wider">
+                      Folded
+                    </div>
+                  ) : (
+                    <>
+                      <CasinoPlayingCard hidden size="xs" className="shadow-lg -rotate-3 hover:rotate-0 transition-transform" />
+                      <CasinoPlayingCard hidden size="xs" className="shadow-lg rotate-3 hover:rotate-0 transition-transform" />
+                    </>
+                  )}
+                </div>
+
+                {/* Paid This Round & Total Paid into Pot Overall (Unified Premium Bar) */}
                 {(roundBet > 0 || totalPaid > 0) && !isEliminated ? (
-                  <div className="flex items-center gap-1 mt-0.5">
-                    {roundBet > 0 ? (
-                      <span
-                        className="rounded-full bg-emerald-500/20 border border-emerald-400/40 px-1.5 py-0.5 font-mono text-[9px] font-black text-emerald-200 shadow-sm flex items-center gap-0.5"
-                        title="Chips paid in current betting round"
-                      >
-                        <span>🪙</span>
-                        <span>Round: ${roundBet}</span>
+                  <div className="w-full flex items-center justify-between rounded-xl border border-white/10 bg-black/60 px-2.5 py-1 backdrop-blur-md shadow-inner mt-0.5">
+                    <div className="flex items-center gap-1 min-w-0" title="Chips bet in current round">
+                      <span className="text-[8px] font-sans font-black uppercase tracking-wider text-emerald-400/80">Round</span>
+                      <span className="font-mono text-[11px] font-black text-emerald-300">
+                        ${roundBet.toLocaleString("en-US")}
                       </span>
-                    ) : null}
-                    {totalPaid > 0 ? (
-                      <span
-                        className="rounded-full bg-amber-400/20 border border-amber-400/40 px-1.5 py-0.5 font-mono text-[9px] font-black text-amber-200 shadow-sm"
-                        title="Total chips paid into this hand's pot overall"
-                      >
-                        In Pot: ${totalPaid}
+                    </div>
+                    <div className="h-3 w-px bg-white/15" />
+                    <div className="flex items-center gap-1 min-w-0" title="Total chips contributed to this pot">
+                      <span className="text-[8px] font-sans font-black uppercase tracking-wider text-amber-400/80">In Pot</span>
+                      <span className="font-mono text-[11px] font-black text-amber-300">
+                        ${totalPaid.toLocaleString("en-US")}
                       </span>
-                    ) : null}
+                    </div>
                   </div>
                 ) : null}
 
@@ -603,9 +617,9 @@ export function PokerTable(props: BoardGameTableProps) {
         {/* ============================================================ */}
         {/* CENTER TABLE AREA: POT CLUSTER & HELLA BIG COMMUNITY CARDS   */}
         {/* ============================================================ */}
-        <div className="relative z-10 flex flex-col items-center justify-center mt-auto mb-2 sm:mb-4 py-1">
+        <div className="relative z-10 flex flex-col items-center justify-center mt-auto mb-1 sm:mb-2 py-0.5">
           {/* Main Pot Cluster */}
-          <div className="mb-3">
+          <div className="mb-2 sm:mb-2.5">
             <DynamicPotCluster potAmount={state.pokerPot} callAmount={callAmount} />
           </div>
 
@@ -638,7 +652,7 @@ export function PokerTable(props: BoardGameTableProps) {
                   <CasinoPlayingCard
                     card={card}
                     hidden={!card}
-                    size="xl"
+                    size="lg"
                     className={`shadow-2xl transition-all ${
                       isWinningCard
                         ? "ring-4 ring-amber-400 shadow-[0_0_35px_rgba(251,191,36,0.85)]"
@@ -976,21 +990,6 @@ export function PokerTable(props: BoardGameTableProps) {
                       );
                     }
 
-                    if (choice === "rebuy") {
-                      return (
-                        <button
-                          key={choice}
-                          type="button"
-                          onClick={() => dispatch(action)}
-                          className="group relative flex items-center gap-1.5 rounded-xl px-5 py-2 text-xs font-black tracking-wider uppercase text-slate-950 transition-all shadow-[0_4px_0_#065f46] hover:brightness-110 active:translate-y-0.5"
-                          style={{ background: "linear-gradient(180deg, #34d399 0%, #10b981 100%)" }}
-                        >
-                          <Coins className="h-3.5 w-3.5 text-emerald-950" />
-                          <span>REBUY ($1,000)</span>
-                        </button>
-                      );
-                    }
-
                     return null;
                   })}
               </div>
@@ -1017,17 +1016,18 @@ export function PokerTable(props: BoardGameTableProps) {
             {/* The 2 Hole Cards */}
             <div className="flex items-center gap-1.5 sm:gap-2">
               {myStack <= 0 ? (
-                <div className="flex items-center gap-2 rounded-2xl border border-rose-500/40 bg-rose-950/40 px-3 py-1.5 shadow-lg">
+                <div className="flex items-center gap-2.5 rounded-2xl border border-rose-500/40 bg-rose-950/50 px-3 py-1.5 shadow-lg">
+                  <span className="text-base">💀</span>
                   <div className="flex flex-col">
                     <span className="text-[10px] font-black uppercase text-rose-300">Busted ($0)</span>
-                    <span className="text-[9px] text-white/50">Out of chips</span>
+                    <span className="text-[9px] text-white/50">Eliminated</span>
                   </div>
                   <button
                     type="button"
-                    onClick={() => dispatch({ type: "poker_action", choice: "rebuy" })}
-                    className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-3 py-1.5 text-xs font-black uppercase text-slate-950 shadow-md hover:brightness-110 active:scale-95 transition"
+                    onClick={() => router.push("/dashboard")}
+                    className="ml-1 rounded-xl border border-rose-400/30 bg-rose-500/20 px-2 py-1 text-[10px] font-black uppercase text-rose-200 hover:bg-rose-500/30 transition active:scale-95"
                   >
-                    + Rebuy $1,000 🪙
+                    Leave
                   </button>
                 </div>
               ) : (state.myPokerCards ?? []).length > 0 ? (
