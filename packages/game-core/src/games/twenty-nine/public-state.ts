@@ -1,4 +1,5 @@
 import type { PublicTwentyNinePlayer, PublicTwentyNineState, TwentyNineState } from "./types";
+import { canSkipHand } from "./selectors";
 
 export function getPublicTwentyNineState(params: { state: TwentyNineState; viewerId: string }): PublicTwentyNineState {
   const { state, viewerId } = params;
@@ -61,6 +62,7 @@ export function getPublicTwentyNineState(params: { state: TwentyNineState; viewe
     results: state.results,
     turnStartedAt: state.phase === "finished" ? null : state.turnStartedAt,
     turnDurationMs: durationMs,
-    turnExpiresAt: expiresAt
+    turnExpiresAt: expiresAt,
+    canSkipHand: canSkipHand(state)
   };
 }

@@ -282,7 +282,7 @@ describe("Bangladesh 29", () => {
     expect(live.trumpRevealed).toBe(false);
   });
 
-  it("requires a trump reveal before playing off-suit while trump is concealed", () => {
+  it("allows revealing trump or playing off-suit without revealing when void in led suit while trump is concealed", () => {
     const state = makeState();
     state.phase = "playing";
     state.currentPlayerId = "p1";
@@ -296,11 +296,31 @@ describe("Bangladesh 29", () => {
 
     const legalBefore = getLegalTwentyNineActions({ state, playerId: "p1" });
     expect(legalBefore).toContainEqual({ type: "reveal_trump" });
-    expect(legalBefore).not.toContainEqual({ type: "play_card", cardId: offSuit.id });
+    expect(legalBefore).toContainEqual({ type: "play_card", cardId: offSuit.id });
 
+    // Can choose to reveal trump:
     const revealed = action(state, "p1", "reveal_trump").state;
     expect(revealed.trumpRevealed).toBe(true);
     expect(getLegalTwentyNineActions({ state: revealed, playerId: "p1" })).toContainEqual({ type: "play_card", cardId: offSuit.id });
+
+    // Or can choose to play off-suit without revealing trump:
+    const played = action(state, "p1", "play_card", { cardId: offSuit.id }).state;
+    expect(played.trumpRevealed).toBe(false);
+  });
+
+  it("allows skipping the rest of the hand when contract target points are reached", () => {
+    const state = makeState();
+    state.phase = "playing";
+    state.declarerId = "p0";
+    state.contractTarget = 16;
+    state.capturedPointsByTeam = { "0": 16, "1": 4 };
+
+    const legal = getLegalTwentyNineActions({ state, playerId: "p0" });
+    expect(legal).toContainEqual({ type: "skip_hand" });
+
+    const next = action(state, "p0", "skip_hand").state;
+    expect(next.teamGamePoints["0"]).toBe(1);
+    expect(next.lastHandResult).not.toBeNull();
   });
 
   it("keeps the seventh trump card private until reveal", () => {

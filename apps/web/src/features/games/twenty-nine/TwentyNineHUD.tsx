@@ -55,6 +55,12 @@ export function TwentyNineHUD({
         </div>
       </div>
 
+      {state.canSkipHand ? (
+        <div className="flex items-center gap-1.5 rounded-full border border-emerald-400/50 bg-emerald-500/20 px-3 py-1 text-[11px] font-black text-emerald-300 animate-pulse">
+          <span>Target reached! Hand decided</span>
+        </div>
+      ) : null}
+
       {/* Right: Team Blue Telemetry */}
       <div className="flex items-center gap-3">
         <div className="text-right">

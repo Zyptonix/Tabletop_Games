@@ -55,6 +55,7 @@ export interface RoomSocketState {
   addBot: (roomId: string) => void;
   fillBots: (roomId: string) => void;
   removeBots: (roomId: string) => void;
+  selectSeat: (roomId: string, seat: number) => void;
   sendChat: (roomId: string, body: string) => void;
   sendDebugScenario: (roomId: string, scenario: string, targetPlayerId?: string) => void;
 }
@@ -199,6 +200,7 @@ export function useRoomSocket(roomCode?: string): RoomSocketState {
       addBot: (roomId: string) => socket?.emit("room:add-bot", { roomId }),
       fillBots: (roomId: string) => socket?.emit("room:fill-bots", { roomId }),
       removeBots: (roomId: string) => socket?.emit("room:remove-bots", { roomId }),
+      selectSeat: (roomId: string, seat: number) => socket?.emit("room:select-seat", { roomId, seat }),
       sendDebugScenario: (roomId: string, scenario: string, targetPlayerId?: string) => {
         socket?.emit("debug:uno-scenario", { roomId, scenario, targetPlayerId });
       },

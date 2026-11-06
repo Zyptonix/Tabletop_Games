@@ -11,6 +11,7 @@ import {
   kickPlayerSchema,
   readySchema,
   roomIdSchema,
+  selectSeatSchema,
   transferHostSchema,
   type ClientToServerEvents,
   type ServerToClientEvents
@@ -456,6 +457,19 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
       }
       try {
         emitRoomControlResult(manager.removeBots(parsed.data.roomId, user.id));
+      } catch (error) {
+        emitError(socket, "room:error", error);
+      }
+    });
+
+    socket.on("room:select-seat", (payload) => {
+      const parsed = selectSeatSchema.safeParse(payload);
+      if (!parsed.success) {
+        emitError(socket, "room:error", new AppError(ERROR_CODES.INVALID_PAYLOAD, "Invalid seat payload.", parsed.error.flatten()));
+        return;
+      }
+      try {
+        emitRoomControlResult(manager.selectSeat(parsed.data.roomId, user.id, parsed.data.seat));
       } catch (error) {
         emitError(socket, "room:error", error);
       }

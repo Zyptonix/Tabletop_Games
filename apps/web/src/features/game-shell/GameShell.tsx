@@ -84,7 +84,7 @@ export function GameShell({
         </div>
       </div>
       <TurnTimer timer={timer} />
-      {room.status === "lobby" ? <PlayerSeatRing players={room.players} /> : null}
+      {room.status === "lobby" && room.gameId !== "twenty-nine" ? <PlayerSeatRing players={room.players} /> : null}
       <div>{children}</div>
     </div>
   );

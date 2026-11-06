@@ -25,6 +25,19 @@ function canDeclareSingleHand(state: TwentyNineState): boolean {
     state.completedTricks.length === 0;
 }
 
+export function canSkipHand(state: TwentyNineState): boolean {
+  if (state.phase !== "playing") return false;
+  if (state.singleHandPlayerId) return false;
+  const declarerId = state.declarerId ?? state.highestBidderId ?? state.firstBidderId;
+  if (!declarerId) return false;
+  const declarerTeam = teamOf(state, declarerId);
+  if (declarerTeam === null) return false;
+  const target = state.contractTarget ?? state.currentBid ?? 16;
+  const declarerPoints = state.capturedPointsByTeam[String(declarerTeam) as "0" | "1"] ?? 0;
+  const opponentPoints = state.capturedPointsByTeam[String(1 - declarerTeam) as "0" | "1"] ?? 0;
+  return declarerPoints >= target || opponentPoints > (28 - target);
+}
+
 export function getLegalTwentyNineActions(params: { state: TwentyNineState; playerId: string }): TwentyNineAction[] {
   const { state, playerId } = params;
   const actor = player(state, playerId);
@@ -32,6 +45,7 @@ export function getLegalTwentyNineActions(params: { state: TwentyNineState; play
 
   const pairAction: TwentyNineAction[] = canDeclarePair(state, playerId) ? [{ type: "declare_pair" }] : [];
   const singleHandAction: TwentyNineAction[] = canDeclareSingleHand(state) ? [{ type: "declare_single_hand" }] : [];
+  const skipAction: TwentyNineAction[] = canSkipHand(state) ? [{ type: "skip_hand" }] : [];
 
   if (state.singleHandPlayerId) {
     const solo = player(state, state.singleHandPlayerId);
@@ -43,7 +57,7 @@ export function getLegalTwentyNineActions(params: { state: TwentyNineState; play
     return playable.map((card) => ({ type: "play_card", cardId: card.id }));
   }
 
-  if (playerId !== state.currentPlayerId) return [...pairAction, ...singleHandAction];
+  if (playerId !== state.currentPlayerId) return [...pairAction, ...singleHandAction, ...skipAction];
 
   if (state.phase === "bidding") {
     if (state.passedPlayerIds.includes(playerId)) return pairAction;
@@ -54,7 +68,6 @@ export function getLegalTwentyNineActions(params: { state: TwentyNineState; play
       state.currentBid !== null &&
       !state.lastBidWasDitto &&
       state.highestBidderId !== null &&
-
       teamOf(state, playerId) !== teamOf(state, state.highestBidderId)
     ) bids.push({ type: "ditto" });
     bids.push({ type: "pass_bid" });
@@ -87,21 +100,25 @@ export function getLegalTwentyNineActions(params: { state: TwentyNineState; play
   if (ledSuit) {
     const following = actor.hand.filter((card) => card.suit === ledSuit);
     if (following.length > 0) {
-      return [...pairAction, ...singleHandAction, ...following.map((card) => ({ type: "play_card" as const, cardId: card.id }))];
+      return [...pairAction, ...singleHandAction, ...skipAction, ...following.map((card) => ({ type: "play_card" as const, cardId: card.id }))];
     }
 
     if (!state.trumpRevealed) {
-      // Special seventh-card exception: it may be used on the final trick when it
-      // is the declarer's only remaining card. Playing it exposes the hidden suit.
+      const actions: TwentyNineAction[] = [...pairAction, ...singleHandAction, ...skipAction, { type: "reveal_trump" }];
+      // Player is void in the led suit and trump is not revealed:
+      // May choose to reveal trump OR play any card from hand without revealing trump.
+      for (const card of actor.hand) {
+        actions.push({ type: "play_card", cardId: card.id });
+      }
       const canPlaySeventhLast = state.completedTricks.length === 7 && playerId === state.seventhCardOwnerId &&
         state.seventhCard !== null && actor.hand.length === 0;
-      if (canPlaySeventhLast) return [...pairAction, ...singleHandAction, { type: "play_card", cardId: state.seventhCard!.id }, { type: "reveal_trump" }];
-      return [...pairAction, ...singleHandAction, { type: "reveal_trump" }];
+      if (canPlaySeventhLast) actions.push({ type: "play_card", cardId: state.seventhCard!.id });
+      return actions;
     }
     // Once trump is exposed, a player void in the led suit may discard any card.
   }
 
-  const actions: TwentyNineAction[] = [...pairAction, ...singleHandAction];
+  const actions: TwentyNineAction[] = [...pairAction, ...singleHandAction, ...skipAction];
   for (const card of actor.hand) actions.push({ type: "play_card", cardId: card.id });
   if (state.completedTricks.length === 7 && playerId === state.seventhCardOwnerId && state.seventhCard && actor.hand.length === 0) {
     actions.push({ type: "play_card", cardId: state.seventhCard.id });

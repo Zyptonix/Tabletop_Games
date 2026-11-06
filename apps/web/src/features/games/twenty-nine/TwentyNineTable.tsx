@@ -988,6 +988,24 @@ export function TwentyNineTable({
                 </div>
               </div>
             </div>
+
+            {state.canSkipHand ? (
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-emerald-400/40 bg-emerald-500/20 px-2.5 py-1.5 text-[0.68rem] font-black text-emerald-200 shadow-md">
+                <span className="flex items-center gap-1.5 truncate">
+                  <Sparkles className="h-3.5 w-3.5 text-emerald-300 shrink-0" />
+                  Target reached!
+                </span>
+                {hasAction(legalActions, "skip_hand") ? (
+                  <button
+                    type="button"
+                    onClick={() => onAction("skip_hand")}
+                    className="shrink-0 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black px-2 py-0.5 font-black text-[0.62rem] transition active:scale-95 shadow-md"
+                  >
+                    Skip Hand ⏩
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           {/* 2. HAND CONTRACT & TRUMP STATUS */}
@@ -1585,6 +1603,16 @@ export function TwentyNineTable({
             {/* IN-GAME PLAYING ACTIONS */}
             {state.phase === "playing" ? (
               <div className="flex flex-wrap items-center gap-2">
+                {hasAction(legalActions, "skip_hand") ? (
+                  <button
+                    type="button"
+                    onClick={() => onAction("skip_hand")}
+                    className="flex items-center gap-1.5 rounded-xl border border-emerald-400 bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2 text-xs font-black text-white shadow-[0_0_24px_rgba(52,211,153,0.5)] transition hover:brightness-110 active:scale-95 animate-pulse"
+                  >
+                    <ArrowRight className="h-4 w-4" />
+                    Target Reached · Skip Hand ⏩
+                  </button>
+                ) : null}
                 {hasAction(legalActions, "reveal_trump") && isMyTurn ? (
                   <button
                     type="button"

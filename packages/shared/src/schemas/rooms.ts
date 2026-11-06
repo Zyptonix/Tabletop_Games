@@ -62,3 +62,9 @@ export const debugUnoScenarioSchema = z.object({
 
 export type UnoDebugScenario = (typeof UNO_DEBUG_SCENARIOS)[number];
 export type DebugUnoScenarioInput = z.infer<typeof debugUnoScenarioSchema>;
+export const selectSeatSchema = z.object({
+  roomId: z.string().min(1),
+  seat: z.number().int().min(0).max(11)
+});
+
+export type SelectSeatInput = z.infer<typeof selectSeatSchema>;

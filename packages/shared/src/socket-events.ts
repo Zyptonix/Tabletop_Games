@@ -43,6 +43,7 @@ export interface ClientToServerEvents {
   "room:add-bot": (payload: unknown) => void;
   "room:fill-bots": (payload: unknown) => void;
   "room:remove-bots": (payload: unknown) => void;
+  "room:select-seat": (payload: unknown) => void;
   "game:action": (payload: unknown) => void;
   "chat:send": (payload: unknown) => void;
   "admin:force-snapshot": (payload: unknown) => void;

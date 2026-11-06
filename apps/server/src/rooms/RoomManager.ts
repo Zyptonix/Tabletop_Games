@@ -344,6 +344,28 @@ export class RoomManager {
     }
 
     const module = this.requireModule(room.gameId);
+    if (room.gameId === "twenty-nine") {
+      const usedSeats = new Set(room.players.map((p) => p.seat));
+      for (let s = 0; s < 4; s++) {
+        if (!usedSeats.has(s)) {
+          const botNumber = room.players.filter((p) => p.isBot).length + 1;
+          const displayName = `Bot ${botNumber}`;
+          room.players.push({
+            userId: `${BOT_USER_PREFIX}${room.id}:${botNumber}:${nanoid(5)}`,
+            username: `bot_${botNumber}`,
+            displayName,
+            avatarUrl: null,
+            seat: s,
+            ready: true,
+            connected: true,
+            temporaryHost: false,
+            isBot: true,
+            socketIds: new Set<string>()
+          });
+          usedSeats.add(s);
+        }
+      }
+    }
     if (room.players.length < module.minPlayers) {
       throw new AppError(ERROR_CODES.INVALID_ACTION, `Need at least ${module.minPlayers} players.`);
     }
@@ -354,19 +376,21 @@ export class RoomManager {
 
     const now = new Date();
     const roomSeed = generateSecureSeed();
-    const randomizedPlayers = room.players.slice();
-    for (let index = randomizedPlayers.length - 1; index > 0; index -= 1) {
-      const swapIndex = randomInt(0, index + 1);
-      const current = randomizedPlayers[index];
-      const swap = randomizedPlayers[swapIndex];
-      if (current && swap) {
-        randomizedPlayers[index] = swap;
-        randomizedPlayers[swapIndex] = current;
+    if (room.gameId !== "twenty-nine") {
+      const randomizedPlayers = room.players.slice();
+      for (let index = randomizedPlayers.length - 1; index > 0; index -= 1) {
+        const swapIndex = randomInt(0, index + 1);
+        const current = randomizedPlayers[index];
+        const swap = randomizedPlayers[swapIndex];
+        if (current && swap) {
+          randomizedPlayers[index] = swap;
+          randomizedPlayers[swapIndex] = current;
+        }
       }
+      randomizedPlayers.forEach((player, seat) => {
+        player.seat = seat;
+      });
     }
-    randomizedPlayers.forEach((player, seat) => {
-      player.seat = seat;
-    });
 
     const gamePlayers: GamePlayer[] = room.players
       .slice()
@@ -765,6 +789,28 @@ export class RoomManager {
       this.addSystemMessage(room, `Filled the table with ${added} bot${added === 1 ? "" : "s"}.`);
       void this.saveSnapshot(room);
     }
+    return room;
+  }
+
+  selectSeat(roomId: string, userId: string, targetSeat: number): RoomRuntime {
+    const room = this.requireRoom(roomId);
+    if (room.status !== "lobby") {
+      throw new AppError(ERROR_CODES.GAME_ALREADY_STARTED, "Seats can only be selected in the lobby.");
+    }
+    const module = this.requireModule(room.gameId);
+    if (targetSeat < 0 || targetSeat >= module.maxPlayers) {
+      throw new AppError(ERROR_CODES.INVALID_ACTION, `Seat must be between 0 and ${module.maxPlayers - 1}.`);
+    }
+    const player = this.requirePlayer(room, userId);
+    if (player.seat === targetSeat) {
+      return room;
+    }
+    const occupant = room.players.find((p) => p.seat === targetSeat);
+    if (occupant) {
+      occupant.seat = player.seat;
+    }
+    player.seat = targetSeat;
+    void this.saveSnapshot(room);
     return room;
   }
 

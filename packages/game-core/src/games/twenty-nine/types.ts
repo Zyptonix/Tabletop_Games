@@ -171,6 +171,7 @@ export interface PublicTwentyNineState {
   turnStartedAt: string | null;
   turnDurationMs: number | null;
   turnExpiresAt: string | null;
+  canSkipHand?: boolean | undefined;
 }
 
 export type TwentyNineAction =
@@ -186,4 +187,5 @@ export type TwentyNineAction =
   | { type: "reveal_trump" }
   | { type: "declare_pair" }
   | { type: "declare_single_hand" }
-  | { type: "play_card"; cardId: string };
+  | { type: "play_card"; cardId: string }
+  | { type: "skip_hand" };
