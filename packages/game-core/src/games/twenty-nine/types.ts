@@ -100,6 +100,7 @@ export interface TwentyNineState {
   trumpSuit: TwentyNineSuit | null;
   trumpRevealed: boolean;
   trumpRevealTrickNumber: number | null;
+  trumpRevealerPlayerId: string | null;
   seventhCard: TwentyNineCard | null;
   seventhCardOwnerId: string | null;
 
@@ -152,6 +153,8 @@ export interface PublicTwentyNineState {
   selectedTrumpMode: "suit" | "seventh" | null;
   trumpSuit: TwentyNineSuit | null;
   trumpRevealed: boolean;
+  trumpRevealTrickNumber: number | null;
+  trumpRevealerPlayerId: string | null;
   privateSeventhCard?: TwentyNineCard | null;
   multiplier: 1 | 2 | 4;
   doubleByPlayerId: string | null;

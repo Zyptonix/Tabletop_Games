@@ -16,6 +16,24 @@ export function validateTwentyNineAction(params: {
   const matched = legal.some((item) => item.type === action.type &&
     Object.entries(action).every(([key, value]) => (item as unknown as Record<string, unknown>)[key] === value));
   if (!matched) {
+    if (
+      action.type === "play_card" &&
+      state.trumpRevealed &&
+      state.trumpRevealerPlayerId === playerId &&
+      state.trumpRevealTrickNumber === state.completedTricks.length &&
+      state.trumpSuit
+    ) {
+      const actor = state.players.find((player) => player.userId === playerId);
+      const hasTrump = actor?.hand.some((card) => card.suit === state.trumpSuit);
+      if (hasTrump) {
+        return {
+          ok: false,
+          code: "MUST_PLAY_TRUMP",
+          message: "You revealed trump and must play a trump card to this trick."
+        };
+      }
+    }
+
     const current = state.currentPlayerId ? state.players.find((player) => player.userId === state.currentPlayerId) : null;
     return {
       ok: false,

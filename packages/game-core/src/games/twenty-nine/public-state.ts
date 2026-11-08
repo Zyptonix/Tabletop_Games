@@ -42,6 +42,8 @@ export function getPublicTwentyNineState(params: { state: TwentyNineState; viewe
     selectedTrumpMode: state.selectedTrumpMode,
     trumpSuit: state.trumpRevealed || viewerId === state.declarerId ? state.trumpSuit : null,
     trumpRevealed: state.trumpRevealed,
+    trumpRevealTrickNumber: state.trumpRevealTrickNumber,
+    trumpRevealerPlayerId: state.trumpRevealerPlayerId,
     ...(viewerId === state.seventhCardOwnerId && state.seventhCard && !state.trumpRevealed
       ? { privateSeventhCard: state.seventhCard }
       : {}),

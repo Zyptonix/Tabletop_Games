@@ -1654,10 +1654,27 @@ export function TwentyNineTable({
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: [1, 1.06, 1], opacity: 1 }}
                 transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-                className="flex items-center gap-2 rounded-full border border-amber-300/90 bg-gradient-to-r from-amber-400 to-amber-500 px-5 py-1 text-xs font-black uppercase tracking-wider text-amber-950 shadow-[0_0_22px_rgba(251,191,36,0.85)] ring-2 ring-amber-200"
+                className={cn(
+                  "flex items-center gap-2 rounded-full px-5 py-1 text-xs font-black uppercase tracking-wider shadow-[0_0_22px_rgba(251,191,36,0.85)] ring-2",
+                  state.trumpRevealed &&
+                  state.trumpRevealerPlayerId === currentUserId &&
+                  state.completedTricks.length === state.trumpRevealTrickNumber &&
+                  state.trumpSuit &&
+                  sortedHand.some((c) => c.suit === state.trumpSuit)
+                    ? "border-amber-200 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 text-slate-950 ring-amber-300 shadow-[0_0_28px_rgba(251,146,60,0.9)] animate-pulse"
+                    : "border-amber-300/90 bg-gradient-to-r from-amber-400 to-amber-500 text-amber-950 ring-amber-200"
+                )}
               >
-                <Sparkles className="h-3.5 w-3.5 text-amber-950 animate-spin" />
-                <span>Your Turn</span>
+                <Sparkles className="h-3.5 w-3.5 text-current animate-spin" />
+                <span>
+                  {state.trumpRevealed &&
+                  state.trumpRevealerPlayerId === currentUserId &&
+                  state.completedTricks.length === state.trumpRevealTrickNumber &&
+                  state.trumpSuit &&
+                  sortedHand.some((c) => c.suit === state.trumpSuit)
+                    ? "Must Play Trump ⚡"
+                    : "Your Turn"}
+                </span>
               </motion.div>
             ) : null}
 
@@ -1724,7 +1741,15 @@ export function TwentyNineTable({
 
                 <div className="flex items-center gap-1.5 text-white/50 text-[0.68rem]">
                   <Shield className="h-3.5 w-3.5" />
-                  <span>Follow lead suit when possible</span>
+                  <span>
+                    {state.trumpRevealed &&
+                    state.trumpRevealerPlayerId === currentUserId &&
+                    state.completedTricks.length === state.trumpRevealTrickNumber &&
+                    state.trumpSuit &&
+                    sortedHand.some((c) => c.suit === state.trumpSuit)
+                      ? "You revealed trump · Must play a trump card!"
+                      : "Follow lead suit when possible"}
+                  </span>
                 </div>
               </div>
 

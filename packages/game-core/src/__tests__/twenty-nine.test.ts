@@ -301,11 +301,92 @@ describe("Bangladesh 29", () => {
     // Can choose to reveal trump:
     const revealed = action(state, "p1", "reveal_trump").state;
     expect(revealed.trumpRevealed).toBe(true);
+    expect(revealed.trumpRevealerPlayerId).toBe("p1");
     expect(getLegalTwentyNineActions({ state: revealed, playerId: "p1" })).toContainEqual({ type: "play_card", cardId: offSuit.id });
 
     // Or can choose to play off-suit without revealing trump:
     const played = action(state, "p1", "play_card", { cardId: offSuit.id }).state;
     expect(played.trumpRevealed).toBe(false);
+  });
+
+  it("forces the trump revealer to play a trump card if holding one, and permits any card if holding no trump", () => {
+    const state = makeState();
+    state.phase = "playing";
+    state.currentPlayerId = "p1";
+    state.declarerId = "p0";
+    state.trumpSuit = "hearts";
+    state.trumpRevealed = false;
+
+    const leadCard: TwentyNineCard = { id: "lead-spades-7", suit: "spades", rank: "7", points: 0 };
+    const trumpCard: TwentyNineCard = { id: "trump-heart-J", suit: "hearts", rank: "J", points: 3 };
+    const nonTrumpCard: TwentyNineCard = { id: "club-8", suit: "clubs", rank: "8", points: 0 };
+
+    state.currentTrick = [{ playerId: "p0", card: leadCard }];
+    const p1 = state.players.find((player) => player.userId === "p1")!;
+    p1.hand = [trumpCard, nonTrumpCard];
+
+    // P1 reveals trump
+    const revealed = action(state, "p1", "reveal_trump").state;
+    expect(revealed.trumpRevealed).toBe(true);
+    expect(revealed.trumpRevealerPlayerId).toBe("p1");
+
+    // P1 holds a trump card, so ONLY trump card is legal!
+    const legalAfterReveal = getLegalTwentyNineActions({ state: revealed, playerId: "p1" });
+    expect(legalAfterReveal).toContainEqual({ type: "play_card", cardId: trumpCard.id });
+    expect(legalAfterReveal).not.toContainEqual({ type: "play_card", cardId: nonTrumpCard.id });
+
+    // Attempting to play non-trump card fails validation with MUST_PLAY_TRUMP
+    const validation = validateTwentyNineAction({
+      state: revealed,
+      settings: state.settings,
+      playerId: "p1",
+      action: { type: "play_card", cardId: nonTrumpCard.id }
+    });
+    expect(validation.ok).toBe(false);
+    expect(validation.code).toBe("MUST_PLAY_TRUMP");
+
+    // Case B: Revealer holds NO trump cards (void in both led suit and trump suit)
+    const state2 = makeState();
+    state2.phase = "playing";
+    state2.currentPlayerId = "p1";
+    state2.declarerId = "p0";
+    state2.trumpSuit = "hearts";
+    state2.trumpRevealed = false;
+    state2.currentTrick = [{ playerId: "p0", card: leadCard }];
+
+    const nonTrump1: TwentyNineCard = { id: "club-8", suit: "clubs", rank: "8", points: 0 };
+    const nonTrump2: TwentyNineCard = { id: "diamond-K", suit: "diamonds", rank: "K", points: 1 };
+    state2.players.find((player) => player.userId === "p1")!.hand = [nonTrump1, nonTrump2];
+
+    const revealed2 = action(state2, "p1", "reveal_trump").state;
+    const legalNoTrumps = getLegalTwentyNineActions({ state: revealed2, playerId: "p1" });
+    // Since p1 has no hearts, p1 can legally play either non-trump card
+    expect(legalNoTrumps).toContainEqual({ type: "play_card", cardId: nonTrump1.id });
+    expect(legalNoTrumps).toContainEqual({ type: "play_card", cardId: nonTrump2.id });
+
+    // Case C: Subsequent player in same trick who DID NOT reveal trump can discard or trump
+    const state3 = makeState();
+    state3.phase = "playing";
+    state3.declarerId = "p0";
+    state3.trumpSuit = "hearts";
+    state3.trumpRevealed = true;
+    state3.trumpRevealTrickNumber = 0;
+    state3.trumpRevealerPlayerId = "p1";
+    state3.completedTricks = [];
+    state3.currentTrick = [
+      { playerId: "p0", card: leadCard },
+      { playerId: "p1", card: trumpCard }
+    ];
+    state3.currentPlayerId = "p2";
+    state3.players.find((player) => player.userId === "p2")!.hand = [
+      { id: "p2-trump-9", suit: "hearts", rank: "9", points: 2 },
+      { id: "p2-club-10", suit: "clubs", rank: "10", points: 1 }
+    ];
+
+    const legalP2 = getLegalTwentyNineActions({ state: state3, playerId: "p2" });
+    // P2 didn't reveal trump, so P2 can either trump or discard
+    expect(legalP2).toContainEqual({ type: "play_card", cardId: "p2-trump-9" });
+    expect(legalP2).toContainEqual({ type: "play_card", cardId: "p2-club-10" });
   });
 
   it("allows skipping the rest of the hand when contract target points are reached", () => {

@@ -115,7 +115,22 @@ export function getLegalTwentyNineActions(params: { state: TwentyNineState; play
       if (canPlaySeventhLast) actions.push({ type: "play_card", cardId: state.seventhCard!.id });
       return actions;
     }
-    // Once trump is exposed, a player void in the led suit may discard any card.
+
+    // Trump has been revealed, and player is void in the led suit:
+    // When a player asks for / shows trump in this trick:
+    const isRevealerThisTrick = state.trumpRevealerPlayerId === playerId &&
+      state.trumpRevealTrickNumber === state.completedTricks.length;
+
+    if (isRevealerThisTrick && state.trumpSuit) {
+      const trumps = actor.hand.filter((card) => card.suit === state.trumpSuit);
+      if (trumps.length > 0) {
+        // Must play a trump card if holding one
+        return [...pairAction, ...singleHandAction, ...skipAction, ...trumps.map((card) => ({ type: "play_card" as const, cardId: card.id }))];
+      }
+      // If player holds no trump cards, they are allowed to play any other card (discard)
+    }
+
+    // Once trump is exposed, players void in the led suit (or revealer without trumps) may discard any card or trump.
   }
 
   const actions: TwentyNineAction[] = [...pairAction, ...singleHandAction, ...skipAction];

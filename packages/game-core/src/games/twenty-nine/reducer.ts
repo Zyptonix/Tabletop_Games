@@ -330,6 +330,7 @@ function startTrumpChoice(state: TwentyNineState, now: string, events: ReturnTyp
     trumpSuit: null,
     trumpRevealed: false,
     trumpRevealTrickNumber: null,
+    trumpRevealerPlayerId: null,
     seventhCard: null,
     seventhCardOwnerId: null,
     multiplier: 1,
@@ -356,6 +357,7 @@ function beginContractAfterTrump(state: TwentyNineState, mode: "suit" | "seventh
     trumpSuit: suit,
     trumpRevealed: false,
     trumpRevealTrickNumber: null,
+    trumpRevealerPlayerId: null,
     seventhCard: null,
     seventhCardOwnerId: mode === "seventh" ? declarer.userId : null,
     phase: "doubling",
@@ -420,6 +422,7 @@ function completeFinalDeal(state: TwentyNineState, now: string, events: ReturnTy
   next.singleHandPlayerId = null;
   next.trumpRevealed = false;
   next.trumpRevealTrickNumber = null;
+  next.trumpRevealerPlayerId = null;
   next.currentPlayerId = orderAfterDealer(orderedPlayers, next.dealerPlayerId)[0]?.userId ?? null;
   next.turnStartedAt = now;
   appendEvent(events, "twenty-nine:deal_complete", "Eight cards dealt. The first trick begins.", {
@@ -436,6 +439,7 @@ function exposeTrump(state: TwentyNineState, now: string, events: ReturnType<typ
   const next = cloneState(state);
   next.trumpRevealed = true;
   next.trumpRevealTrickNumber = next.completedTricks.length;
+  next.trumpRevealerPlayerId = requestedBy;
   if (next.seventhCard && next.seventhCardOwnerId) {
     const owner = playerById(next, next.seventhCardOwnerId);
     if (owner && !owner.hand.some((card) => card.id === next.seventhCard?.id)) owner.hand.push(next.seventhCard);
@@ -724,6 +728,8 @@ export function applyTwentyNineAction(params: {
     if (!canSkipHand(state)) return { state: previous, events: [] };
     if (!state.trumpRevealed && state.trumpSuit) {
       state.trumpRevealed = true;
+      state.trumpRevealTrickNumber = state.completedTricks.length;
+      state.trumpRevealerPlayerId = playerId;
       if (state.seventhCard && state.seventhCardOwnerId) {
         const owner = playerById(state, state.seventhCardOwnerId);
         if (owner && !owner.hand.some((c) => c.id === state.seventhCard?.id)) {
@@ -778,6 +784,7 @@ export function applyTwentyNineAction(params: {
     state.trumpSuit = null;
     state.trumpRevealed = false;
     state.trumpRevealTrickNumber = null;
+    state.trumpRevealerPlayerId = null;
     state.seventhCard = null;
     state.seventhCardOwnerId = null;
     state.pairDeclaredTeam = null;
