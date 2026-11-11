@@ -71,7 +71,16 @@ export function SnakesAndLaddersBoardView({
 
   // Trigger animations based on lastMove
   useEffect(() => {
-    if (!lastMove) return;
+    let timer: NodeJS.Timeout | undefined;
+
+    if (!lastMove) {
+      setActiveLadderId(null);
+      setClimbingPlayer(null);
+      setActiveSnakeId(null);
+      setSwallowingPlayer(null);
+      setMoveBanner(null);
+      return;
+    }
 
     const movingPlayer = players.find((p) => p.userId === lastMove.playerId);
     const pieceInfo = SNAKES_AND_LADDERS_PIECES.find((p) => p.id === movingPlayer?.piece);
@@ -79,16 +88,19 @@ export function SnakesAndLaddersBoardView({
     const playerName = movingPlayer?.displayName ?? "Player";
 
     if (lastMove.entered) {
+      setActiveLadderId(null);
+      setClimbingPlayer(null);
+      setActiveSnakeId(null);
+      setSwallowingPlayer(null);
       setMoveBanner({
         text: `${playerName} rolled a 1 and entered the board! ${pieceEmoji}`,
         icon: "🚀",
         color: "text-emerald-300"
       });
-      const timer = setTimeout(() => setMoveBanner(null), 3000);
-      return () => clearTimeout(timer);
-    }
-
-    if (lastMove.ladder) {
+      timer = setTimeout(() => setMoveBanner(null), 2500);
+    } else if (lastMove.ladder) {
+      setActiveSnakeId(null);
+      setSwallowingPlayer(null);
       setActiveLadderId(lastMove.ladder.id);
       setClimbingPlayer(movingPlayer ?? null);
       setMoveBanner({
@@ -97,15 +109,14 @@ export function SnakesAndLaddersBoardView({
         color: "text-amber-300"
       });
 
-      const timer = setTimeout(() => {
+      timer = setTimeout(() => {
         setActiveLadderId(null);
         setClimbingPlayer(null);
         setMoveBanner(null);
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-
-    if (lastMove.snake) {
+      }, 1600);
+    } else if (lastMove.snake) {
+      setActiveLadderId(null);
+      setClimbingPlayer(null);
       setActiveSnakeId(lastMove.snake.id);
       setSwallowingPlayer(movingPlayer ?? null);
       setMoveBanner({
@@ -114,23 +125,37 @@ export function SnakesAndLaddersBoardView({
         color: "text-rose-400"
       });
 
-      const timer = setTimeout(() => {
+      timer = setTimeout(() => {
         setActiveSnakeId(null);
         setSwallowingPlayer(null);
         setMoveBanner(null);
       }, 2900);
-      return () => clearTimeout(timer);
-    }
-
-    if (lastMove.bounced) {
+    } else if (lastMove.bounced) {
+      setActiveLadderId(null);
+      setClimbingPlayer(null);
+      setActiveSnakeId(null);
+      setSwallowingPlayer(null);
       setMoveBanner({
         text: `🎯 Bounce Back! Overshot 100, bounced back to square ${lastMove.to}!`,
         icon: "↩️",
         color: "text-purple-300"
       });
-      const timer = setTimeout(() => setMoveBanner(null), 3000);
-      return () => clearTimeout(timer);
+      timer = setTimeout(() => setMoveBanner(null), 2500);
+    } else {
+      setActiveLadderId(null);
+      setClimbingPlayer(null);
+      setActiveSnakeId(null);
+      setSwallowingPlayer(null);
     }
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      setActiveLadderId(null);
+      setClimbingPlayer(null);
+      setActiveSnakeId(null);
+      setSwallowingPlayer(null);
+      setMoveBanner(null);
+    };
   }, [lastMove, players]);
 
   // Group players by board square (only for position >= 1)
@@ -279,7 +304,12 @@ export function SnakesAndLaddersBoardView({
           {/* 2. Ladders Layer */}
           <g id="ladders-layer">
             {board.ladders.map((ladder) => {
-              const isClimbing = activeLadderId === ladder.id;
+              const isClimbing = Boolean(
+                lastMove?.ladder &&
+                  activeLadderId === ladder.id &&
+                  lastMove.ladder.id === ladder.id &&
+                  climbingPlayer
+              );
               const pieceInfo = SNAKES_AND_LADDERS_PIECES.find(
                 (p) => p.id === climbingPlayer?.piece
               );
@@ -296,6 +326,10 @@ export function SnakesAndLaddersBoardView({
                   isClimbing={isClimbing}
                   climbingPieceEmoji={pieceInfo?.emoji}
                   climbingColor={playerColor}
+                  onClimbComplete={() => {
+                    setActiveLadderId(null);
+                    setClimbingPlayer(null);
+                  }}
                 />
               );
             })}
@@ -304,7 +338,12 @@ export function SnakesAndLaddersBoardView({
           {/* 3. Snakes Layer */}
           <g id="snakes-layer">
             {board.snakes.map((snake) => {
-              const isSwallowing = activeSnakeId === snake.id;
+              const isSwallowing = Boolean(
+                lastMove?.snake &&
+                  activeSnakeId === snake.id &&
+                  lastMove.snake.id === snake.id &&
+                  swallowingPlayer
+              );
               const pieceInfo = SNAKES_AND_LADDERS_PIECES.find(
                 (p) => p.id === swallowingPlayer?.piece
               );

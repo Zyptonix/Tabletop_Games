@@ -11,6 +11,7 @@ interface LadderSvgProps {
   isClimbing?: boolean | undefined;
   climbingPieceEmoji?: string | undefined;
   climbingColor?: string | undefined;
+  onClimbComplete?: (() => void) | undefined;
 }
 
 export function LadderSvg({
@@ -19,7 +20,8 @@ export function LadderSvg({
   to,
   isClimbing,
   climbingPieceEmoji,
-  climbingColor = "#F59E0B"
+  climbingColor = "#F59E0B",
+  onClimbComplete
 }: LadderSvgProps) {
   const geom = useMemo(() => {
     const fromCoord = getSquareCoordinates(from);
@@ -213,8 +215,11 @@ export function LadderSvg({
             scale: [1, 1.25, 1.15, 1.3, 1]
           }}
           transition={{
-            duration: 1.6,
+            duration: 1.4,
             ease: "easeInOut"
+          }}
+          onAnimationComplete={() => {
+            onClimbComplete?.();
           }}
         >
           {/* Glowing Aura Ring */}
