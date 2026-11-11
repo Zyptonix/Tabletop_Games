@@ -25,6 +25,8 @@ export interface UnoPlayerState {
   seat: number;
   hand: UnoCard[];
   unoCalled: boolean;
+  eliminated?: boolean | undefined;
+  eliminatedAtActionNumber?: number | undefined;
 }
 
 export interface ClassicUnoPendingPenalty {
@@ -63,6 +65,7 @@ export interface ClassicUnoState {
   turnStartedAt: string;
   winnerUserId: string | null;
   results: GameResults | null;
+  eliminatedPlayerIds?: string[] | undefined;
 }
 
 export type UnoAction =
@@ -88,6 +91,8 @@ export interface PublicUnoPlayer {
   handCount: number;
   hand?: UnoCard[];
   unoCalled: boolean;
+  eliminated?: boolean | undefined;
+  eliminatedAtActionNumber?: number | undefined;
   isCurrentTurn: boolean;
 }
 
@@ -106,6 +111,7 @@ export interface PublicClassicUnoState {
   actionNumber: number;
   winnerUserId: string | null;
   results: GameResults | null;
+  eliminatedPlayerIds?: string[] | undefined;
   turnStartedAt: string | null;
   turnDurationMs: number | null;
   turnExpiresAt: string | null;

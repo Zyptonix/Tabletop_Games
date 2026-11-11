@@ -35,6 +35,7 @@ export interface NoMercyPlayerState {
   hand: NoMercyCard[];
   unoCalled: boolean;
   eliminated: boolean;
+  eliminatedAtActionNumber?: number | undefined;
 }
 
 export interface NoMercyPendingPenalty {
@@ -72,6 +73,7 @@ export interface NoMercyState {
   drawPile: NoMercyCard[];
   discardPile: NoMercyCard[];
   mercyPile: NoMercyCard[];
+  eliminatedPlayerIds?: string[] | undefined;
   pendingPenalty: NoMercyPendingPenalty | null;
   pendingRoulette: NoMercyPendingRoulette | null;
   lastDrawnCardId: string | null;
@@ -97,6 +99,7 @@ export interface PublicNoMercyPlayer {
   hand?: NoMercyCard[] | undefined;
   unoCalled: boolean;
   eliminated: boolean;
+  eliminatedAtActionNumber?: number | undefined;
   isCurrentTurn: boolean;
 }
 
@@ -117,6 +120,7 @@ export interface PublicNoMercyState {
   actionNumber: number;
   winnerUserId: string | null;
   results: GameResults | null;
+  eliminatedPlayerIds?: string[] | undefined;
   turnStartedAt: string | null;
   turnDurationMs: number | null;
   turnExpiresAt: string | null;

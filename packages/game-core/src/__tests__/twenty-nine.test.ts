@@ -343,7 +343,9 @@ describe("Bangladesh 29", () => {
       action: { type: "play_card", cardId: nonTrumpCard.id }
     });
     expect(validation.ok).toBe(false);
-    expect(validation.code).toBe("MUST_PLAY_TRUMP");
+    if (!validation.ok) {
+      expect(validation.code).toBe("MUST_PLAY_TRUMP");
+    }
 
     // Case B: Revealer holds NO trump cards (void in both led suit and trump suit)
     const state2 = makeState();

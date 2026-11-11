@@ -24,6 +24,7 @@ function cloneState(state: NoMercyState): NoMercyState {
     drawPile: [...state.drawPile],
     discardPile: [...state.discardPile],
     mercyPile: [...(state.mercyPile ?? [])],
+    eliminatedPlayerIds: [...(state.eliminatedPlayerIds ?? [])],
     pendingPenalty: state.pendingPenalty ? { ...state.pendingPenalty } : null,
     pendingRoulette: state.pendingRoulette ? { ...state.pendingRoulette, revealedCards: [...state.pendingRoulette.revealedCards] } : null
   };
@@ -98,12 +99,16 @@ function eliminateOverLimit(params: {
   const { settings, events } = params;
   let changed = false;
   const mercyPile: NoMercyCard[] = [...(params.state.mercyPile ?? [])];
+  const eliminatedPlayerIds: string[] = [...(params.state.eliminatedPlayerIds ?? [])];
 
   const players = params.state.players.map((player) => {
     if (!player.eliminated && player.hand.length >= settings.eliminationHandSize) {
       changed = true;
       const eliminatedHand = [...player.hand];
       mercyPile.push(...eliminatedHand);
+      if (!eliminatedPlayerIds.includes(player.userId)) {
+        eliminatedPlayerIds.push(player.userId);
+      }
 
       events.push(
         createGameEvent("uno-no-mercy:eliminated", {
@@ -112,7 +117,13 @@ function eliminateOverLimit(params: {
         })
       );
 
-      return { ...player, hand: [], eliminated: true, unoCalled: false };
+      return {
+        ...player,
+        hand: [],
+        eliminated: true,
+        eliminatedAtActionNumber: params.state.actionNumber,
+        unoCalled: false
+      };
     }
 
     return player;
@@ -122,7 +133,7 @@ function eliminateOverLimit(params: {
     return params.state;
   }
 
-  return { ...params.state, players, mercyPile };
+  return { ...params.state, players, mercyPile, eliminatedPlayerIds };
 }
 
 function swapHands(params: {

@@ -19,37 +19,91 @@ export function scoreHand(hand: UnoCard[]): number {
 
 export function getClassicUnoResults(state: ClassicUnoState): GameResults {
   const winnerUserId = state.winnerUserId;
+  const eliminatedIds = state.eliminatedPlayerIds ?? [];
+
+  const activePlayers = state.players.filter((player) => !player.eliminated);
+  const eliminatedPlayers = state.players.filter((player) => Boolean(player.eliminated));
+
+  const wonByElimination = Boolean(winnerUserId && activePlayers.length <= 1);
+  const orderedPlayers: typeof state.players = [];
+
+  const winner = state.players.find((p) => p.userId === winnerUserId);
+  if (winner) {
+    orderedPlayers.push(winner);
+  }
+
+  if (wonByElimination) {
+    // Reverse order of elimination: second-to-last eliminated gets 2nd place, etc.
+    const sortedEliminated = eliminatedPlayers.slice().sort((a, b) => {
+      const idxA = eliminatedIds.indexOf(a.userId);
+      const idxB = eliminatedIds.indexOf(b.userId);
+      if (idxA !== -1 && idxB !== -1) {
+        return idxB - idxA;
+      }
+      return (b.eliminatedAtActionNumber ?? 0) - (a.eliminatedAtActionNumber ?? 0);
+    });
+    for (const player of sortedEliminated) {
+      if (player.userId !== winnerUserId && !orderedPlayers.some((p) => p.userId === player.userId)) {
+        orderedPlayers.push(player);
+      }
+    }
+  } else {
+    // Active players ordered by lowest points in hand
+    const remainingActive = activePlayers
+      .filter((p) => p.userId !== winnerUserId)
+      .slice()
+      .sort((a, b) => scoreHand(a.hand) - scoreHand(b.hand));
+    orderedPlayers.push(...remainingActive);
+
+    // Eliminated players ordered by survival duration (last out placed ahead of earlier out)
+    const sortedEliminated = eliminatedPlayers
+      .filter((p) => p.userId !== winnerUserId)
+      .slice()
+      .sort((a, b) => {
+        const idxA = eliminatedIds.indexOf(a.userId);
+        const idxB = eliminatedIds.indexOf(b.userId);
+        if (idxA !== -1 && idxB !== -1) {
+          return idxB - idxA;
+        }
+        return (b.eliminatedAtActionNumber ?? 0) - (a.eliminatedAtActionNumber ?? 0);
+      });
+    orderedPlayers.push(...sortedEliminated);
+  }
+
+  // Any remaining unranked players
+  for (const player of state.players) {
+    if (!orderedPlayers.some((p) => p.userId === player.userId)) {
+      orderedPlayers.push(player);
+    }
+  }
+
+  const remainingHandsPoints = state.players
+    .filter((p) => p.userId !== winnerUserId)
+    .reduce((sum, p) => sum + scoreHand(p.hand), 0);
+
   const scoreByUserId: Record<string, number> = {};
 
   for (const player of state.players) {
-    scoreByUserId[player.userId] = scoreHand(player.hand);
+    if (player.userId === winnerUserId) {
+      // Winner gets base 100 + huge bonus 250 + opponent hand points
+      scoreByUserId[player.userId] = 100 + 250 + remainingHandsPoints;
+    } else if (!player.eliminated) {
+      // Players in play get base 50 + points in hand
+      scoreByUserId[player.userId] = 50 + scoreHand(player.hand);
+    } else {
+      // Eliminated players get base 25 + points on how long they survived
+      const elimIndex = eliminatedIds.indexOf(player.userId);
+      const survivalRank = elimIndex !== -1 ? elimIndex + 1 : 1;
+      scoreByUserId[player.userId] = 25 + survivalRank * 20;
+    }
   }
 
-  const otherPlayersPoints = state.players
-    .filter((player) => player.userId !== winnerUserId)
-    .reduce((sum, player) => sum + scoreHand(player.hand), 0);
-
-  if (winnerUserId) {
-    scoreByUserId[winnerUserId] = Math.max(otherPlayersPoints, 25);
-  }
-
-  const placements = state.players
-    .slice()
-    .sort((left, right) => {
-      if (left.userId === winnerUserId) {
-        return -1;
-      }
-      if (right.userId === winnerUserId) {
-        return 1;
-      }
-      return scoreHand(left.hand) - scoreHand(right.hand);
-    })
-    .map((player, index) => ({
-      userId: player.userId,
-      placement: index + 1,
-      score: scoreByUserId[player.userId] ?? (player.userId === winnerUserId ? 25 : 0),
-      result: player.userId === winnerUserId ? ("WIN" as const) : ("LOSS" as const)
-    }));
+  const placements = orderedPlayers.map((player, index) => ({
+    userId: player.userId,
+    placement: index + 1,
+    score: scoreByUserId[player.userId] ?? 25,
+    result: player.userId === winnerUserId ? ("WIN" as const) : ("LOSS" as const)
+  }));
 
   return {
     winnerUserId,

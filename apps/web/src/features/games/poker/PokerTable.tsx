@@ -203,11 +203,11 @@ function getOpponentSeatStyle(index: number, totalOpponents: number) {
   }
   // 6 Players Total (5 Opponents)
   const positions = [
-    { left: "3%", top: "48%", transform: "translate(0, -50%)" },
-    { left: "20%", top: "10px", transform: "translate(-50%, 0)" },
-    { left: "50%", top: "6px", transform: "translate(-50%, 0)" },
-    { left: "80%", top: "10px", transform: "translate(-50%, 0)" },
-    { right: "3%", top: "48%", transform: "translate(0, -50%)" }
+    { left: "2%", top: "48%", transform: "translate(0, -50%)" },
+    { left: "18%", top: "8px", transform: "translate(-50%, 0)" },
+    { left: "50%", top: "8px", transform: "translate(-50%, 0)" },
+    { left: "82%", top: "8px", transform: "translate(-50%, 0)" },
+    { right: "2%", top: "48%", transform: "translate(0, -50%)" }
   ];
   return positions[index % positions.length]!;
 }
@@ -503,10 +503,10 @@ export function PokerTable(props: BoardGameTableProps) {
               className="absolute z-20 transition-all duration-300"
             >
               <div
-                className={`relative flex flex-col items-center gap-0.5 sm:gap-1 rounded-2xl border p-1.5 sm:p-2 backdrop-blur-md transition-all w-36 sm:w-44 ${
+                className={`relative flex flex-col items-center gap-1 sm:gap-1.5 rounded-2xl border p-2 sm:p-2.5 backdrop-blur-md transition-all w-44 sm:w-52 ${
                   isTurn
-                    ? "border-amber-400 bg-amber-500/25 ring-4 ring-amber-400/50 shadow-[0_0_30px_rgba(251,191,36,0.6)] scale-105 z-30"
-                    : "border-white/15 bg-black/65 shadow-xl"
+                    ? "border-amber-400 bg-amber-500/20 ring-4 ring-amber-400/50 shadow-[0_0_35px_rgba(251,191,36,0.55)] scale-105 z-30"
+                    : "border-white/15 bg-black/75 shadow-2xl"
                 } ${player.folded || isEliminated ? "opacity-35" : ""} ${playerAway ? "border-rose-400/40 bg-rose-950/25" : ""}`}
               >
                 {/* Active Turn Timer Bar */}
@@ -521,31 +521,39 @@ export function PokerTable(props: BoardGameTableProps) {
                   </div>
                 ) : null}
 
-                {/* Header: Name, Dealer Button, Bot / Away Badge */}
-                <div className="flex items-center gap-1.5 w-full justify-center">
-                  <span className="text-xs font-bold text-white truncate max-w-[90px] sm:max-w-[115px]">
-                    {player.displayName}
-                  </span>
-                  {isDealer ? (
-                    <span className="grid h-4 w-4 place-items-center rounded-full bg-amber-400 text-[9px] font-black text-slate-950 shadow">
-                      D
+                {/* Header: Avatar, Name, Dealer Button, Bot / Away Badge */}
+                <div className="flex items-center gap-1.5 w-full justify-between">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <div className="grid h-5 w-5 place-items-center rounded-full bg-gradient-to-br from-slate-700 to-slate-900 border border-white/20 text-[9px] font-black text-amber-300 shrink-0 shadow-sm">
+                      {player.displayName.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="text-xs sm:text-sm font-bold text-white truncate max-w-[85px] sm:max-w-[110px]">
+                      {player.displayName}
                     </span>
-                  ) : null}
-                  {player.isBot ? (
-                    <span className="rounded bg-sky-500/20 px-1 text-[8px] font-black text-sky-300 uppercase">
-                      BOT
-                    </span>
-                  ) : null}
-                  {playerAway ? (
-                    <span className="rounded bg-rose-500/20 px-1 text-[8px] font-black text-rose-300 uppercase">
-                      AWAY
-                    </span>
-                  ) : null}
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    {isDealer ? (
+                      <span className="grid h-4 w-4 place-items-center rounded-full bg-gradient-to-b from-amber-300 to-amber-500 text-[9px] font-black text-slate-950 shadow ring-1 ring-amber-200">
+                        D
+                      </span>
+                    ) : null}
+                    {player.isBot ? (
+                      <span className="rounded bg-sky-500/20 border border-sky-400/30 px-1 py-0.2 text-[8px] font-black text-sky-300 uppercase">
+                        BOT
+                      </span>
+                    ) : null}
+                    {playerAway ? (
+                      <span className="rounded bg-rose-500/20 border border-rose-400/30 px-1 py-0.2 text-[8px] font-black text-rose-300 uppercase">
+                        AWAY
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
 
-                {/* Stack, Status & Net Session P/L */}
-                <div className="flex items-center gap-1.5">
-                  <span className="font-mono text-xs font-black text-emerald-300">
+                {/* Stack & Net Session P/L */}
+                <div className="flex items-center justify-between w-full px-1">
+                  <span className="font-mono text-xs sm:text-sm font-black text-emerald-300 tracking-tight">
                     {isEliminated
                       ? "BUSTED"
                       : player.folded
@@ -556,8 +564,10 @@ export function PokerTable(props: BoardGameTableProps) {
                   </span>
                   {!isEliminated && !player.folded && (player.stack ?? 0) !== 1000 ? (
                     <span
-                      className={`font-mono text-[9px] font-bold ${
-                        (player.stack ?? 0) > 1000 ? "text-emerald-400" : "text-rose-400"
+                      className={`font-mono text-[9px] sm:text-[10px] font-bold rounded px-1.5 py-0.2 border ${
+                        (player.stack ?? 0) > 1000
+                          ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                          : "bg-rose-500/15 text-rose-300 border-rose-500/30"
                       }`}
                     >
                       {(player.stack ?? 0) > 1000 ? `+$${(player.stack ?? 0) - 1000}` : `-$${1000 - (player.stack ?? 0)}`}
@@ -565,46 +575,57 @@ export function PokerTable(props: BoardGameTableProps) {
                   ) : null}
                 </div>
 
-                {/* Opponents' Hole Cards: Always Face-Down on Seats (Never face-up leak) */}
-                <div className="flex items-center justify-center -space-x-3 my-0.5">
+                {/* Opponents' Hole Cards: Face-Down Casino Backs */}
+                <div className="flex items-center justify-center -space-x-3.5 my-0.5">
                   {isEliminated ? (
-                    <div className="h-9 px-2 rounded-lg border border-dashed border-rose-500/30 bg-rose-950/30 grid place-items-center text-[9px] font-black text-rose-300 uppercase tracking-wider">
-                      Busted ($0)
+                    <div className="h-10 px-3 rounded-xl border border-dashed border-rose-500/40 bg-rose-950/40 flex items-center gap-1.5 text-[9px] font-black text-rose-300 uppercase tracking-wider">
+                      <span>💀</span>
+                      <span>Busted ($0)</span>
                     </div>
                   ) : player.folded ? (
-                    <div className="h-9 px-2 rounded-lg border border-dashed border-white/20 bg-white/5 grid place-items-center text-[9px] font-bold text-white/40 uppercase tracking-wider">
+                    <div className="h-10 px-3 rounded-xl border border-dashed border-white/20 bg-white/5 flex items-center justify-center text-[9px] font-bold text-white/40 uppercase tracking-wider">
                       Folded
                     </div>
                   ) : (
                     <>
-                      <CasinoPlayingCard hidden size="xs" className="shadow-lg -rotate-3 hover:rotate-0 transition-transform" />
-                      <CasinoPlayingCard hidden size="xs" className="shadow-lg rotate-3 hover:rotate-0 transition-transform" />
+                      <CasinoPlayingCard hidden size="xs" className="shadow-xl -rotate-4 hover:rotate-0 transition-transform scale-105" />
+                      <CasinoPlayingCard hidden size="xs" className="shadow-xl rotate-4 hover:rotate-0 transition-transform scale-105" />
                     </>
                   )}
                 </div>
 
-                {/* Paid This Round & Total Paid into Pot Overall (Unified Premium Bar) */}
+                {/* Paid This Round & Total Paid into Pot Overall (Unified Luxury Telemetry Capsule) */}
                 {(roundBet > 0 || totalPaid > 0) && !isEliminated ? (
-                  <div className="w-full flex items-center justify-between rounded-xl border border-white/10 bg-black/60 px-2.5 py-1 backdrop-blur-md shadow-inner mt-0.5">
-                    <div className="flex items-center gap-1 min-w-0" title="Chips bet in current round">
-                      <span className="text-[8px] font-sans font-black uppercase tracking-wider text-emerald-400/80">Round</span>
-                      <span className="font-mono text-[11px] font-black text-emerald-300">
-                        ${roundBet.toLocaleString("en-US")}
-                      </span>
+                  <div className="w-full flex items-center justify-between rounded-xl border border-white/10 bg-gradient-to-r from-emerald-950/50 via-slate-900/80 to-amber-950/50 px-2.5 py-1 backdrop-blur-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.08)]">
+                    {/* Round Bet */}
+                    <div className="flex items-center gap-1 min-w-0" title="Chips bet in current betting round">
+                      <span className="text-[10px]">🪙</span>
+                      <div className="flex flex-col leading-none">
+                        <span className="text-[7.5px] font-sans font-black uppercase tracking-wider text-emerald-400/80">Round</span>
+                        <span className="font-mono text-[11px] sm:text-xs font-black text-emerald-200">
+                          ${roundBet.toLocaleString("en-US")}
+                        </span>
+                      </div>
                     </div>
-                    <div className="h-3 w-px bg-white/15" />
-                    <div className="flex items-center gap-1 min-w-0" title="Total chips contributed to this pot">
-                      <span className="text-[8px] font-sans font-black uppercase tracking-wider text-amber-400/80">In Pot</span>
-                      <span className="font-mono text-[11px] font-black text-amber-300">
-                        ${totalPaid.toLocaleString("en-US")}
-                      </span>
+
+                    <div className="h-4 w-px bg-white/15 mx-1" />
+
+                    {/* Total In Pot */}
+                    <div className="flex items-center gap-1 min-w-0 justify-end text-right" title="Total chips contributed to this pot">
+                      <div className="flex flex-col items-end leading-none">
+                        <span className="text-[7.5px] font-sans font-black uppercase tracking-wider text-amber-400/80">In Pot</span>
+                        <span className="font-mono text-[11px] sm:text-xs font-black text-amber-300">
+                          ${totalPaid.toLocaleString("en-US")}
+                        </span>
+                      </div>
+                      <span className="text-[10px]">🏺</span>
                     </div>
                   </div>
                 ) : null}
 
                 {/* Turn Countdown Pill */}
                 {isTurn ? (
-                  <span className="text-[10px] font-bold text-amber-300 flex items-center gap-1 mt-0.5 animate-pulse">
+                  <span className="text-[10px] font-bold text-amber-300 flex items-center gap-1 animate-pulse">
                     <Clock className="h-3 w-3" />
                     <span>{secondsRemaining}s</span>
                   </span>

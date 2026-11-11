@@ -10,6 +10,7 @@ import {
   getLegalNoMercyActions,
   getNoMercyDeckCountSummary,
   getPublicNoMercyState,
+  getNoMercyResults,
   noMercyActionSchema,
   validateNoMercyAction,
   type NoMercyCard,
@@ -596,6 +597,53 @@ describe("uno no mercy", () => {
     expect(publicForP1.turnStartedAt).toBe(state.turnStartedAt);
     expect(publicForP1.turnDurationMs).toBe((state.settings.turnSeconds ?? 0) * 1000);
     expect(publicForP1.turnExpiresAt).toBeTruthy();
+  });
+
+  it("calculates survival order placements and scoring when players are eliminated", () => {
+    const state = stateWithHands({
+      p1: [],
+      p2: [],
+      p3: [card("red", "5")]
+    });
+    state.players[0]!.eliminated = true;
+    state.players[1]!.eliminated = true;
+    state.eliminatedPlayerIds = ["p1", "p2"];
+    state.winnerUserId = "p3";
+    state.phase = "finished";
+
+    const results = getNoMercyResults(state);
+    expect(results.winnerUserId).toBe("p3");
+    expect(results.placements[0]?.userId).toBe("p3");
+    expect(results.placements[0]?.placement).toBe(1);
+    expect(results.placements[1]?.userId).toBe("p2");
+    expect(results.placements[1]?.placement).toBe(2);
+    expect(results.placements[2]?.userId).toBe("p1");
+    expect(results.placements[2]?.placement).toBe(3);
+    expect(results.scoreByUserId["p3"]).toBeGreaterThanOrEqual(350);
+    expect(results.scoreByUserId["p2"]).toBe(65);
+    expect(results.scoreByUserId["p1"]).toBe(45);
+    for (const p of results.placements) {
+      expect(p.score).toBeGreaterThan(0);
+    }
+  });
+
+  it("calculates empty hand win placements with hand points and eliminated survival", () => {
+    const state = stateWithHands({
+      p1: [],
+      p2: [card("red", "2")],
+      p3: [card("yellow", "8")]
+    });
+    state.winnerUserId = "p1";
+    state.phase = "finished";
+
+    const results = getNoMercyResults(state);
+    expect(results.winnerUserId).toBe("p1");
+    expect(results.placements[0]?.userId).toBe("p1");
+    expect(results.placements[1]?.userId).toBe("p2");
+    expect(results.placements[2]?.userId).toBe("p3");
+    expect(results.scoreByUserId["p1"]).toBe(360);
+    expect(results.scoreByUserId["p2"]).toBe(52);
+    expect(results.scoreByUserId["p3"]).toBe(58);
   });
 });
 
