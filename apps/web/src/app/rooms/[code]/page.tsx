@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import { Copy, Loader2 } from "lucide-react";
 import type {
@@ -89,15 +89,6 @@ export default function RoomPage() {
     room.gameId === "snakes-and-ladders" || room.gameId === "ludo"
       ? (socketState.gameState as PublicSnakesAndLaddersState | null)
       : null;
-
-  useEffect(() => {
-    if (snakesAndLaddersState && snakesAndLaddersState.phase === "playing") {
-      const meInGame = snakesAndLaddersState.players.find((p) => p.userId === user?.id);
-      if (meInGame && meInGame.piece !== myLobbyPiece) {
-        socketState.sendAction(room.id, "select_piece", { piece: myLobbyPiece });
-      }
-    }
-  }, [snakesAndLaddersState?.phase]);
 
   const boardGameState =
     ["chess", "battleship", "barricades", "monopoly", "risk", "world-conquest", "codenames", "poker", "blackjack"].includes(room.gameId as string)
@@ -343,6 +334,7 @@ export default function RoomPage() {
             gameEvents={socketState.gameEvents}
             currentUserId={user.id}
             timer={socketState.timer}
+            preferredPiece={myLobbyPiece}
             onAction={(type, payload) => socketState.sendAction(room.id, type, payload)}
             onChat={socketState.sendChat}
             onEndMatch={socketState.endRoom}

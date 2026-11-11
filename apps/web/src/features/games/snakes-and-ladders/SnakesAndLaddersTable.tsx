@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -39,6 +39,7 @@ export interface SnakesAndLaddersTableProps {
   gameEvents?: GameEvent[] | undefined;
   currentUserId: string;
   timer?: TimerView | null | undefined;
+  preferredPiece?: SnakesAndLaddersPieceId | undefined;
   onAction: (type: string, payload?: Record<string, unknown> | undefined) => void;
   onChat: (roomId: string, body: string) => void;
   onEndMatch?: ((roomId: string) => void) | undefined;
@@ -51,6 +52,7 @@ export function SnakesAndLaddersTable({
   gameEvents = [],
   currentUserId,
   timer,
+  preferredPiece,
   onAction,
   onChat,
   onEndMatch
@@ -64,6 +66,13 @@ export function SnakesAndLaddersTable({
   const currentPlayer = state.players.find((p) => p.userId === state.currentPlayerId);
   const isHost = room.effectiveHostUserId === currentUserId;
   const isFinished = state.phase === "finished";
+
+  // Automatically sync preferred piece if selected in lobby or changed
+  useEffect(() => {
+    if (preferredPiece && me && me.piece !== preferredPiece && state.phase === "playing") {
+      onAction("select_piece", { piece: preferredPiece });
+    }
+  }, [preferredPiece, me?.piece, state.phase]);
 
   const canRoll = Boolean(
     isMyTurn &&
