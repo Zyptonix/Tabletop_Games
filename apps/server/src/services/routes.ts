@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { prisma } from "@tabletop/db";
 import { ERROR_CODES, updateProfileSchema } from "@tabletop/shared";
-import { authMiddleware } from "../middleware/authMiddleware";
+import { authMiddleware, optionalAuthMiddleware } from "../middleware/authMiddleware";
 import { serializeUser } from "../auth/serializeUser";
 import { LeaderboardService } from "./LeaderboardService";
 import { sendError } from "../utils/http";
@@ -10,9 +10,40 @@ import type { RoomManager } from "../rooms/RoomManager";
 export function createServicesRouter(leaderboards = new LeaderboardService(), manager?: RoomManager) {
   const router = Router();
 
-  router.use(authMiddleware);
+  // Public / Optionally Authenticated Leaderboard Endpoints
+  router.get("/leaderboards/summary", optionalAuthMiddleware, async (_request, response) => {
+    try {
+      const summary = await leaderboards.getSummary();
+      response.json(summary);
+    } catch (error) {
+      console.error("Leaderboard summary error:", error);
+      response.status(500).json({ code: "LEADERBOARD_ERROR", message: "Failed to load leaderboard summary." });
+    }
+  });
 
-  router.get("/profile/me", async (request, response) => {
+  router.get("/leaderboards/xp", optionalAuthMiddleware, async (_request, response) => {
+    try {
+      const rows = await leaderboards.getGlobalXp();
+      response.json({ leaderboard: rows });
+    } catch (error) {
+      console.error("Global XP leaderboard error:", error);
+      response.status(500).json({ code: "LEADERBOARD_ERROR", message: "Failed to load global leaderboard." });
+    }
+  });
+
+  router.get("/leaderboards/:gameId/wins", optionalAuthMiddleware, async (request, response) => {
+    try {
+      const gameId = String(request.params.gameId ?? "");
+      const rows = await leaderboards.getGameWins(gameId);
+      response.json({ leaderboard: rows });
+    } catch (error) {
+      console.error("Game leaderboard error:", error);
+      response.status(500).json({ code: "LEADERBOARD_ERROR", message: "Failed to load game leaderboard." });
+    }
+  });
+
+  // Authenticated Profile Routes
+  router.get("/profile/me", authMiddleware, async (request, response) => {
     if (!request.user) {
       sendError(response, 401, ERROR_CODES.UNAUTHORIZED, "Login required.");
       return;
@@ -29,7 +60,7 @@ export function createServicesRouter(leaderboards = new LeaderboardService(), ma
     response.json({ profile, stats });
   });
 
-  router.patch("/profile/me", async (request, response) => {
+  router.patch("/profile/me", authMiddleware, async (request, response) => {
     if (!request.user) {
       sendError(response, 401, ERROR_CODES.UNAUTHORIZED, "Login required.");
       return;
@@ -74,14 +105,6 @@ export function createServicesRouter(leaderboards = new LeaderboardService(), ma
     });
 
     response.json({ profile, user: serializeUser(user) });
-  });
-
-  router.get("/leaderboards/xp", async (_request, response) => {
-    response.json({ leaderboard: await leaderboards.getGlobalXp() });
-  });
-
-  router.get("/leaderboards/:gameId/wins", async (request, response) => {
-    response.json({ leaderboard: await leaderboards.getGameWins(request.params.gameId) });
   });
 
   return router;

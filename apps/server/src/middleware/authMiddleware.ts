@@ -33,6 +33,27 @@ export async function authMiddleware(request: Request, response: Response, next:
   next();
 }
 
+export async function optionalAuthMiddleware(request: Request, _response: Response, next: NextFunction) {
+  try {
+    const claims = readSessionFromCookie(request.headers.cookie);
+    if (!claims) {
+      return next();
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: claims.sub },
+      include: { profile: true }
+    });
+
+    if (user) {
+      request.user = serializeUser(user);
+    }
+  } catch {
+    // Proceed without authenticated user on session error
+  }
+  next();
+}
+
 export function adminMiddleware(request: Request, response: Response, next: NextFunction) {
   if (request.user?.role !== "ADMIN") {
     response.status(403).json({ code: ERROR_CODES.ADMIN_ONLY, message: "Admin privileges required." });

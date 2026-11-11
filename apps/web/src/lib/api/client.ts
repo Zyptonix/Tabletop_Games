@@ -107,5 +107,50 @@ export const api = {
     }),
   xpLeaderboard: () => request<{ leaderboard: unknown[] }>("/leaderboards/xp"),
   gameWinsLeaderboard: (gameId: string) => request<{ leaderboard: unknown[] }>(`/leaderboards/${gameId}/wins`),
+  leaderboardSummary: () =>
+    request<{
+      global: Array<{
+        rank: number;
+        userId: string;
+        username: string;
+        displayName: string;
+        avatarUrl: string | null;
+        xp: number;
+        level: number;
+        coins: number;
+        totalGamesPlayed: number;
+        totalWins: number;
+        losses: number;
+        winRate: number;
+      }>;
+      games: Record<
+        string,
+        Array<{
+          rank: number;
+          userId: string;
+          username: string;
+          displayName: string;
+          avatarUrl: string | null;
+          level: number;
+          xp: number;
+          coins: number;
+          totalGamesPlayed: number;
+          totalWins: number;
+          gameId: string;
+          gamesPlayed: number;
+          wins: number;
+          losses: number;
+          winRate: number;
+          totalScore: number;
+          bestScore: number;
+          rating: number;
+        }>
+      >;
+      stats: {
+        totalMatches: number;
+        totalPlayers: number;
+        totalGamesPlayed: number;
+      };
+    }>("/leaderboards/summary"),
   activeRooms: () => request<{ rooms: unknown[] }>("/admin/rooms")
 };

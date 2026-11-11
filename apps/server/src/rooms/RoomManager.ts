@@ -617,14 +617,16 @@ export class RoomManager {
       if (module.isGameOver(room.gameState) && room.matchId && room.matchStartedAt) {
         room.status = "finished";
         this.addSystemMessage(room, "Game ended.");
-        void this.matchResults.finalizeMatch({
-          matchId: room.matchId,
-          roomId: room.id,
-          gameId: room.gameId,
-          results: module.getResults(room.gameState),
-          startedAt: new Date(room.matchStartedAt),
-          endedAt: new Date()
-        });
+        void this.matchResults
+          .finalizeMatch({
+            matchId: room.matchId,
+            roomId: room.id,
+            gameId: room.gameId,
+            results: module.getResults(room.gameState),
+            startedAt: new Date(room.matchStartedAt),
+            endedAt: new Date()
+          })
+          .catch((err) => console.error(`[MatchResult] Failed to finalize match ${room.matchId}:`, err));
       }
 
       return { room, events: result.events, shouldBroadcast };
@@ -671,14 +673,16 @@ export class RoomManager {
         if (module.isGameOver(room.gameState) && room.matchId && room.matchStartedAt) {
           room.status = "finished";
           this.addSystemMessage(room, "Game ended.");
-          void this.matchResults.finalizeMatch({
-            matchId: room.matchId,
-            roomId: room.id,
-            gameId: room.gameId,
-            results: module.getResults(room.gameState),
-            startedAt: new Date(room.matchStartedAt),
-            endedAt: new Date()
-          });
+          void this.matchResults
+            .finalizeMatch({
+              matchId: room.matchId,
+              roomId: room.id,
+              gameId: room.gameId,
+              results: module.getResults(room.gameState),
+              startedAt: new Date(room.matchStartedAt),
+              endedAt: new Date()
+            })
+            .catch((err) => console.error(`[MatchResult] Failed to finalize match ${room.matchId}:`, err));
         }
 
         return { room, events: result.events };
@@ -1233,14 +1237,16 @@ export class RoomManager {
     if (module.isGameOver(room.gameState) && room.matchId && room.matchStartedAt) {
       room.status = "finished";
       this.addSystemMessage(room, "Game ended.");
-      void this.matchResults.finalizeMatch({
-        matchId: room.matchId,
-        roomId: room.id,
-        gameId: room.gameId,
-        results: module.getResults(room.gameState),
-        startedAt: new Date(room.matchStartedAt),
-        endedAt: new Date()
-      });
+      void this.matchResults
+        .finalizeMatch({
+          matchId: room.matchId,
+          roomId: room.id,
+          gameId: room.gameId,
+          results: module.getResults(room.gameState),
+          startedAt: new Date(room.matchStartedAt),
+          endedAt: new Date()
+        })
+        .catch((err) => console.error(`[MatchResult] Failed to finalize match ${room.matchId}:`, err));
     }
 
     return { room, events: result.events };

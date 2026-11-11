@@ -16,11 +16,12 @@ function routeError(response: Parameters<typeof sendError>[0], error: unknown) {
 export function createRoomsRouter(manager: RoomManager) {
   const router = Router();
 
-  router.use(authMiddleware);
-
+  // Public game catalog (available without active session)
   router.get("/games", (_request, response) => {
     response.json({ games: manager.listGames() });
   });
+
+  router.use(authMiddleware);
 
 
   router.get("/rooms/joinable", (_request, response) => {

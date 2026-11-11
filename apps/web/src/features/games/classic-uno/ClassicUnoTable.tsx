@@ -1021,7 +1021,7 @@ export function ClassicUnoTable({
                       </p>
                     </div>
                     <span className="rounded-full border border-amber-200/20 bg-amber-300/14 px-3 py-1 font-black text-amber-100 shadow-sm">
-                      {placement.score}
+                      {placement.result === "WIN" ? `+${placement.score || 25} pts` : `${placement.score} pts in hand`}
                     </span>
                   </div>
                 ))}
