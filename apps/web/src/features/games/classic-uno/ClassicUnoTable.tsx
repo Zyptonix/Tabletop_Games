@@ -331,6 +331,12 @@ export function ClassicUnoTable({
 
   const activeAccent = playAreaAccent[state.currentColor] ?? playAreaAccent.blue!;
   const isNoMercy = state.gameId === "uno-no-mercy";
+  const isMyTurn = Boolean(currentUserId && state.currentPlayerId === currentUserId);
+  const canDraw = hasLegalAction(legalActions, "draw_card");
+  const hasPlayableCard = hasLegalAction(legalActions, "play_card");
+  const canPass = hasLegalAction(legalActions, "pass_turn");
+  const isForcedDraw = isMyTurn && canDraw && !hasPlayableCard && !canPass;
+  const ENABLE_TORCH_LIGHT = false; // Backup option: set to true to restore the table-wide torch spotlight beam
 
   const targetPlayerList = useMemo(() => {
     return state.players
@@ -761,8 +767,75 @@ export function ClassicUnoTable({
                 onSeatEffect={triggerSeatPowerEffect}
               />
 
-              <section className="relative z-10 grid h-full min-h-0 grid-rows-[minmax(0,1fr)_15rem] gap-2 px-3 pb-3">
-                <div className={cn(isNoMercy ? "uno-no-mercy-table" : "classic-uno-table", "relative min-h-0 overflow-hidden rounded-[2.25rem] bg-transparent shadow-none")}>
+              <section
+                className={cn(
+                  "relative z-10 grid h-full min-h-0 grid-rows-[minmax(0,1fr)_15rem] gap-2 rounded-[2.25rem] p-3 overflow-hidden shadow-2xl",
+                  isNoMercy ? "uno-no-mercy-table" : "classic-uno-table"
+                )}
+              >
+                {/* Full-Table Spotlight Torch beam (backup option; kept disabled in favor of intense hand glow) */}
+                <AnimatePresence>
+                  {ENABLE_TORCH_LIGHT && isMyTurn ? (
+                    <motion.div
+                      key="player-turn-torch-light"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.5, ease: "easeOut" }}
+                      className="pointer-events-none absolute inset-0 z-0 origin-bottom overflow-hidden"
+                    >
+                      {/* Wide Conic light beam spreading upward from bottom-center across the whole table */}
+                      <div
+                        className="absolute inset-0 opacity-65"
+                        style={{
+                          background:
+                            "conic-gradient(from 180deg at 50% 100%, transparent 35deg, rgba(255,255,255,0.06) 50deg, rgba(255,255,255,0.18) 70deg, rgba(255,255,255,0.35) 90deg, rgba(255,255,255,0.18) 110deg, rgba(255,255,255,0.06) 130deg, transparent 145deg)",
+                          filter: "blur(44px)"
+                        }}
+                      />
+
+                      {/* Wide linear light beam connecting player at bottom to center and top */}
+                      <div
+                        className="absolute inset-0 opacity-70"
+                        style={{
+                          background:
+                            "linear-gradient(to top, rgba(255,255,255,0.42) 0%, rgba(255,255,255,0.24) 35%, rgba(255,255,255,0.1) 70%, transparent 100%)",
+                          clipPath: "polygon(22% 100%, 78% 100%, 96% 0%, 4% 0%)",
+                          filter: "blur(32px)"
+                        }}
+                      />
+
+                      {/* White glowing spotlight pool illuminating the middle discard and draw piles */}
+                      <motion.div
+                        animate={{
+                          opacity: [0.75, 1, 0.75],
+                          scale: [0.97, 1.04, 0.97]
+                        }}
+                        transition={{ repeat: Infinity, duration: 3.2, ease: "easeInOut" }}
+                        className="absolute left-1/2 top-[42%] -translate-x-1/2 -translate-y-1/2 rounded-full"
+                        style={{
+                          width: "min(85%, 36rem, 64vh)",
+                          height: "min(50%, 22rem, 42vh)",
+                          background:
+                            "radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.36) 0%, rgba(255,255,255,0.18) 45%, rgba(255,255,255,0.03) 72%, transparent 100%)",
+                          filter: "blur(32px)"
+                        }}
+                      />
+
+                      {/* Soft ambient illumination on the player bottom dock */}
+                      <div
+                        className="absolute inset-x-0 bottom-0 h-48 opacity-55"
+                        style={{
+                          background:
+                            "radial-gradient(ellipse 70% 100% at 50% 100%, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0.1) 55%, transparent 100%)",
+                          filter: "blur(36px)"
+                        }}
+                      />
+                    </motion.div>
+                  ) : null}
+                </AnimatePresence>
+
+                <div className="relative min-h-0">
                   <div
                     className="pointer-events-none absolute left-1/2 top-[calc(50%+2rem)] aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border"
                     style={{
@@ -844,7 +917,10 @@ export function ClassicUnoTable({
                       <div ref={drawPileRef}>
                         <DrawPile
                           count={state.drawPileCount}
-                          canDraw={hasLegalAction(legalActions, "draw_card")}
+                          canDraw={canDraw}
+                          isForcedDraw={isForcedDraw}
+                          isMyTurn={isMyTurn}
+                          activeColor={state.currentColor ?? (state.topDiscard as RenderableCard)?.color}
                           theme={cardTheme}
                           onDraw={() => onAction("draw_card")}
                         />
@@ -870,9 +946,9 @@ export function ClassicUnoTable({
                 </div>
 
                 <div ref={handDockRef} className="uno-hand-zone relative z-20 -mt-5 min-h-0 overflow-visible px-2">
-                  <div className="mx-auto flex max-w-[76rem] items-center justify-between gap-3 px-2 pb-1">
+                  <div className="mx-auto flex max-w-[76rem] items-center justify-between gap-3 px-2 pb-1 bg-transparent">
                     <div className="flex min-h-14 items-center gap-3">
-                      <div className="rounded-full border border-white/10 bg-black/42 p-1.5 shadow-[0_0_28px_rgb(0_0_0_/_0.36)] backdrop-blur-xl">
+                      <div className="rounded-full border border-white/10 bg-transparent p-1.5">
                         <TurnTimerCircle
                           active={Boolean(currentPlayer)}
                           progress={turnProgress}
@@ -884,25 +960,34 @@ export function ClassicUnoTable({
 
                       {me?.isCurrentTurn ? (
                         <motion.div
-                          initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                          initial={{ opacity: 0, y: 8, scale: 0.92 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: -10, scale: 0.96 }}
-                          className="inline-flex min-h-9 items-center gap-2 rounded-full border px-4 text-[0.7rem] font-black uppercase tracking-[0.26em]"
+                          exit={{ opacity: 0, y: -10, scale: 0.92 }}
+                          className="inline-flex min-h-11 items-center gap-3 rounded-full border px-5 py-1.5 text-xs sm:text-sm font-black uppercase tracking-[0.28em] shadow-xl backdrop-blur-md"
                           style={{
-                            borderColor: activeAccent.border,
-                            background: "linear-gradient(135deg, rgba(34,197,94,0.3), rgba(14,165,233,0.18))",
-                            color: activeAccent.text,
-                            boxShadow: `0 0 30px ${activeAccent.glow}`
+                            borderColor: "rgba(255, 255, 255, 0.35)",
+                            background:
+                              "linear-gradient(135deg, rgba(34,197,94,0.42), rgba(14,165,233,0.26) 60%, rgba(255,255,255,0.12) 100%)",
+                            color: "#ffffff",
+                            boxShadow: `0 0 35px ${activeAccent.strongGlow}, inset 0 1px 0 rgba(255,255,255,0.25)`
                           }}
                         >
-                          <span
-                            className="h-2.5 w-2.5 rounded-full"
-                            style={{
-                              backgroundColor: activeAccent.text,
-                              boxShadow: `0 0 18px ${activeAccent.strongGlow}`
-                            }}
-                          />
-                          It is your turn
+                          <span className="relative flex h-3 w-3 items-center justify-center">
+                            <span
+                              className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"
+                              style={{ backgroundColor: activeAccent.text }}
+                            />
+                            <span
+                              className="relative inline-flex h-2.5 w-2.5 rounded-full"
+                              style={{
+                                backgroundColor: activeAccent.text,
+                                boxShadow: `0 0 16px ${activeAccent.strongGlow}`
+                              }}
+                            />
+                          </span>
+                          <span className="font-black drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+                            YOUR TURN!
+                          </span>
                         </motion.div>
                       ) : null}
                     </div>
@@ -974,6 +1059,7 @@ export function ClassicUnoTable({
                         targetPlayers={targetPlayerList}
                         onPlay={playCard}
                         isMyTurn={Boolean(me?.isCurrentTurn)}
+                        activeColor={state.currentColor ?? (state.topDiscard as RenderableCard)?.color}
                         myHandCount={me?.hand?.length ?? me?.handCount ?? 0}
                         isNoMercy={isNoMercy}
                       />

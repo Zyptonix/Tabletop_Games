@@ -82,7 +82,7 @@ const allLog = fs.createWriteStream(path.join(logsDir, "all.log"), { flags: "w" 
 function runCommand(command, commandArgs) {
   return spawnSync(command, commandArgs, {
     cwd: rootDir,
-    shell: true,
+    shell: false,
     encoding: "utf8",
     windowsHide: true
   });
@@ -121,7 +121,7 @@ function killPid(pid) {
     return runCommand("sh", ["-lc", `kill -9 ${pid} 2>/dev/null || true`]);
   }
 
-  return runCommand("cmd.exe", ["/c", `taskkill /PID ${pid} /F`]);
+  return runCommand("taskkill", ["/PID", String(pid), "/F", "/T"]);
 }
 
 function cleanupDevPorts() {
@@ -212,10 +212,11 @@ function createService(name, command, commandArgs, options = {}) {
 function startService(name, command, commandArgs, options = {}) {
   const service = createService(name, command, commandArgs, options);
   writeLine(name, `starting: ${command} ${commandArgs.join(" ")}`);
+  const useShell = process.platform === "win32" && (command.endsWith(".cmd") || command.endsWith(".bat"));
   const child = spawn(command, commandArgs, {
     cwd: rootDir,
     env: { ...process.env, FORCE_COLOR: "1" },
-    shell: true,
+    shell: useShell,
     windowsHide: true
   });
   service.child = child;
@@ -289,7 +290,7 @@ function isPostgresAlreadyRunning() {
   const pgData = path.join(rootDir, ".pgdata");
   const pgCtl = findLocalPgCtlBinary();
   if (!pgCtl || !fs.existsSync(pgData)) return false;
-  const result = spawnSync(pgCtl, ["-D", pgData, "status"], { cwd: rootDir, shell: true, windowsHide: true });
+  const result = spawnSync(pgCtl, ["-D", pgData, "status"], { cwd: rootDir, shell: false, windowsHide: true });
   return result.status === 0;
 }
 
@@ -382,9 +383,9 @@ function stopAll(exitCode = 0) {
     if (!service.child || service.external) continue;
     try {
       if (process.platform === "win32" && service.child.pid) {
-        spawnSync("cmd.exe", ["/c", `taskkill /PID ${service.child.pid} /T /F`], {
+        spawnSync("taskkill", ["/PID", String(service.child.pid), "/T", "/F"], {
           cwd: rootDir,
-          shell: true,
+          shell: false,
           windowsHide: true
         });
       } else {

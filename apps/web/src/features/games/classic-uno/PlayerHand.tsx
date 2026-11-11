@@ -140,6 +140,83 @@ function getHandDensity(cardCount: number, availableWidth: number) {
   };
 }
 
+const HAND_COLOR_GLOW: Record<
+  string,
+  {
+    border: string;
+    glow: string;
+    strongGlow: string;
+    soft: string;
+    ambient: string;
+    innerGlow: string;
+    surfaceTop: string;
+    surfaceMid: string;
+    headerClass: string;
+    badgeClass: string;
+  }
+> = {
+  red: {
+    border: "rgba(244, 63, 94, 0.95)",
+    glow: "rgba(239, 68, 68, 0.85)",
+    strongGlow: "rgba(255, 29, 72, 1)",
+    soft: "rgba(225, 29, 72, 0.55)",
+    ambient: "rgba(239, 68, 68, 0.65)",
+    innerGlow: "rgba(239, 68, 68, 0.45)",
+    surfaceTop: "rgba(239, 68, 68, 0.3)",
+    surfaceMid: "rgba(65, 8, 22, 0.75)",
+    headerClass: "text-rose-300",
+    badgeClass: "text-rose-200"
+  },
+  blue: {
+    border: "rgba(56, 189, 248, 0.95)",
+    glow: "rgba(14, 165, 233, 0.85)",
+    strongGlow: "rgba(56, 189, 248, 1)",
+    soft: "rgba(2, 132, 199, 0.55)",
+    ambient: "rgba(14, 165, 233, 0.65)",
+    innerGlow: "rgba(14, 165, 233, 0.45)",
+    surfaceTop: "rgba(14, 165, 233, 0.3)",
+    surfaceMid: "rgba(8, 36, 68, 0.75)",
+    headerClass: "text-sky-300",
+    badgeClass: "text-sky-200"
+  },
+  green: {
+    border: "rgba(74, 222, 128, 0.95)",
+    glow: "rgba(34, 197, 94, 0.85)",
+    strongGlow: "rgba(74, 222, 128, 1)",
+    soft: "rgba(22, 163, 74, 0.55)",
+    ambient: "rgba(34, 197, 94, 0.65)",
+    innerGlow: "rgba(34, 197, 94, 0.45)",
+    surfaceTop: "rgba(34, 197, 94, 0.3)",
+    surfaceMid: "rgba(6, 52, 26, 0.75)",
+    headerClass: "text-emerald-300",
+    badgeClass: "text-emerald-200"
+  },
+  yellow: {
+    border: "rgba(250, 204, 21, 0.95)",
+    glow: "rgba(234, 179, 8, 0.85)",
+    strongGlow: "rgba(250, 204, 21, 1)",
+    soft: "rgba(202, 138, 4, 0.55)",
+    ambient: "rgba(234, 179, 8, 0.65)",
+    innerGlow: "rgba(234, 179, 8, 0.45)",
+    surfaceTop: "rgba(234, 179, 8, 0.3)",
+    surfaceMid: "rgba(55, 38, 4, 0.75)",
+    headerClass: "text-amber-300",
+    badgeClass: "text-amber-200"
+  },
+  wild: {
+    border: "rgba(240, 171, 252, 0.95)",
+    glow: "rgba(217, 70, 239, 0.85)",
+    strongGlow: "rgba(240, 171, 252, 1)",
+    soft: "rgba(192, 38, 211, 0.55)",
+    ambient: "rgba(217, 70, 239, 0.65)",
+    innerGlow: "rgba(217, 70, 239, 0.45)",
+    surfaceTop: "rgba(217, 70, 239, 0.3)",
+    surfaceMid: "rgba(55, 8, 62, 0.75)",
+    headerClass: "text-fuchsia-300",
+    badgeClass: "text-fuchsia-200"
+  }
+};
+
 export function PlayerHand({
   hand,
   legalActions,
@@ -147,6 +224,7 @@ export function PlayerHand({
   targetPlayers = [],
   onPlay,
   isMyTurn = false,
+  activeColor = "red",
   myHandCount,
   isNoMercy = false
 }: {
@@ -156,6 +234,7 @@ export function PlayerHand({
   targetPlayers?: TargetPlayer[];
   onPlay: (payload: { cardId: string; declaredColor?: UnoDeclaredColor; targetPlayerId?: string }) => void;
   isMyTurn?: boolean;
+  activeColor?: string | undefined;
   myHandCount?: number | undefined;
   isNoMercy?: boolean | undefined;
 }) {
@@ -203,31 +282,88 @@ export function PlayerHand({
     knownCardIdsRef.current = new Set(hand.map((card) => card.id));
   }, [hand]);
 
+  const colorGlow = HAND_COLOR_GLOW[activeColor] ?? HAND_COLOR_GLOW.red!;
+
   return (
     <div className="relative mx-auto w-full max-w-[59rem] overflow-visible xl:max-w-[65rem] 2xl:max-w-[72rem]">
-      <div className="mb-2 flex items-center justify-between px-2 text-xs font-black uppercase tracking-wide text-amber-200/90">
-        <span>Your hand</span>
-        <span>{hand.length} cards</span>
+      {/* Intense Ambient Glow Aura radiating outward behind the entire hand zone */}
+      <AnimatePresence>
+        {isMyTurn ? (
+          <motion.div
+            key="hand-ambient-glow"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{
+              opacity: [0.8, 1, 0.8],
+              scale: [0.99, 1.025, 0.99]
+            }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            transition={{ repeat: Infinity, duration: 2.2, ease: "easeInOut" }}
+            className="pointer-events-none absolute -inset-8 -top-12 z-0 rounded-[3.5rem]"
+            style={{
+              background: `radial-gradient(ellipse at 50% 65%, ${colorGlow.ambient} 0%, ${colorGlow.glow} 38%, ${colorGlow.soft} 65%, transparent 80%)`,
+              filter: "blur(42px)"
+            }}
+          />
+        ) : null}
+      </AnimatePresence>
+
+      <div className="relative z-10 mb-2 flex items-center justify-between px-2 text-xs font-black uppercase tracking-wide">
+        <span
+          className={cn(
+            "transition-all duration-300 font-black",
+            isMyTurn ? cn(colorGlow.headerClass, "scale-105") : "text-amber-200/90"
+          )}
+          style={isMyTurn ? { textShadow: `0 0 18px ${colorGlow.strongGlow}` } : undefined}
+        >
+          Your hand
+        </span>
+        <span
+          className={cn(
+            "transition-all duration-300 font-black",
+            isMyTurn ? colorGlow.badgeClass : "text-amber-200/90"
+          )}
+        >
+          {hand.length} cards
+        </span>
       </div>
 
       <div
         ref={handFrameRef}
         className={cn(
-          "relative min-h-[10.6rem] overflow-visible rounded-[2rem] px-4 pb-4 pt-6 shadow-[inset_0_1px_0_rgb(255_255_255_/_0.06),0_-22px_70px_rgb(45_140_255_/_0.12),0_24px_90px_rgb(0_0_0_/_0.45)] backdrop-blur-sm",
-          isMyTurn
-            ? "bg-[linear-gradient(to_bottom,rgba(59,130,246,0.18),rgba(8,18,34,0.52)_34%,rgba(0,0,0,0.36))] ring-1 ring-sky-400/40"
-            : "bg-[linear-gradient(to_bottom,rgb(255_255_255_/_0.035),rgb(0_0_0_/_0.08)_38%,rgb(0_0_0_/_0.28))]"
+          "relative z-10 min-h-[10.6rem] overflow-visible rounded-[2rem] px-4 pb-4 pt-6 backdrop-blur-sm transition-all duration-300",
+          !isMyTurn &&
+            "bg-[linear-gradient(to_bottom,rgb(255_255_255_/_0.035),rgb(0_0_0_/_0.08)_38%,rgb(0_0_0_/_0.28))] shadow-[inset_0_1px_0_rgb(255_255_255_/_0.06),0_24px_90px_rgb(0_0_0_/_0.45)]"
         )}
         style={
           isMyTurn
             ? {
-                boxShadow:
-                  "inset 0 1px 0 rgba(255,255,255,0.08), 0 0 0 1px rgba(96,165,250,0.28), 0 0 34px rgba(59,130,246,0.35), 0 24px 90px rgba(0,0,0,0.45)",
+                background: `linear-gradient(to bottom, ${colorGlow.surfaceTop}, ${colorGlow.surfaceMid} 35%, rgba(0,0,0,0.55) 100%)`,
+                border: `2px solid ${colorGlow.border}`,
+                boxShadow: `
+                  0 0 30px ${colorGlow.border},
+                  0 0 65px ${colorGlow.glow},
+                  0 0 115px ${colorGlow.soft},
+                  inset 0 0 40px ${colorGlow.innerGlow},
+                  inset 0 1px 0 rgba(255, 255, 255, 0.45)
+                `,
                 transform: "rotate(-0.3deg)"
               }
             : undefined
         }
       >
+        {/* Backlight / Under-glow radiating upward right from beneath the cards */}
+        {isMyTurn ? (
+          <motion.div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-4 -bottom-3 h-36 rounded-full"
+            animate={{ opacity: [0.8, 1, 0.8], scaleX: [0.96, 1.04, 0.96] }}
+            transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+            style={{
+              background: `radial-gradient(ellipse at 50% 100%, ${colorGlow.strongGlow} 0%, ${colorGlow.glow} 45%, transparent 75%)`,
+              filter: "blur(24px)"
+            }}
+          />
+        ) : null}
         <div className="relative flex h-full items-end justify-center overflow-visible">
           <AnimatePresence initial={false}>
             {sortedHand.map((card, index) => {

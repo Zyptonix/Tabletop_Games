@@ -31,7 +31,7 @@ export function UnoActionBar({
   const resolvingRoulette = rouletteActions.length > 0;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-zinc-950/92 p-3 shadow-2xl backdrop-blur md:static md:border-0 md:bg-transparent md:p-0 md:shadow-none">
+    <div className="fixed inset-x-0 bottom-0 z-30 border-0 bg-transparent p-3 shadow-none backdrop-blur-none md:static md:border-0 md:bg-transparent md:p-0 md:shadow-none">
       {resolvingRoulette ? (
         <div className="mx-auto max-w-lg rounded-[1.15rem] border border-fuchsia-200/15 bg-black/45 p-2 shadow-[0_0_32px_rgba(217,70,239,0.16)] backdrop-blur-xl">
           <div className="mb-2 flex items-center justify-center gap-2 text-[0.68rem] font-black uppercase tracking-[0.2em] text-fuchsia-100/75">
@@ -54,19 +54,7 @@ export function UnoActionBar({
             ))}
           </div>
         </div>
-      ) : mode === "uno-no-mercy" ? (
-        <div className="mx-auto grid max-w-xs grid-cols-1 gap-2">
-          <Button
-            type="button"
-            className="min-h-9 rounded-full bg-sky-500/85 px-4 text-xs font-black text-white hover:bg-sky-400"
-            disabled={!hasLegalAction(legalActions, "draw_card")}
-            onClick={onDraw}
-          >
-            <Hand className="h-4 w-4" />
-            Draw
-          </Button>
-        </div>
-      ) : (
+      ) : mode === "uno-no-mercy" ? null : (
         <div className="mx-auto grid max-w-lg grid-cols-3 gap-2">
           <Button
             type="button"

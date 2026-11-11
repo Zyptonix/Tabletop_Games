@@ -19,7 +19,7 @@ export function DiscardPile({ card, theme, currentColor }: { card: RenderableCar
   return (
     <div className="grid place-items-center gap-2">
       <p className="text-[0.66rem] font-black uppercase tracking-[0.2em] text-white/62">Discard</p>
-      <div className="relative h-40 w-[6.75rem] sm:h-44 sm:w-[7.35rem]">
+      <div className="relative h-48 w-[6.75rem] sm:h-60 sm:w-[10.1rem]">
         <div className="absolute -inset-2 rounded-2xl blur-xl" style={{ backgroundColor: glow }} />
         <div className="absolute inset-0 translate-x-2 translate-y-2 rotate-3 rounded-2xl border border-white/15 bg-black/30" />
         <AnimatePresence mode="wait" initial={false}>
@@ -31,7 +31,7 @@ export function DiscardPile({ card, theme, currentColor }: { card: RenderableCar
             exit={{ opacity: 0, y: 42, rotate: 8, scale: 0.9 }}
             transition={{ type: "spring", stiffness: 430, damping: 30 }}
           >
-            <UnoCard card={card} theme={theme} className="h-40 w-[6.75rem] rounded-2xl ring-2 ring-white/25 sm:h-44 sm:w-[7.35rem]" />
+            <UnoCard card={card} theme={theme} className="h-full w-full sm:h-full sm:w-full rounded-2xl ring-2 ring-white/25" />
           </motion.div>
         </AnimatePresence>
       </div>
