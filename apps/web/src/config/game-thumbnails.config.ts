@@ -144,17 +144,29 @@ export const GAME_VISUAL_META: Record<string, GameVisualMeta> = {
     badge: "Vegas Table",
     highlight: "Dealer 17"
   },
+  "snakes-and-ladders": {
+    id: "snakes-and-ladders",
+    displayName: "Snakes and Ladders",
+    tagline: "Classic 100-tile race with 3D ladders, hungry swallowing serpents, and up to 15 players.",
+    category: "board",
+    categoryLabel: "Board Classic",
+    thumbnailUrl: "/game-assets/thumbnails/ludo.jpg",
+    fallbackGradient: "from-emerald-950 via-amber-900/20 to-black",
+    accentColor: "#10b981",
+    badge: "2–15 Players",
+    highlight: "Snakes & Ladders"
+  },
   "ludo": {
     id: "ludo",
-    displayName: "Ludo",
-    tagline: "Four-color home sprint with token captures, safe squares, and competitive dice rolls.",
+    displayName: "Snakes and Ladders",
+    tagline: "Classic 100-tile race with 3D ladders, hungry swallowing serpents, and up to 15 players.",
     category: "board",
-    categoryLabel: "Family Classic",
+    categoryLabel: "Board Classic",
     thumbnailUrl: "/game-assets/thumbnails/ludo.jpg",
-    fallbackGradient: "from-indigo-950 via-teal-900/20 to-black",
-    accentColor: "#6366f1",
-    badge: "2–4 Players",
-    highlight: "Dice Rolling"
+    fallbackGradient: "from-emerald-950 via-amber-900/20 to-black",
+    accentColor: "#10b981",
+    badge: "2–15 Players",
+    highlight: "Snakes & Ladders"
   },
   "barricades": {
     id: "barricades",

@@ -1,8 +1,19 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Copy, Loader2 } from "lucide-react";
-import type { PublicClassicUnoState, PublicGridGameState, PublicNoMercyState, PublicBoardGameState, PublicStrategicShockwaveState, PublicTwentyNineState, PublicWerewolfState } from "@tabletop/game-core";
+import type {
+  PublicClassicUnoState,
+  PublicGridGameState,
+  PublicNoMercyState,
+  PublicBoardGameState,
+  PublicStrategicShockwaveState,
+  PublicTwentyNineState,
+  PublicWerewolfState,
+  PublicSnakesAndLaddersState,
+  SnakesAndLaddersPieceId
+} from "@tabletop/game-core";
 import { AppShell } from "@/components/layout/AppShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,6 +28,7 @@ import { StrategicShockwaveTable } from "@/features/games/strategic-shockwave/St
 import { TwentyNineTable } from "@/features/games/twenty-nine/TwentyNineTable";
 import { TwentyNineLobbyTeamSelector } from "@/features/games/twenty-nine/TwentyNineLobbyTeamSelector";
 import { MafiaWerewolfTable } from "@/features/games/mafia-werewolf/MafiaWerewolfTable";
+import { SnakesAndLaddersTable, PiecePicker } from "@/features/games/snakes-and-ladders";
 import { REACTION_PREFIX } from "@/features/games/classic-uno/ReactionOverlay";
 
 export default function RoomPage() {
@@ -24,6 +36,7 @@ export default function RoomPage() {
   const { user, loading } = useAuth({ required: true });
   const roomCode = params.code?.toUpperCase();
   const socketState = useRoomSocket(loading || !user ? undefined : roomCode);
+  const [myLobbyPiece, setMyLobbyPiece] = useState<SnakesAndLaddersPieceId>("horse");
 
   if (loading || !user) {
     return (
@@ -72,8 +85,22 @@ export default function RoomPage() {
     room.gameId === "connect-four" || room.gameId === "reversi"
       ? (socketState.gameState as PublicGridGameState | null)
       : null;
+  const snakesAndLaddersState =
+    room.gameId === "snakes-and-ladders" || room.gameId === "ludo"
+      ? (socketState.gameState as PublicSnakesAndLaddersState | null)
+      : null;
+
+  useEffect(() => {
+    if (snakesAndLaddersState && snakesAndLaddersState.phase === "playing") {
+      const meInGame = snakesAndLaddersState.players.find((p) => p.userId === user?.id);
+      if (meInGame && meInGame.piece !== myLobbyPiece) {
+        socketState.sendAction(room.id, "select_piece", { piece: myLobbyPiece });
+      }
+    }
+  }, [snakesAndLaddersState?.phase]);
+
   const boardGameState =
-    ["chess", "battleship", "ludo", "barricades", "monopoly", "risk", "world-conquest", "codenames", "poker", "blackjack"].includes(room.gameId as string)
+    ["chess", "battleship", "barricades", "monopoly", "risk", "world-conquest", "codenames", "poker", "blackjack"].includes(room.gameId as string)
       ? (socketState.gameState as PublicBoardGameState | null)
       : null;
 
@@ -166,6 +193,94 @@ export default function RoomPage() {
                     </div>
                   </div>
                 ) : null}
+
+                {/* Snakes & Ladders Lobby Match Settings */}
+                {room.gameId === "snakes-and-ladders" || room.gameId === "ludo" ? (
+                  <div className="mt-4 space-y-4 rounded-xl border border-amber-500/25 bg-[#051624] p-4 text-slate-200">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                      <span className="text-xs font-black uppercase tracking-wider text-amber-300">
+                        🐍 Snakes & Ladders Match Configuration
+                      </span>
+                      <span className="text-[11px] font-semibold text-slate-400">
+                        Up to 15 Players Max
+                      </span>
+                    </div>
+
+                    {/* Host Board Preset & Turn Clock */}
+                    {room.effectiveHostUserId === user.id ? (
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div>
+                          <label className="text-xs font-bold text-white block mb-1">
+                            Board Layout Preset
+                          </label>
+                          <select
+                            value={String(room.settings?.boardPreset ?? "classic")}
+                            onChange={(e) =>
+                              socketState.updateRoomSettings(room.id, {
+                                boardPreset: e.target.value
+                              })
+                            }
+                            className="w-full min-h-10 rounded-lg border border-amber-400/30 bg-[#081e30] px-3 text-xs font-bold text-amber-100 outline-none hover:border-amber-400"
+                          >
+                            <option value="classic">Classic Meadow (Iconic 100-Tile)</option>
+                            <option value="jungle">Serpent Jungle (Dense Serpents)</option>
+                            <option value="dunes">Desert Dunes (Winding Serpents)</option>
+                            <option value="chaos">Procedural Chaos (Randomized Layout)</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-bold text-white block mb-1">
+                            Turn Clock
+                          </label>
+                          <select
+                            value={room.settings?.turnSeconds ? Number(room.settings.turnSeconds) : 0}
+                            onChange={(e) =>
+                              socketState.updateRoomSettings(room.id, {
+                                turnSeconds: Number(e.target.value) > 0 ? Number(e.target.value) : null
+                              })
+                            }
+                            className="w-full min-h-10 rounded-lg border border-amber-400/30 bg-[#081e30] px-3 text-xs font-bold text-amber-100 outline-none hover:border-amber-400"
+                          >
+                            <option value={0}>Unlimited time (Casual)</option>
+                            <option value={15}>15 seconds (Speed Run)</option>
+                            <option value={30}>30 seconds (Standard)</option>
+                            <option value={60}>60 seconds (Relaxed)</option>
+                          </select>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* Bangladesh Standard Rules Information */}
+                    <div className="rounded-lg bg-black/40 border border-white/5 p-3 text-xs text-white/70 space-y-1">
+                      <p className="font-bold text-amber-300">📜 Bangladesh Standard Rules Active:</p>
+                      <p>• <strong>Roll a 1 to enter</strong>: All pieces start at Home and require a 1 to step onto square 1.</p>
+                      <p>• <strong>Exact roll to win</strong>: Overshooting square 100 bounces backwards.</p>
+                      <p>• <strong>Roll a 6</strong>: Grants a bonus roll (3 consecutive sixes forfeits turn).</p>
+                    </div>
+
+                    {/* Creative Piece Selector */}
+                    <div className="pt-2">
+                      <PiecePicker
+                        selectedPiece={
+                          ((room.settings?.playerPieces as Record<string, unknown>)?.[user.id] as SnakesAndLaddersPieceId) ??
+                          myLobbyPiece
+                        }
+                        onSelect={(piece) => {
+                          setMyLobbyPiece(piece);
+                          if (room.effectiveHostUserId === user.id) {
+                            socketState.updateRoomSettings(room.id, {
+                              playerPieces: {
+                                ...((room.settings?.playerPieces as Record<string, string>) ?? {}),
+                                [user.id]: piece
+                              }
+                            });
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                ) : null}
               </CardContent>
             </Card>
 
@@ -219,6 +334,18 @@ export default function RoomPage() {
             onReadyNextTrick={() => socketState.socket?.emit("twenty-nine:ready_next_trick")}
             onConfirmSingleHand={() => socketState.socket?.emit("twenty-nine:confirm_single_hand")}
             onReadyNextHand={() => socketState.socket?.emit("twenty-nine:ready_next_hand")}
+          />
+        ) : snakesAndLaddersState ? (
+          <SnakesAndLaddersTable
+            room={room}
+            state={snakesAndLaddersState}
+            legalActions={socketState.legalActions}
+            gameEvents={socketState.gameEvents}
+            currentUserId={user.id}
+            timer={socketState.timer}
+            onAction={(type, payload) => socketState.sendAction(room.id, type, payload)}
+            onChat={socketState.sendChat}
+            onEndMatch={socketState.endRoom}
           />
         ) : boardGameState ? (
           <BoardGameTable

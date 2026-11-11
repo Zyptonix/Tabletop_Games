@@ -25,6 +25,8 @@ export const GAME_STATUS: Record<string, GameStatus> = {
   "connect-four": "complete",
   "poker": "complete",
   "blackjack": "complete",
+  "snakes-and-ladders": "complete",
+  "ludo": "complete",
 
   // Prototyping Games (Test Games & Prototypes in development)
   barricades: "prototype",
