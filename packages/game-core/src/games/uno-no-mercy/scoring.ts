@@ -37,7 +37,7 @@ export function getNoMercyResults(state: NoMercyState): GameResults {
   }
 
   if (wonByElimination) {
-    // Reverse order of elimination: second-to-last eliminated gets 2nd place, etc.
+    // Reverse order of elimination: second-to-last eliminated gets 2nd place, third-to-last gets 3rd, etc.
     const sortedEliminated = eliminatedPlayers.slice().sort((a, b) => {
       const idxA = eliminatedIds.indexOf(a.userId);
       const idxB = eliminatedIds.indexOf(b.userId);
@@ -52,11 +52,16 @@ export function getNoMercyResults(state: NoMercyState): GameResults {
       }
     }
   } else {
-    // Active players ordered by lowest points in hand
+    // Active players still in play ordered by lowest number of cards in hand
     const remainingActive = activePlayers
       .filter((p) => p.userId !== winnerUserId)
       .slice()
-      .sort((a, b) => scoreCards(a.hand) - scoreCards(b.hand));
+      .sort((a, b) => {
+        if (a.hand.length !== b.hand.length) {
+          return a.hand.length - b.hand.length;
+        }
+        return scoreCards(a.hand) - scoreCards(b.hand);
+      });
     orderedPlayers.push(...remainingActive);
 
     // Eliminated players ordered by survival duration (last out placed ahead of earlier out)
@@ -81,32 +86,16 @@ export function getNoMercyResults(state: NoMercyState): GameResults {
     }
   }
 
-  const mercyPileScore = scoreCards(state.mercyPile ?? []);
-  const remainingHandsScore = state.players
-    .filter((player) => player.userId !== winnerUserId)
-    .reduce((total, player) => total + scoreCards(player.hand), 0);
-
   const scoreByUserId: Record<string, number> = {};
-
-  for (const player of state.players) {
-    if (player.userId === winnerUserId) {
-      // Winner gets base 100 + huge bonus 250 + opponent hand points + mercy pile points
-      scoreByUserId[player.userId] = 100 + 250 + remainingHandsScore + mercyPileScore;
-    } else if (!player.eliminated) {
-      // Players in play get base 50 + points in hand
-      scoreByUserId[player.userId] = 50 + scoreCards(player.hand);
-    } else {
-      // Eliminated players get base 25 + points on how long they survived
-      const elimIndex = eliminatedIds.indexOf(player.userId);
-      const survivalRank = elimIndex !== -1 ? elimIndex + 1 : 1;
-      scoreByUserId[player.userId] = 25 + survivalRank * 20;
-    }
+  for (let i = 0; i < orderedPlayers.length; i++) {
+    const p = orderedPlayers[i]!;
+    scoreByUserId[p.userId] = Math.max(0, orderedPlayers.length - i);
   }
 
   const placements = orderedPlayers.map((player, index) => ({
     userId: player.userId,
     placement: index + 1,
-    score: scoreByUserId[player.userId] ?? 25,
+    score: scoreByUserId[player.userId] ?? (index === 0 ? 1 : 0),
     result: player.userId === winnerUserId ? ("WIN" as const) : ("LOSS" as const)
   }));
 

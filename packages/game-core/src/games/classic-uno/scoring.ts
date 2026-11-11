@@ -48,11 +48,16 @@ export function getClassicUnoResults(state: ClassicUnoState): GameResults {
       }
     }
   } else {
-    // Active players ordered by lowest points in hand
+    // Active players still in play ordered by lowest number of cards in hand
     const remainingActive = activePlayers
       .filter((p) => p.userId !== winnerUserId)
       .slice()
-      .sort((a, b) => scoreHand(a.hand) - scoreHand(b.hand));
+      .sort((a, b) => {
+        if (a.hand.length !== b.hand.length) {
+          return a.hand.length - b.hand.length;
+        }
+        return scoreHand(a.hand) - scoreHand(b.hand);
+      });
     orderedPlayers.push(...remainingActive);
 
     // Eliminated players ordered by survival duration (last out placed ahead of earlier out)
@@ -77,31 +82,16 @@ export function getClassicUnoResults(state: ClassicUnoState): GameResults {
     }
   }
 
-  const remainingHandsPoints = state.players
-    .filter((p) => p.userId !== winnerUserId)
-    .reduce((sum, p) => sum + scoreHand(p.hand), 0);
-
   const scoreByUserId: Record<string, number> = {};
-
-  for (const player of state.players) {
-    if (player.userId === winnerUserId) {
-      // Winner gets base 100 + huge bonus 250 + opponent hand points
-      scoreByUserId[player.userId] = 100 + 250 + remainingHandsPoints;
-    } else if (!player.eliminated) {
-      // Players in play get base 50 + points in hand
-      scoreByUserId[player.userId] = 50 + scoreHand(player.hand);
-    } else {
-      // Eliminated players get base 25 + points on how long they survived
-      const elimIndex = eliminatedIds.indexOf(player.userId);
-      const survivalRank = elimIndex !== -1 ? elimIndex + 1 : 1;
-      scoreByUserId[player.userId] = 25 + survivalRank * 20;
-    }
+  for (let i = 0; i < orderedPlayers.length; i++) {
+    const p = orderedPlayers[i]!;
+    scoreByUserId[p.userId] = Math.max(0, orderedPlayers.length - i);
   }
 
   const placements = orderedPlayers.map((player, index) => ({
     userId: player.userId,
     placement: index + 1,
-    score: scoreByUserId[player.userId] ?? 25,
+    score: scoreByUserId[player.userId] ?? (index === 0 ? 1 : 0),
     result: player.userId === winnerUserId ? ("WIN" as const) : ("LOSS" as const)
   }));
 

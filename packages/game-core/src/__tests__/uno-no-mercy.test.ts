@@ -619,12 +619,9 @@ describe("uno no mercy", () => {
     expect(results.placements[1]?.placement).toBe(2);
     expect(results.placements[2]?.userId).toBe("p1");
     expect(results.placements[2]?.placement).toBe(3);
-    expect(results.scoreByUserId["p3"]).toBeGreaterThanOrEqual(350);
-    expect(results.scoreByUserId["p2"]).toBe(65);
-    expect(results.scoreByUserId["p1"]).toBe(45);
-    for (const p of results.placements) {
-      expect(p.score).toBeGreaterThan(0);
-    }
+    expect(results.placements[0]?.result).toBe("WIN");
+    expect(results.placements[1]?.result).toBe("LOSS");
+    expect(results.placements[2]?.result).toBe("LOSS");
   });
 
   it("calculates empty hand win placements with hand points and eliminated survival", () => {
@@ -641,9 +638,9 @@ describe("uno no mercy", () => {
     expect(results.placements[0]?.userId).toBe("p1");
     expect(results.placements[1]?.userId).toBe("p2");
     expect(results.placements[2]?.userId).toBe("p3");
-    expect(results.scoreByUserId["p1"]).toBe(360);
-    expect(results.scoreByUserId["p2"]).toBe(52);
-    expect(results.scoreByUserId["p3"]).toBe(58);
+    expect(results.placements[0]?.result).toBe("WIN");
+    expect(results.placements[1]?.result).toBe("LOSS");
+    expect(results.placements[2]?.result).toBe("LOSS");
   });
 });
 

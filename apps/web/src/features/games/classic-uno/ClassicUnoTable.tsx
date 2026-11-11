@@ -496,14 +496,87 @@ export function ClassicUnoTable({
       (currentUserRole === "ADMIN" || room.effectiveHostUserId === currentUserId)
   );
 
-  const placementRows =
-    state.results?.placements.map((placement) => ({
-      ...placement,
-      displayName:
-        room.players.find((player) => player.userId === placement.userId)?.displayName ??
-        state.players.find((player) => player.userId === placement.userId)?.displayName ??
-        `Player ${placement.userId.slice(0, 6)}`
-    })) ?? [];
+  const wonByElimination = useMemo(() => {
+    if (!state.results?.winnerUserId) return false;
+    const activePlayers = state.players.filter((p) => !p.eliminated);
+    return activePlayers.length <= 1;
+  }, [state.results, state.players]);
+
+  const placementRows = useMemo(() => {
+    const list =
+      state.results?.placements.map((placement) => {
+        const statePlayer = state.players.find((player) => player.userId === placement.userId);
+        const roomPlayer = room.players.find((player) => player.userId === placement.userId);
+        const isWinner = placement.result === "WIN" || placement.placement === 1;
+        const isEliminated = Boolean(statePlayer?.eliminated);
+        const handCount = statePlayer?.handCount ?? 0;
+        const seat = statePlayer?.seat ?? roomPlayer?.seat ?? 0;
+        const displayName =
+          roomPlayer?.displayName ??
+          statePlayer?.displayName ??
+          `Player ${placement.userId.slice(0, 6)}`;
+        const isBot = roomPlayer?.isBot ?? false;
+
+        let statusText = "Finished";
+        let statusBadge = "bg-white/10 text-white/70 border-white/15";
+        let statusIcon = "🏁";
+
+        if (isWinner) {
+          if (wonByElimination) {
+            statusText = "Sole Survivor";
+            statusBadge = "bg-amber-400/20 text-amber-300 border-amber-400/40";
+            statusIcon = "👑";
+          } else {
+            statusText = "Emptied Hand";
+            statusBadge = "bg-emerald-500/20 text-emerald-300 border-emerald-400/40";
+            statusIcon = "🏆";
+          }
+        } else if (isEliminated) {
+          statusText = "Eliminated";
+          statusBadge = "bg-rose-500/20 text-rose-300 border-rose-500/30";
+          statusIcon = "💀";
+        } else {
+          statusText = `${handCount} card${handCount === 1 ? "" : "s"} left`;
+          statusBadge = "bg-sky-500/20 text-sky-300 border-sky-400/30";
+          statusIcon = "🃏";
+        }
+
+        const rankWord =
+          placement.placement === 1
+            ? "First"
+            : placement.placement === 2
+            ? "Second"
+            : placement.placement === 3
+            ? "Third"
+            : placement.placement === 4
+            ? "Fourth"
+            : placement.placement === 5
+            ? "Fifth"
+            : placement.placement === 6
+            ? "Sixth"
+            : placement.placement === 7
+            ? "Seventh"
+            : placement.placement === 8
+            ? "Eighth"
+            : `${placement.placement}th`;
+
+        return {
+          ...placement,
+          displayName,
+          isBot,
+          isWinner,
+          isEliminated,
+          handCount,
+          seat,
+          statusText,
+          statusBadge,
+          statusIcon,
+          rankWord
+        };
+      }) ?? [];
+
+    return list.slice().sort((a, b) => a.placement - b.placement);
+  }, [state.results, state.players, room.players, wonByElimination]);
 
   function playCard(payload: PlayPayload) {
     onAction("play_card", payload);
@@ -990,44 +1063,193 @@ export function ClassicUnoTable({
         ) : null}
 
         {state.phase === "finished" ? (
-          <Dialog open title="Match Results" onClose={goDashboard}>
+          <Dialog
+            open
+            title="Match Standings"
+            onClose={goDashboard}
+            className="max-w-xl sm:max-w-2xl"
+          >
             <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="space-y-4">
-              <div className="overflow-hidden rounded-[1.45rem] border border-amber-200/20 bg-[radial-gradient(circle_at_18%_20%,rgba(251,191,36,0.28),transparent_38%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(3,7,18,0.96))] p-4 text-white shadow-[0_18px_60px_rgba(0,0,0,0.38)]">
+              {/* Champion Headline Banner */}
+              <div className="overflow-hidden rounded-[1.45rem] border border-amber-400/30 bg-[radial-gradient(circle_at_18%_20%,rgba(251,191,36,0.32),transparent_45%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(3,7,18,0.96))] p-4 text-white shadow-[0_18px_60px_rgba(0,0,0,0.45)]">
                 <div className="flex items-center gap-3">
-                  <span className="grid h-12 w-12 place-items-center rounded-full bg-amber-300 text-zinc-950 shadow-[0_0_32px_rgba(251,191,36,0.42)]">
-                    <Trophy className="h-5 w-5" />
+                  <span className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-amber-300 via-amber-400 to-amber-600 text-slate-950 shadow-[0_0_32px_rgba(251,191,36,0.5)] shrink-0 text-xl font-black">
+                    🏆
                   </span>
                   <div className="min-w-0">
-                    <p className="truncate text-xl font-black">
-                      {winner?.userId === currentUserId ? "You won" : `${winnerName ?? "Someone"} won`}
+                    <p className="truncate text-lg sm:text-xl font-black text-amber-200">
+                      {winner?.userId === currentUserId ? "Victory! You Won the Match!" : `${winnerName ?? "Player"} Won the Match!`}
                     </p>
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/50">Final scoreboard</p>
+                    <p className="text-xs font-semibold text-white/60">
+                      {wonByElimination
+                        ? "All opponents eliminated by mercy rules • Final Arena Standings"
+                        : "Cards cleared from hand • Final Arena Standings"}
+                    </p>
                   </div>
                 </div>
               </div>
 
-              <div className="max-h-[22vh] space-y-1 overflow-hidden pr-1 [scrollbar-color:rgba(251,191,36,0.65)_rgba(255,255,255,0.08)] [scrollbar-width:thin]">
-                {placementRows.map((placement) => (
-                  <div
-                    key={placement.userId}
-                    className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.055] p-3 text-sm shadow-[0_10px_30px_rgba(0,0,0,0.24)]"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate font-black text-white">
-                        #{placement.placement} {placement.displayName}
-                      </p>
-                      <p className="text-xs font-semibold text-white/45">
-                        {placement.result === "WIN" ? "Winner" : "Finished"}
-                      </p>
-                    </div>
-                    <span className="rounded-full border border-amber-200/20 bg-amber-300/14 px-3 py-1 font-black text-amber-100 shadow-sm">
-                      {placement.result === "WIN" ? `+${placement.score || 25} pts` : `${placement.score} pts in hand`}
-                    </span>
+              {/* 3D Olympic Position Stand (Podium for Top 3) */}
+              {placementRows.length >= 2 ? (
+                <div className="relative rounded-2xl border border-white/10 bg-black/40 p-3 pt-6 backdrop-blur-md">
+                  <div className="flex items-end justify-center gap-2 sm:gap-4 px-1">
+                    {/* 2nd Place (Silver - Left) */}
+                    {placementRows[1] ? (
+                      <div className="flex flex-col items-center flex-1 max-w-[140px]">
+                        <div className="relative mb-2 flex flex-col items-center text-center">
+                          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-slate-200 via-slate-400 to-slate-600 border-2 border-slate-200 text-slate-950 font-black shadow-[0_0_20px_rgba(203,213,225,0.4)] text-xl">
+                            🥈
+                          </div>
+                          <span className="mt-1.5 text-xs font-black text-slate-200 truncate max-w-[120px]">
+                            {placementRows[1].displayName}
+                          </span>
+                          <span className="text-[10px] font-bold text-slate-400">
+                            {placementRows[1].statusText}
+                          </span>
+                        </div>
+                        {/* 2nd Podium Base */}
+                        <div className="w-full h-20 rounded-t-2xl border-t-2 border-x-2 border-slate-400/50 bg-gradient-to-b from-slate-400/30 via-slate-700/40 to-slate-950/90 p-2 flex flex-col items-center justify-start shadow-lg">
+                          <span className="text-xl font-black text-slate-200">2nd</span>
+                          <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">Second</span>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* 1st Place (Gold - Center, Highest) */}
+                    {placementRows[0] ? (
+                      <div className="flex flex-col items-center flex-1 max-w-[160px] -mt-5 z-10">
+                        <div className="relative mb-2 flex flex-col items-center text-center">
+                          <span className="text-2xl animate-bounce mb-0.5">👑</span>
+                          <div className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-amber-300 via-amber-400 to-amber-600 border-2 border-amber-200 text-slate-950 font-black shadow-[0_0_30px_rgba(251,191,36,0.65)] text-2xl">
+                            🥇
+                          </div>
+                          <span className="mt-1.5 text-xs sm:text-sm font-black text-amber-200 truncate max-w-[140px]">
+                            {placementRows[0].displayName}
+                          </span>
+                          <span className="text-[10px] font-black text-amber-400">
+                            {placementRows[0].statusText}
+                          </span>
+                        </div>
+                        {/* 1st Podium Base */}
+                        <div className="w-full h-28 rounded-t-2xl border-t-2 border-x-2 border-amber-400/70 bg-gradient-to-b from-amber-500/35 via-amber-700/40 to-slate-950/90 p-2 flex flex-col items-center justify-start shadow-[0_0_35px_rgba(251,191,36,0.3)]">
+                          <span className="text-2xl font-black text-amber-300">1st</span>
+                          <span className="text-[10px] font-black uppercase tracking-wider text-amber-400">Champion</span>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* 3rd Place (Bronze - Right) */}
+                    {placementRows[2] ? (
+                      <div className="flex flex-col items-center flex-1 max-w-[140px]">
+                        <div className="relative mb-2 flex flex-col items-center text-center">
+                          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-amber-700 via-amber-800 to-amber-950 border-2 border-amber-600/70 text-amber-200 font-black shadow-[0_0_18px_rgba(217,119,6,0.3)] text-xl">
+                            🥉
+                          </div>
+                          <span className="mt-1.5 text-xs font-black text-amber-200 truncate max-w-[120px]">
+                            {placementRows[2].displayName}
+                          </span>
+                          <span className="text-[10px] font-bold text-amber-500/80">
+                            {placementRows[2].statusText}
+                          </span>
+                        </div>
+                        {/* 3rd Podium Base */}
+                        <div className="w-full h-16 rounded-t-2xl border-t-2 border-x-2 border-amber-700/50 bg-gradient-to-b from-amber-800/30 via-amber-950/50 to-slate-950/90 p-2 flex flex-col items-center justify-start shadow-md">
+                          <span className="text-xl font-black text-amber-400">3rd</span>
+                          <span className="text-[9px] font-black uppercase tracking-wider text-amber-500/80">Third</span>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
-                ))}
+                </div>
+              ) : null}
+
+              {/* Full Standings List (All Players with Smooth Scrolling Enabled) */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between px-2 text-[10px] font-black uppercase tracking-wider text-white/40">
+                  <span>Player & Rank</span>
+                  <span>Match Result</span>
+                </div>
+                <div className="max-h-[34vh] sm:max-h-[40vh] overflow-y-auto space-y-2 pr-1 [scrollbar-color:rgba(251,191,36,0.65)_rgba(255,255,255,0.08)] [scrollbar-width:thin]">
+                  {placementRows.map((placement) => {
+                    const isMe = placement.userId === currentUserId;
+                    const isFirst = placement.placement === 1;
+                    const isSecond = placement.placement === 2;
+                    const isThird = placement.placement === 3;
+
+                    return (
+                      <div
+                        key={placement.userId}
+                        className={cn(
+                          "flex items-center justify-between gap-3 rounded-2xl border p-2.5 sm:p-3 text-sm transition-all shadow-md",
+                          isFirst
+                            ? "border-amber-400/50 bg-gradient-to-r from-amber-500/20 via-slate-900/90 to-amber-950/30 ring-1 ring-amber-400/30"
+                            : isSecond
+                            ? "border-slate-300/30 bg-gradient-to-r from-slate-400/15 via-slate-900/90 to-slate-950/50"
+                            : isThird
+                            ? "border-amber-700/30 bg-gradient-to-r from-amber-800/15 via-slate-900/90 to-slate-950/50"
+                            : "border-white/10 bg-white/[0.04] hover:bg-white/[0.07]"
+                        )}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          {/* Position Pill */}
+                          <div
+                            className={cn(
+                              "flex items-center justify-center rounded-xl px-2.5 py-1 text-xs font-black shadow-sm shrink-0 min-w-[62px]",
+                              isFirst
+                                ? "bg-amber-400 text-slate-950 ring-1 ring-amber-200"
+                                : isSecond
+                                ? "bg-slate-300 text-slate-950"
+                                : isThird
+                                ? "bg-amber-700 text-amber-100"
+                                : "bg-white/10 text-white/80"
+                            )}
+                          >
+                            <span>{placement.rankWord}</span>
+                          </div>
+
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="truncate font-black text-white text-sm">
+                                {placement.displayName}
+                              </span>
+                              {isMe ? (
+                                <span className="rounded bg-amber-400/20 border border-amber-400/40 px-1.5 py-0.2 text-[8px] font-black text-amber-300 uppercase">
+                                  YOU
+                                </span>
+                              ) : null}
+                              {placement.isBot ? (
+                                <span className="rounded bg-sky-500/20 border border-sky-400/30 px-1.5 py-0.2 text-[8px] font-black text-sky-300 uppercase">
+                                  BOT
+                                </span>
+                              ) : null}
+                            </div>
+                            <p className="text-[11px] font-semibold text-white/45">
+                              Seat #{placement.seat + 1}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Status Badge (NO POINTS!) */}
+                        <div
+                          className={cn(
+                            "flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-black shrink-0 shadow-sm",
+                            placement.statusBadge
+                          )}
+                        >
+                          <span>{placement.statusIcon}</span>
+                          <span>{placement.statusText}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
-              <Button type="button" className="w-full rounded-full bg-amber-300 font-black text-zinc-950 hover:bg-amber-200" onClick={goDashboard}>
+              <Button
+                type="button"
+                className="w-full rounded-full bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 py-3 font-black text-slate-950 shadow-lg hover:brightness-110 active:scale-[0.99] transition"
+                onClick={goDashboard}
+              >
                 Back to Dashboard
               </Button>
             </motion.div>
