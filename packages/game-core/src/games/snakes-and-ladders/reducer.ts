@@ -255,19 +255,20 @@ export function applySnakesAndLaddersAction(params: {
       if (player.consecutiveSixes >= 3) {
         player.consecutiveSixes = 0;
         state.hasRolled = false;
-        state.diceRoll = null;
+        state.diceRoll = roll;
         state.currentPlayerId = nextPlayerId(state, playerId);
         state.turnStartedAt = now;
         pushActivity(state, "three_sixes", `⚠️ ${player.displayName} rolled 3 consecutive sixes! Turn forfeited.`, playerId, now);
       } else {
         // Bonus roll awarded: player keeps turn
         state.hasRolled = false; // ready for next roll
+        state.diceRoll = roll;
         pushActivity(state, "bonus_roll", `⭐ ${player.displayName} rolled a 6! Bonus roll awarded.`, playerId, now);
       }
     } else {
       player.consecutiveSixes = 0;
       state.hasRolled = false;
-      state.diceRoll = null;
+      state.diceRoll = roll;
       state.currentPlayerId = nextPlayerId(state, playerId);
       state.turnStartedAt = now;
     }

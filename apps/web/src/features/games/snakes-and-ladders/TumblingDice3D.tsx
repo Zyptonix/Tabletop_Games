@@ -6,6 +6,7 @@ import { Dices, Sparkles } from "lucide-react";
 
 interface TumblingDice3DProps {
   value: number | null;
+  actionNumber?: number | undefined;
   isRolling?: boolean;
   canRoll: boolean;
   onRoll: () => void;
@@ -26,6 +27,7 @@ const FACE_ROTATIONS: Record<number, { x: number; y: number }> = {
 
 export function TumblingDice3D({
   value,
+  actionNumber,
   isRolling: externalRolling,
   canRoll,
   onRoll,
@@ -71,6 +73,11 @@ export function TumblingDice3D({
     setInternalRolling(true);
     playRollAudio();
     onRoll();
+
+    // Guaranteed reset: always end rolling animation after 950ms even if server response delays
+    setTimeout(() => {
+      setInternalRolling(false);
+    }, 950);
   };
 
   useEffect(() => {
@@ -85,13 +92,13 @@ export function TumblingDice3D({
         y: target.y + extraY,
         z: (spinCounterRef.current % 2 === 0 ? 360 : -360)
       });
-
-      const timer = setTimeout(() => {
-        setInternalRolling(false);
-      }, 950);
-      return () => clearTimeout(timer);
     }
-  }, [value]);
+
+    const timer = setTimeout(() => {
+      setInternalRolling(false);
+    }, 950);
+    return () => clearTimeout(timer);
+  }, [value, actionNumber]);
 
   const pipsColor = "bg-slate-900 shadow-inner";
   const primaryPipColor = "bg-rose-600 shadow-inner"; // Classic red center pip for 1

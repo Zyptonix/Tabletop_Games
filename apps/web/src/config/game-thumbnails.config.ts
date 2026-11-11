@@ -156,18 +156,6 @@ export const GAME_VISUAL_META: Record<string, GameVisualMeta> = {
     badge: "2–15 Players",
     highlight: "Snakes & Ladders"
   },
-  "ludo": {
-    id: "ludo",
-    displayName: "Snakes and Ladders",
-    tagline: "Classic 100-tile race with 3D ladders, hungry swallowing serpents, and up to 15 players.",
-    category: "board",
-    categoryLabel: "Board Classic",
-    thumbnailUrl: "/game-assets/thumbnails/ludo.jpg",
-    fallbackGradient: "from-emerald-950 via-amber-900/20 to-black",
-    accentColor: "#10b981",
-    badge: "2–15 Players",
-    highlight: "Snakes & Ladders"
-  },
   "barricades": {
     id: "barricades",
     displayName: "Barricades (Quoridor)",

@@ -76,7 +76,6 @@ const modules = new Map<GameId, AnyGameModule>([
   ["chess", chessModule as GameModule<BoardGameState, BoardGameAction, BoardGameSettings> as AnyGameModule],
   ["battleship", battleshipModule as GameModule<BoardGameState, BoardGameAction, BoardGameSettings> as AnyGameModule],
   ["snakes-and-ladders", snakesAndLaddersModule as AnyGameModule],
-  ["ludo", snakesAndLaddersModule as AnyGameModule],
   ["barricades", barricadesModule as GameModule<BoardGameState, BoardGameAction, BoardGameSettings> as AnyGameModule],
   ["monopoly", monopolyModule as GameModule<BoardGameState, BoardGameAction, BoardGameSettings> as AnyGameModule],
   ["risk", riskModule as GameModule<BoardGameState, BoardGameAction, BoardGameSettings> as AnyGameModule],
@@ -86,18 +85,32 @@ const modules = new Map<GameId, AnyGameModule>([
   ["blackjack", blackjackModule as GameModule<BoardGameState, BoardGameAction, BoardGameSettings> as AnyGameModule]
 ]);
 
+const ALIASES: Record<string, GameId> = {
+  ludo: "snakes-and-ladders"
+};
+
 export class GameRegistry {
   get(gameId: GameId): AnyGameModule | null {
-    return modules.get(gameId) ?? null;
+    const canonicalId = ALIASES[gameId as string] ?? gameId;
+    return modules.get(canonicalId) ?? null;
   }
 
   list(): RegisteredGameSummary[] {
-    return [...modules.values()].map((module) => ({
-      id: module.id,
-      displayName: module.displayName,
-      minPlayers: module.minPlayers,
-      maxPlayers: module.maxPlayers
-    }));
+    const seen = new Set<string>();
+    const list: RegisteredGameSummary[] = [];
+
+    for (const module of modules.values()) {
+      if (seen.has(module.id)) continue;
+      seen.add(module.id);
+      list.push({
+        id: module.id,
+        displayName: module.displayName,
+        minPlayers: module.minPlayers,
+        maxPlayers: module.maxPlayers
+      });
+    }
+
+    return list;
   }
 }
 

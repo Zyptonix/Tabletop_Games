@@ -195,6 +195,7 @@ export function SnakesAndLaddersTable({
             <div className="flex flex-col items-center justify-center py-2">
               <TumblingDice3D
                 value={state.diceRoll}
+                actionNumber={state.actionNumber}
                 canRoll={canRoll}
                 onRoll={() => onAction("roll_dice")}
                 disabled={!canRoll}
