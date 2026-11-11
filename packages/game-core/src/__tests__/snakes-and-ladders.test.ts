@@ -177,4 +177,64 @@ describe("Snakes and Ladders - Game Core", () => {
     expect(results.placements[2]?.userId).toBe("u3");
     expect(results.placements[2]?.placement).toBe(3);
   });
+
+  it("enforces unique piece selection and rejects duplicates", () => {
+    const players = [
+      { userId: "u1", username: "u1", displayName: "Player 1", seat: 0 },
+      { userId: "u2", username: "u2", displayName: "Player 2", seat: 1 }
+    ];
+
+    const state = createInitialSnakesAndLaddersState({
+      players,
+      seed: "test-seed-unique",
+      now: "2026-01-01T00:00:00.000Z"
+    });
+
+    // P1 selects "dragon"
+    const r1 = applySnakesAndLaddersAction({
+      state,
+      playerId: "u1",
+      action: { type: "select_piece", piece: "dragon" },
+      now: "2026-01-01T00:00:01.000Z"
+    });
+    expect(r1.accepted).toBe(true);
+    expect(r1.state.players[0]!.piece).toBe("dragon");
+
+    // P2 attempts to also select "dragon" -> should be rejected!
+    const r2 = applySnakesAndLaddersAction({
+      state: r1.state,
+      playerId: "u2",
+      action: { type: "select_piece", piece: "dragon" },
+      now: "2026-01-01T00:00:02.000Z"
+    });
+    expect(r2.accepted).toBe(false);
+    expect(r2.message).toContain("already taken");
+  });
+
+  it("records lastRoll and lastRollResult on each turn", () => {
+    const players = [
+      { userId: "u1", username: "u1", displayName: "Player 1", seat: 0 },
+      { userId: "u2", username: "u2", displayName: "Player 2", seat: 1 }
+    ];
+
+    const state = createInitialSnakesAndLaddersState({
+      players,
+      seed: "test-seed-rolls",
+      now: "2026-01-01T00:00:00.000Z"
+    });
+
+    const res = applySnakesAndLaddersAction({
+      state,
+      playerId: "u1",
+      action: { type: "roll_dice" },
+      now: "2026-01-01T00:00:01.000Z"
+    });
+
+    expect(res.accepted).toBe(true);
+    const p1 = res.state.players.find((p) => p.userId === "u1");
+    expect(p1?.lastRoll).toBeGreaterThanOrEqual(1);
+    expect(p1?.lastRoll).toBeLessThanOrEqual(6);
+    expect(p1?.lastRollResult).toBeDefined();
+    expect(typeof p1?.lastRollResult).toBe("string");
+  });
 });

@@ -6,8 +6,7 @@ import {
   getSquareCoordinates,
   SNAKES_AND_LADDERS_PIECES,
   type PublicSnakesAndLaddersPlayer,
-  type PublicSnakesAndLaddersState,
-  type SnakesAndLaddersMoveEvent
+  type PublicSnakesAndLaddersState
 } from "@tabletop/game-core";
 import { PLAYER_COLORS } from "../board-games/shared/ui-utils";
 import { LadderSvg } from "./LadderSvg";
@@ -35,10 +34,26 @@ function getTileColor(square: number, row: number, col: number): string {
   return TILE_PALETTE[idx] ?? "#38BDF8";
 }
 
+// Helper to get compact distinct player label
+export function getPlayerBadge(
+  player: { userId: string; displayName: string; seat: number; isBot: boolean },
+  currentUserId: string | null
+): string {
+  if (player.userId === currentUserId) return "YOU";
+  if (player.isBot) {
+    const match = player.displayName.match(/\d+/);
+    return match ? `B${match[0]}` : "BOT";
+  }
+  const parts = player.displayName.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return `${parts[0]![0]}${parts[1]![0]}`.toUpperCase();
+  }
+  return player.displayName.slice(0, 2).toUpperCase() || `P${player.seat + 1}`;
+}
+
 interface SnakesAndLaddersBoardViewProps {
   state: PublicSnakesAndLaddersState;
   currentUserId: string | null;
-  onSelectTile?: (square: number) => void;
 }
 
 export function SnakesAndLaddersBoardView({
@@ -69,7 +84,7 @@ export function SnakesAndLaddersBoardView({
         icon: "🚀",
         color: "text-emerald-300"
       });
-      const timer = setTimeout(() => setMoveBanner(null), 3200);
+      const timer = setTimeout(() => setMoveBanner(null), 3000);
       return () => clearTimeout(timer);
     }
 
@@ -119,29 +134,17 @@ export function SnakesAndLaddersBoardView({
   }, [lastMove, players]);
 
   // Group players by board square (only for position >= 1)
+  // FIX: Never skip adding players during animations so their pieces NEVER vanish from the board!
   const playersBySquare = useMemo(() => {
     const map = new Map<number, PublicSnakesAndLaddersPlayer[]>();
     for (const p of players) {
       if (p.position >= 1 && p.position <= 100) {
-        // If player is currently being swallowed, hide them from head square during swallow animation
-        if (activeSnakeId && swallowingPlayer?.userId === p.userId) {
-          continue;
-        }
-        // If player is climbing, hide them during climb animation (LadderSvg renders them)
-        if (activeLadderId && climbingPlayer?.userId === p.userId) {
-          continue;
-        }
         const list = map.get(p.position) ?? [];
         list.push(p);
         map.set(p.position, list);
       }
     }
     return map;
-  }, [players, activeSnakeId, swallowingPlayer, activeLadderId, climbingPlayer]);
-
-  // Players waiting at home base (position === 0)
-  const homeBasePlayers = useMemo(() => {
-    return players.filter((p) => p.position === 0);
   }, [players]);
 
   // 100 Tiles array
@@ -155,7 +158,7 @@ export function SnakesAndLaddersBoardView({
   }, []);
 
   return (
-    <div className="relative mx-auto flex w-full max-w-[760px] flex-col items-center select-none">
+    <div className="relative flex h-full max-h-full aspect-square w-auto max-w-full items-center justify-center select-none">
       {/* Dynamic Action Notification Banner */}
       <AnimatePresence>
         {moveBanner ? (
@@ -163,7 +166,7 @@ export function SnakesAndLaddersBoardView({
             initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            className="absolute -top-12 z-30 flex items-center gap-2 rounded-full border border-white/20 bg-slate-950/90 px-4 py-1.5 shadow-2xl backdrop-blur-md"
+            className="absolute -top-10 z-30 flex items-center gap-2 rounded-full border border-white/20 bg-slate-950/95 px-4 py-1.5 shadow-2xl backdrop-blur-md"
           >
             <span className="text-xl">{moveBanner.icon}</span>
             <span className={`text-xs font-black tracking-wide ${moveBanner.color}`}>
@@ -173,8 +176,8 @@ export function SnakesAndLaddersBoardView({
         ) : null}
       </AnimatePresence>
 
-      {/* Board Outer Container */}
-      <div className="relative w-full aspect-square rounded-3xl border-4 border-amber-950/80 bg-[#1e130b] p-2.5 sm:p-3.5 shadow-[0_25px_60px_rgba(0,0,0,0.7),inset_0_2px_8px_rgba(255,255,255,0.15)]">
+      {/* Board Outer Container - fills full height */}
+      <div className="relative h-full w-full aspect-square rounded-3xl border-4 border-amber-950/80 bg-[#1e130b] p-2 sm:p-2.5 shadow-[0_25px_60px_rgba(0,0,0,0.7),inset_0_2px_8px_rgba(255,255,255,0.15)]">
         {/* SVG Board Rendering Canvas */}
         <svg
           viewBox="0 0 1000 1000"
@@ -184,6 +187,15 @@ export function SnakesAndLaddersBoardView({
             {/* Tile Bevel Highlight & Shadow */}
             <filter id="tile-bevel" x="-10%" y="-10%" width="120%" height="120%">
               <feDropShadow dx="1" dy="1" stdDeviation="1" floodColor="#000000" floodOpacity="0.25" />
+            </filter>
+
+            {/* Glowing Aura Filter for Active & Current Player */}
+            <filter id="turn-glow" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
             </filter>
           </defs>
 
@@ -318,7 +330,7 @@ export function SnakesAndLaddersBoardView({
             })}
           </g>
 
-          {/* 4. Player Tokens on Board Layer */}
+          {/* 4. Player Tokens on Board Layer - PROMINENT, BIGGER & HIGHLIGHTED */}
           <g id="tokens-layer">
             {Array.from(playersBySquare.entries()).map(([square, squarePlayers]) => {
               const coords = getSquareCoordinates(square);
@@ -332,82 +344,99 @@ export function SnakesAndLaddersBoardView({
                     // Offset calculations for multiple pieces on same square
                     let ox = 0;
                     let oy = 0;
+                    const baseRadius = count === 1 ? 26 : count === 2 ? 22 : 18;
+                    const emojiSize = count === 1 ? 27 : count === 2 ? 22 : 18;
+
                     if (count === 2) {
-                      ox = idx === 0 ? -14 : 14;
+                      ox = idx === 0 ? -17 : 17;
                     } else if (count === 3) {
                       const angles = [0, (2 * Math.PI) / 3, (4 * Math.PI) / 3];
-                      ox = Math.cos(angles[idx]!) * 18;
-                      oy = Math.sin(angles[idx]!) * 18;
+                      ox = Math.cos(angles[idx]!) * 20;
+                      oy = Math.sin(angles[idx]!) * 20;
                     } else if (count >= 4) {
                       const angle = (idx / count) * 2 * Math.PI;
-                      ox = Math.cos(angle) * 22;
-                      oy = Math.sin(angle) * 22;
+                      ox = Math.cos(angle) * 24;
+                      oy = Math.sin(angle) * 24;
                     }
 
                     const pieceInfo = SNAKES_AND_LADDERS_PIECES.find((p) => p.id === player.piece);
                     const isTurn = player.userId === currentPlayerId;
                     const isMe = player.userId === currentUserId;
                     const color = PLAYER_COLORS[player.seat % PLAYER_COLORS.length] ?? "#F59E0B";
+                    const badge = getPlayerBadge(player, currentUserId);
 
                     return (
                       <g
                         key={player.userId}
                         transform={`translate(${cx + ox}, ${cy + oy})`}
                       >
-                        {/* Current turn pulsing highlight */}
+                        {/* Current turn pulsing outer ring */}
                         {isTurn ? (
                           <circle
-                            r="24"
+                            r={baseRadius + 8}
                             fill={color}
                             opacity="0.35"
                             className="animate-ping"
                           />
                         ) : null}
 
-                        {/* Player Token Base Disc */}
+                        {/* Distinct Glow for Current Turn & User */}
+                        {isTurn || isMe ? (
+                          <circle
+                            r={baseRadius + 4}
+                            fill="none"
+                            stroke={isMe ? "#FBBF24" : color}
+                            strokeWidth="3.5"
+                            strokeDasharray={isTurn ? "8 4" : "none"}
+                            opacity="0.9"
+                            filter="url(#turn-glow)"
+                          />
+                        ) : null}
+
+                        {/* Player Token Base Disc - Big & Solid with Colored Ring */}
                         <circle
-                          r="19"
+                          r={baseRadius}
                           fill="#FFFFFF"
                           stroke={color}
-                          strokeWidth={isTurn || isMe ? "4" : "3"}
-                          filter="drop-shadow(0 4px 7px rgba(0,0,0,0.45))"
+                          strokeWidth={isTurn || isMe ? "4.5" : "3.5"}
+                          filter="drop-shadow(0 6px 10px rgba(0,0,0,0.6))"
                         />
 
-                        {/* Token Emoji Icon */}
+                        {/* Token Custom Emoji Icon - Prominent & Big */}
                         <text
-                          y="6.5"
+                          y={baseRadius * 0.35}
                           textAnchor="middle"
-                          fontSize="21"
+                          fontSize={emojiSize}
                           className="pointer-events-none select-none"
                         >
                           {pieceInfo?.emoji ?? "🎲"}
                         </text>
 
-                        {/* You indicator badge */}
-                        {isMe ? (
-                          <g transform="translate(0, -18)">
-                            <rect
-                              x="-14"
-                              y="-8"
-                              width="28"
-                              height="13"
-                              rx="6"
-                              fill="#0F172A"
-                              stroke="#FBBF24"
-                              strokeWidth="1"
-                            />
-                            <text
-                              x="0"
-                              y="2"
-                              textAnchor="middle"
-                              fontSize="8"
-                              fontWeight="900"
-                              fill="#FBBF24"
-                            >
-                              YOU
-                            </text>
-                          </g>
-                        ) : null}
+                        {/* Player Distinction Pill Badge */}
+                        <g transform={`translate(0, ${-baseRadius - 2})`}>
+                          <rect
+                            x={badge.length > 3 ? "-18" : "-13"}
+                            y="-9"
+                            width={badge.length > 3 ? "36" : "26"}
+                            height="13"
+                            rx="6"
+                            fill="#0F172A"
+                            stroke={isMe ? "#FBBF24" : color}
+                            strokeWidth="1.5"
+                            filter="drop-shadow(0 2px 4px rgba(0,0,0,0.6))"
+                          />
+                          <text
+                            x="0"
+                            y="1.5"
+                            textAnchor="middle"
+                            fontSize="8.5"
+                            fontWeight="900"
+                            fontFamily="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont"
+                            fill={isMe ? "#FBBF24" : "#FFFFFF"}
+                          >
+                            {badge}
+                          </text>
+                        </g>
                       </g>
                     );
                   })}
@@ -416,65 +445,6 @@ export function SnakesAndLaddersBoardView({
             })}
           </g>
         </svg>
-      </div>
-
-      {/* OFF-BOARD STARTING DOCK / HOME BASE (Players with position === 0) */}
-      <div className="mt-3 w-full rounded-2xl border border-white/10 bg-[#0c1824]/90 p-3 shadow-lg">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2">
-          <div className="flex items-center gap-2">
-            <span className="text-base">🏕️</span>
-            <span className="text-xs font-black uppercase tracking-wider text-amber-300">
-              Starting Camp (Off-Board)
-            </span>
-            <span className="rounded-full bg-amber-400/20 px-2 py-0.5 text-[10px] font-black text-amber-200">
-              {homeBasePlayers.length} waiting
-            </span>
-          </div>
-          <span className="text-[11px] font-semibold text-white/50">
-            🎲 Bangladesh Rule: Roll a <strong>1</strong> to enter square 1!
-          </span>
-        </div>
-
-        {homeBasePlayers.length === 0 ? (
-          <p className="mt-2 text-center text-xs font-bold text-white/30 py-1">
-            All players have launched onto the track! 🏁
-          </p>
-        ) : (
-          <div className="mt-2.5 flex flex-wrap gap-2.5">
-            {homeBasePlayers.map((player) => {
-              const pieceInfo = SNAKES_AND_LADDERS_PIECES.find((p) => p.id === player.piece);
-              const isTurn = player.userId === currentPlayerId;
-              const isMe = player.userId === currentUserId;
-              const color = PLAYER_COLORS[player.seat % PLAYER_COLORS.length] ?? "#F59E0B";
-
-              return (
-                <div
-                  key={player.userId}
-                  className={`flex items-center gap-2 rounded-xl border px-2.5 py-1.5 transition-all ${
-                    isTurn
-                      ? "border-amber-400 bg-amber-500/20 ring-2 ring-amber-400/40 shadow-[0_0_12px_rgba(251,191,36,0.3)] animate-pulse"
-                      : "border-white/10 bg-black/40"
-                  }`}
-                >
-                  <span
-                    className="grid h-7 w-7 place-items-center rounded-lg border-2 text-base shadow"
-                    style={{ borderColor: color, backgroundColor: `${color}20` }}
-                  >
-                    {pieceInfo?.emoji ?? "🎲"}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-xs font-black text-white truncate max-w-[90px]">
-                      {player.displayName} {isMe ? "(You)" : ""}
-                    </p>
-                    <p className="text-[10px] font-bold text-amber-300/80">
-                      Needs 1 to enter
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
       </div>
     </div>
   );

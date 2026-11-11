@@ -56,6 +56,8 @@ export interface SnakesAndLaddersPlayer {
   position: number; // 0 = Home (off-board), 1 to 100 = On Board
   enteredBoard: boolean;
   consecutiveSixes: number;
+  lastRoll?: number | null;
+  lastRollResult?: string | null;
 }
 
 export interface SnakesAndLaddersSettings {
@@ -121,6 +123,8 @@ export interface PublicSnakesAndLaddersPlayer {
   piece: SnakesAndLaddersPieceId;
   position: number;
   enteredBoard: boolean;
+  lastRoll: number | null;
+  lastRollResult: string | null;
 }
 
 export interface PublicSnakesAndLaddersState {

@@ -8,16 +8,12 @@ import {
   Dices,
   Crown,
   Users,
-  Clock,
-  Sparkles,
-  ArrowRight,
-  Shield,
   Palette,
   RotateCcw,
-  Volume2,
-  ChevronRight,
-  CheckCircle2,
-  X
+  Sparkles,
+  X,
+  History,
+  Compass
 } from "lucide-react";
 import type {
   GameEvent,
@@ -29,7 +25,7 @@ import type { RoomStateView, TimerView } from "@tabletop/shared";
 import { PLAYER_COLORS } from "../board-games/shared/ui-utils";
 import { RoomChat } from "@/features/game-shell/RoomChat";
 import { TumblingDice3D } from "./TumblingDice3D";
-import { SnakesAndLaddersBoardView } from "./SnakesAndLaddersBoardView";
+import { SnakesAndLaddersBoardView, getPlayerBadge } from "./SnakesAndLaddersBoardView";
 import { PiecePicker } from "./PiecePicker";
 
 export interface SnakesAndLaddersTableProps {
@@ -59,7 +55,7 @@ export function SnakesAndLaddersTable({
 }: SnakesAndLaddersTableProps) {
   const router = useRouter();
   const [showPieceModal, setShowPieceModal] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<"standings" | "chat" | "feed">("standings");
+  const [sidebarTab, setSidebarTab] = useState<"standings" | "chat">("standings");
 
   const me = state.players.find((p) => p.userId === currentUserId);
   const isMyTurn = state.currentPlayerId === currentUserId;
@@ -69,10 +65,16 @@ export function SnakesAndLaddersTable({
 
   // Automatically sync preferred piece if selected in lobby or changed
   useEffect(() => {
-    if (preferredPiece && me && me.piece !== preferredPiece && state.phase === "playing") {
+    if (
+      preferredPiece &&
+      me &&
+      me.piece !== preferredPiece &&
+      state.phase === "playing" &&
+      !state.players.some((p) => p.userId !== currentUserId && p.piece === preferredPiece)
+    ) {
       onAction("select_piece", { piece: preferredPiece });
     }
-  }, [preferredPiece, me?.piece, state.phase]);
+  }, [preferredPiece, me?.piece, state.phase, state.players, currentUserId, onAction]);
 
   const canRoll = Boolean(
     isMyTurn &&
@@ -92,48 +94,59 @@ export function SnakesAndLaddersTable({
     });
   }, [state.players]);
 
+  // Players waiting at Starting Camp (position === 0)
+  const homeBasePlayers = useMemo(() => {
+    return state.players.filter((p) => p.position === 0);
+  }, [state.players]);
+
+  // Map of taken pieces by other players to enforce uniqueness
+  const takenByMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const p of state.players) {
+      if (p.userId !== currentUserId) {
+        map[p.piece] = p.displayName;
+      }
+    }
+    return map;
+  }, [state.players, currentUserId]);
+
   const myPieceInfo = SNAKES_AND_LADDERS_PIECES.find((p) => p.id === me?.piece);
 
   return (
     <div className="relative flex h-dvh w-full flex-col overflow-hidden bg-[#070d14] text-slate-100">
-      {/* HEADER */}
-      <header className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 bg-[#0c1622]/90 px-4 sm:px-6 backdrop-blur-md z-20">
-        <div className="flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-xl shadow-md">
+      {/* COMPACT SLIM HEADER (Maximizes vertical screen space for the board) */}
+      <header className="flex h-12 shrink-0 items-center justify-between border-b border-white/10 bg-[#0c1622]/90 px-3 sm:px-5 backdrop-blur-md z-20">
+        <div className="flex items-center gap-2.5">
+          <div className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 text-base shadow">
             🐍
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-base font-black tracking-tight sm:text-lg">
+              <h1 className="text-sm font-black tracking-tight sm:text-base">
                 Snakes & Ladders
               </h1>
-              <span className="rounded-full bg-amber-400/20 px-2 py-0.5 text-[10px] font-black uppercase text-amber-300">
+              <span className="rounded-full bg-amber-400/20 px-2 py-0.2 text-[9px] font-black uppercase text-amber-300">
                 {state.board.name}
               </span>
             </div>
-            <p className="text-[11px] text-white/50">
-              {state.players.length} Players • Target: Tile 100 🏆
-            </p>
           </div>
         </div>
 
-        {/* Current Turn Badge */}
-        <div className="flex items-center gap-3">
+        {/* Current Turn Badge & Controls */}
+        <div className="flex items-center gap-2.5">
           <div
-            className={`flex items-center gap-2 rounded-2xl border px-3.5 py-1.5 transition-all ${
+            className={`flex items-center gap-2 rounded-xl border px-3 py-1 transition-all ${
               isMyTurn
-                ? "border-amber-400 bg-amber-500/20 text-amber-200 ring-2 ring-amber-400/40 animate-pulse shadow-[0_0_15px_rgba(251,191,36,0.3)]"
+                ? "border-amber-400 bg-amber-500/20 text-amber-200 ring-2 ring-amber-400/40 animate-pulse shadow-[0_0_12px_rgba(251,191,36,0.3)]"
                 : "border-white/10 bg-black/40 text-white/70"
             }`}
           >
-            <span className="text-base">
-              {isMyTurn ? "👉" : "⏳"}
-            </span>
+            <span className="text-sm">{isMyTurn ? "👉" : "⏳"}</span>
             <div className="text-left">
-              <p className="text-[9px] font-black uppercase tracking-widest text-white/50">
-                {isMyTurn ? "Your Turn" : "Current Turn"}
+              <p className="text-[8px] font-black uppercase tracking-widest text-white/50 leading-none">
+                {isMyTurn ? "Your Turn" : "Turn"}
               </p>
-              <p className="text-xs font-black truncate max-w-[120px]">
+              <p className="text-xs font-black truncate max-w-[110px] leading-tight">
                 {currentPlayer?.displayName ?? "Waiting..."}
               </p>
             </div>
@@ -144,12 +157,12 @@ export function SnakesAndLaddersTable({
             <button
               type="button"
               onClick={() => setShowPieceModal(true)}
-              className="flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs font-bold text-white hover:border-amber-400/50 hover:bg-amber-400/10 transition"
+              className="flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-2.5 py-1 text-xs font-bold text-white hover:border-amber-400/50 hover:bg-amber-400/10 transition"
               title="Change your game piece"
             >
               <Palette className="h-3.5 w-3.5 text-amber-400" />
               <span className="text-base">{myPieceInfo?.emoji}</span>
-              <span className="hidden sm:inline">Avatar</span>
+              <span className="hidden sm:inline text-xs">Piece</span>
             </button>
           ) : null}
 
@@ -158,7 +171,7 @@ export function SnakesAndLaddersTable({
             <button
               type="button"
               onClick={() => onEndMatch(room.id)}
-              className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs font-bold text-rose-300 hover:bg-rose-500/20 transition"
+              className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-xs font-bold text-rose-300 hover:bg-rose-500/20 transition"
             >
               End Room
             </button>
@@ -166,21 +179,183 @@ export function SnakesAndLaddersTable({
         </div>
       </header>
 
-      {/* MAIN LAYOUT: BOARD ON LEFT, CONTROLS & STANDINGS ON RIGHT */}
+      {/* 3-COLUMN MAIN LAYOUT:
+          LEFT: Starting Camp & Player Identification with Last Turn Rolls
+          CENTER: Giant Board (Takes 100% full vertical height)
+          RIGHT: 3D Tumbling Dice & Standings Table
+      */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* CENTER / LEFT: BOARD VIEW */}
-        <main className="flex-1 overflow-y-auto p-3 sm:p-5 flex flex-col items-center justify-center">
+        {/* LEFT COLUMN: PLAYER IDENTIFICATION, POSITIONS & LAST TURN ROLLS */}
+        <aside className="w-64 xl:w-72 shrink-0 border-r border-white/10 bg-[#0a121c] flex flex-col min-h-0 overflow-hidden">
+          <div className="flex items-center gap-1.5 border-b border-white/10 px-3 py-2 bg-black/20 text-xs font-black uppercase tracking-wider text-amber-300">
+            <Compass className="h-3.5 w-3.5" />
+            <span>Players & Recent Rolls</span>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-2.5 space-y-3">
+            {/* 1. STARTING CAMP (Off-Board pieces waiting for a roll of 1) */}
+            <div className="rounded-xl border border-amber-500/25 bg-amber-950/15 p-2.5">
+              <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-300 flex items-center gap-1">
+                  <span>🏕️</span> Starting Camp
+                </span>
+                <span className="rounded bg-amber-400/20 px-1.5 py-0.2 text-[9px] font-black text-amber-200">
+                  {homeBasePlayers.length} waiting
+                </span>
+              </div>
+              <p className="mt-1 text-[10px] text-white/50">
+                Roll a <strong>1</strong> to launch onto square 1
+              </p>
+
+              {homeBasePlayers.length === 0 ? (
+                <p className="mt-1.5 text-center text-[10px] font-bold text-emerald-400/70">
+                  All pieces are on the board! 🏁
+                </p>
+              ) : (
+                <div className="mt-2 space-y-1.5">
+                  {homeBasePlayers.map((player) => {
+                    const pieceInfo = SNAKES_AND_LADDERS_PIECES.find((p) => p.id === player.piece);
+                    const color = PLAYER_COLORS[player.seat % PLAYER_COLORS.length] ?? "#F59E0B";
+                    const isTurn = player.userId === state.currentPlayerId;
+                    const isMe = player.userId === currentUserId;
+                    const badge = getPlayerBadge(player, currentUserId);
+
+                    return (
+                      <div
+                        key={player.userId}
+                        className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 transition-all ${
+                          isTurn
+                            ? "border-amber-400 bg-amber-500/20 ring-1 ring-amber-400/40"
+                            : "border-white/10 bg-black/40"
+                        }`}
+                      >
+                        <span
+                          className="relative grid h-7 w-7 place-items-center rounded-lg border-2 text-base shrink-0 shadow"
+                          style={{ borderColor: color, backgroundColor: `${color}25` }}
+                        >
+                          {pieceInfo?.emoji ?? "🎲"}
+                          <span
+                            className="absolute -top-1 -right-1 rounded bg-slate-900 px-0.5 text-[7px] font-black border"
+                            style={{ borderColor: color, color }}
+                          >
+                            {badge}
+                          </span>
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[11px] font-black text-white truncate">
+                            {player.displayName} {isMe ? "(You)" : ""}
+                          </p>
+                          <p className="text-[9px] font-bold text-amber-300/80">
+                            Waiting for 1 🎲
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* 2. ALL PLAYERS: POSITION & LAST TURN ROLL */}
+            <div className="space-y-2">
+              <span className="text-[10px] font-black uppercase tracking-wider text-white/50 flex items-center gap-1 px-1">
+                <History className="h-3 w-3" /> Player Position & Last Roll
+              </span>
+
+              {state.players.map((player) => {
+                const pieceInfo = SNAKES_AND_LADDERS_PIECES.find((p) => p.id === player.piece);
+                const color = PLAYER_COLORS[player.seat % PLAYER_COLORS.length] ?? "#F59E0B";
+                const isTurn = player.userId === state.currentPlayerId;
+                const isMe = player.userId === currentUserId;
+                const badge = getPlayerBadge(player, currentUserId);
+
+                return (
+                  <div
+                    key={player.userId}
+                    className={`rounded-xl border p-2.5 transition-all ${
+                      isTurn
+                        ? "border-amber-400 bg-gradient-to-r from-amber-500/20 to-amber-600/10 ring-2 ring-amber-400/50 shadow-[0_0_12px_rgba(251,191,36,0.25)]"
+                        : isMe
+                        ? "border-white/20 bg-white/5"
+                        : "border-white/5 bg-black/30"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      {/* Big Distinct Token Disc */}
+                      <span
+                        className="relative grid h-9 w-9 place-items-center rounded-xl border-2 text-xl shrink-0 shadow-md"
+                        style={{ borderColor: color, backgroundColor: `${color}25` }}
+                      >
+                        {pieceInfo?.emoji ?? "🎲"}
+                        <span
+                          className="absolute -top-1.5 -right-1.5 rounded-full bg-slate-900 px-1 py-0.2 text-[8px] font-black border"
+                          style={{ borderColor: color, color: isMe ? "#FBBF24" : color }}
+                        >
+                          {badge}
+                        </span>
+                      </span>
+
+                      {/* Player Info & Current Square */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1">
+                          <p className="text-xs font-black text-white truncate">
+                            {player.displayName}
+                          </p>
+                          {isMe ? (
+                            <span className="rounded bg-amber-400/20 px-1 text-[8px] font-black text-amber-300">
+                              YOU
+                            </span>
+                          ) : null}
+                          {player.isBot ? (
+                            <span className="rounded bg-purple-400/20 px-1 text-[8px] font-black text-purple-300">
+                              BOT
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="text-[10px] font-bold text-amber-300">
+                          {player.position === 0 ? "🏕️ Starting Camp (0)" : `📍 Square ${player.position}`}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* LAST TURN ROLL BOX */}
+                    <div className="mt-2 flex items-center justify-between rounded-lg border border-white/5 bg-black/40 px-2 py-1 text-[10px]">
+                      <span className="font-bold text-white/50">Last Turn:</span>
+                      {player.lastRoll ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className="grid h-4 w-4 place-items-center rounded bg-amber-400 text-[9px] font-black text-slate-950">
+                            {player.lastRoll}
+                          </span>
+                          <span className="font-semibold text-white/80 truncate max-w-[110px]">
+                            {player.lastRollResult ?? `Rolled ${player.lastRoll}`}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="font-semibold text-white/30 italic">
+                          Awaiting first roll
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </aside>
+
+        {/* CENTER COLUMN: GIANT BOARD (Occupies 100% of vertical height) */}
+        <main className="flex-1 flex items-center justify-center min-h-0 overflow-hidden p-2">
           <SnakesAndLaddersBoardView
             state={state}
             currentUserId={currentUserId}
           />
         </main>
 
-        {/* RIGHT PANEL: DICE CONTROL + 15-PLAYER STANDINGS / CHAT */}
-        <aside className="w-80 lg:w-96 shrink-0 border-l border-white/10 bg-[#0a121c] flex flex-col min-h-0">
+        {/* RIGHT COLUMN: 3D TUMBLING DICE CONTROLS & STANDINGS TABLE */}
+        <aside className="w-76 lg:w-84 shrink-0 border-l border-white/10 bg-[#0a121c] flex flex-col min-h-0">
           {/* DICE ROLLING SECTION */}
-          <div className="p-4 border-b border-white/10 bg-gradient-to-b from-white/[0.03] to-transparent">
-            <div className="flex items-center justify-between mb-2">
+          <div className="p-3.5 border-b border-white/10 bg-gradient-to-b from-white/[0.03] to-transparent">
+            <div className="flex items-center justify-between mb-1.5">
               <span className="text-[11px] font-black uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
                 <Dices className="h-3.5 w-3.5" /> Dice Action
               </span>
@@ -192,7 +367,7 @@ export function SnakesAndLaddersTable({
             </div>
 
             {/* 3D Tumbling Dice Display & Roll Action */}
-            <div className="flex flex-col items-center justify-center py-2">
+            <div className="flex flex-col items-center justify-center py-1">
               <TumblingDice3D
                 value={state.diceRoll}
                 actionNumber={state.actionNumber}
@@ -203,7 +378,7 @@ export function SnakesAndLaddersTable({
               />
 
               {/* Status / Bangladesh Rule Hint */}
-              <div className="mt-3 text-center">
+              <div className="mt-2.5 text-center">
                 {me?.position === 0 ? (
                   <p className="text-xs font-black text-amber-300 animate-pulse">
                     ⚠️ Roll a 1 to enter the board!
@@ -214,19 +389,19 @@ export function SnakesAndLaddersTable({
                   </p>
                 ) : (
                   <p className="text-xs text-white/40">
-                    Waiting for {currentPlayer?.displayName} to take their turn...
+                    Waiting for {currentPlayer?.displayName} to roll...
                   </p>
                 )}
               </div>
             </div>
           </div>
 
-          {/* TABS HEADER: STANDINGS / CHAT / LOG */}
+          {/* TABS HEADER: STANDINGS / CHAT */}
           <div className="flex border-b border-white/10 bg-black/20 text-xs font-bold">
             <button
               type="button"
               onClick={() => setSidebarTab("standings")}
-              className={`flex-1 py-2.5 text-center transition flex items-center justify-center gap-1.5 ${
+              className={`flex-1 py-2 text-center transition flex items-center justify-center gap-1.5 ${
                 sidebarTab === "standings"
                   ? "border-b-2 border-amber-400 text-amber-300 bg-amber-400/5 font-black"
                   : "text-white/50 hover:text-white"
@@ -237,20 +412,8 @@ export function SnakesAndLaddersTable({
             </button>
             <button
               type="button"
-              onClick={() => setSidebarTab("feed")}
-              className={`flex-1 py-2.5 text-center transition flex items-center justify-center gap-1.5 ${
-                sidebarTab === "feed"
-                  ? "border-b-2 border-amber-400 text-amber-300 bg-amber-400/5 font-black"
-                  : "text-white/50 hover:text-white"
-              }`}
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              <span>Activity</span>
-            </button>
-            <button
-              type="button"
               onClick={() => setSidebarTab("chat")}
-              className={`flex-1 py-2.5 text-center transition flex items-center justify-center gap-1.5 ${
+              className={`flex-1 py-2 text-center transition flex items-center justify-center gap-1.5 ${
                 sidebarTab === "chat"
                   ? "border-b-2 border-amber-400 text-amber-300 bg-amber-400/5 font-black"
                   : "text-white/50 hover:text-white"
@@ -263,18 +426,19 @@ export function SnakesAndLaddersTable({
 
           {/* TAB CONTENT: STANDINGS LIST */}
           {sidebarTab === "standings" ? (
-            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            <div className="flex-1 overflow-y-auto p-2.5 space-y-2">
               {sortedStandings.map((player, rank) => {
                 const pieceInfo = SNAKES_AND_LADDERS_PIECES.find((p) => p.id === player.piece);
                 const isTurn = player.userId === state.currentPlayerId;
                 const isMe = player.userId === currentUserId;
                 const color = PLAYER_COLORS[player.seat % PLAYER_COLORS.length] ?? "#F59E0B";
                 const isWinner = player.position === 100;
+                const badge = getPlayerBadge(player, currentUserId);
 
                 return (
                   <div
                     key={player.userId}
-                    className={`flex items-center justify-between rounded-xl border p-2.5 transition-all ${
+                    className={`flex items-center justify-between rounded-xl border p-2 transition-all ${
                       isWinner
                         ? "border-amber-400 bg-gradient-to-r from-amber-500/20 to-amber-600/10 ring-2 ring-amber-400/40"
                         : isTurn
@@ -284,39 +448,40 @@ export function SnakesAndLaddersTable({
                         : "border-white/5 bg-black/30"
                     }`}
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
                       {/* Rank Medal */}
                       <span className="grid h-6 w-6 place-items-center rounded-lg bg-black/40 text-xs font-black text-amber-300 shrink-0">
                         {rank === 0 ? "🥇" : rank === 1 ? "🥈" : rank === 2 ? "🥉" : `#${rank + 1}`}
                       </span>
 
-                      {/* Piece Icon */}
+                      {/* Distinct Token Disc */}
                       <span
-                        className="grid h-8 w-8 place-items-center rounded-lg border text-lg shrink-0 shadow"
-                        style={{ borderColor: color, backgroundColor: `${color}20` }}
+                        className="relative grid h-8 w-8 place-items-center rounded-lg border-2 text-lg shrink-0 shadow"
+                        style={{ borderColor: color, backgroundColor: `${color}25` }}
                       >
                         {pieceInfo?.emoji ?? "🎲"}
+                        <span
+                          className="absolute -top-1 -right-1 rounded bg-slate-900 px-0.5 text-[7px] font-black border"
+                          style={{ borderColor: color, color }}
+                        >
+                          {badge}
+                        </span>
                       </span>
 
                       {/* Player Info */}
                       <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-xs font-black text-white truncate max-w-[110px]">
+                        <div className="flex items-center gap-1">
+                          <p className="text-xs font-black text-white truncate max-w-[100px]">
                             {player.displayName}
                           </p>
                           {isMe ? (
-                            <span className="rounded bg-amber-400/20 px-1 py-0.2 text-[9px] font-black text-amber-300">
+                            <span className="rounded bg-amber-400/20 px-1 text-[8px] font-black text-amber-300">
                               YOU
-                            </span>
-                          ) : null}
-                          {player.isBot ? (
-                            <span className="rounded bg-purple-400/20 px-1 py-0.2 text-[9px] font-black text-purple-300">
-                              BOT
                             </span>
                           ) : null}
                         </div>
                         <p className="text-[10px] text-white/50 truncate">
-                          {pieceInfo?.name}
+                          {player.lastRoll ? `Last: ${player.lastRoll}` : "No roll yet"}
                         </p>
                       </div>
                     </div>
@@ -324,12 +489,12 @@ export function SnakesAndLaddersTable({
                     {/* Tile Position */}
                     <div className="text-right shrink-0">
                       {player.position === 0 ? (
-                        <span className="rounded-md bg-white/10 px-2 py-0.5 text-[10px] font-black text-white/60">
+                        <span className="rounded-md bg-white/10 px-1.5 py-0.5 text-[9px] font-black text-white/60">
                           Home (0)
                         </span>
                       ) : (
                         <div className="flex flex-col items-end">
-                          <span className="text-sm font-black text-amber-300">
+                          <span className="text-xs font-black text-amber-300">
                             Square {player.position}
                           </span>
                           <span className="text-[9px] font-semibold text-white/40">
@@ -341,30 +506,6 @@ export function SnakesAndLaddersTable({
                   </div>
                 );
               })}
-            </div>
-          ) : null}
-
-          {/* TAB CONTENT: ACTIVITY FEED */}
-          {sidebarTab === "feed" ? (
-            <div className="flex-1 overflow-y-auto p-3 space-y-1.5 text-xs font-medium">
-              {state.activityLog.length === 0 ? (
-                <p className="p-4 text-center text-white/40">No activity yet</p>
-              ) : (
-                state.activityLog
-                  .slice(-25)
-                  .reverse()
-                  .map((item) => (
-                    <div
-                      key={item.id}
-                      className="rounded-lg border border-white/5 bg-black/30 p-2 text-white/80"
-                    >
-                      <p>{item.message}</p>
-                      <p className="mt-0.5 text-[9px] text-white/30">
-                        {new Date(item.createdAt).toLocaleTimeString()}
-                      </p>
-                    </div>
-                  ))
-              )}
             </div>
           ) : null}
 
@@ -382,7 +523,7 @@ export function SnakesAndLaddersTable({
         </aside>
       </div>
 
-      {/* PIECE SELECTOR MODAL */}
+      {/* PIECE SELECTOR MODAL (Enforces unique piece selection) */}
       <AnimatePresence>
         {showPieceModal ? (
           <motion.div
@@ -401,7 +542,7 @@ export function SnakesAndLaddersTable({
                 <div className="flex items-center gap-2">
                   <Palette className="h-5 w-5 text-amber-400" />
                   <h3 className="text-base font-black text-white">
-                    Select Your Piece Avatar
+                    Select Your Unique Piece Avatar
                   </h3>
                 </div>
                 <button
@@ -416,6 +557,7 @@ export function SnakesAndLaddersTable({
               <div className="mt-4">
                 <PiecePicker
                   selectedPiece={me?.piece ?? "horse"}
+                  takenByMap={takenByMap}
                   onSelect={(piece: SnakesAndLaddersPieceId) => {
                     onAction("select_piece", { piece });
                     setShowPieceModal(false);

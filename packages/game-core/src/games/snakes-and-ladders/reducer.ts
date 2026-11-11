@@ -57,7 +57,9 @@ export function createInitialSnakesAndLaddersState(params: {
         piece,
         position: 0, // Starts at Home (0)
         enteredBoard: false,
-        consecutiveSixes: 0
+        consecutiveSixes: 0,
+        lastRoll: null,
+        lastRollResult: null
       };
     });
 
@@ -146,6 +148,11 @@ export function applySnakesAndLaddersAction(params: {
   if (action.type === "select_piece") {
     const player = state.players.find((p) => p.userId === playerId);
     if (!player) return { accepted: false, message: "Player not found.", state: params.state };
+    // Enforce uniqueness: no two players can have the same piece
+    const alreadyTaken = state.players.some((p) => p.userId !== playerId && p.piece === action.piece);
+    if (alreadyTaken) {
+      return { accepted: false, message: "That game piece is already taken by another player.", state: params.state };
+    }
     player.piece = action.piece;
     state.updatedAt = now;
     return { accepted: true, message: `${player.displayName} selected piece: ${action.piece}`, state };
@@ -192,8 +199,12 @@ export function applySnakesAndLaddersAction(params: {
         player.position = 1;
         targetPosition = 1;
         entered = true;
+        player.lastRoll = roll;
+        player.lastRollResult = "Entered Board 🚀";
         pushActivity(state, "board_entered", `🎉 ${player.displayName} rolled a 1 and entered the board at square 1!`, playerId, now);
       } else {
+        player.lastRoll = roll;
+        player.lastRollResult = `Rolled ${roll} (Needs 1)`;
         pushActivity(state, "roll_failed_entry", `🎲 ${player.displayName} rolled a ${roll} (needs 1 to enter).`, playerId, now);
       }
     } else {
@@ -205,10 +216,16 @@ export function applySnakesAndLaddersAction(params: {
         const overshoot = targetPosition - 100;
         targetPosition = 100 - overshoot;
         bounced = true;
+        player.lastRoll = roll;
+        player.lastRollResult = `Bounced to ${targetPosition} ↩️`;
         pushActivity(state, "bounce_back", `↩️ ${player.displayName} rolled a ${roll} and bounced back to square ${targetPosition}!`, playerId, now);
       } else if (!state.settings.exactRollToWin && targetPosition > 100) {
         targetPosition = 100;
+        player.lastRoll = roll;
+        player.lastRollResult = "Tile 100 🏆";
       } else {
+        player.lastRoll = roll;
+        player.lastRollResult = `Advanced to ${targetPosition} 🎯`;
         pushActivity(state, "moved", `🎲 ${player.displayName} rolled a ${roll} and advanced to square ${targetPosition}.`, playerId, now);
       }
       player.position = targetPosition;
@@ -218,6 +235,7 @@ export function applySnakesAndLaddersAction(params: {
     const ladder = state.board.ladders.find((l) => l.from === player.position);
     if (ladder) {
       player.position = ladder.to;
+      player.lastRollResult = `Ladder to ${ladder.to} 🪜`;
       pushActivity(state, "ladder_climb", `🪜 ${player.displayName} landed on a ladder at ${ladder.from} and climbed up to ${ladder.to}!`, playerId, now);
     }
 
@@ -225,6 +243,7 @@ export function applySnakesAndLaddersAction(params: {
     const snake = state.board.snakes.find((s) => s.from === player.position);
     if (snake) {
       player.position = snake.to;
+      player.lastRollResult = `Snake drop to ${snake.to} 🐍`;
       pushActivity(state, "snake_bite", `🐍 ${player.displayName} was bitten by a snake at ${snake.from} and swallowed down to ${snake.to}!`, playerId, now);
     }
 

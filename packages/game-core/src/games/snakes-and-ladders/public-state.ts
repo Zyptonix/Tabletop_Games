@@ -21,7 +21,9 @@ export function getSnakesAndLaddersPublicState(params: {
       isCurrentTurn: p.userId === state.currentPlayerId,
       piece: p.piece,
       position: p.position,
-      enteredBoard: p.enteredBoard
+      enteredBoard: p.enteredBoard,
+      lastRoll: p.lastRoll ?? null,
+      lastRollResult: p.lastRollResult ?? null
     })),
     currentPlayerId: state.currentPlayerId,
     diceRoll: state.diceRoll,

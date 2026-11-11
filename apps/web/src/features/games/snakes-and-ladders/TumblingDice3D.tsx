@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion, useAnimation } from "framer-motion";
-import { Dices, Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
+import { Dices } from "lucide-react";
 
 interface TumblingDice3DProps {
   value: number | null;
@@ -15,7 +15,7 @@ interface TumblingDice3DProps {
   size?: number; // size in px, default 72
 }
 
-// Rotations to show each face facing forward
+// Exact rotations to show each face facing forward
 const FACE_ROTATIONS: Record<number, { x: number; y: number }> = {
   1: { x: 0, y: 0 },
   2: { x: 0, y: -90 },
@@ -36,14 +36,13 @@ export function TumblingDice3D({
   size = 72
 }: TumblingDice3DProps) {
   const [internalRolling, setInternalRolling] = useState(false);
-  const [rotations, setRotations] = useState({ x: 0, y: 0, z: 0 });
-  const spinCounterRef = useRef(1);
-  const controls = useAnimation();
+  const [rotations, setRotations] = useState({ x: 0, y: 0 });
+  const rollCycleRef = useRef(0);
   const halfSize = size / 2;
 
   const isRolling = externalRolling || internalRolling;
 
-  // Sound synthesis for satisfying dice roll clatter
+  // Sound synthesis for satisfying wooden dice roll clatter
   const playRollAudio = () => {
     if (typeof window === "undefined") return;
     try {
@@ -51,12 +50,12 @@ export function TumblingDice3D({
       if (!AudioCtx) return;
       const ctx = new AudioCtx();
       const now = ctx.currentTime;
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 4; i++) {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = "triangle";
-        osc.frequency.setValueAtTime(140 + Math.random() * 90, now + i * 0.1);
-        gain.gain.setValueAtTime(0.08, now + i * 0.1);
+        osc.frequency.setValueAtTime(140 + Math.random() * 80, now + i * 0.1);
+        gain.gain.setValueAtTime(0.07, now + i * 0.1);
         gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.1 + 0.08);
         osc.connect(gain);
         gain.connect(ctx.destination);
@@ -74,34 +73,32 @@ export function TumblingDice3D({
     playRollAudio();
     onRoll();
 
-    // Guaranteed reset: always end rolling animation after 950ms even if server response delays
+    // Guaranteed reset: always end rolling animation smoothly after 850ms
     setTimeout(() => {
       setInternalRolling(false);
-    }, 950);
+    }, 850);
   };
 
   useEffect(() => {
     if (value && value >= 1 && value <= 6) {
-      spinCounterRef.current += 1;
+      rollCycleRef.current += 1;
       const target = FACE_ROTATIONS[value] ?? { x: 0, y: 0 };
-      // Add full 360-degree spins so it tumbles realistically every roll
-      const extraX = 360 * 2 * spinCounterRef.current;
-      const extraY = 360 * 2 * spinCounterRef.current;
+      // Forward spin with clean 360-degree increments for seamless tumble
+      const forwardTurns = 360 * 2 * rollCycleRef.current;
       setRotations({
-        x: target.x + extraX,
-        y: target.y + extraY,
-        z: (spinCounterRef.current % 2 === 0 ? 360 : -360)
+        x: target.x + forwardTurns,
+        y: target.y + forwardTurns
       });
     }
 
     const timer = setTimeout(() => {
       setInternalRolling(false);
-    }, 950);
+    }, 850);
     return () => clearTimeout(timer);
   }, [value, actionNumber]);
 
   const pipsColor = "bg-slate-900 shadow-inner";
-  const primaryPipColor = "bg-rose-600 shadow-inner"; // Classic red center pip for 1
+  const primaryPipColor = "bg-rose-600 shadow-inner"; // Classic ruby red center pip for 1
 
   return (
     <div className="flex flex-col items-center justify-center gap-3">
@@ -111,17 +108,17 @@ export function TumblingDice3D({
         style={{
           width: size + 36,
           height: size + 36,
-          perspective: 800
+          perspective: 900
         }}
         onClick={handleRollClick}
       >
         {/* Dynamic Cast Shadow */}
         <motion.div
           animate={{
-            scale: isRolling ? [1, 0.6, 1.1, 1] : 1,
-            opacity: isRolling ? [0.4, 0.15, 0.5, 0.4] : 0.45
+            scale: isRolling ? [1, 0.55, 1.05, 1] : 1,
+            opacity: isRolling ? [0.45, 0.18, 0.5, 0.45] : 0.45
           }}
-          transition={{ duration: 0.9, ease: "easeInOut" }}
+          transition={{ duration: 0.85, ease: "easeInOut" }}
           className="absolute -bottom-1 h-5 w-20 rounded-[100%] bg-black/60 blur-[6px] pointer-events-none"
         />
 
@@ -130,12 +127,13 @@ export function TumblingDice3D({
           animate={{
             rotateX: rotations.x,
             rotateY: rotations.y,
-            rotateZ: rotations.z,
-            y: isRolling ? [-30, 0, -15, 0] : 0
+            rotateZ: 0,
+            y: isRolling ? [-36, -6, 0] : 0,
+            scale: isRolling ? [1, 1.12, 1] : 1
           }}
           transition={{
-            duration: isRolling ? 0.95 : 0.4,
-            ease: [0.25, 1, 0.5, 1]
+            duration: isRolling ? 0.85 : 0.35,
+            ease: [0.16, 1, 0.3, 1]
           }}
           style={{
             width: size,

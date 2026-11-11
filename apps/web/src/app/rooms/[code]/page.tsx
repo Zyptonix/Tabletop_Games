@@ -257,6 +257,17 @@ export default function RoomPage() {
                           ((room.settings?.playerPieces as Record<string, unknown>)?.[user.id] as SnakesAndLaddersPieceId) ??
                           myLobbyPiece
                         }
+                        takenByMap={(() => {
+                          const map: Record<string, string> = {};
+                          const playerPieces = (room.settings?.playerPieces as Record<string, string>) ?? {};
+                          for (const [uid, piece] of Object.entries(playerPieces)) {
+                            if (uid !== user.id) {
+                              const p = room.players.find((rp) => rp.userId === uid);
+                              map[piece] = p?.displayName ?? "Another player";
+                            }
+                          }
+                          return map;
+                        })()}
                         onSelect={(piece) => {
                           setMyLobbyPiece(piece);
                           if (room.effectiveHostUserId === user.id) {
