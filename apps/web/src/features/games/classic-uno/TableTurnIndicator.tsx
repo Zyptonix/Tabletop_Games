@@ -104,6 +104,21 @@ export interface TableTurnIndicatorProps {
   isNoMercy?: boolean | undefined;
 }
 
+function useShortestPathRotation(targetAngle: number): number {
+  const rotationRef = useRef<number>(targetAngle);
+  const prevTargetRef = useRef<number>(targetAngle);
+
+  if (prevTargetRef.current !== targetAngle) {
+    let diff = (targetAngle - prevTargetRef.current) % 360;
+    if (diff > 180) diff -= 360;
+    if (diff < -180) diff += 360;
+    rotationRef.current += diff;
+    prevTargetRef.current = targetAngle;
+  }
+
+  return rotationRef.current;
+}
+
 export function TableTurnIndicator({
   player,
   roomPlayer,
@@ -127,14 +142,7 @@ export function TableTurnIndicator({
   // When activeSeatAngle = 0 (right player), needle points RIGHT (90deg).
   // When activeSeatAngle = 180 (left player), needle points LEFT (270deg).
   const rawTargetAngle = (activeSeatAngle ?? (isMyTurn ? 90 : 0)) + 90;
-
-  // Track continuous rotation so the needle takes the shortest path
-  const lastAngleRef = useRef<number>(rawTargetAngle);
-  let diff = (rawTargetAngle - lastAngleRef.current) % 360;
-  if (diff > 180) diff -= 360;
-  if (diff < -180) diff += 360;
-  const compassRotation = lastAngleRef.current + diff;
-  lastAngleRef.current = compassRotation;
+  const compassRotation = useShortestPathRotation(rawTargetAngle);
 
   // SVG timer ring calculations (around outer compass bezel)
   const dialSize = 64;

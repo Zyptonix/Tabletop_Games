@@ -48,6 +48,21 @@ function getPalette(currentColor?: string | undefined): DirectionPalette {
   return PALETTES[currentColor ?? ""] ?? DEFAULT_PALETTE;
 }
 
+function useShortestPathRotation(targetAngle: number): number {
+  const rotationRef = useRef<number>(targetAngle);
+  const prevTargetRef = useRef<number>(targetAngle);
+
+  if (prevTargetRef.current !== targetAngle) {
+    let diff = (targetAngle - prevTargetRef.current) % 360;
+    if (diff > 180) diff -= 360;
+    if (diff < -180) diff += 360;
+    rotationRef.current += diff;
+    prevTargetRef.current = targetAngle;
+  }
+
+  return rotationRef.current;
+}
+
 export function DirectionIndicator({
   direction,
   currentColor,
@@ -65,7 +80,9 @@ export function DirectionIndicator({
   const rotation = reduceMotion ? { rotate: 0 } : { rotate: clockwise ? 360 : -360 };
 
   // Spotlight rotation offset by -90deg since the beam origin points downwards (6 o'clock) at 0deg
-  const spotlightRotation = activeSeatAngle !== undefined ? activeSeatAngle - 90 : 0;
+  // Uses shortest-path unwrapping so transitions across the 180/-180 branch cut (West to North-West) glide smoothly without doing a 360 spin
+  const rawTargetAngle = activeSeatAngle !== undefined ? activeSeatAngle - 90 : 0;
+  const spotlightRotation = useShortestPathRotation(rawTargetAngle);
 
   return (
     <div
