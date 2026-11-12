@@ -952,7 +952,7 @@ export function ClassicUnoTable({
                 </div>
 
                 <div ref={handDockRef} className="uno-hand-zone relative z-20 -mt-5 min-h-0 overflow-visible px-2">
-                  <div className="mx-auto flex max-w-[76rem] items-center justify-between gap-3 px-2 pb-1 bg-transparent">
+                  <div className="relative z-30 mx-auto flex max-w-[76rem] items-center justify-between gap-3 px-2 pb-1 bg-transparent">
                     <div className="flex min-h-14 items-center gap-3">
                       <div className="rounded-full border border-white/10 bg-transparent p-1.5">
                         <TurnTimerCircle
@@ -1010,9 +1010,9 @@ export function ClassicUnoTable({
                     </div>
                   </div>
 
-                  <div className="flex min-h-0 items-end justify-center gap-3">
+                  <div className="relative z-10 flex min-h-0 items-end justify-center gap-3">
                     {me ? (
-                      <div ref={registerSeatRef(me.userId)} className="shrink-0">
+                      <div ref={registerSeatRef(me.userId)} className="relative z-30 shrink-0">
                         <div
                           aria-label={`${me.displayName}, ${me.handCount} cards${me.isCurrentTurn ? ", your turn" : ""}`}
                           className={cn(
@@ -1039,7 +1039,7 @@ export function ClassicUnoTable({
                           {me.isCurrentTurn ? <span className="text-[0.52rem] font-black uppercase text-emerald-300">Your turn</span> : null}
                         </div>
 
-                        <div className="hidden w-[min(17rem,24vw)] pb-1 sm:block">
+                        <div className="relative z-30 hidden w-[min(17rem,24vw)] pb-1 sm:block">
                           <PlayerSeat
                             player={me}
                             roomPlayer={roomPlayerById.get(me.userId)}

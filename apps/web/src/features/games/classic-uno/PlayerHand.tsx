@@ -348,8 +348,8 @@ export function PlayerHand({
   const isUrgent = typeof turnSecondsLeft === "number" && turnSecondsLeft <= 5;
 
   return (
-    <div className="relative mx-auto w-full max-w-[59rem] overflow-visible xl:max-w-[65rem] 2xl:max-w-[72rem]">
-      {/* Seamless Ambient Light Pool radiating outward from behind the hand */}
+    <div className="relative z-10 mx-auto w-full max-w-[59rem] overflow-visible xl:max-w-[65rem] 2xl:max-w-[72rem]">
+      {/* Seamless Ambient Light Pool radiating outward from behind the hand - at lowest layer so all seats and cards sit on top */}
       <AnimatePresence>
         {isMyTurn && activePercent > 0 ? (
           <>
@@ -365,7 +365,7 @@ export function PlayerHand({
                 opacity: 0,
                 transition: { duration: 0.4, ease: "easeOut" }
               }}
-              className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-36 sm:-top-48 -bottom-16 w-[150vw] z-0 overflow-visible"
+              className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-36 sm:-top-48 -bottom-16 w-[150vw] -z-10 overflow-visible"
               style={{
                 background: `radial-gradient(ellipse 70% 90% at 50% 95%, ${colorGlow.ambient} 0%, ${colorGlow.glow} 34%, ${colorGlow.soft} 62%, transparent 90%)`,
                 filter: "blur(68px)",
@@ -386,7 +386,7 @@ export function PlayerHand({
                 opacity: 0,
                 transition: { duration: 0.4, ease: "easeOut" }
               }}
-              className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-24 sm:-top-32 -bottom-12 w-[130vw] z-0 overflow-visible"
+              className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-24 sm:-top-32 -bottom-12 w-[130vw] -z-10 overflow-visible"
               style={{
                 background: `radial-gradient(ellipse 65% 85% at 50% 92%, ${colorGlow.strongGlow} 0%, ${colorGlow.ambient} 32%, ${colorGlow.glow} 56%, transparent 86%)`,
                 filter: "blur(46px)",
@@ -398,7 +398,7 @@ export function PlayerHand({
         ) : null}
       </AnimatePresence>
 
-      <div className="relative z-10 mb-2 flex items-center justify-between px-2 text-xs font-black uppercase tracking-wide">
+      <div className="relative z-20 mb-2 flex items-center justify-between px-2 text-xs font-black uppercase tracking-wide">
         <div className="flex items-center gap-2.5">
           <span
             className={cn(
@@ -435,7 +435,7 @@ export function PlayerHand({
       <div
         ref={handFrameRef}
         className={cn(
-          "relative z-10 min-h-[10.6rem] overflow-visible rounded-[2rem] px-4 pb-4 pt-6 backdrop-blur-sm transition-all duration-300",
+          "relative z-20 min-h-[10.6rem] overflow-visible rounded-[2rem] px-4 pb-4 pt-6 backdrop-blur-sm transition-all duration-300",
           "bg-[linear-gradient(to_bottom,rgb(255_255_255_/_0.035),rgb(0_0_0_/_0.08)_38%,rgb(0_0_0_/_0.28))] shadow-[inset_0_1px_0_rgb(255_255_255_/_0.06),0_24px_90px_rgb(0_0_0_/_0.45)]"
         )}
         style={{
