@@ -20,6 +20,7 @@ import { WorldConquestTable } from "../world-conquest/WorldConquestTable";
 import { CodenamesTable } from "../codenames/CodenamesTable";
 import { PokerTable } from "../poker/PokerTable";
 import { BlackjackTable } from "../blackjack/BlackjackTable";
+import { GameFeedbackButton } from "@/components/feedback/GameFeedbackButton";
 
 
 
@@ -103,6 +104,7 @@ export function BoardGameTable({ room, state, legalActions, gameEvents, currentU
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <span className={`hidden rounded-full border px-3 py-2 text-xs font-bold sm:inline-flex ${isMyTurn ? "border-emerald-200/25 bg-emerald-300/10 text-emerald-100" : "border-white/10 bg-white/[.035] text-white/55"}`}>{isMyTurn ? "🟢 Your turn" : `⏳ ${currentPlayer?.displayName ?? "No active player"}`}</span>
+          <GameFeedbackButton gameId={state.gameId} gameName={meta.title} variant="default" />
           <button type="button" onClick={() => setSidebarOpen((prev) => !prev)} className={`min-h-10 rounded-xl border px-3 text-xs font-black transition ${sidebarOpen ? "border-cyan-400/30 bg-cyan-500/10 text-cyan-200" : "border-white/10 bg-white/[.055] text-white/80 hover:bg-white/[.09]"}`}>💬 {sidebarOpen ? "Hide Panel" : "Chat & Log"}</button>
           <button type="button" onClick={dashboard} className="min-h-10 rounded-xl border border-white/10 bg-white/[.055] px-3 text-xs font-black transition hover:border-emerald-200/30 hover:bg-emerald-300/10">🏠 Dashboard</button>
           {canEndRoom && onEndMatch && room.status !== "finished" ? <button type="button" onClick={() => { if (window.confirm("End this room for everyone?")) onEndMatch(room.id); }} className="hidden min-h-10 rounded-xl border border-rose-300/20 px-3 text-xs font-black text-rose-200 hover:bg-rose-400/10 md:inline-flex md:items-center">End room</button> : null}

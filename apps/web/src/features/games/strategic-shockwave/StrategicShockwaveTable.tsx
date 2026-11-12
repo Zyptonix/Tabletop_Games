@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { GameEvent, PublicStrategicShockwaveState, ShockwaveTile } from "@tabletop/game-core";
 import type { RoomStateView } from "@tabletop/shared";
+import { GameFeedbackButton } from "@/components/feedback/GameFeedbackButton";
 
 type Point = { x: number; y: number };
 const TILE = 40;
@@ -776,6 +777,11 @@ export function StrategicShockwaveTable({
                 <span className="text-sm text-white/50">/{state.players.length}</span>
               </p>
             </div>
+            <GameFeedbackButton
+              gameId="strategic-shockwave"
+              gameName="Strategic Shockwave"
+              variant="cyan"
+            />
             {room.status === "in_game" && isHost ? (
               <button
                 type="button"

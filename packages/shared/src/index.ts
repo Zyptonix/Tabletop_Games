@@ -8,5 +8,6 @@ export * from "./schemas/rooms";
 export * from "./schemas/profile";
 export * from "./socket-events";
 export * from "./types/auth";
+export * from "./types/feedback";
 export * from "./types/leaderboards";
 export * from "./types/rooms";

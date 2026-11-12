@@ -33,6 +33,7 @@ import type {
   TwentyNineSuit
 } from "@tabletop/game-core";
 import type { RoomStateView } from "@tabletop/shared";
+import { GameFeedbackButton } from "@/components/feedback/GameFeedbackButton";
 import { RoomChat } from "@/features/game-shell/RoomChat";
 import { cn } from "@/lib/utils/cn";
 import {
@@ -810,6 +811,12 @@ export function TwentyNineTable({
 
           {/* Action Tools */}
           <div className="flex items-center gap-1.5 sm:gap-2">
+          <GameFeedbackButton
+            gameId="twenty-nine"
+            gameName="Twenty-Nine"
+            variant="twenty-nine"
+          />
+
           <button
             type="button"
             onClick={() => setRulesOpen(true)}

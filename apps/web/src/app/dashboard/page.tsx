@@ -9,6 +9,7 @@ import {
   Filter,
   FlaskConical,
   Gamepad2,
+  MessageSquare,
   Plus,
   RefreshCw,
   Search,
@@ -21,6 +22,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { CreateRoomPanel } from "@/components/room/CreateRoomPanel";
 import { JoinRoomPanel } from "@/components/room/JoinRoomPanel";
 import { JoinableRoomsList } from "@/components/room/JoinableRoomsList";
+import { DashboardFeedbackTab } from "@/components/feedback/DashboardFeedbackTab";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { useAuth } from "@/lib/auth/useAuth";
@@ -148,6 +150,13 @@ export default function DashboardPage() {
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [dashboardTab, setDashboardTab] = useState<"games" | "feedback">("games");
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hash === "#feedback") {
+      setDashboardTab("feedback");
+    }
+  }, []);
 
   const completedGames = useMemo(() => getCompletedGames(games), [games]);
   const prototypeGames = useMemo(() => getPrototypeGames(games), [games]);
@@ -287,14 +296,46 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* Open Lobbies */}
-        <section className="space-y-3">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-sky-200/65">Play together</p>
-            <h2 className="mt-1 text-2xl font-black text-white">Open lobbies</h2>
-          </div>
-          <JoinableRoomsList />
-        </section>
+        {/* Top-Level Dashboard Tabs */}
+        <div className="flex items-center gap-2 border-b border-white/10 pb-4">
+          <button
+            type="button"
+            onClick={() => setDashboardTab("games")}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-black transition-all cursor-pointer ${
+              dashboardTab === "games"
+                ? "border border-emerald-400/40 bg-emerald-500/20 text-emerald-200 shadow-[0_0_16px_rgba(16,185,129,0.25)]"
+                : "border border-white/10 bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            <Gamepad2 className="h-4 w-4" />
+            <span>Games & Lobbies</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setDashboardTab("feedback")}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-black transition-all cursor-pointer ${
+              dashboardTab === "feedback"
+                ? "border border-emerald-400/40 bg-emerald-500/20 text-emerald-200 shadow-[0_0_16px_rgba(16,185,129,0.25)]"
+                : "border border-white/10 bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            <MessageSquare className="h-4 w-4" />
+            <span>Game Feedback</span>
+          </button>
+        </div>
+
+        {dashboardTab === "feedback" ? (
+          <DashboardFeedbackTab />
+        ) : (
+          <>
+            {/* Open Lobbies */}
+            <section className="space-y-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-sky-200/65">Play together</p>
+                <h2 className="mt-1 text-2xl font-black text-white">Open lobbies</h2>
+              </div>
+              <JoinableRoomsList />
+            </section>
 
         {/* Active Games */}
         <section className="space-y-4">
@@ -518,6 +559,8 @@ export default function DashboardPage() {
             </div>
           ) : null}
         </section>
+        </>
+      )}
       </div>
 
       {/* Create Room Modal Dialog */}

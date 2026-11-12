@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import type { GameEvent, PublicGridGameState } from "@tabletop/game-core";
 import type { RoomStateView } from "@tabletop/shared";
 import { RoomChat } from "@/features/game-shell/RoomChat";
+import { GameFeedbackButton } from "@/components/feedback/GameFeedbackButton";
 
 type Action = { type: string; [key: string]: unknown };
 type Cell = string | null;
@@ -299,6 +300,7 @@ export function BoardGamesTable({
           </div>
           <div className="flex shrink-0 items-center justify-end gap-2">
             <span className={`hidden rounded-full border px-3 py-2 text-xs font-black sm:inline-flex ${isMyTurn ? "border-emerald-200/25 bg-emerald-400/10 text-emerald-100" : "border-white/10 bg-white/[0.04] text-white/75"}`} aria-live="polite">{status}</span>
+            <GameFeedbackButton gameId={state.gameId} gameName={title} variant="default" />
             <button type="button" onClick={() => setChatOpen((open) => !open)} className="min-h-10 rounded-lg border border-white/10 bg-white/[0.045] px-3 text-xs font-bold text-white/75 hover:bg-white/10" title={chatOpen ? "Hide chat" : "Show chat"}>{chatOpen ? "💬 Chat on" : "💬 Chat"}</button>
             <button type="button" onClick={leaveToMenu} className="min-h-10 rounded-lg border border-white/10 bg-white/[0.045] px-3 text-xs font-bold text-white/75 hover:bg-white/10">🏠 Dashboard</button>
             {isHost && !isFinished && room.status !== "abandoned" && onEndMatch ? <button type="button" onClick={() => { if (window.confirm("End this match for everyone?")) onEndMatch(room.id); }} className="min-h-10 rounded-lg border border-rose-300/20 bg-rose-400/[0.07] px-3 text-xs font-bold text-rose-100 hover:bg-rose-400/15">🛑 End</button> : null}

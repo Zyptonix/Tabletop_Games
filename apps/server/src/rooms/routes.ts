@@ -21,7 +21,7 @@ export function createRoomsRouter(manager: RoomManager) {
     response.json({ games: manager.listGames() });
   });
 
-  router.use(authMiddleware);
+  router.use("/rooms", authMiddleware);
 
 
   router.get("/rooms/joinable", (_request, response) => {

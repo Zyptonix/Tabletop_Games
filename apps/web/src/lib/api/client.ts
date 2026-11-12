@@ -1,4 +1,4 @@
-import type { AuthUser, JoinableRoomSummary, RoomStateView } from "@tabletop/shared";
+import type { AuthUser, CreateFeedbackInput, FeedbackItem, JoinableRoomSummary, RoomStateView } from "@tabletop/shared";
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api";
 
@@ -152,5 +152,27 @@ export const api = {
         totalGamesPlayed: number;
       };
     }>("/leaderboards/summary"),
-  activeRooms: () => request<{ rooms: unknown[] }>("/admin/rooms")
+  activeRooms: () => request<{ rooms: unknown[] }>("/admin/rooms"),
+  getFeedbacks: (params?: { gameId?: string; category?: string; status?: string }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.gameId && params.gameId !== "all") searchParams.set("gameId", params.gameId);
+    if (params?.category && params.category !== "all") searchParams.set("category", params.category);
+    if (params?.status && params.status !== "all") searchParams.set("status", params.status);
+    const query = searchParams.toString();
+    return request<{ feedbacks: FeedbackItem[] }>(`/feedback${query ? `?${query}` : ""}`);
+  },
+  createFeedback: (payload: CreateFeedbackInput) =>
+    request<{ feedback: FeedbackItem }>("/feedback", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }),
+  deleteFeedback: (id: string) =>
+    request<{ ok: true; id: string }>(`/feedback/${id}`, {
+      method: "DELETE"
+    }),
+  updateFeedbackStatus: (id: string, status: "open" | "in_progress" | "done") =>
+    request<{ feedback: FeedbackItem }>(`/feedback/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status })
+    })
 };

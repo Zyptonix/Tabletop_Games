@@ -6,6 +6,7 @@ import { HostControls } from "./HostControls";
 import { PlayerSeatRing } from "./PlayerSeatRing";
 import { ReconnectOverlay } from "./ReconnectOverlay";
 import { TurnTimer } from "./TurnTimer";
+import { GameFeedbackButton } from "@/components/feedback/GameFeedbackButton";
 
 export function GameShell({
   connected,
@@ -61,6 +62,7 @@ export function GameShell({
           <h1 className="mt-1 text-2xl font-black text-zinc-100">{room.gameId}</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <GameFeedbackButton gameId={room.gameId} variant="default" />
           {room.status === "lobby" && me ? (
             <button
               type="button"

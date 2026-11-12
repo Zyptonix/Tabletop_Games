@@ -27,6 +27,7 @@ import { RoomChat } from "@/features/game-shell/RoomChat";
 import { TumblingDice3D } from "./TumblingDice3D";
 import { SnakesAndLaddersBoardView, getPlayerBadge } from "./SnakesAndLaddersBoardView";
 import { PiecePicker } from "./PiecePicker";
+import { GameFeedbackButton } from "@/components/feedback/GameFeedbackButton";
 
 export interface SnakesAndLaddersTableProps {
   room: RoomStateView;
@@ -165,6 +166,13 @@ export function SnakesAndLaddersTable({
               <span className="hidden sm:inline text-xs">Piece</span>
             </button>
           ) : null}
+
+          {/* Feedback Button */}
+          <GameFeedbackButton
+            gameId="snakes-and-ladders"
+            gameName="Snakes & Ladders"
+            variant="snakes"
+          />
 
           {/* End Room Button for Host */}
           {isHost && onEndMatch ? (

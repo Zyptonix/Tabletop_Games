@@ -28,6 +28,7 @@ import {
 import type { AnyAction, BoardGameTableProps } from "../board-games/shared/types";
 import { CasinoChip, breakdownChips, type ChipDenomination } from "../casino/CasinoChip";
 import { CasinoPlayingCard } from "../casino/CasinoPlayingCard";
+import { GameFeedbackButton } from "@/components/feedback/GameFeedbackButton";
 import { casinoAudio } from "../casino/casinoAudio";
 import { owns, isAction } from "../board-games/shared/ui-utils";
 
@@ -477,6 +478,12 @@ export function PokerTable(props: BoardGameTableProps) {
           <Coins className="h-3.5 w-3.5 text-emerald-300" />
           <span>Cash Out</span>
         </button>
+
+        <GameFeedbackButton
+          gameId="poker"
+          gameName="Poker · Texas Hold'em"
+          variant="casino"
+        />
       </div>
 
       {/* ============================================================== */}

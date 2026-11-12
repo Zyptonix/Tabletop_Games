@@ -9,6 +9,7 @@ import { CasinoChip, ChipStack, type ChipDenomination } from "../casino/CasinoCh
 import { CasinoPlayingCard } from "../casino/CasinoPlayingCard";
 import { casinoAudio } from "../casino/casinoAudio";
 import { evaluateBlackjackHand, type HandEvaluation } from "@tabletop/game-core";
+import { GameFeedbackButton } from "@/components/feedback/GameFeedbackButton";
 
 const BET_CHIPS: ChipDenomination[] = [5, 10, 25, 50, 100, 500, 1000];
 
@@ -337,6 +338,12 @@ export function BlackjackTable(props: BoardGameTableProps) {
             <BookOpen className="h-4 w-4 text-amber-300" />
             <span>Rules</span>
           </button>
+
+          <GameFeedbackButton
+            gameId="blackjack"
+            gameName="Blackjack VIP"
+            variant="casino"
+          />
 
           <button
             type="button"

@@ -29,6 +29,7 @@ import { TurnTransitionOverlay } from "./TurnTransitionOverlay";
 import { UnoActionBar } from "./UnoActionBar";
 import { UnoGameStatus } from "./UnoGameStatus";
 import { UnoRuleBookModal } from "./UnoRuleBookModal";
+import { GameFeedbackButton } from "@/components/feedback/GameFeedbackButton";
 import type { CardThemeId } from "./cardThemes";
 import { hasLegalAction } from "./unoActionUtils";
 
@@ -672,6 +673,12 @@ export function ClassicUnoTable({
 
             <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
               <UnoGameStatus state={state} currentPlayerName={currentPlayerName} />
+
+              <GameFeedbackButton
+                gameId={state.gameId}
+                gameName={displayGameTitle(state.gameId)}
+                variant="uno"
+              />
 
               <Button
                 type="button"
