@@ -90,7 +90,7 @@ export function DirectionIndicator({
       role="img"
       className="pointer-events-none absolute inset-0 z-[1] grid place-items-center overflow-visible translate-y-16"
     >
-      {/* Dynamic Turn Spotlight Beam pointing directly to the active seat - Goes to the end of the screen and touches player seats */}
+      {/* Dynamic Turn Spotlight Beam pointing directly to the active seat - Pure soft volumetric glow with no harsh center beam */}
       {activeSeatAngle !== undefined && !reduceMotion ? (
         <motion.div
           className="pointer-events-none absolute h-full w-full origin-center z-0 overflow-visible"
@@ -101,25 +101,25 @@ export function DirectionIndicator({
             opacity: { duration: 0.3 }
           }}
         >
-          {/* Broad Atmospheric Volumetric Glow Cone - stretches to the end of the screen to touch the player seats */}
+          {/* Broad Atmospheric Volumetric Glow Cone - stretches past player seats to the edge of the table without harsh center laser lines */}
           <div
-            className="absolute left-1/2 top-1/2 h-[130vh] w-[38rem] sm:w-[48rem] -translate-x-1/2 origin-top"
+            className="absolute left-1/2 top-1/2 h-[140vh] w-[44rem] sm:w-[56rem] -translate-x-1/2 origin-top"
             style={{
-              clipPath: "polygon(40% 0%, 60% 0%, 100% 100%, 0% 100%)",
-              background: `linear-gradient(to bottom, ${palette.pulse} 0%, ${palette.color} 28%, ${palette.soft} 65%, transparent 100%)`,
-              filter: "blur(24px)",
-              opacity: isNoMercy ? 0.82 : 0.72
+              clipPath: "polygon(36% 0%, 64% 0%, 100% 100%, 0% 100%)",
+              background: `linear-gradient(to bottom, ${palette.pulse} 0%, ${palette.color} 26%, ${palette.soft} 60%, transparent 100%)`,
+              filter: "blur(30px)",
+              opacity: isNoMercy ? 0.85 : 0.75
             }}
           />
 
-          {/* Inner Soft Luminous Light Wash */}
+          {/* Diffuse Radial Base Ambient Glow - soft luminous origin at center disc, blending seamlessly with zero sharp center stripes */}
           <div
-            className="absolute left-1/2 top-1/2 h-[120vh] w-[20rem] sm:w-[26rem] -translate-x-1/2 origin-top"
+            className="absolute left-1/2 top-1/2 h-[115vh] w-[32rem] sm:w-[42rem] -translate-x-1/2 origin-top"
             style={{
-              clipPath: "polygon(44% 0%, 56% 0%, 90% 100%, 10% 100%)",
-              background: `linear-gradient(to bottom, rgba(255,255,255,0.65) 0%, ${palette.pulse} 24%, ${palette.color} 55%, transparent 95%)`,
-              filter: "blur(16px)",
-              opacity: 0.85
+              clipPath: "polygon(38% 0%, 62% 0%, 94% 100%, 6% 100%)",
+              background: `radial-gradient(ellipse 55% 75% at 50% 0%, ${palette.soft} 0%, transparent 80%)`,
+              filter: "blur(32px)",
+              opacity: 0.6
             }}
           />
         </motion.div>

@@ -761,7 +761,7 @@ export function ClassicUnoTable({
 
               <section
                 className={cn(
-                  "relative z-10 grid h-full min-h-0 grid-rows-[minmax(0,1fr)_15rem] gap-2 rounded-[2.25rem] p-3 overflow-hidden shadow-2xl",
+                  "relative z-10 grid h-full min-h-0 grid-rows-[minmax(0,1fr)_15rem] gap-2 rounded-[2.25rem] p-3 overflow-visible shadow-2xl",
                   isNoMercy ? "uno-no-mercy-table" : "classic-uno-table"
                 )}
               >
