@@ -52,13 +52,11 @@ export function DirectionIndicator({
   direction,
   currentColor,
   activeSeatAngle,
-  activeSeatDistance,
   isNoMercy = false
 }: {
   direction: 1 | -1;
   currentColor?: string | undefined;
   activeSeatAngle?: number | undefined;
-  activeSeatDistance?: number | undefined;
   isNoMercy?: boolean | undefined;
 }) {
   const reduceMotion = useReducedMotion();
@@ -66,14 +64,8 @@ export function DirectionIndicator({
   const clockwise = direction === 1;
   const rotation = reduceMotion ? { rotate: 0 } : { rotate: clockwise ? 360 : -360 };
 
-  // Spotlight rotation offset by -90deg since the conic beam points downwards at 0deg
-  const rawTargetAngle = activeSeatAngle !== undefined ? activeSeatAngle - 90 : 0;
-  const lastAngleRef = useRef<number>(rawTargetAngle);
-  let diff = (rawTargetAngle - lastAngleRef.current) % 360;
-  if (diff > 180) diff -= 360;
-  if (diff < -180) diff += 360;
-  const spotlightRotation = lastAngleRef.current + diff;
-  lastAngleRef.current = spotlightRotation;
+  // Spotlight rotation offset by -90deg since the beam origin points downwards (6 o'clock) at 0deg
+  const spotlightRotation = activeSeatAngle !== undefined ? activeSeatAngle - 90 : 0;
 
   return (
     <div
@@ -84,20 +76,18 @@ export function DirectionIndicator({
       {/* Dynamic Turn Spotlight Beam pointing directly to the active seat - Pure soft volumetric glow (no harsh lines/lasers) */}
       {activeSeatAngle !== undefined && !reduceMotion ? (
         <motion.div
-          className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 aspect-square w-[min(120rem,150vw,150vh)] h-[min(120rem,150vw,150vh)] origin-center z-0 overflow-visible"
+          className="pointer-events-none absolute h-[160%] w-[160%] origin-center z-0 overflow-visible"
           initial={{ rotate: spotlightRotation, opacity: 0 }}
           animate={{ rotate: spotlightRotation, opacity: 1 }}
           transition={{
-            rotate: { type: "spring", stiffness: 90, damping: 22, mass: 0.8 },
+            rotate: { type: "spring", stiffness: 100, damping: 20, mass: 0.8 },
             opacity: { duration: 0.3 }
           }}
         >
           {/* Broad Atmospheric Volumetric Glow Cone - soft, radiant, unclipped */}
           <div
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 origin-top"
+            className="absolute left-1/2 top-1/2 h-[72%] w-[26rem] sm:w-[32rem] -translate-x-1/2 origin-top"
             style={{
-              height: activeSeatDistance ? `${activeSeatDistance * 1.08}px` : "36rem",
-              width: activeSeatDistance ? `${Math.max(260, activeSeatDistance * 0.72)}px` : "34rem",
               background: `radial-gradient(ellipse 65% 100% at 50% 0%, ${palette.pulse} 0%, ${palette.color} 30%, ${palette.soft} 65%, transparent 90%)`,
               filter: "blur(28px)",
               opacity: isNoMercy ? 0.78 : 0.7
@@ -106,10 +96,8 @@ export function DirectionIndicator({
 
           {/* Inner Soft Luminous Light Wash */}
           <div
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 origin-top"
+            className="absolute left-1/2 top-1/2 h-[64%] w-[15rem] sm:w-[19rem] -translate-x-1/2 origin-top"
             style={{
-              height: activeSeatDistance ? `${activeSeatDistance * 0.9}px` : "28rem",
-              width: activeSeatDistance ? `${Math.max(160, activeSeatDistance * 0.42)}px` : "20rem",
               background: `radial-gradient(ellipse 50% 90% at 50% 0%, rgba(255,255,255,0.7) 0%, ${palette.pulse} 28%, ${palette.color} 55%, transparent 85%)`,
               filter: "blur(18px)",
               opacity: 0.85
@@ -127,9 +115,8 @@ export function DirectionIndicator({
               duration: 2.4,
               ease: "easeInOut"
             }}
-            className="absolute left-1/2 h-36 w-52 sm:h-44 sm:w-64 -translate-x-1/2 -translate-y-1/2 rounded-full"
+            className="absolute left-1/2 top-[88%] h-36 w-52 sm:h-44 sm:w-64 -translate-x-1/2 -translate-y-1/2 rounded-full"
             style={{
-              top: activeSeatDistance ? `calc(50% + ${activeSeatDistance}px)` : "calc(50% + 32rem)",
               background: `radial-gradient(ellipse at center, ${palette.pulse} 0%, ${palette.color} 40%, ${palette.soft} 70%, transparent 90%)`,
               filter: "blur(20px)",
               boxShadow: `0 0 45px ${palette.pulse}, 0 0 95px ${palette.color}`

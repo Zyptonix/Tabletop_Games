@@ -358,85 +358,19 @@ export function ClassicUnoTable({
       });
   }, [state.players, currentUserId, roomPlayerById]);
 
-  const [activeSeatTarget, setActiveSeatTarget] = useState<{
-    angle: number;
-    distance: number;
-  } | undefined>(undefined);
-
-  const updateActiveSeatTarget = useCallback(() => {
-    const currentId = state.currentPlayerId;
-    if (!currentId) {
-      setActiveSeatTarget(undefined);
-      return;
+  const activeSeatAngle = useMemo(() => {
+    if (!state.currentPlayerId) return undefined;
+    if (state.currentPlayerId === currentUserId) {
+      return 90; // Bottom seat (local player)
     }
+    const slot = opponentSlots.find((s) => s.player.userId === state.currentPlayerId);
+    if (!slot) return undefined;
 
-    const centerEl = centerDockRef.current ?? discardPileRef.current;
-
-    if (currentId === currentUserId) {
-      // Local player: shine directly down (90deg) towards the player's active hand cards
-      let dist = 320;
-      if (centerEl && handDockRef.current) {
-        const centerRect = centerEl.getBoundingClientRect();
-        const handRect = handDockRef.current.getBoundingClientRect();
-        const cy = centerRect.top + centerRect.height / 2;
-        const targetY = handRect.top + 60;
-        dist = Math.max(180, targetY - cy);
-      }
-      setActiveSeatTarget({ angle: 90, distance: dist });
-      return;
-    }
-
-    const seatEl = seatRefs.current.get(currentId);
-    if (centerEl && seatEl) {
-      const centerRect = centerEl.getBoundingClientRect();
-      const seatRect = seatEl.getBoundingClientRect();
-
-      const cx = centerRect.left + centerRect.width / 2;
-      const cy = centerRect.top + centerRect.height / 2;
-
-      const sx = seatRect.left + seatRect.width / 2;
-      const sy = seatRect.top + seatRect.height / 2;
-
-      const dx = sx - cx;
-      const dy = sy - cy;
-
-      const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-      const distance = Math.hypot(dx, dy);
-
-      setActiveSeatTarget({ angle, distance });
-      return;
-    }
-
-    // High-precision geometric fallback if DOM elements are not yet mounted:
-    const slot = opponentSlots.find((s) => s.player.userId === currentId);
-    if (slot) {
-      const dx = (slot.left - 50) * 1.85;
-      const dy = slot.top - 58;
-      const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-      setActiveSeatTarget({ angle, distance: 380 });
-    }
-  }, [state.currentPlayerId, currentUserId, opponentSlots]);
-
-  useEffect(() => {
-    updateActiveSeatTarget();
-
-    const rafId = requestAnimationFrame(() => {
-      updateActiveSeatTarget();
-    });
-
-    const handleResize = () => {
-      updateActiveSeatTarget();
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => {
-      cancelAnimationFrame(rafId);
-      window.removeEventListener("resize", handleResize);
-    };
-  }, [updateActiveSeatTarget]);
-
-  const activeSeatAngle = activeSeatTarget?.angle;
-  const activeSeatDistance = activeSeatTarget?.distance;
+    // Geometric alignment calibrated from the center dock (50% X, 60% Y) to the seat with 16:9 table felt aspect ratio
+    const dx = (slot.left - 50) * 1.85;
+    const dy = slot.top - 60;
+    return Math.atan2(dy, dx) * (180 / Math.PI);
+  }, [currentUserId, opponentSlots, state.currentPlayerId]);
 
   const reactionMessages = useMemo(
     () =>
@@ -913,7 +847,6 @@ export function ClassicUnoTable({
                     direction={state.direction}
                     currentColor={state.currentColor}
                     activeSeatAngle={activeSeatAngle}
-                    activeSeatDistance={activeSeatDistance}
                     isNoMercy={isNoMercy}
                   />
 
