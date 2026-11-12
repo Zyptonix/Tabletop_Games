@@ -8,8 +8,8 @@ import type { RoomStateView } from "@tabletop/shared";
 interface GamePausedOverlayProps {
   room: RoomStateView;
   currentUserId: string | null;
-  onResume?: ((roomId: string) => void) | undefined;
-  gameName?: string | undefined;
+  onResume?: (roomId: string) => void;
+  gameName?: string;
 }
 
 export function GamePausedOverlay({
@@ -93,3 +93,4 @@ export function GamePausedOverlay({
     </div>
   );
 }
+
