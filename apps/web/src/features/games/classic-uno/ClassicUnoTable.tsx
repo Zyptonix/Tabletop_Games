@@ -16,7 +16,7 @@ import { CardPlayAnimationOverlay } from "./CardPlayAnimationOverlay";
 import { DiscardAllAnimationOverlay } from "./DiscardAllAnimationOverlay";
 import { UnoActivityLogOverlay } from "./UnoActivityLogOverlay";
 import { DiscardPile } from "./DiscardPile";
-import { DirectionIndicator } from "./DirectionIndicator";
+import { DirectionIndicator, TurnSpotlight } from "./DirectionIndicator";
 import { DrawPile } from "./DrawPile";
 import { HandTransferAnimationOverlay } from "./HandTransferAnimationOverlay";
 import { PlayerHand } from "./PlayerHand";
@@ -365,7 +365,7 @@ export function ClassicUnoTable({
       });
   }, [state.players, currentUserId, roomPlayerById]);
 
-  const activeSeatAngle = useMemo(() => {
+  const fallbackSeatAngle = useMemo(() => {
     if (!state.currentPlayerId) return undefined;
     if (state.currentPlayerId === currentUserId) {
       return 90; // Bottom seat (local player)
@@ -373,11 +373,53 @@ export function ClassicUnoTable({
     const slot = opponentSlots.find((s) => s.player.userId === state.currentPlayerId);
     if (!slot) return undefined;
 
-    // Geometric alignment calibrated from the center dock (50% X, 60% Y) to the seat with 16:9 table felt aspect ratio
+    // Geometric fallback alignment calibrated from center dock
     const dx = (slot.left - 50) * 1.85;
     const dy = slot.top - 60;
     return Math.atan2(dy, dx) * (180 / Math.PI);
   }, [currentUserId, opponentSlots, state.currentPlayerId]);
+
+  const [measuredSeatAngle, setMeasuredSeatAngle] = useState<number | undefined>(undefined);
+  const spotlightOriginRef = useRef<HTMLDivElement>(null);
+
+  // Exact geometric angle calculation measured directly from real DOM bounding rects
+  const updateExactSeatAngle = useCallback(() => {
+    if (!state.currentPlayerId) {
+      setMeasuredSeatAngle(undefined);
+      return;
+    }
+    if (state.currentPlayerId === currentUserId) {
+      setMeasuredSeatAngle(90);
+      return;
+    }
+    const seatEl = seatRefs.current.get(state.currentPlayerId);
+    const originEl = spotlightOriginRef.current;
+    if (seatEl && originEl) {
+      const seatRect = seatEl.getBoundingClientRect();
+      const originRect = originEl.getBoundingClientRect();
+      const seatX = seatRect.left + seatRect.width / 2;
+      const seatY = seatRect.top + seatRect.height / 2;
+      const originX = originRect.left + originRect.width / 2;
+      const originY = originRect.top + originRect.height / 2;
+      const dx = seatX - originX;
+      const dy = seatY - originY;
+      const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+      setMeasuredSeatAngle(angle);
+    } else {
+      setMeasuredSeatAngle(undefined);
+    }
+  }, [currentUserId, state.currentPlayerId]);
+
+  useEffect(() => {
+    updateExactSeatAngle();
+  }, [updateExactSeatAngle, opponentSlots]);
+
+  useEffect(() => {
+    window.addEventListener("resize", updateExactSeatAngle);
+    return () => window.removeEventListener("resize", updateExactSeatAngle);
+  }, [updateExactSeatAngle]);
+
+  const activeSeatAngle = measuredSeatAngle ?? fallbackSeatAngle;
 
   const reactionMessages = useMemo(
     () =>
@@ -849,25 +891,34 @@ export function ClassicUnoTable({
                 </AnimatePresence>
 
                 <div className="relative min-h-0 overflow-visible">
+                  {/* Dynamic Turn Spotlight - strictly rendered below both the center glow and direction indicator circles */}
+                  <TurnSpotlight
+                    originRef={spotlightOriginRef}
+                    activeSeatAngle={activeSeatAngle}
+                    currentColor={state.currentColor}
+                    isNoMercy={isNoMercy}
+                  />
+
+                  {/* Center table ambient glow ring - rendered on top of spotlight, below direction indicator */}
                   <div
-                    className="pointer-events-none absolute left-1/2 top-[calc(50%+4rem)] aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border"
+                    className="pointer-events-none absolute left-1/2 top-[calc(50%+4rem)] aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border z-[1] opacity-60"
                     style={{
                       width: "min(85%, 38rem, 80vh)",
                       borderColor: activeAccent.border,
                       background: `radial-gradient(circle, ${activeAccent.strongGlow} 0%, ${activeAccent.glow} 28%, ${activeAccent.soft} 58%, transparent 76%)`,
-                      filter: `drop-shadow(0 0 20px ${activeAccent.glow})`,
+                      filter: `drop-shadow(0 0 14px ${activeAccent.glow})`,
                       boxShadow: `
-                        inset 0 0 95px ${activeAccent.glow},
-                        0 0 55px ${activeAccent.glow},
-                        0 0 105px ${activeAccent.soft}
+                        inset 0 0 70px ${activeAccent.glow},
+                        0 0 40px ${activeAccent.glow},
+                        0 0 75px ${activeAccent.soft}
                       `
                     }}
                   />
 
+                  {/* Center Direction Indicator circles - rendered on top of both spotlight and glow */}
                   <DirectionIndicator
                     direction={state.direction}
                     currentColor={state.currentColor}
-                    activeSeatAngle={activeSeatAngle}
                     isNoMercy={isNoMercy}
                   />
 
@@ -1287,7 +1338,7 @@ export function ClassicUnoTable({
                   <span>Player & Rank</span>
                   <span>Match Result</span>
                 </div>
-                <div className="max-h-[34vh] sm:max-h-[40vh] overflow-y-auto space-y-2 pr-1 [scrollbar-color:rgba(251,191,36,0.65)_rgba(255,255,255,0.08)] [scrollbar-width:thin]">
+                <div className="max-h-[50vh] sm:max-h-[56vh] overflow-y-auto overscroll-contain touch-pan-y space-y-2 pr-2 [scrollbar-color:rgba(251,191,36,0.65)_rgba(255,255,255,0.08)] [scrollbar-width:thin]">
                   {placementRows.map((placement) => {
                     const isMe = placement.userId === currentUserId;
                     const isFirst = placement.placement === 1;

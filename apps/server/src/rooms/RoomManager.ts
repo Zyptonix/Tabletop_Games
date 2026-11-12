@@ -1036,23 +1036,43 @@ export class RoomManager {
   }
 
   async restoreActiveRooms(): Promise<number> {
+    const STALE_CUTOFF_MS = 24 * 60 * 60 * 1000;
+    const staleCutoff = new Date(Date.now() - STALE_CUTOFF_MS);
+
+    // Auto-mark stale rooms older than 24h as abandoned so they don't linger indefinitely
+    try {
+      await prisma.room.updateMany({
+        where: {
+          status: {
+            in: ["lobby", "in_game", "paused"]
+          },
+          updatedAt: {
+            lt: staleCutoff
+          }
+        },
+        data: {
+          status: "abandoned",
+          endedAt: new Date()
+        }
+      });
+    } catch (error) {
+      console.warn("Failed to mark stale rooms as abandoned:", error instanceof Error ? error.message : error);
+    }
+
     const dbRooms = await prisma.room.findMany({
       where: {
         status: {
           in: ["lobby", "in_game", "paused"]
-        }
-      },
-      include: {
-        snapshots: {
-          orderBy: [{ actionNumber: "desc" }, { createdAt: "desc" }],
-          take: 1
+        },
+        updatedAt: {
+          gte: staleCutoff
         }
       }
     });
 
     let restored = 0;
     for (const dbRoom of dbRooms) {
-      const snapshot = dbRoom.snapshots[0];
+      const snapshot = await this.snapshots.getLatestForRoom(dbRoom.id);
       if (!snapshot?.roomStateJson) {
         continue;
       }

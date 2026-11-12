@@ -16,10 +16,10 @@ export type PauseButtonVariant =
 interface GamePauseButtonProps {
   room: RoomStateView;
   currentUserId: string | null;
-  onPause?: (roomId: string) => void;
-  onResume?: (roomId: string) => void;
-  variant?: PauseButtonVariant;
-  className?: string;
+  onPause?: ((roomId: string) => void) | undefined;
+  onResume?: ((roomId: string) => void) | undefined;
+  variant?: PauseButtonVariant | undefined;
+  className?: string | undefined;
 }
 
 export function GamePauseButton({

@@ -13,23 +13,26 @@ import { cn } from "@/lib/utils/cn";
  * =========================================================================
  */
 export const DRAW_PILE_CONFIG = {
-  // Base scale of the pile when forced to draw (1.0 = normal, 1.16 = 16% bigger)
-  forcedBaseScale: 1.16,
+  // Base scale of the pile on the table
+  baseScale: 1.0,
 
-  // Peak scale reached at the height of the smooth float
-  forcedJumpScale: 1.26,
+  // Peak scale reached at the height of the jump (1.18 = 18% bigger at apex)
+  jumpScale: 1.18,
 
-  // Peak height in pixels to float upwards (negative number = moves UPWARDS)
-  jumpHeight: -12,
+  // Peak height in pixels to jump upwards (-30 = jumps 30px up, make -40 for higher, -20 for lower)
+  jumpHeight: -30,
 
-  // Time in seconds for one complete, silky smooth up-and-down cycle
-  bounceDuration: 1.8,
+  // Time in seconds for one jump rise & fall (0.8s = fast & snappy, 0.9s = bouncy, 1.4s = slower float)
+  jumpDuration: 0.92,
 
-  // Scale when the player hovers their mouse over the pile (smoothly expands)
-  hoverScale: 1.24,
+  // Rest pause in seconds on the table before the next jump (0 for continuous, 0.12 for distinct rhythmic hops)
+  groundPause: 0.12,
 
-  // How many pixels upwards the "DRAW!" text moves so it never gets covered by the pile
-  textElevateY: -22
+  // Scale when the player hovers their mouse over the pile (when not jumping)
+  hoverScale: 1.20,
+
+  // Headroom offset for the "DRAW!" badge so it stays nicely above the jumping pile
+  textElevateY: -36
 };
 
 /**
@@ -44,6 +47,10 @@ const COLOR_GLOW_MAP: Record<
     ring: string;
     shadow: string;
     text: string;
+    glowColor: string;
+    softColor: string;
+    coreColor: string;
+    badgeClass: string;
   }
 > = {
   red: {
@@ -52,7 +59,11 @@ const COLOR_GLOW_MAP: Record<
     bg: "bg-rose-950/50",
     ring: "ring-rose-500",
     shadow: "shadow-[0_0_38px_rgba(244,63,94,0.95),0_0_14px_rgba(255,255,255,0.4)]",
-    text: "text-rose-400 drop-shadow-[0_0_14px_rgba(244,63,94,0.95)]"
+    text: "text-rose-400",
+    glowColor: "rgba(244, 63, 94, 0.95)",
+    softColor: "rgba(239, 68, 68, 0.45)",
+    coreColor: "#f43f5e",
+    badgeClass: "border-rose-400/80 bg-rose-950/85 text-rose-200"
   },
   blue: {
     aura: "bg-sky-500/50",
@@ -60,7 +71,11 @@ const COLOR_GLOW_MAP: Record<
     bg: "bg-sky-950/50",
     ring: "ring-sky-400",
     shadow: "shadow-[0_0_38px_rgba(56,189,248,0.95),0_0_14px_rgba(255,255,255,0.4)]",
-    text: "text-sky-300 drop-shadow-[0_0_14px_rgba(56,189,248,0.95)]"
+    text: "text-sky-300",
+    glowColor: "rgba(56, 189, 248, 0.95)",
+    softColor: "rgba(14, 165, 233, 0.45)",
+    coreColor: "#38bdf8",
+    badgeClass: "border-sky-400/80 bg-sky-950/85 text-sky-200"
   },
   green: {
     aura: "bg-emerald-500/50",
@@ -68,7 +83,11 @@ const COLOR_GLOW_MAP: Record<
     bg: "bg-emerald-950/50",
     ring: "ring-emerald-400",
     shadow: "shadow-[0_0_38px_rgba(52,211,153,0.95),0_0_14px_rgba(255,255,255,0.4)]",
-    text: "text-emerald-300 drop-shadow-[0_0_14px_rgba(52,211,153,0.95)]"
+    text: "text-emerald-300",
+    glowColor: "rgba(52, 211, 153, 0.95)",
+    softColor: "rgba(34, 197, 94, 0.45)",
+    coreColor: "#34d399",
+    badgeClass: "border-emerald-400/80 bg-emerald-950/85 text-emerald-200"
   },
   yellow: {
     aura: "bg-amber-400/50",
@@ -76,7 +95,11 @@ const COLOR_GLOW_MAP: Record<
     bg: "bg-amber-950/50",
     ring: "ring-amber-400",
     shadow: "shadow-[0_0_38px_rgba(251,191,36,0.95),0_0_14px_rgba(255,255,255,0.4)]",
-    text: "text-amber-300 drop-shadow-[0_0_14px_rgba(251,191,36,0.95)]"
+    text: "text-amber-300",
+    glowColor: "rgba(251, 191, 36, 0.95)",
+    softColor: "rgba(234, 179, 8, 0.45)",
+    coreColor: "#fbbf24",
+    badgeClass: "border-amber-400/80 bg-amber-950/85 text-amber-200"
   },
   wild: {
     aura: "bg-fuchsia-500/50",
@@ -84,7 +107,11 @@ const COLOR_GLOW_MAP: Record<
     bg: "bg-fuchsia-950/50",
     ring: "ring-fuchsia-400",
     shadow: "shadow-[0_0_38px_rgba(217,70,239,0.95),0_0_14px_rgba(255,255,255,0.4)]",
-    text: "text-fuchsia-300 drop-shadow-[0_0_14px_rgba(217,70,239,0.95)]"
+    text: "text-fuchsia-300",
+    glowColor: "rgba(217, 70, 239, 0.95)",
+    softColor: "rgba(192, 38, 211, 0.45)",
+    coreColor: "#e879f9",
+    badgeClass: "border-fuchsia-400/80 bg-fuchsia-950/85 text-fuchsia-200"
   }
 };
 
@@ -125,17 +152,60 @@ export function DrawPile({
         transition={{ duration: 0.3 }}
         className="flex min-h-[2rem] items-center justify-center mb-1"
       >
-        <p
-          className={cn(
-            "font-black uppercase tracking-[0.24em] transition-all duration-300 select-none",
-            !canDraw && isMyTurn && "text-[0.66rem] text-rose-300/40",
-            !canDraw && !isMyTurn && "text-[0.66rem] text-white/25",
-            canDraw && !isForcedDraw && "text-[0.66rem] text-white/65",
-            isForcedDraw && cn("text-xs sm:text-sm font-black tracking-[0.28em]", activeTheme.text)
-          )}
-        >
-          {isForcedDraw ? "DRAW!" : isMyTurn && !canDraw ? "Can't Draw" : "Draw"}
-        </p>
+        {isForcedDraw ? (
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{
+              scale: [1, 1.10, 1],
+              opacity: 1
+            }}
+            transition={{
+              scale: {
+                repeat: Infinity,
+                duration: DRAW_PILE_CONFIG.jumpDuration,
+                ease: "easeInOut",
+                repeatDelay: DRAW_PILE_CONFIG.groundPause
+              }
+            }}
+            className={cn(
+              "relative flex items-center gap-1.5 rounded-full px-3 py-1 text-xs sm:text-sm font-black uppercase tracking-[0.28em] select-none border backdrop-blur-md shadow-2xl",
+              activeTheme.badgeClass
+            )}
+            style={{
+              boxShadow: `0 0 24px ${activeTheme.glowColor}, 0 0 45px ${activeTheme.softColor}, inset 0 1px 0 rgba(255,255,255,0.4)`
+            }}
+          >
+            <span className="relative flex h-2 w-2">
+              <span
+                className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-80"
+                style={{ backgroundColor: activeTheme.coreColor }}
+              />
+              <span
+                className="relative inline-flex h-2 w-2 rounded-full"
+                style={{ backgroundColor: activeTheme.coreColor }}
+              />
+            </span>
+            <span
+              className="font-black drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]"
+              style={{
+                textShadow: `0 0 12px ${activeTheme.glowColor}, 0 0 24px ${activeTheme.glowColor}`
+              }}
+            >
+              DRAW!
+            </span>
+          </motion.div>
+        ) : (
+          <p
+            className={cn(
+              "font-black uppercase tracking-[0.24em] transition-all duration-300 select-none",
+              !canDraw && isMyTurn && "text-[0.66rem] text-rose-300/40",
+              !canDraw && !isMyTurn && "text-[0.66rem] text-white/25",
+              canDraw && "text-[0.66rem] text-white/70"
+            )}
+          >
+            {isMyTurn && !canDraw ? "Can't Draw" : "Draw"}
+          </p>
+        )}
       </motion.div>
 
       <div className="relative">
@@ -145,10 +215,15 @@ export function DrawPile({
             aria-hidden="true"
             className={cn("pointer-events-none absolute -inset-6 rounded-3xl blur-2xl", activeTheme.aura)}
             animate={{
-              opacity: [0.35, 0.9, 0.35],
-              scale: [1, 1.18, 1]
+              opacity: [0.35, 0.92, 0.35],
+              scale: [1, 1.22, 1]
             }}
-            transition={{ repeat: Infinity, duration: DRAW_PILE_CONFIG.bounceDuration, ease: "easeInOut" }}
+            transition={{
+              repeat: Infinity,
+              duration: DRAW_PILE_CONFIG.jumpDuration,
+              ease: "easeInOut",
+              repeatDelay: DRAW_PILE_CONFIG.groundPause
+            }}
           />
         ) : null}
 
@@ -156,25 +231,26 @@ export function DrawPile({
           animate={
             isForcedDraw
               ? {
+                  y: [0, DRAW_PILE_CONFIG.jumpHeight, 0],
                   scale: [
-                    DRAW_PILE_CONFIG.forcedBaseScale,
-                    DRAW_PILE_CONFIG.forcedJumpScale,
-                    DRAW_PILE_CONFIG.forcedBaseScale
-                  ],
-                  y: [0, DRAW_PILE_CONFIG.jumpHeight, 0]
+                    DRAW_PILE_CONFIG.baseScale,
+                    DRAW_PILE_CONFIG.jumpScale,
+                    DRAW_PILE_CONFIG.baseScale
+                  ]
                 }
-              : { scale: 1, y: 0 }
+              : { y: 0, scale: 1 }
           }
           transition={
             isForcedDraw
               ? {
                   repeat: Infinity,
-                  duration: DRAW_PILE_CONFIG.bounceDuration,
-                  ease: "easeInOut"
+                  duration: DRAW_PILE_CONFIG.jumpDuration,
+                  ease: ["easeOut", "easeIn"],
+                  repeatDelay: DRAW_PILE_CONFIG.groundPause
                 }
               : { duration: 0.25, ease: "easeOut" }
           }
-          {...(canDraw
+          {...(canDraw && !isForcedDraw
             ? {
                 whileHover: {
                   scale: DRAW_PILE_CONFIG.hoverScale,
@@ -183,7 +259,7 @@ export function DrawPile({
               }
             : {})}
           className={cn(
-            "relative transition-all duration-300",
+            "relative transition-opacity duration-300",
             !canDraw && isMyTurn && "opacity-35 grayscale contrast-50 cursor-not-allowed select-none",
             !canDraw && !isMyTurn && "opacity-45 grayscale contrast-75 cursor-not-allowed select-none"
           )}
