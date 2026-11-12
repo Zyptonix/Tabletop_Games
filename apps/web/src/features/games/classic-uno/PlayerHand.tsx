@@ -349,26 +349,52 @@ export function PlayerHand({
 
   return (
     <div className="relative mx-auto w-full max-w-[59rem] overflow-visible xl:max-w-[65rem] 2xl:max-w-[72rem]">
-      {/* Seamless Ambient Light Pool radiating softly from behind the hand - naturally boundless with zero hard lines */}
+      {/* Seamless Ambient Light Pool radiating outward from behind the hand */}
       <AnimatePresence>
         {isMyTurn && activePercent > 0 ? (
-          <motion.div
-            key="hand-ambient-glow"
-            initial={{ opacity: 0 }}
-            animate={{
-              opacity: fadeOpacity * 0.52,
-              transition: { duration: 0.25, ease: "linear" }
-            }}
-            exit={{
-              opacity: 0,
-              transition: { duration: 0.4, ease: "easeOut" }
-            }}
-            className="pointer-events-none absolute -inset-x-20 sm:-inset-x-32 -top-24 sm:-top-32 -bottom-10 z-0 overflow-visible"
-            style={{
-              background: `radial-gradient(ellipse 65% 75% at 50% 90%, ${colorGlow.ambient} 0%, ${colorGlow.glow} 28%, ${colorGlow.soft} 52%, transparent 75%)`,
-              filter: "blur(54px)"
-            }}
-          />
+          <>
+            {/* Broad Atmospheric Upward Bloom reaching nicely above the hand */}
+            <motion.div
+              key="hand-ambient-glow-broad"
+              initial={{ opacity: 0 }}
+              animate={{
+                opacity: fadeOpacity * 0.9,
+                transition: { duration: 0.25, ease: "linear" }
+              }}
+              exit={{
+                opacity: 0,
+                transition: { duration: 0.4, ease: "easeOut" }
+              }}
+              className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-36 sm:-top-48 -bottom-16 w-[150vw] z-0 overflow-visible"
+              style={{
+                background: `radial-gradient(ellipse 70% 90% at 50% 95%, ${colorGlow.ambient} 0%, ${colorGlow.glow} 34%, ${colorGlow.soft} 62%, transparent 90%)`,
+                filter: "blur(68px)",
+                WebkitMaskImage: `linear-gradient(to right, black 0%, black calc(${activePercent}% - 8%), transparent calc(${activePercent}% + 8%), transparent 100%)`,
+                maskImage: `linear-gradient(to right, black 0%, black calc(${activePercent}% - 8%), transparent calc(${activePercent}% + 8%), transparent 100%)`
+              }}
+            />
+
+            {/* Vibrant Core Upward Glow illuminating the arena above the hand */}
+            <motion.div
+              key="hand-ambient-glow-core"
+              initial={{ opacity: 0 }}
+              animate={{
+                opacity: fadeOpacity * 0.95,
+                transition: { duration: 0.25, ease: "linear" }
+              }}
+              exit={{
+                opacity: 0,
+                transition: { duration: 0.4, ease: "easeOut" }
+              }}
+              className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-24 sm:-top-32 -bottom-12 w-[130vw] z-0 overflow-visible"
+              style={{
+                background: `radial-gradient(ellipse 65% 85% at 50% 92%, ${colorGlow.strongGlow} 0%, ${colorGlow.ambient} 32%, ${colorGlow.glow} 56%, transparent 86%)`,
+                filter: "blur(46px)",
+                WebkitMaskImage: `linear-gradient(to right, black 0%, black calc(${activePercent}% - 8%), transparent calc(${activePercent}% + 8%), transparent 100%)`,
+                maskImage: `linear-gradient(to right, black 0%, black calc(${activePercent}% - 8%), transparent calc(${activePercent}% + 8%), transparent 100%)`
+              }}
+            />
+          </>
         ) : null}
       </AnimatePresence>
 
