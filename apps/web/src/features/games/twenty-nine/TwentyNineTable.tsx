@@ -34,6 +34,7 @@ import type {
 } from "@tabletop/game-core";
 import type { RoomStateView } from "@tabletop/shared";
 import { GameFeedbackButton } from "@/components/feedback/GameFeedbackButton";
+import { GamePauseButton } from "@/components/game/GamePauseButton";
 import { RoomChat } from "@/features/game-shell/RoomChat";
 import { cn } from "@/lib/utils/cn";
 import {
@@ -273,7 +274,9 @@ export function TwentyNineTable({
   onEndMatch,
   onReadyNextTrick,
   onConfirmSingleHand,
-  onReadyNextHand
+  onReadyNextHand,
+  onPause,
+  onResume
 }: {
   room: RoomStateView;
   state: PublicTwentyNineState;
@@ -286,6 +289,8 @@ export function TwentyNineTable({
   onReadyNextTrick?: () => void;
   onConfirmSingleHand?: () => void;
   onReadyNextHand?: () => void;
+  onPause?: ((roomId: string) => void) | undefined;
+  onResume?: ((roomId: string) => void) | undefined;
 }) {
   const reduceMotion = useReducedMotion();
   const tableRef = useRef<HTMLDivElement | null>(null);
@@ -811,6 +816,14 @@ export function TwentyNineTable({
 
           {/* Action Tools */}
           <div className="flex items-center gap-1.5 sm:gap-2">
+          <GamePauseButton
+            room={room}
+            currentUserId={currentUserId}
+            onPause={onPause}
+            onResume={onResume}
+            variant="twenty-nine"
+          />
+
           <GameFeedbackButton
             gameId="twenty-nine"
             gameName="Twenty-Nine"

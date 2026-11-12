@@ -128,7 +128,7 @@ export function createAdminRouter(manager: RoomManager) {
     response.json({ rooms: manager.listActiveRooms() });
   });
 
-  router.post("/admin/rooms/:roomId/pause", (request, response) => {
+  router.post("/admin/rooms/:roomId/pause", async (request, response) => {
     const parsed = roomIdSchema.safeParse(request.params);
     if (!parsed.success || !request.user) {
       sendError(response, 400, ERROR_CODES.INVALID_PAYLOAD, "Invalid room id.");
@@ -136,14 +136,14 @@ export function createAdminRouter(manager: RoomManager) {
     }
 
     try {
-      const room = manager.pauseRoom(parsed.data.roomId, request.user.id, true);
+      const room = await manager.pauseRoom(parsed.data.roomId, request.user.id, true);
       response.json({ room: manager.getRoomStateView(room) });
     } catch (error) {
       routeError(response, error);
     }
   });
 
-  router.post("/admin/rooms/:roomId/resume", (request, response) => {
+  router.post("/admin/rooms/:roomId/resume", async (request, response) => {
     const parsed = roomIdSchema.safeParse(request.params);
     if (!parsed.success || !request.user) {
       sendError(response, 400, ERROR_CODES.INVALID_PAYLOAD, "Invalid room id.");
@@ -151,7 +151,7 @@ export function createAdminRouter(manager: RoomManager) {
     }
 
     try {
-      const room = manager.resumeRoom(parsed.data.roomId, request.user.id, true);
+      const room = await manager.resumeRoom(parsed.data.roomId, request.user.id, true);
       response.json({ room: manager.getRoomStateView(room) });
     } catch (error) {
       routeError(response, error);

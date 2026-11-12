@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { GameEvent, PublicStrategicShockwaveState, ShockwaveTile } from "@tabletop/game-core";
 import type { RoomStateView } from "@tabletop/shared";
 import { GameFeedbackButton } from "@/components/feedback/GameFeedbackButton";
+import { GamePauseButton } from "@/components/game/GamePauseButton";
 
 type Point = { x: number; y: number };
 const TILE = 40;
@@ -777,29 +778,18 @@ export function StrategicShockwaveTable({
                 <span className="text-sm text-white/50">/{state.players.length}</span>
               </p>
             </div>
+            <GamePauseButton
+              room={room}
+              currentUserId={currentUserId}
+              onPause={onPause}
+              onResume={onResume}
+              variant="cyan"
+            />
             <GameFeedbackButton
               gameId="strategic-shockwave"
               gameName="Strategic Shockwave"
               variant="cyan"
             />
-            {room.status === "in_game" && isHost ? (
-              <button
-                type="button"
-                onClick={() => onPause?.(room.id)}
-                className="min-h-11 rounded-xl border border-white/15 px-3 text-sm font-bold hover:bg-white/10"
-              >
-                Pause
-              </button>
-            ) : null}
-            {room.status === "paused" && isHost ? (
-              <button
-                type="button"
-                onClick={() => onResume?.(room.id)}
-                className="min-h-11 rounded-xl bg-emerald-500 px-3 text-sm font-black text-emerald-950 hover:bg-emerald-400"
-              >
-                Resume
-              </button>
-            ) : null}
             {isHost && room.status !== "finished" ? (
               <button
                 type="button"

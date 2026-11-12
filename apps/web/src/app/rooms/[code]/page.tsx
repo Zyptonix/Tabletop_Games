@@ -30,6 +30,7 @@ import { TwentyNineLobbyTeamSelector } from "@/features/games/twenty-nine/Twenty
 import { MafiaWerewolfTable } from "@/features/games/mafia-werewolf/MafiaWerewolfTable";
 import { SnakesAndLaddersTable, PiecePicker } from "@/features/games/snakes-and-ladders";
 import { REACTION_PREFIX } from "@/features/games/classic-uno/ReactionOverlay";
+import { GamePausedOverlay } from "@/components/game/GamePausedOverlay";
 
 export default function RoomPage() {
   const params = useParams<{ code: string }>();
@@ -114,6 +115,12 @@ export default function RoomPage() {
         onFillBots={socketState.fillBots}
         onRemoveBots={socketState.removeBots}
       >
+        <GamePausedOverlay
+          room={room}
+          currentUserId={user.id}
+          onResume={socketState.resumeRoom}
+          gameName={room.gameId}
+        />
         {room.status === "lobby" ? (
           <div className="space-y-4">
             <Card className="border-white/10 bg-[#09141f]">
@@ -310,6 +317,8 @@ export default function RoomPage() {
             onAction={(type, payload) => socketState.sendAction(room.id, type, payload)}
             onChat={socketState.sendChat}
             onEndMatch={socketState.endRoom}
+            onPause={socketState.pauseRoom}
+            onResume={socketState.resumeRoom}
           />
         ) : shockwaveState ? (
           <StrategicShockwaveTable
@@ -333,6 +342,8 @@ export default function RoomPage() {
             onAction={(type, payload) => socketState.sendAction(room.id, type, payload)}
             onChat={socketState.sendChat}
             onEndMatch={socketState.endRoom}
+            onPause={socketState.pauseRoom}
+            onResume={socketState.resumeRoom}
             onReadyNextTrick={() => socketState.socket?.emit("twenty-nine:ready_next_trick")}
             onConfirmSingleHand={() => socketState.socket?.emit("twenty-nine:confirm_single_hand")}
             onReadyNextHand={() => socketState.socket?.emit("twenty-nine:ready_next_hand")}
@@ -349,6 +360,8 @@ export default function RoomPage() {
             onAction={(type, payload) => socketState.sendAction(room.id, type, payload)}
             onChat={socketState.sendChat}
             onEndMatch={socketState.endRoom}
+            onPause={socketState.pauseRoom}
+            onResume={socketState.resumeRoom}
           />
         ) : boardGameState ? (
           <BoardGameTable
@@ -361,6 +374,8 @@ export default function RoomPage() {
             onAction={(type, payload) => socketState.sendAction(room.id, type, payload)}
             onChat={socketState.sendChat}
             onEndMatch={socketState.endRoom}
+            onPause={socketState.pauseRoom}
+            onResume={socketState.resumeRoom}
           />
         ) : gridGameState ? (
           <BoardGamesTable
@@ -373,6 +388,8 @@ export default function RoomPage() {
             onAction={(type, payload) => socketState.sendAction(room.id, type, payload)}
             onChat={socketState.sendChat}
             onEndMatch={socketState.endRoom}
+            onPause={socketState.pauseRoom}
+            onResume={socketState.resumeRoom}
           />
         ) : unoState ? (
           <ClassicUnoTable
@@ -386,6 +403,8 @@ export default function RoomPage() {
             onReaction={(emoji) => socketState.sendChat(room.id, `${REACTION_PREFIX}${emoji}`)}
             onChat={socketState.sendChat}
             onEndMatch={socketState.endRoom}
+            onPause={socketState.pauseRoom}
+            onResume={socketState.resumeRoom}
           />
         ) : (
           <Card>

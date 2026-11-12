@@ -18,6 +18,7 @@ import { WerewolfPlayerSeat } from "./WerewolfPlayerSeat";
 import { WerewolfRoleCard } from "./WerewolfRoleCard";
 import { getWerewolfRoleTheme } from "./werewolfTheme";
 import { GameFeedbackButton } from "@/components/feedback/GameFeedbackButton";
+import { GamePauseButton } from "@/components/game/GamePauseButton";
 
 function actionTarget(legalActions: unknown[], type: WerewolfAction["type"], targetPlayerId: string): boolean {
   return legalActions.some((item) => {
@@ -613,7 +614,9 @@ export function MafiaWerewolfTable({
   currentUserRole,
   onAction,
   onChat,
-  onEndMatch
+  onEndMatch,
+  onPause,
+  onResume
 }: {
   room: RoomStateView;
   state: PublicWerewolfState;
@@ -624,6 +627,8 @@ export function MafiaWerewolfTable({
   onAction: (type: string, payload?: Record<string, unknown>) => void;
   onChat?: ((roomId: string, body: string) => void) | undefined;
   onEndMatch?: ((roomId: string) => void) | undefined;
+  onPause?: ((roomId: string) => void) | undefined;
+  onResume?: ((roomId: string) => void) | undefined;
 }) {
   const [now, setNow] = useState(() => Date.now());
   const [confirmEndOpen, setConfirmEndOpen] = useState(false);
@@ -720,6 +725,13 @@ export function MafiaWerewolfTable({
               {voiceEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
               Voice {voiceEnabled ? "On" : "Off"}
             </button>
+            <GamePauseButton
+              room={room}
+              currentUserId={currentUserId}
+              onPause={onPause}
+              onResume={onResume}
+              variant="mafia"
+            />
             <GameFeedbackButton
               gameId="mafia-werewolf"
               gameName="Mafia / Werewolf"

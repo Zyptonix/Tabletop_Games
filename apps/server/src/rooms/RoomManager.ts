@@ -142,7 +142,7 @@ export class RoomManager {
       .filter((room) =>
         room.status !== "finished" &&
         room.status !== "abandoned" &&
-        room.players.some((player) => player.userId === userId && !player.isBot)
+        (room.hostUserId === userId || room.players.some((player) => player.userId === userId && !player.isBot))
       )
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
   }
@@ -246,6 +246,7 @@ export class RoomManager {
         existing.socketIds.add(params.socketId);
       }
       this.addSystemMessage(room, `${existing.displayName} rejoined the room.`);
+      await this.saveSnapshot(room);
       return room;
     }
 
@@ -447,7 +448,7 @@ export class RoomManager {
     return room;
   }
 
-  pauseRoom(roomId: string, userId: string, admin = false): RoomRuntime {
+  async pauseRoom(roomId: string, userId: string, admin = false): Promise<RoomRuntime> {
     const room = this.requireRoom(roomId);
     if (!admin) {
       this.requireHost(room, userId);
@@ -457,11 +458,12 @@ export class RoomManager {
     }
     room.status = "paused";
     this.addSystemMessage(room, "Host paused the game.");
-    void prisma.room.update({ where: { id: room.id }, data: { status: "paused" } });
+    await prisma.room.update({ where: { id: room.id }, data: { status: "paused" } });
+    await this.saveSnapshot(room);
     return room;
   }
 
-  resumeRoom(roomId: string, userId: string, admin = false): RoomRuntime {
+  async resumeRoom(roomId: string, userId: string, admin = false): Promise<RoomRuntime> {
     const room = this.requireRoom(roomId);
     if (!admin) {
       this.requireHost(room, userId);
@@ -471,7 +473,8 @@ export class RoomManager {
     }
     room.status = "in_game";
     this.addSystemMessage(room, "Host resumed the game.");
-    void prisma.room.update({ where: { id: room.id }, data: { status: "in_game" } });
+    await prisma.room.update({ where: { id: room.id }, data: { status: "in_game" } });
+    await this.saveSnapshot(room);
     return room;
   }
 
@@ -1132,6 +1135,9 @@ export class RoomManager {
   }
 
   private requireHost(room: RoomRuntime, userId: string): void {
+    if (room.hostUserId === userId) {
+      return;
+    }
     const effectiveHost = this.getEffectiveHostUserId(room);
     if (effectiveHost !== userId) {
       throw new AppError(ERROR_CODES.NOT_HOST, "Host controls required.");

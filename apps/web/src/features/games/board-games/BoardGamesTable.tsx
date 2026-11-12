@@ -8,6 +8,7 @@ import type { GameEvent, PublicGridGameState } from "@tabletop/game-core";
 import type { RoomStateView } from "@tabletop/shared";
 import { RoomChat } from "@/features/game-shell/RoomChat";
 import { GameFeedbackButton } from "@/components/feedback/GameFeedbackButton";
+import { GamePauseButton } from "@/components/game/GamePauseButton";
 
 type Action = { type: string; [key: string]: unknown };
 type Cell = string | null;
@@ -120,7 +121,9 @@ export function BoardGamesTable({
   gameEvents = [],
   onAction,
   onChat,
-  onEndMatch
+  onEndMatch,
+  onPause,
+  onResume
 }: {
   room: RoomStateView;
   state: PublicGridGameState;
@@ -131,6 +134,8 @@ export function BoardGamesTable({
   onAction: (type: string, payload?: Record<string, unknown>) => void;
   onChat: (roomId: string, body: string) => void;
   onEndMatch?: (roomId: string) => void;
+  onPause?: ((roomId: string) => void) | undefined;
+  onResume?: ((roomId: string) => void) | undefined;
 }) {
   const router = useRouter();
   const [hoverColumn, setHoverColumn] = useState<number | null>(null);
@@ -300,6 +305,7 @@ export function BoardGamesTable({
           </div>
           <div className="flex shrink-0 items-center justify-end gap-2">
             <span className={`hidden rounded-full border px-3 py-2 text-xs font-black sm:inline-flex ${isMyTurn ? "border-emerald-200/25 bg-emerald-400/10 text-emerald-100" : "border-white/10 bg-white/[0.04] text-white/75"}`} aria-live="polite">{status}</span>
+            <GamePauseButton room={room} currentUserId={currentUserId} onPause={onPause} onResume={onResume} variant="default" />
             <GameFeedbackButton gameId={state.gameId} gameName={title} variant="default" />
             <button type="button" onClick={() => setChatOpen((open) => !open)} className="min-h-10 rounded-lg border border-white/10 bg-white/[0.045] px-3 text-xs font-bold text-white/75 hover:bg-white/10" title={chatOpen ? "Hide chat" : "Show chat"}>{chatOpen ? "💬 Chat on" : "💬 Chat"}</button>
             <button type="button" onClick={leaveToMenu} className="min-h-10 rounded-lg border border-white/10 bg-white/[0.045] px-3 text-xs font-bold text-white/75 hover:bg-white/10">🏠 Dashboard</button>

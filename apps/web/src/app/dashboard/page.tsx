@@ -215,6 +215,10 @@ export default function DashboardPage() {
   useEffect(() => {
     void loadGames();
     void loadActiveRooms();
+    const interval = window.setInterval(() => {
+      void loadActiveRooms();
+    }, 6000);
+    return () => window.clearInterval(interval);
   }, []);
 
   function openCreateDialog(game?: GameSummary) {
@@ -356,7 +360,8 @@ export default function DashboardPage() {
           {activeRooms.length > 0 ? (
             <div className="grid gap-3 lg:grid-cols-2">
               {activeRooms.map((room) => {
-                const canEnd = room.effectiveHostUserId === user?.id || user?.role === "ADMIN";
+                const canEnd = room.hostUserId === user?.id || room.effectiveHostUserId === user?.id || user?.role === "ADMIN";
+                const isPaused = room.status === "paused";
                 const humanCount = room.players.filter((player) => !player.isBot).length;
                 const botCount = room.players.filter((player) => player.isBot).length;
                 return (
@@ -365,9 +370,16 @@ export default function DashboardPage() {
                     className="flex flex-col justify-between gap-3 rounded-2xl border border-emerald-200/10 bg-[#0b1515] p-4 sm:flex-row sm:items-center"
                   >
                     <div className="min-w-0">
-                      <p className="font-black text-white">
-                        {room.gameId} <span className="font-medium text-slate-400">· Room {room.code}</span>
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-black text-white">
+                          {room.gameId} <span className="font-medium text-slate-400">· Room {room.code}</span>
+                        </p>
+                        {isPaused ? (
+                          <span className="rounded-full border border-amber-400/40 bg-amber-400/15 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-300">
+                            ⏸ Paused
+                          </span>
+                        ) : null}
+                      </div>
                       <p className="mt-1 text-sm text-slate-400">
                         {room.status} · {humanCount} human{humanCount === 1 ? "" : "s"}
                         {botCount > 0 ? ` · ${botCount} bot${botCount === 1 ? "" : "s"}` : ""}

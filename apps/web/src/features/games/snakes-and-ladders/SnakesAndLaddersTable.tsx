@@ -28,6 +28,7 @@ import { TumblingDice3D } from "./TumblingDice3D";
 import { SnakesAndLaddersBoardView, getPlayerBadge } from "./SnakesAndLaddersBoardView";
 import { PiecePicker } from "./PiecePicker";
 import { GameFeedbackButton } from "@/components/feedback/GameFeedbackButton";
+import { GamePauseButton } from "@/components/game/GamePauseButton";
 
 export interface SnakesAndLaddersTableProps {
   room: RoomStateView;
@@ -40,6 +41,8 @@ export interface SnakesAndLaddersTableProps {
   onAction: (type: string, payload?: Record<string, unknown> | undefined) => void;
   onChat: (roomId: string, body: string) => void;
   onEndMatch?: ((roomId: string) => void) | undefined;
+  onPause?: ((roomId: string) => void) | undefined;
+  onResume?: ((roomId: string) => void) | undefined;
 }
 
 export function SnakesAndLaddersTable({
@@ -52,7 +55,9 @@ export function SnakesAndLaddersTable({
   preferredPiece,
   onAction,
   onChat,
-  onEndMatch
+  onEndMatch,
+  onPause,
+  onResume
 }: SnakesAndLaddersTableProps) {
   const router = useRouter();
   const [showPieceModal, setShowPieceModal] = useState(false);
@@ -166,6 +171,15 @@ export function SnakesAndLaddersTable({
               <span className="hidden sm:inline text-xs">Piece</span>
             </button>
           ) : null}
+
+          {/* Pause / Resume Button */}
+          <GamePauseButton
+            room={room}
+            currentUserId={currentUserId}
+            onPause={onPause}
+            onResume={onResume}
+            variant="snakes"
+          />
 
           {/* Feedback Button */}
           <GameFeedbackButton

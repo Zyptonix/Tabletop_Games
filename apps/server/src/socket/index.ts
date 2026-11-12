@@ -367,7 +367,7 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
       }
     });
 
-    socket.on("room:pause", (payload) => {
+    socket.on("room:pause", async (payload) => {
       const parsed = roomIdSchema.safeParse(payload);
       if (!parsed.success) {
         emitError(socket, "room:error", new AppError(ERROR_CODES.INVALID_PAYLOAD, "Invalid pause payload.", parsed.error.flatten()));
@@ -375,13 +375,13 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
       }
 
       try {
-        emitRoom(manager.pauseRoom(parsed.data.roomId, user.id));
+        emitRoom(await manager.pauseRoom(parsed.data.roomId, user.id));
       } catch (error) {
         emitError(socket, "room:error", error);
       }
     });
 
-    socket.on("room:resume", (payload) => {
+    socket.on("room:resume", async (payload) => {
       const parsed = roomIdSchema.safeParse(payload);
       if (!parsed.success) {
         emitError(socket, "room:error", new AppError(ERROR_CODES.INVALID_PAYLOAD, "Invalid resume payload.", parsed.error.flatten()));
@@ -389,7 +389,7 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
       }
 
       try {
-        emitRoom(manager.resumeRoom(parsed.data.roomId, user.id));
+        emitRoom(await manager.resumeRoom(parsed.data.roomId, user.id));
       } catch (error) {
         emitError(socket, "room:error", error);
       }

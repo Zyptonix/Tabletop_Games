@@ -30,6 +30,7 @@ import { UnoActionBar } from "./UnoActionBar";
 import { UnoGameStatus } from "./UnoGameStatus";
 import { UnoRuleBookModal } from "./UnoRuleBookModal";
 import { GameFeedbackButton } from "@/components/feedback/GameFeedbackButton";
+import { GamePauseButton } from "@/components/game/GamePauseButton";
 import type { CardThemeId } from "./cardThemes";
 import { hasLegalAction } from "./unoActionUtils";
 
@@ -152,7 +153,10 @@ export function ClassicUnoTable({
   currentUserRole,
   onAction,
   onChat,
-  onEndMatch
+  onEndMatch,
+  onReaction,
+  onPause,
+  onResume
 }: {
   room: RoomStateView;
   state: UnoTableState;
@@ -164,6 +168,8 @@ export function ClassicUnoTable({
   onReaction?: ((emoji: string) => void) | undefined;
   onChat?: ((roomId: string, body: string) => void) | undefined;
   onEndMatch?: ((roomId: string) => void) | undefined;
+  onPause?: ((roomId: string) => void) | undefined;
+  onResume?: ((roomId: string) => void) | undefined;
 }) {
   const cardTheme: CardThemeId = state.gameId === "uno-no-mercy" ? "no_mercy" : "classic";
   const tableRootRef = useRef<HTMLElement | null>(null);
@@ -673,6 +679,14 @@ export function ClassicUnoTable({
 
             <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
               <UnoGameStatus state={state} currentPlayerName={currentPlayerName} />
+
+              <GamePauseButton
+                room={room}
+                currentUserId={currentUserId}
+                onPause={onPause}
+                onResume={onResume}
+                variant="uno"
+              />
 
               <GameFeedbackButton
                 gameId={state.gameId}

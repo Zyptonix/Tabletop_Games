@@ -29,6 +29,7 @@ import type { AnyAction, BoardGameTableProps } from "../board-games/shared/types
 import { CasinoChip, breakdownChips, type ChipDenomination } from "../casino/CasinoChip";
 import { CasinoPlayingCard } from "../casino/CasinoPlayingCard";
 import { GameFeedbackButton } from "@/components/feedback/GameFeedbackButton";
+import { GamePauseButton } from "@/components/game/GamePauseButton";
 import { casinoAudio } from "../casino/casinoAudio";
 import { owns, isAction } from "../board-games/shared/ui-utils";
 
@@ -214,7 +215,7 @@ function getOpponentSeatStyle(index: number, totalOpponents: number) {
 }
 
 export function PokerTable(props: BoardGameTableProps) {
-  const { room, state, legalActions, currentUserId, onAction, onChat, onEndMatch, timer } = props;
+  const { room, state, legalActions, currentUserId, onAction, onChat, onEndMatch, timer, onPause, onResume } = props;
   const router = useRouter();
 
   const [pokerRulesOpen, setPokerRulesOpen] = useState(false);
@@ -478,6 +479,14 @@ export function PokerTable(props: BoardGameTableProps) {
           <Coins className="h-3.5 w-3.5 text-emerald-300" />
           <span>Cash Out</span>
         </button>
+
+        <GamePauseButton
+          room={room}
+          currentUserId={currentUserId}
+          onPause={onPause}
+          onResume={onResume}
+          variant="casino"
+        />
 
         <GameFeedbackButton
           gameId="poker"

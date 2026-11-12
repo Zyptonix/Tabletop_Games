@@ -21,6 +21,7 @@ import { CodenamesTable } from "../codenames/CodenamesTable";
 import { PokerTable } from "../poker/PokerTable";
 import { BlackjackTable } from "../blackjack/BlackjackTable";
 import { GameFeedbackButton } from "@/components/feedback/GameFeedbackButton";
+import { GamePauseButton } from "@/components/game/GamePauseButton";
 
 
 
@@ -54,7 +55,7 @@ function ActivityIcon({ type, message }: { type: string; message: string }) {
   return <span className="text-base leading-none">{fallbacks[type] ?? "✨"}</span>;
 }
 
-export function BoardGameTable({ room, state, legalActions, gameEvents, currentUserId, timer, onAction, onChat, onEndMatch }: BoardGameTableProps) {
+export function BoardGameTable({ room, state, legalActions, gameEvents, currentUserId, timer, onAction, onChat, onEndMatch, onPause, onResume }: BoardGameTableProps) {
   const router = useRouter();
   const meta = GAME_META[state.gameId] ?? GAME_META.chess!;
   const isCustomLayout = state.gameId === "battleship" || state.gameId === "chess" || state.gameId === "poker" || state.gameId === "blackjack";
@@ -71,11 +72,11 @@ export function BoardGameTable({ room, state, legalActions, gameEvents, currentU
     const extra = gameEvents.filter((event) => !known.has(event.id)).map((event) => ({ id: event.id, type: event.type, message: event.message ?? event.type.replaceAll("_", " "), createdAt: event.createdAt }));
     return [...recorded, ...extra].slice(-24).reverse();
   }, [state.activityLog, gameEvents]);
-  const canEndRoom = room.effectiveHostUserId === currentUserId;
+  const canEndRoom = room.hostUserId === currentUserId || room.effectiveHostUserId === currentUserId;
 
   function dashboard() { router.push("/dashboard"); }
 
-  function renderBoard(){const gameProps={room,state,legalActions,gameEvents,currentUserId,timer: timer ?? null,onAction,onChat,...(onEndMatch ? {onEndMatch} : {})};switch(state.gameId){case "chess":return <ChessTable {...gameProps}/>;case "battleship":return <BattleshipTable {...gameProps}/>;case "snakes-and-ladders":case "ludo":return <LudoTable {...gameProps}/>;case "barricades":return <BarricadesTable {...gameProps}/>;case "monopoly":return <MonopolyTable {...gameProps}/>;case "risk":return <RiskTable {...gameProps}/>;case "world-conquest":return <WorldConquestTable {...gameProps}/>;case "codenames":return <CodenamesTable {...gameProps}/>;case "poker":return <PokerTable {...gameProps}/>;case "blackjack":return <BlackjackTable {...gameProps}/>;default:return null;}}
+  function renderBoard(){const gameProps={room,state,legalActions,gameEvents,currentUserId,timer: timer ?? null,onAction,onChat,...(onEndMatch ? {onEndMatch} : {}),...(onPause ? {onPause} : {}),...(onResume ? {onResume} : {})};switch(state.gameId){case "chess":return <ChessTable {...gameProps}/>;case "battleship":return <BattleshipTable {...gameProps}/>;case "snakes-and-ladders":case "ludo":return <LudoTable {...gameProps}/>;case "barricades":return <BarricadesTable {...gameProps}/>;case "monopoly":return <MonopolyTable {...gameProps}/>;case "risk":return <RiskTable {...gameProps}/>;case "world-conquest":return <WorldConquestTable {...gameProps}/>;case "codenames":return <CodenamesTable {...gameProps}/>;case "poker":return <PokerTable {...gameProps}/>;case "blackjack":return <BlackjackTable {...gameProps}/>;default:return null;}}
 
   return <div className="board-game-screen h-dvh min-h-0 overflow-hidden bg-[#050a0f] text-slate-100">
     <div className="flex h-full min-h-0 flex-col">
@@ -104,6 +105,7 @@ export function BoardGameTable({ room, state, legalActions, gameEvents, currentU
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <span className={`hidden rounded-full border px-3 py-2 text-xs font-bold sm:inline-flex ${isMyTurn ? "border-emerald-200/25 bg-emerald-300/10 text-emerald-100" : "border-white/10 bg-white/[.035] text-white/55"}`}>{isMyTurn ? "🟢 Your turn" : `⏳ ${currentPlayer?.displayName ?? "No active player"}`}</span>
+          <GamePauseButton room={room} currentUserId={currentUserId} onPause={onPause} onResume={onResume} variant="default" />
           <GameFeedbackButton gameId={state.gameId} gameName={meta.title} variant="default" />
           <button type="button" onClick={() => setSidebarOpen((prev) => !prev)} className={`min-h-10 rounded-xl border px-3 text-xs font-black transition ${sidebarOpen ? "border-cyan-400/30 bg-cyan-500/10 text-cyan-200" : "border-white/10 bg-white/[.055] text-white/80 hover:bg-white/[.09]"}`}>💬 {sidebarOpen ? "Hide Panel" : "Chat & Log"}</button>
           <button type="button" onClick={dashboard} className="min-h-10 rounded-xl border border-white/10 bg-white/[.055] px-3 text-xs font-black transition hover:border-emerald-200/30 hover:bg-emerald-300/10">🏠 Dashboard</button>

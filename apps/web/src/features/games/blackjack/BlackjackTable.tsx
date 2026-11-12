@@ -10,6 +10,7 @@ import { CasinoPlayingCard } from "../casino/CasinoPlayingCard";
 import { casinoAudio } from "../casino/casinoAudio";
 import { evaluateBlackjackHand, type HandEvaluation } from "@tabletop/game-core";
 import { GameFeedbackButton } from "@/components/feedback/GameFeedbackButton";
+import { GamePauseButton } from "@/components/game/GamePauseButton";
 
 const BET_CHIPS: ChipDenomination[] = [5, 10, 25, 50, 100, 500, 1000];
 
@@ -134,7 +135,7 @@ function HandScoreBadge({ evaluation, className = "" }: { evaluation: HandEvalua
 }
 
 export function BlackjackTable(props: BoardGameTableProps) {
-  const { room, state, legalActions, currentUserId, onAction, onChat, onEndMatch } = props;
+  const { room, state, legalActions, currentUserId, onAction, onChat, onEndMatch, onPause, onResume } = props;
   const router = useRouter();
 
   const [rulesOpen, setRulesOpen] = useState(false);
@@ -338,6 +339,14 @@ export function BlackjackTable(props: BoardGameTableProps) {
             <BookOpen className="h-4 w-4 text-amber-300" />
             <span>Rules</span>
           </button>
+
+          <GamePauseButton
+            room={room}
+            currentUserId={currentUserId}
+            onPause={onPause}
+            onResume={onResume}
+            variant="casino"
+          />
 
           <GameFeedbackButton
             gameId="blackjack"

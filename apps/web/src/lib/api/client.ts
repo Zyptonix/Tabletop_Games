@@ -95,6 +95,8 @@ export const api = {
     }),
   myRoom: () => request<{ room: RoomStateView | null; rooms: RoomStateView[] }>("/rooms/me"),
   joinableRooms: () => request<{ rooms: JoinableRoomSummary[] }>("/rooms/joinable"),
+  pauseRoom: (roomId: string) => request<{ room: RoomStateView }>(`/rooms/${roomId}/pause`, { method: "POST" }),
+  resumeRoom: (roomId: string) => request<{ room: RoomStateView }>(`/rooms/${roomId}/resume`, { method: "POST" }),
   endRoom: (roomId: string) => request<{ room: RoomStateView }>(`/rooms/${roomId}/end`, { method: "POST" }),
   addBot: (roomId: string) => request<{ room: RoomStateView }>(`/rooms/${roomId}/bots`, { method: "POST" }),
   fillBots: (roomId: string) => request<{ room: RoomStateView }>(`/rooms/${roomId}/bots/fill`, { method: "POST" }),
