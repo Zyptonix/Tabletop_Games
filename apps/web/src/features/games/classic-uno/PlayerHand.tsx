@@ -365,7 +365,7 @@ export function PlayerHand({
                 opacity: 0,
                 transition: { duration: 0.4, ease: "easeOut" }
               }}
-              className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-[26rem] sm:-top-[34rem] -bottom-20 w-[130vw] max-w-[115rem] z-0 overflow-visible"
+              className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-[16rem] sm:-top-[20rem] -bottom-20 w-[130vw] max-w-[115rem] z-0 overflow-visible"
               style={{
                 background: `radial-gradient(ellipse 70% 95% at 50% 95%, ${colorGlow.ambient} 0%, ${colorGlow.glow} 34%, ${colorGlow.soft} 62%, transparent 90%)`,
                 filter: "blur(72px)",
