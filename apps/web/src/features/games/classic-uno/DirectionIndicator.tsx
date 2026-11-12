@@ -108,7 +108,7 @@ export function DirectionIndicator({
               clipPath: "polygon(36% 0%, 64% 0%, 100% 100%, 0% 100%)",
               background: `linear-gradient(to bottom, ${palette.pulse} 0%, ${palette.color} 26%, ${palette.soft} 60%, transparent 100%)`,
               filter: "blur(30px)",
-              opacity: isNoMercy ? 0.85 : 0.75
+              opacity: isNoMercy ? 0.65 : 0.55
             }}
           />
 
@@ -119,7 +119,7 @@ export function DirectionIndicator({
               clipPath: "polygon(38% 0%, 62% 0%, 94% 100%, 6% 100%)",
               background: `radial-gradient(ellipse 55% 75% at 50% 0%, ${palette.soft} 0%, transparent 80%)`,
               filter: "blur(32px)",
-              opacity: 0.6
+              opacity: 0.42
             }}
           />
         </motion.div>

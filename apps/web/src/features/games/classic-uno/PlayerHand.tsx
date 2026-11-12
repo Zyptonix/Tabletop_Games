@@ -349,52 +349,26 @@ export function PlayerHand({
 
   return (
     <div className="relative mx-auto w-full max-w-[59rem] overflow-visible xl:max-w-[65rem] 2xl:max-w-[72rem]">
-      {/* Seamless Ambient Light Pool radiating outward from behind the hand - prominent, reaching high above across the table */}
+      {/* Seamless Ambient Light Pool radiating softly from behind the hand - naturally boundless with zero hard lines */}
       <AnimatePresence>
         {isMyTurn && activePercent > 0 ? (
-          <>
-            {/* Broad Atmospheric Upward Bloom reaching high above across the felt */}
-            <motion.div
-              key="hand-ambient-glow-broad"
-              initial={{ opacity: 0 }}
-              animate={{
-                opacity: fadeOpacity * 0.92,
-                transition: { duration: 0.25, ease: "linear" }
-              }}
-              exit={{
-                opacity: 0,
-                transition: { duration: 0.4, ease: "easeOut" }
-              }}
-              className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-[16rem] sm:-top-[20rem] -bottom-20 w-[130vw] max-w-[115rem] z-0 overflow-visible"
-              style={{
-                background: `radial-gradient(ellipse 70% 95% at 50% 95%, ${colorGlow.ambient} 0%, ${colorGlow.glow} 34%, ${colorGlow.soft} 62%, transparent 90%)`,
-                filter: "blur(72px)",
-                WebkitMaskImage: `linear-gradient(to right, black 0%, black calc(${activePercent}% - 8%), transparent calc(${activePercent}% + 8%), transparent 100%)`,
-                maskImage: `linear-gradient(to right, black 0%, black calc(${activePercent}% - 8%), transparent calc(${activePercent}% + 8%), transparent 100%)`
-              }}
-            />
-
-            {/* Vibrant Core Upward Glow illuminating the arena above the hand */}
-            <motion.div
-              key="hand-ambient-glow-core"
-              initial={{ opacity: 0 }}
-              animate={{
-                opacity: fadeOpacity,
-                transition: { duration: 0.25, ease: "linear" }
-              }}
-              exit={{
-                opacity: 0,
-                transition: { duration: 0.4, ease: "easeOut" }
-              }}
-              className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-[18rem] sm:-top-[24rem] -bottom-16 w-[110vw] max-w-[95rem] z-0 overflow-visible"
-              style={{
-                background: `radial-gradient(ellipse 65% 88% at 50% 92%, ${colorGlow.strongGlow} 0%, ${colorGlow.ambient} 32%, ${colorGlow.glow} 56%, transparent 86%)`,
-                filter: "blur(48px)",
-                WebkitMaskImage: `linear-gradient(to right, black 0%, black calc(${activePercent}% - 8%), transparent calc(${activePercent}% + 8%), transparent 100%)`,
-                maskImage: `linear-gradient(to right, black 0%, black calc(${activePercent}% - 8%), transparent calc(${activePercent}% + 8%), transparent 100%)`
-              }}
-            />
-          </>
+          <motion.div
+            key="hand-ambient-glow"
+            initial={{ opacity: 0 }}
+            animate={{
+              opacity: fadeOpacity * 0.52,
+              transition: { duration: 0.25, ease: "linear" }
+            }}
+            exit={{
+              opacity: 0,
+              transition: { duration: 0.4, ease: "easeOut" }
+            }}
+            className="pointer-events-none absolute -inset-x-20 sm:-inset-x-32 -top-24 sm:-top-32 -bottom-10 z-0 overflow-visible"
+            style={{
+              background: `radial-gradient(ellipse 65% 75% at 50% 90%, ${colorGlow.ambient} 0%, ${colorGlow.glow} 28%, ${colorGlow.soft} 52%, transparent 75%)`,
+              filter: "blur(54px)"
+            }}
+          />
         ) : null}
       </AnimatePresence>
 
@@ -441,7 +415,7 @@ export function PlayerHand({
         style={{
           border: isMyTurn ? `1.5px solid ${colorGlow.border}` : "1.5px solid rgba(255, 255, 255, 0.08)",
           boxShadow: isMyTurn
-            ? `0 0 25px ${colorGlow.glow}, 0 0 50px ${colorGlow.soft}, inset 0 1px 1px rgba(255, 255, 255, 0.25)`
+            ? `0 0 18px ${colorGlow.glow}, inset 0 1px 1px rgba(255, 255, 255, 0.25)`
             : undefined,
           transform: isMyTurn ? "rotate(-0.3deg)" : undefined
         }}
@@ -467,13 +441,12 @@ export function PlayerHand({
                 background: "transparent",
                 boxShadow: `
                   0 0 4px #ffffff,
-                  0 0 10px #ffffff,
-                  0 0 20px ${colorGlow.strongGlow},
-                  0 0 40px ${colorGlow.border},
-                  0 0 75px ${colorGlow.glow},
-                  0 0 120px ${colorGlow.soft},
-                  inset 0 0 16px ${colorGlow.innerGlow},
-                  inset 0 0 3px rgba(255, 255, 255, 0.8)
+                  0 0 8px #ffffff,
+                  0 0 16px ${colorGlow.strongGlow},
+                  0 0 30px ${colorGlow.border},
+                  0 0 50px ${colorGlow.glow},
+                  inset 0 0 14px ${colorGlow.innerGlow},
+                  inset 0 0 2px rgba(255, 255, 255, 0.8)
                 `,
                 WebkitMaskImage: `linear-gradient(to right, black 0%, black calc(${activePercent}% - 5%), transparent calc(${activePercent}% + 5%), transparent 100%)`,
                 maskImage: `linear-gradient(to right, black 0%, black calc(${activePercent}% - 5%), transparent calc(${activePercent}% + 5%), transparent 100%)`
