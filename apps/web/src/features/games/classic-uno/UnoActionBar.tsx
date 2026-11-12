@@ -33,8 +33,8 @@ export function UnoActionBar({
   return (
     <>
       {resolvingRoulette ? (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/65 backdrop-blur-md">
-          <div className="relative w-full max-w-md rounded-[2rem] border-2 border-fuchsia-400/80 bg-zinc-950 p-6 shadow-[0_0_60px_rgba(217,70,239,0.5),0_25px_70px_rgba(0,0,0,0.95)]">
+        <div className="pointer-events-none fixed inset-x-0 top-0 bottom-[15.5rem] z-[120] flex items-center justify-center p-4">
+          <div className="pointer-events-auto relative w-full max-w-md rounded-[2rem] border-2 border-fuchsia-400/80 bg-zinc-950/95 p-6 shadow-[0_0_60px_rgba(217,70,239,0.5),0_25px_70px_rgba(0,0,0,0.95)] backdrop-blur-xl">
             <div className="mb-4 flex items-center justify-center gap-2.5 text-sm sm:text-base font-black uppercase tracking-[0.25em] text-fuchsia-300 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
               <Sparkles className="h-5 w-5 text-fuchsia-400 animate-pulse" />
               Choose roulette color
