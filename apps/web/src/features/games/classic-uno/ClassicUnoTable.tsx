@@ -169,6 +169,7 @@ export function ClassicUnoTable({
   const drawPileRef = useRef<HTMLDivElement | null>(null);
   const discardPileRef = useRef<HTMLDivElement | null>(null);
   const handDockRef = useRef<HTMLDivElement | null>(null);
+  const centerDockRef = useRef<HTMLDivElement | null>(null);
   const seatRefs = useRef<Map<string, HTMLElement>>(new Map());
   const lastCurrentPlayerIdRef = useRef<string | null>(state.currentPlayerId);
   const lastPenaltyAmountRef = useRef<number | null>(null);
@@ -357,17 +358,85 @@ export function ClassicUnoTable({
       });
   }, [state.players, currentUserId, roomPlayerById]);
 
-  const activeSeatAngle = useMemo(() => {
-    if (!state.currentPlayerId) return undefined;
-    if (state.currentPlayerId === currentUserId) {
-      return 90; // Bottom seat (local player)
+  const [activeSeatTarget, setActiveSeatTarget] = useState<{
+    angle: number;
+    distance: number;
+  } | undefined>(undefined);
+
+  const updateActiveSeatTarget = useCallback(() => {
+    const currentId = state.currentPlayerId;
+    if (!currentId) {
+      setActiveSeatTarget(undefined);
+      return;
     }
-    const slot = opponentSlots.find((s) => s.player.userId === state.currentPlayerId);
-    if (!slot) return undefined;
-    const dx = slot.left - 50;
-    const dy = slot.top - 50;
-    return Math.atan2(dy, dx) * (180 / Math.PI);
-  }, [currentUserId, opponentSlots, state.currentPlayerId]);
+
+    const centerEl = centerDockRef.current ?? discardPileRef.current;
+
+    if (currentId === currentUserId) {
+      // Local player: shine directly down (90deg) towards the player's active hand cards
+      let dist = 320;
+      if (centerEl && handDockRef.current) {
+        const centerRect = centerEl.getBoundingClientRect();
+        const handRect = handDockRef.current.getBoundingClientRect();
+        const cy = centerRect.top + centerRect.height / 2;
+        const targetY = handRect.top + 60;
+        dist = Math.max(180, targetY - cy);
+      }
+      setActiveSeatTarget({ angle: 90, distance: dist });
+      return;
+    }
+
+    const seatEl = seatRefs.current.get(currentId);
+    if (centerEl && seatEl) {
+      const centerRect = centerEl.getBoundingClientRect();
+      const seatRect = seatEl.getBoundingClientRect();
+
+      const cx = centerRect.left + centerRect.width / 2;
+      const cy = centerRect.top + centerRect.height / 2;
+
+      const sx = seatRect.left + seatRect.width / 2;
+      const sy = seatRect.top + seatRect.height / 2;
+
+      const dx = sx - cx;
+      const dy = sy - cy;
+
+      const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+      const distance = Math.hypot(dx, dy);
+
+      setActiveSeatTarget({ angle, distance });
+      return;
+    }
+
+    // High-precision geometric fallback if DOM elements are not yet mounted:
+    const slot = opponentSlots.find((s) => s.player.userId === currentId);
+    if (slot) {
+      const dx = (slot.left - 50) * 1.85;
+      const dy = slot.top - 58;
+      const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+      setActiveSeatTarget({ angle, distance: 380 });
+    }
+  }, [state.currentPlayerId, currentUserId, opponentSlots]);
+
+  useEffect(() => {
+    updateActiveSeatTarget();
+
+    const rafId = requestAnimationFrame(() => {
+      updateActiveSeatTarget();
+    });
+
+    const handleResize = () => {
+      updateActiveSeatTarget();
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [updateActiveSeatTarget]);
+
+  const activeSeatAngle = activeSeatTarget?.angle;
+  const activeSeatDistance = activeSeatTarget?.distance;
 
   const reactionMessages = useMemo(
     () =>
@@ -824,11 +893,11 @@ export function ClassicUnoTable({
                   ) : null}
                 </AnimatePresence>
 
-                <div className="relative min-h-0">
+                <div className="relative min-h-0 overflow-visible">
                   <div
-                    className="pointer-events-none absolute left-1/2 top-[calc(50%+2rem)] aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border"
+                    className="pointer-events-none absolute left-1/2 top-[calc(50%+4rem)] aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border"
                     style={{
-                      width: "min(72%, 31rem, 68vh)",
+                      width: "min(85%, 38rem, 80vh)",
                       borderColor: activeAccent.border,
                       background: `radial-gradient(circle, ${activeAccent.strongGlow} 0%, ${activeAccent.glow} 28%, ${activeAccent.soft} 58%, transparent 76%)`,
                       filter: `drop-shadow(0 0 20px ${activeAccent.glow})`,
@@ -844,6 +913,7 @@ export function ClassicUnoTable({
                     direction={state.direction}
                     currentColor={state.currentColor}
                     activeSeatAngle={activeSeatAngle}
+                    activeSeatDistance={activeSeatDistance}
                     isNoMercy={isNoMercy}
                   />
 
@@ -878,10 +948,11 @@ export function ClassicUnoTable({
                     </div>
                   ))}
 
-                  <div className="relative z-10 grid h-full min-h-0 place-items-center">
+                  <div className="relative z-10 grid h-full min-h-0 place-items-center translate-y-16">
                     <motion.div
+                      ref={centerDockRef}
                       layout
-                      className="relative z-10 translate-y-8 flex items-center justify-center gap-6 sm:gap-10 md:gap-12 rounded-[3rem] px-6 py-6 backdrop-blur-xl sm:px-10"
+                      className="relative z-10 translate-y-16 flex items-center justify-center gap-6 sm:gap-10 md:gap-12 rounded-[3rem] px-6 py-6 backdrop-blur-xl sm:px-10"
                       style={{
                         border: `1px solid ${activeAccent.border}`,
                         background: isNoMercy

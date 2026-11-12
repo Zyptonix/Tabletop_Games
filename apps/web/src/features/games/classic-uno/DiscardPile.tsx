@@ -58,7 +58,7 @@ export function DiscardPile({ card, theme, currentColor }: { card: RenderableCar
         </p>
       </div>
 
-      <div className="relative h-40 w-[6.75rem] sm:h-44 sm:w-[7.35rem]">
+      <div className="relative h-56 w-[9.45rem] sm:h-60 sm:w-[10.15rem]">
         {/* Rich atmospheric color glow behind discard pile */}
         <div
           className="absolute -inset-3 rounded-2xl blur-xl transition-all duration-300"

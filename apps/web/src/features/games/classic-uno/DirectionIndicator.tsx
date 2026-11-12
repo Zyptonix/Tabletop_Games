@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 
 interface DirectionPalette {
@@ -51,11 +52,13 @@ export function DirectionIndicator({
   direction,
   currentColor,
   activeSeatAngle,
+  activeSeatDistance,
   isNoMercy = false
 }: {
   direction: 1 | -1;
   currentColor?: string | undefined;
   activeSeatAngle?: number | undefined;
+  activeSeatDistance?: number | undefined;
   isNoMercy?: boolean | undefined;
 }) {
   const reduceMotion = useReducedMotion();
@@ -63,59 +66,80 @@ export function DirectionIndicator({
   const clockwise = direction === 1;
   const rotation = reduceMotion ? { rotate: 0 } : { rotate: clockwise ? 360 : -360 };
 
+  // Spotlight rotation offset by -90deg since the conic beam points downwards at 0deg
+  const rawTargetAngle = activeSeatAngle !== undefined ? activeSeatAngle - 90 : 0;
+  const lastAngleRef = useRef<number>(rawTargetAngle);
+  let diff = (rawTargetAngle - lastAngleRef.current) % 360;
+  if (diff > 180) diff -= 360;
+  if (diff < -180) diff += 360;
+  const spotlightRotation = lastAngleRef.current + diff;
+  lastAngleRef.current = spotlightRotation;
+
   return (
     <div
       aria-label={`Turn direction: ${clockwise ? "clockwise" : "counterclockwise"}`}
       role="img"
-      className="pointer-events-none absolute inset-0 z-[1] grid place-items-center overflow-hidden translate-y-8"
+      className="pointer-events-none absolute inset-0 z-[1] grid place-items-center overflow-visible translate-y-16"
     >
-      {/* Dynamic Turn Spotlight Beam pointing to the active seat */}
+      {/* Dynamic Turn Spotlight Beam pointing directly to the active seat - Pure soft volumetric glow (no harsh lines/lasers) */}
       {activeSeatAngle !== undefined && !reduceMotion ? (
         <motion.div
-          className="pointer-events-none absolute h-[140%] w-[140%] origin-center"
-          initial={{ rotate: activeSeatAngle, opacity: 0 }}
-          animate={{ rotate: activeSeatAngle, opacity: 1 }}
+          className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 aspect-square w-[min(120rem,150vw,150vh)] h-[min(120rem,150vw,150vh)] origin-center z-0 overflow-visible"
+          initial={{ rotate: spotlightRotation, opacity: 0 }}
+          animate={{ rotate: spotlightRotation, opacity: 1 }}
           transition={{
-            rotate: { type: "spring", stiffness: 95, damping: 18, mass: 0.9 },
-            opacity: { duration: 0.4 }
+            rotate: { type: "spring", stiffness: 90, damping: 22, mass: 0.8 },
+            opacity: { duration: 0.3 }
           }}
         >
-          {/* Radiant Conic Spotlight Light Cone */}
+          {/* Broad Atmospheric Volumetric Glow Cone - soft, radiant, unclipped */}
           <div
-            className="absolute left-1/2 top-1/2 h-[52%] w-[14rem] -translate-x-1/2 origin-top"
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 origin-top"
             style={{
-              background: `linear-gradient(to bottom, ${palette.pulse} 0%, ${palette.soft} 40%, transparent 100%)`,
-              clipPath: "polygon(48% 0%, 52% 0%, 100% 100%, 0% 100%)",
-              filter: "blur(14px)",
-              opacity: isNoMercy ? 0.42 : 0.32
+              height: activeSeatDistance ? `${activeSeatDistance * 1.08}px` : "36rem",
+              width: activeSeatDistance ? `${Math.max(260, activeSeatDistance * 0.72)}px` : "34rem",
+              background: `radial-gradient(ellipse 65% 100% at 50% 0%, ${palette.pulse} 0%, ${palette.color} 30%, ${palette.soft} 65%, transparent 90%)`,
+              filter: "blur(28px)",
+              opacity: isNoMercy ? 0.78 : 0.7
             }}
           />
 
-          {/* Core Spotlight Filament */}
+          {/* Inner Soft Luminous Light Wash */}
           <div
-            className="absolute left-1/2 top-1/2 h-[48%] w-[3.5rem] -translate-x-1/2 origin-top"
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 origin-top"
             style={{
-              background: `linear-gradient(to bottom, white 0%, ${palette.color} 30%, transparent 95%)`,
-              clipPath: "polygon(46% 0%, 54% 0%, 80% 100%, 20% 100%)",
-              filter: "blur(6px)",
-              opacity: 0.5
+              height: activeSeatDistance ? `${activeSeatDistance * 0.9}px` : "28rem",
+              width: activeSeatDistance ? `${Math.max(160, activeSeatDistance * 0.42)}px` : "20rem",
+              background: `radial-gradient(ellipse 50% 90% at 50% 0%, rgba(255,255,255,0.7) 0%, ${palette.pulse} 28%, ${palette.color} 55%, transparent 85%)`,
+              filter: "blur(18px)",
+              opacity: 0.85
             }}
           />
 
-          {/* Destination Landing Flare */}
-          <div
-            className="absolute left-1/2 top-[88%] h-24 w-36 -translate-x-1/2 -translate-y-1/2 rounded-full"
+          {/* Destination Landing Flare (Soft radiant aura bathing the active player seat) */}
+          <motion.div
+            animate={{
+              scale: [0.94, 1.08, 0.94],
+              opacity: [0.75, 1, 0.75]
+            }}
+            transition={{
+              repeat: Infinity,
+              duration: 2.4,
+              ease: "easeInOut"
+            }}
+            className="absolute left-1/2 h-36 w-52 sm:h-44 sm:w-64 -translate-x-1/2 -translate-y-1/2 rounded-full"
             style={{
-              background: `radial-gradient(ellipse at center, ${palette.pulse} 0%, ${palette.soft} 50%, transparent 80%)`,
-              filter: "blur(12px)",
-              opacity: 0.65
+              top: activeSeatDistance ? `calc(50% + ${activeSeatDistance}px)` : "calc(50% + 32rem)",
+              background: `radial-gradient(ellipse at center, ${palette.pulse} 0%, ${palette.color} 40%, ${palette.soft} 70%, transparent 90%)`,
+              filter: "blur(20px)",
+              boxShadow: `0 0 45px ${palette.pulse}, 0 0 95px ${palette.color}`
             }}
           />
         </motion.div>
       ) : null}
 
       {/* Holographic Energy Vortex Container */}
-      <div className="relative aspect-square" style={{ width: "min(70%, 32rem, 70vh)" }}>
+      <div className="relative aspect-square" style={{ width: "min(84%, 38rem, 80vh)" }}>
         {/* Outermost ambient glowing energy perimeter */}
         <motion.div
           className="absolute inset-[-4%] rounded-full"
