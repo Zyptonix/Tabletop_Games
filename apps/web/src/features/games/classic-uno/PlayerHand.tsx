@@ -349,7 +349,7 @@ export function PlayerHand({
 
   return (
     <div className="relative mx-auto w-full max-w-[59rem] overflow-visible xl:max-w-[65rem] 2xl:max-w-[72rem]">
-      {/* Intense Ambient Glow Aura radiating outward behind the entire hand zone - depleting smoothly right-to-left */}
+      {/* Seamless Ambient Light Pool radiating outward from behind the hand - boundless and fading naturally into the rest of the screen */}
       <AnimatePresence>
         {isMyTurn && activePercent > 0 ? (
           <motion.div
@@ -357,21 +357,16 @@ export function PlayerHand({
             initial={{ opacity: 0 }}
             animate={{
               opacity: fadeOpacity,
-              scale: [0.99, 1.025, 0.99],
-              transition: {
-                scale: { repeat: Infinity, duration: 2.4, ease: "easeInOut" },
-                opacity: { duration: 0.2, ease: "linear" }
-              }
+              transition: { duration: 0.25, ease: "linear" }
             }}
             exit={{
               opacity: 0,
-              scale: 0.96,
               transition: { duration: 0.4, ease: "easeOut" }
             }}
-            className="pointer-events-none absolute -inset-x-6 -top-10 bottom-0 z-0 rounded-[3.5rem]"
+            className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-28 -bottom-20 w-[120vw] z-0 overflow-visible"
             style={{
-              background: `radial-gradient(ellipse at 50% 40%, ${colorGlow.ambient} 0%, ${colorGlow.glow} 38%, ${colorGlow.soft} 65%, transparent 80%)`,
-              filter: "blur(42px)",
+              background: `radial-gradient(ellipse 60% 55% at 50% 80%, ${colorGlow.ambient} 0%, ${colorGlow.glow} 24%, ${colorGlow.soft} 48%, transparent 76%)`,
+              filter: "blur(64px)",
               WebkitMaskImage: `linear-gradient(to right, black 0%, black calc(${activePercent}% - 8%), transparent calc(${activePercent}% + 8%), transparent 100%)`,
               maskImage: `linear-gradient(to right, black 0%, black calc(${activePercent}% - 8%), transparent calc(${activePercent}% + 8%), transparent 100%)`
             }}
@@ -482,29 +477,25 @@ export function PlayerHand({
           </div>
         ) : null}
 
-        {/* Normal Ambient Backlight beneath the cards - smoothly masks right to left with active card color and fades without sticking */}
+        {/* Soft Ambient Backlight beneath the cards - smoothly masks right to left with active card color without bouncing */}
         <AnimatePresence>
           {isMyTurn && activePercent > 0 ? (
             <motion.div
               key="hand-bottom-backlight"
               aria-hidden="true"
-              className="pointer-events-none absolute inset-x-4 bottom-0 h-32 rounded-full z-0"
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-32 rounded-full z-0"
               initial={{ opacity: 0 }}
               animate={{
                 opacity: fadeOpacity * 0.85,
-                scaleX: [0.96, 1.04, 0.96],
-                transition: {
-                  scaleX: { repeat: Infinity, duration: 2.2, ease: "easeInOut" },
-                  opacity: { duration: 0.2, ease: "linear" }
-                }
+                transition: { duration: 0.25, ease: "linear" }
               }}
               exit={{
                 opacity: 0,
                 transition: { duration: 0.35, ease: "easeOut" }
               }}
               style={{
-                background: `radial-gradient(ellipse at 50% 90%, ${colorGlow.ambient} 0%, ${colorGlow.glow} 45%, transparent 75%)`,
-                filter: "blur(24px)",
+                background: `radial-gradient(ellipse at 50% 90%, ${colorGlow.ambient} 0%, ${colorGlow.glow} 40%, transparent 75%)`,
+                filter: "blur(28px)",
                 WebkitMaskImage: `linear-gradient(to right, black 0%, black calc(${activePercent}% - 8%), transparent calc(${activePercent}% + 8%), transparent 100%)`,
                 maskImage: `linear-gradient(to right, black 0%, black calc(${activePercent}% - 8%), transparent calc(${activePercent}% + 8%), transparent 100%)`
               }}
