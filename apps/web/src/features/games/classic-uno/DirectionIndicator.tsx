@@ -73,10 +73,10 @@ export function DirectionIndicator({
       role="img"
       className="pointer-events-none absolute inset-0 z-[1] grid place-items-center overflow-visible translate-y-16"
     >
-      {/* Dynamic Turn Spotlight Beam pointing directly to the active seat - Pure soft volumetric glow (no harsh lines/lasers) */}
+      {/* Dynamic Turn Spotlight Beam pointing directly to the active seat - Goes to the end of the screen and touches player seats */}
       {activeSeatAngle !== undefined && !reduceMotion ? (
         <motion.div
-          className="pointer-events-none absolute h-[160%] w-[160%] origin-center z-0 overflow-visible"
+          className="pointer-events-none absolute h-full w-full origin-center z-0 overflow-visible"
           initial={{ rotate: spotlightRotation, opacity: 0 }}
           animate={{ rotate: spotlightRotation, opacity: 1 }}
           transition={{
@@ -84,42 +84,25 @@ export function DirectionIndicator({
             opacity: { duration: 0.3 }
           }}
         >
-          {/* Broad Atmospheric Volumetric Glow Cone - soft, radiant, unclipped */}
+          {/* Broad Atmospheric Volumetric Glow Cone - stretches to the end of the screen to touch the player seats */}
           <div
-            className="absolute left-1/2 top-1/2 h-[72%] w-[26rem] sm:w-[32rem] -translate-x-1/2 origin-top"
+            className="absolute left-1/2 top-1/2 h-[130vh] w-[38rem] sm:w-[48rem] -translate-x-1/2 origin-top"
             style={{
-              background: `radial-gradient(ellipse 65% 100% at 50% 0%, ${palette.pulse} 0%, ${palette.color} 30%, ${palette.soft} 65%, transparent 90%)`,
-              filter: "blur(28px)",
-              opacity: isNoMercy ? 0.78 : 0.7
+              clipPath: "polygon(40% 0%, 60% 0%, 100% 100%, 0% 100%)",
+              background: `linear-gradient(to bottom, ${palette.pulse} 0%, ${palette.color} 28%, ${palette.soft} 65%, transparent 100%)`,
+              filter: "blur(24px)",
+              opacity: isNoMercy ? 0.82 : 0.72
             }}
           />
 
           {/* Inner Soft Luminous Light Wash */}
           <div
-            className="absolute left-1/2 top-1/2 h-[64%] w-[15rem] sm:w-[19rem] -translate-x-1/2 origin-top"
+            className="absolute left-1/2 top-1/2 h-[120vh] w-[20rem] sm:w-[26rem] -translate-x-1/2 origin-top"
             style={{
-              background: `radial-gradient(ellipse 50% 90% at 50% 0%, rgba(255,255,255,0.7) 0%, ${palette.pulse} 28%, ${palette.color} 55%, transparent 85%)`,
-              filter: "blur(18px)",
+              clipPath: "polygon(44% 0%, 56% 0%, 90% 100%, 10% 100%)",
+              background: `linear-gradient(to bottom, rgba(255,255,255,0.65) 0%, ${palette.pulse} 24%, ${palette.color} 55%, transparent 95%)`,
+              filter: "blur(16px)",
               opacity: 0.85
-            }}
-          />
-
-          {/* Destination Landing Flare (Soft radiant aura bathing the active player seat) */}
-          <motion.div
-            animate={{
-              scale: [0.94, 1.08, 0.94],
-              opacity: [0.75, 1, 0.75]
-            }}
-            transition={{
-              repeat: Infinity,
-              duration: 2.4,
-              ease: "easeInOut"
-            }}
-            className="absolute left-1/2 top-[88%] h-36 w-52 sm:h-44 sm:w-64 -translate-x-1/2 -translate-y-1/2 rounded-full"
-            style={{
-              background: `radial-gradient(ellipse at center, ${palette.pulse} 0%, ${palette.color} 40%, ${palette.soft} 70%, transparent 90%)`,
-              filter: "blur(20px)",
-              boxShadow: `0 0 45px ${palette.pulse}, 0 0 95px ${palette.color}`
             }}
           />
         </motion.div>

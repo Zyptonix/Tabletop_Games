@@ -881,7 +881,7 @@ export function ClassicUnoTable({
                     </div>
                   ))}
 
-                  <div className="relative z-10 grid h-full min-h-0 place-items-center translate-y-16">
+                  <div className="relative z-10 grid h-full min-h-0 place-items-center translate-y-8">
                     <motion.div
                       ref={centerDockRef}
                       layout
@@ -998,7 +998,7 @@ export function ClassicUnoTable({
                       ) : null}
                     </div>
 
-                    <div className="hidden md:block">
+                    <div className="hidden md:block relative z-50">
                       <UnoActionBar
                         legalActions={legalActions}
                         mode={state.gameId}
