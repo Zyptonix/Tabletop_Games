@@ -104,9 +104,9 @@ function hasActionType(actions: Array<{ type: string }>, type: string): boolean 
 }
 
 describe("uno no mercy", () => {
-  it("defaults new No Mercy rooms to a 60 second turn timer", () => {
-    expect(DEFAULT_NO_MERCY_SETTINGS.turnSeconds).toBe(60);
-    expect(stateWithHands({ p1: [card("red", "1")] }).settings.turnSeconds).toBe(60);
+  it("defaults new No Mercy rooms to a 20 second turn timer", () => {
+    expect(DEFAULT_NO_MERCY_SETTINGS.turnSeconds).toBe(20);
+    expect(stateWithHands({ p1: [card("red", "1")] }).settings.turnSeconds).toBe(20);
   });
 
   it("builds the exact provided No Mercy deck counts", () => {

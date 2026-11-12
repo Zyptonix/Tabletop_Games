@@ -193,9 +193,9 @@ export function DrawPile({
             className={cn(
               "absolute -right-3 top-3 h-40 w-[6.75rem] rounded-2xl border transition-all sm:h-44 sm:w-[7.35rem]",
               isForcedDraw
-                ? cn(activeTheme.border, activeTheme.bg, "shadow-[0_0_32px_rgba(0,0,0,0.5)]")
+                ? cn(activeTheme.border, activeTheme.bg, "shadow-[0_0_36px_rgba(0,0,0,0.6)]")
                 : canDraw
-                  ? "border-sky-300/25 bg-sky-950/35 shadow-[0_0_28px_rgb(14_165_233_/_0.28)]"
+                  ? "border-sky-300/40 bg-sky-950/40 shadow-[0_0_32px_rgba(14,165,233,0.45),0_0_15px_rgba(56,189,248,0.3)]"
                   : "border-white/10 bg-black/40 shadow-none"
             )}
           />
@@ -207,7 +207,7 @@ export function DrawPile({
               isForcedDraw
                 ? cn(activeTheme.border, "bg-black/60")
                 : canDraw
-                  ? "border-white/20 bg-black/55"
+                  ? "border-sky-300/30 bg-black/55 shadow-[0_0_18px_rgba(14,165,233,0.25)]"
                   : "border-white/10 bg-black/30"
             )}
           />
@@ -221,7 +221,9 @@ export function DrawPile({
             className={cn(
               "h-40 w-[6.75rem] rounded-2xl transition-all sm:h-44 sm:w-[7.35rem]",
               !canDraw && "pointer-events-none opacity-60",
-              canDraw && !isForcedDraw && "ring-2 ring-sky-300/50 hover:ring-sky-300/80 cursor-pointer",
+              canDraw &&
+                !isForcedDraw &&
+                "ring-2 ring-sky-300 hover:ring-sky-200 shadow-[0_0_28px_rgba(14,165,233,0.65),0_0_55px_rgba(56,189,248,0.35)] cursor-pointer",
               isForcedDraw &&
                 cn(
                   "ring-4 ring-offset-2 ring-offset-slate-950 cursor-pointer",

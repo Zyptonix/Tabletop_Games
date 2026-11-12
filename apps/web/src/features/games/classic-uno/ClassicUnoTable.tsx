@@ -23,6 +23,7 @@ import { PlayerHand } from "./PlayerHand";
 import { PlayerSeat } from "./PlayerSeat";
 import { PowerEventOverlay, type PowerSeatEffect } from "./PowerEventOverlay";
 import { ReactionOverlay, REACTION_PREFIX } from "./ReactionOverlay";
+import { TableTurnIndicator } from "./TableTurnIndicator";
 import { TurnTimerCircle } from "./TurnTimerCircle";
 import { TurnTransitionOverlay } from "./TurnTransitionOverlay";
 import { UnoActionBar } from "./UnoActionBar";
@@ -189,7 +190,6 @@ export function ClassicUnoTable({
     amount: number;
   } | null>(null);
   const [seatPowerEffects, setSeatPowerEffects] = useState<Record<string, PowerSeatEffect>>({});
-  const [turnNotice, setTurnNotice] = useState<{ id: string; text: string; tone: "self" | "other" } | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
   const me = state.players.find((player) => player.userId === currentUserId);
@@ -377,15 +377,15 @@ export function ClassicUnoTable({
     [room.chat]
   );
 
-  // Timer calculations
-  const turnDurationMs = state.turnDurationMs ?? 30000;
+  // Timer calculations (defaults to 20 seconds for both UNO games)
+  const turnDurationMs = state.turnDurationMs ?? 20000;
   const turnExpiresAt = state.turnExpiresAt ? new Date(state.turnExpiresAt).getTime() : null;
   const turnRemainingMs = turnExpiresAt ? Math.max(0, turnExpiresAt - now) : turnDurationMs;
   const turnProgress = Math.max(0, Math.min(1, turnRemainingMs / turnDurationMs));
   const turnSecondsLeft = Math.max(0, Math.ceil(turnRemainingMs / 1000));
 
   useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    const id = window.setInterval(() => setNow(Date.now()), 50);
     return () => window.clearInterval(id);
   }, []);
 
@@ -445,27 +445,6 @@ export function ClassicUnoTable({
 
     lastPenaltyAmountRef.current = null;
   }, [pendingPenalty, room.players, state.players]);
-
-  useEffect(() => {
-    if (!state.currentPlayerId) {
-      return;
-    }
-
-    const currentPlayer = state.players.find((player) => player.userId === state.currentPlayerId);
-    const nextMessage =
-      state.currentPlayerId === currentUserId
-        ? "Your turn!"
-        : `${currentPlayer?.displayName ?? "Player"}'s turn`;
-
-    setTurnNotice({
-      id: `${state.currentPlayerId}-${Date.now()}`,
-      text: nextMessage,
-      tone: state.currentPlayerId === currentUserId ? "self" : "other"
-    });
-
-    const timeout = window.setTimeout(() => setTurnNotice(null), 1750);
-    return () => window.clearTimeout(timeout);
-  }, [currentUserId, state.currentPlayerId, state.players]);
 
   const triggerSeatPowerEffect = useCallback((playerId: string, effect: PowerSeatEffect) => {
     setSeatPowerEffects((current) => ({ ...current, [playerId]: effect }));
@@ -623,26 +602,36 @@ export function ClassicUnoTable({
         <div className="pointer-events-none absolute inset-0 uno-fullscreen-glow" />
         <ReactionOverlay messages={reactionMessages} />
 
-        <AnimatePresence>
-          {turnNotice ? (
+        {/* Top Middle Persistent Turn Banner */}
+        <AnimatePresence mode="wait">
+          {!state.results && state.currentPlayerId && currentPlayer ? (
             <motion.div
-              key={turnNotice.id}
-              initial={{ opacity: 0, y: -10, scale: 0.96 }}
+              key={`top-turn-${state.currentPlayerId}`}
+              initial={{ opacity: 0, y: -12, scale: 0.94 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -14, scale: 0.98 }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
-              className="pointer-events-none absolute inset-x-0 top-4 z-[60] flex justify-center"
+              exit={{ opacity: 0, y: -10, scale: 0.94 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+              className="pointer-events-none absolute inset-x-0 top-3.5 z-[60] flex justify-center px-4"
             >
               <div
                 className={cn(
-                  "inline-flex items-center gap-2.5 rounded-full border px-4 py-2.5 text-[0.72rem] font-black uppercase tracking-[0.22em] shadow-[0_18px_40px_rgba(0,0,0,0.38)]",
-                  turnNotice.tone === "self"
-                    ? "border-lime-200/75 bg-[linear-gradient(135deg,rgba(34,197,94,0.34),rgba(16,185,129,0.22))] text-lime-50"
-                    : "border-cyan-300/65 bg-[linear-gradient(135deg,rgba(14,165,233,0.24),rgba(59,130,246,0.16))] text-sky-50"
+                  "inline-flex items-center gap-2.5 rounded-full border px-4 py-2 text-[0.74rem] font-black uppercase tracking-[0.2em] shadow-[0_14px_35px_rgba(0,0,0,0.45)] backdrop-blur-xl transition-all duration-300",
+                  isMyTurn
+                    ? "border-lime-300/80 bg-[linear-gradient(135deg,rgba(34,197,94,0.38),rgba(16,185,129,0.28))] text-lime-100 shadow-[0_0_24px_rgba(34,197,94,0.35),0_18px_40px_rgba(0,0,0,0.45)]"
+                    : "border-sky-300/60 bg-[linear-gradient(135deg,rgba(14,165,233,0.26),rgba(59,130,246,0.18))] text-sky-100 shadow-[0_0_20px_rgba(14,165,233,0.2),0_18px_40px_rgba(0,0,0,0.45)]"
                 )}
               >
-                <span className="h-2.5 w-2.5 rounded-full bg-current shadow-[0_0_18px_rgba(190,242,100,0.8)]" />
-                {turnNotice.text}
+                {isMyTurn ? (
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-lime-400 opacity-75" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-lime-300 shadow-[0_0_12px_rgba(190,242,100,0.95)]" />
+                  </span>
+                ) : (
+                  <span className="h-2.5 w-2.5 rounded-full bg-sky-300 shadow-[0_0_12px_rgba(56,189,248,0.9)]" />
+                )}
+                <span className="truncate max-w-[14rem] sm:max-w-xs">
+                  {isMyTurn ? "Your turn!" : `${currentPlayer.displayName}'s turn`}
+                </span>
               </div>
             </motion.div>
           ) : null}
@@ -883,6 +872,7 @@ export function ClassicUnoTable({
                         stackHitAmount={stackHitNotice?.playerId === player.userId ? stackHitNotice.amount : undefined}
                         powerEffect={seatPowerEffects[player.userId]}
                         turnProgress={player.isCurrentTurn ? turnProgress : undefined}
+                        activeColor={state.currentColor ?? (state.topDiscard as RenderableCard)?.color}
                         isNoMercy={isNoMercy}
                       />
                     </div>
@@ -891,16 +881,17 @@ export function ClassicUnoTable({
                   <div className="relative z-10 grid h-full min-h-0 place-items-center">
                     <motion.div
                       layout
-                      className="relative z-10 translate-y-8 flex items-center justify-center gap-10 rounded-[3rem] px-8 py-7 backdrop-blur-xl sm:gap-16 sm:px-12"
+                      className="relative z-10 translate-y-8 flex items-center justify-center gap-6 sm:gap-10 md:gap-12 rounded-[3rem] px-6 py-6 backdrop-blur-xl sm:px-10"
                       style={{
                         border: `1px solid ${activeAccent.border}`,
                         background: isNoMercy
                           ? "radial-gradient(ellipse at 50% 18%, rgba(55,8,22,0.82), rgba(18,2,7,0.88) 72%, rgba(0,0,0,0.72) 100%)"
                           : "radial-gradient(ellipse at 50% 18%, rgba(13,62,48,0.76), rgba(3,16,12,0.82) 72%, rgba(0,0,0,0.62) 100%)",
                         boxShadow: `
-                          0 30px 90px rgba(0,0,0,0.68),
-                          0 0 44px ${activeAccent.glow},
-                          inset 0 1px 0 rgba(255,255,255,0.06)
+                          0 30px 90px rgba(0,0,0,0.72),
+                          0 0 65px ${activeAccent.strongGlow},
+                          0 0 115px ${activeAccent.glow},
+                          inset 0 1px 0 rgba(255,255,255,0.12)
                         `
                       }}
                     >
@@ -941,6 +932,17 @@ export function ClassicUnoTable({
                         </AnimatePresence>
                         <DiscardPile card={state.topDiscard as RenderableCard} theme={cardTheme} currentColor={state.currentColor} />
                       </div>
+
+                      <TableTurnIndicator
+                        player={currentPlayer}
+                        roomPlayer={currentPlayer ? roomPlayerById.get(currentPlayer.userId) : undefined}
+                        isMyTurn={isMyTurn}
+                        turnProgress={turnProgress}
+                        turnSecondsLeft={turnSecondsLeft}
+                        activeColor={state.currentColor ?? (state.topDiscard as RenderableCard)?.color}
+                        activeSeatAngle={activeSeatAngle}
+                        isNoMercy={isNoMercy}
+                      />
                     </motion.div>
                   </div>
                 </div>
@@ -1045,6 +1047,7 @@ export function ClassicUnoTable({
                             stackHitAmount={stackHitNotice?.playerId === me.userId ? stackHitNotice.amount : undefined}
                             powerEffect={seatPowerEffects[me.userId]}
                             turnProgress={me.isCurrentTurn ? turnProgress : undefined}
+                            activeColor={state.currentColor ?? (state.topDiscard as RenderableCard)?.color}
                             isNoMercy={isNoMercy}
                           />
                         </div>
@@ -1061,6 +1064,10 @@ export function ClassicUnoTable({
                         isMyTurn={Boolean(me?.isCurrentTurn)}
                         activeColor={state.currentColor ?? (state.topDiscard as RenderableCard)?.color}
                         myHandCount={me?.hand?.length ?? me?.handCount ?? 0}
+                        turnProgress={turnProgress}
+                        turnSecondsLeft={turnSecondsLeft}
+                        turnExpiresAt={state.turnExpiresAt}
+                        turnDurationMs={turnDurationMs}
                         isNoMercy={isNoMercy}
                       />
                     ) : null}
