@@ -33,6 +33,8 @@ import type {
   TwentyNineSuit
 } from "@tabletop/game-core";
 import type { RoomStateView } from "@tabletop/shared";
+import { GameFeedbackButton } from "@/components/feedback/GameFeedbackButton";
+import { GamePauseButton } from "@/components/game/GamePauseButton";
 import { RoomChat } from "@/features/game-shell/RoomChat";
 import { cn } from "@/lib/utils/cn";
 import {
@@ -272,7 +274,9 @@ export function TwentyNineTable({
   onEndMatch,
   onReadyNextTrick,
   onConfirmSingleHand,
-  onReadyNextHand
+  onReadyNextHand,
+  onPause,
+  onResume
 }: {
   room: RoomStateView;
   state: PublicTwentyNineState;
@@ -285,6 +289,8 @@ export function TwentyNineTable({
   onReadyNextTrick?: () => void;
   onConfirmSingleHand?: () => void;
   onReadyNextHand?: () => void;
+  onPause?: ((roomId: string) => void) | undefined;
+  onResume?: ((roomId: string) => void) | undefined;
 }) {
   const reduceMotion = useReducedMotion();
   const tableRef = useRef<HTMLDivElement | null>(null);
@@ -810,6 +816,20 @@ export function TwentyNineTable({
 
           {/* Action Tools */}
           <div className="flex items-center gap-1.5 sm:gap-2">
+          <GamePauseButton
+            room={room}
+            currentUserId={currentUserId}
+            onPause={onPause}
+            onResume={onResume}
+            variant="twenty-nine"
+          />
+
+          <GameFeedbackButton
+            gameId="twenty-nine"
+            gameName="Twenty-Nine"
+            variant="twenty-nine"
+          />
+
           <button
             type="button"
             onClick={() => setRulesOpen(true)}
@@ -988,6 +1008,24 @@ export function TwentyNineTable({
                 </div>
               </div>
             </div>
+
+            {state.canSkipHand ? (
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-emerald-400/40 bg-emerald-500/20 px-2.5 py-1.5 text-[0.68rem] font-black text-emerald-200 shadow-md">
+                <span className="flex items-center gap-1.5 truncate">
+                  <Sparkles className="h-3.5 w-3.5 text-emerald-300 shrink-0" />
+                  Target reached!
+                </span>
+                {hasAction(legalActions, "skip_hand") ? (
+                  <button
+                    type="button"
+                    onClick={() => onAction("skip_hand")}
+                    className="shrink-0 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black px-2 py-0.5 font-black text-[0.62rem] transition active:scale-95 shadow-md"
+                  >
+                    Skip Hand ⏩
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           {/* 2. HAND CONTRACT & TRUMP STATUS */}
@@ -1585,6 +1623,16 @@ export function TwentyNineTable({
             {/* IN-GAME PLAYING ACTIONS */}
             {state.phase === "playing" ? (
               <div className="flex flex-wrap items-center gap-2">
+                {hasAction(legalActions, "skip_hand") ? (
+                  <button
+                    type="button"
+                    onClick={() => onAction("skip_hand")}
+                    className="flex items-center gap-1.5 rounded-xl border border-emerald-400 bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2 text-xs font-black text-white shadow-[0_0_24px_rgba(52,211,153,0.5)] transition hover:brightness-110 active:scale-95 animate-pulse"
+                  >
+                    <ArrowRight className="h-4 w-4" />
+                    Target Reached · Skip Hand ⏩
+                  </button>
+                ) : null}
                 {hasAction(legalActions, "reveal_trump") && isMyTurn ? (
                   <button
                     type="button"
@@ -1626,10 +1674,27 @@ export function TwentyNineTable({
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: [1, 1.06, 1], opacity: 1 }}
                 transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-                className="flex items-center gap-2 rounded-full border border-amber-300/90 bg-gradient-to-r from-amber-400 to-amber-500 px-5 py-1 text-xs font-black uppercase tracking-wider text-amber-950 shadow-[0_0_22px_rgba(251,191,36,0.85)] ring-2 ring-amber-200"
+                className={cn(
+                  "flex items-center gap-2 rounded-full px-5 py-1 text-xs font-black uppercase tracking-wider shadow-[0_0_22px_rgba(251,191,36,0.85)] ring-2",
+                  state.trumpRevealed &&
+                  state.trumpRevealerPlayerId === currentUserId &&
+                  state.completedTricks.length === state.trumpRevealTrickNumber &&
+                  state.trumpSuit &&
+                  sortedHand.some((c) => c.suit === state.trumpSuit)
+                    ? "border-amber-200 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 text-slate-950 ring-amber-300 shadow-[0_0_28px_rgba(251,146,60,0.9)] animate-pulse"
+                    : "border-amber-300/90 bg-gradient-to-r from-amber-400 to-amber-500 text-amber-950 ring-amber-200"
+                )}
               >
-                <Sparkles className="h-3.5 w-3.5 text-amber-950 animate-spin" />
-                <span>Your Turn</span>
+                <Sparkles className="h-3.5 w-3.5 text-current animate-spin" />
+                <span>
+                  {state.trumpRevealed &&
+                  state.trumpRevealerPlayerId === currentUserId &&
+                  state.completedTricks.length === state.trumpRevealTrickNumber &&
+                  state.trumpSuit &&
+                  sortedHand.some((c) => c.suit === state.trumpSuit)
+                    ? "Must Play Trump ⚡"
+                    : "Your Turn"}
+                </span>
               </motion.div>
             ) : null}
 
@@ -1696,7 +1761,15 @@ export function TwentyNineTable({
 
                 <div className="flex items-center gap-1.5 text-white/50 text-[0.68rem]">
                   <Shield className="h-3.5 w-3.5" />
-                  <span>Follow lead suit when possible</span>
+                  <span>
+                    {state.trumpRevealed &&
+                    state.trumpRevealerPlayerId === currentUserId &&
+                    state.completedTricks.length === state.trumpRevealTrickNumber &&
+                    state.trumpSuit &&
+                    sortedHand.some((c) => c.suit === state.trumpSuit)
+                      ? "You revealed trump · Must play a trump card!"
+                      : "Follow lead suit when possible"}
+                  </span>
                 </div>
               </div>
 

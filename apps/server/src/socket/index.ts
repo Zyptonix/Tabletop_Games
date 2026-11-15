@@ -11,11 +11,12 @@ import {
   kickPlayerSchema,
   readySchema,
   roomIdSchema,
+  selectSeatSchema,
   transferHostSchema,
   type ClientToServerEvents,
   type ServerToClientEvents
 } from "@tabletop/shared";
-import { readSessionFromCookie } from "../auth/session";
+import { readSessionFromCookie, readSessionFromHeader, verifySession } from "../auth/session";
 import { serializeUser } from "../auth/serializeUser";
 import { corsOriginDelegate, env, unoDebugScenariosEnabled } from "../config/env";
 import { RoomManager } from "../rooms/RoomManager";
@@ -70,7 +71,13 @@ function socketError(error: unknown) {
 
 async function authenticateSocket(socket: AppSocket, next: (error?: Error) => void) {
   try {
-    const claims = readSessionFromCookie(socket.request.headers.cookie);
+    const handshakeAuth = socket.handshake.auth as { token?: string } | undefined;
+    const headerAuth = socket.handshake.headers.authorization;
+    const claims =
+      (handshakeAuth?.token ? verifySession(handshakeAuth.token) : null) ??
+      readSessionFromHeader(headerAuth) ??
+      readSessionFromCookie(socket.request.headers.cookie);
+
     if (!claims) {
       next(new Error("UNAUTHORIZED"));
       return;
@@ -366,7 +373,7 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
       }
     });
 
-    socket.on("room:pause", (payload) => {
+    socket.on("room:pause", async (payload) => {
       const parsed = roomIdSchema.safeParse(payload);
       if (!parsed.success) {
         emitError(socket, "room:error", new AppError(ERROR_CODES.INVALID_PAYLOAD, "Invalid pause payload.", parsed.error.flatten()));
@@ -374,13 +381,13 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
       }
 
       try {
-        emitRoom(manager.pauseRoom(parsed.data.roomId, user.id));
+        emitRoom(await manager.pauseRoom(parsed.data.roomId, user.id));
       } catch (error) {
         emitError(socket, "room:error", error);
       }
     });
 
-    socket.on("room:resume", (payload) => {
+    socket.on("room:resume", async (payload) => {
       const parsed = roomIdSchema.safeParse(payload);
       if (!parsed.success) {
         emitError(socket, "room:error", new AppError(ERROR_CODES.INVALID_PAYLOAD, "Invalid resume payload.", parsed.error.flatten()));
@@ -388,7 +395,7 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
       }
 
       try {
-        emitRoom(manager.resumeRoom(parsed.data.roomId, user.id));
+        emitRoom(await manager.resumeRoom(parsed.data.roomId, user.id));
       } catch (error) {
         emitError(socket, "room:error", error);
       }
@@ -456,6 +463,19 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
       }
       try {
         emitRoomControlResult(manager.removeBots(parsed.data.roomId, user.id));
+      } catch (error) {
+        emitError(socket, "room:error", error);
+      }
+    });
+
+    socket.on("room:select-seat", (payload) => {
+      const parsed = selectSeatSchema.safeParse(payload);
+      if (!parsed.success) {
+        emitError(socket, "room:error", new AppError(ERROR_CODES.INVALID_PAYLOAD, "Invalid seat payload.", parsed.error.flatten()));
+        return;
+      }
+      try {
+        emitRoomControlResult(manager.selectSeat(parsed.data.roomId, user.id, parsed.data.seat));
       } catch (error) {
         emitError(socket, "room:error", error);
       }

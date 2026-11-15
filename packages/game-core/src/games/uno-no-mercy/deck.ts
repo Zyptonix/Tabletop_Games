@@ -187,6 +187,7 @@ export function createInitialNoMercyState(params: {
     drawPile: startingDiscard.remaining,
     discardPile: [...startingDiscard.ignored, startingDiscard.card],
     mercyPile: [],
+    eliminatedPlayerIds: [],
     pendingPenalty: null,
     pendingRoulette: null,
     lastDrawnCardId: null,

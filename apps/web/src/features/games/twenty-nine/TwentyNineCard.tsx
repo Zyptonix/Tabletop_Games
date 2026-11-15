@@ -65,6 +65,7 @@ export function CardSpriteImage({
   const filename = `${rank}_of_${suit}.png`;
   const candidates = useMemo(
     () => [
+      `/game-assets/twenty-nine/cards_better/${filename}`,
       `/game-assets/twenty-nine/cards/${filename}`,
       `/game-assets/twenty-nine/${filename}`,
       `/game-assets/29/cards/${filename}`
@@ -82,7 +83,7 @@ export function CardSpriteImage({
       src={candidates[index]}
       alt={`${rank} of ${suit}`}
       draggable={false}
-      className={cn("pointer-events-none select-none object-contain", className)}
+      className={cn("pointer-events-none select-none object-cover", className)}
       onError={() => setIndex((curr) => curr + 1)}
     />
   );
@@ -95,7 +96,14 @@ export function TwentyNineCardBack({
   className?: string;
   small?: boolean;
 }) {
-  const [failed, setFailed] = useState(false);
+  const candidates = useMemo(
+    () => [
+      "/game-assets/twenty-nine/cards_better/back.png",
+      "/game-assets/twenty-nine/cards/back.png"
+    ],
+    []
+  );
+  const [index, setIndex] = useState(0);
 
   return (
     <div
@@ -105,13 +113,13 @@ export function TwentyNineCardBack({
         className
       )}
     >
-      {!failed ? (
+      {index < candidates.length ? (
         <img
-          src="/game-assets/twenty-nine/cards/back.png"
+          src={candidates[index]}
           alt="Card back"
           draggable={false}
           className="absolute inset-0 h-full w-full object-cover"
-          onError={() => setFailed(true)}
+          onError={() => setIndex((curr) => curr + 1)}
         />
       ) : (
         <div className="absolute inset-0 flex flex-col items-center justify-center p-1 text-center">

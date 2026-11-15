@@ -22,6 +22,8 @@ export function getPublicClassicUnoState(params: {
         seat: player.seat,
         handCount: player.hand.length,
         unoCalled: player.unoCalled,
+        eliminated: player.eliminated,
+        eliminatedAtActionNumber: player.eliminatedAtActionNumber,
         isCurrentTurn: player.userId === state.currentPlayerId
       };
 
@@ -45,6 +47,7 @@ export function getPublicClassicUnoState(params: {
     actionNumber: state.actionNumber,
     winnerUserId: state.winnerUserId,
     results: state.results,
+    eliminatedPlayerIds: state.eliminatedPlayerIds,
     turnStartedAt: state.turnStartedAt,
     turnDurationMs,
     turnExpiresAt

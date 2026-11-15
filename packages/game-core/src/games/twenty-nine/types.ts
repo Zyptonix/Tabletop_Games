@@ -100,6 +100,7 @@ export interface TwentyNineState {
   trumpSuit: TwentyNineSuit | null;
   trumpRevealed: boolean;
   trumpRevealTrickNumber: number | null;
+  trumpRevealerPlayerId: string | null;
   seventhCard: TwentyNineCard | null;
   seventhCardOwnerId: string | null;
 
@@ -152,6 +153,8 @@ export interface PublicTwentyNineState {
   selectedTrumpMode: "suit" | "seventh" | null;
   trumpSuit: TwentyNineSuit | null;
   trumpRevealed: boolean;
+  trumpRevealTrickNumber: number | null;
+  trumpRevealerPlayerId: string | null;
   privateSeventhCard?: TwentyNineCard | null;
   multiplier: 1 | 2 | 4;
   doubleByPlayerId: string | null;
@@ -171,6 +174,7 @@ export interface PublicTwentyNineState {
   turnStartedAt: string | null;
   turnDurationMs: number | null;
   turnExpiresAt: string | null;
+  canSkipHand?: boolean | undefined;
 }
 
 export type TwentyNineAction =
@@ -186,4 +190,5 @@ export type TwentyNineAction =
   | { type: "reveal_trump" }
   | { type: "declare_pair" }
   | { type: "declare_single_hand" }
-  | { type: "play_card"; cardId: string };
+  | { type: "play_card"; cardId: string }
+  | { type: "skip_hand" };

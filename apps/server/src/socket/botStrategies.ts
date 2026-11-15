@@ -756,10 +756,10 @@ export function chooseBotAction(legalActions: unknown[], gameId: string, gameSta
     return null;
   } else if (gameId === "twenty-nine") {
     preferred = chooseTwentyNine(actions, gameState, playerId);
-  } else if (["chess", "battleship", "ludo", "barricades", "monopoly", "risk", "world-conquest", "codenames", "poker", "blackjack"].includes(gameId)) {
-    if (gameId === "ludo") {
-      preferred = actions.find((action) => action.type === "roll_dice") ?? actions.find((action) => action.type === "move_token") ?? actions.find((action) => action.type === "end_turn");
-    } else if (gameId === "battleship") {
+  } else if (gameId === "snakes-and-ladders" || gameId === "ludo") {
+    preferred = actions.find((action) => action.type === "roll_dice") ?? actions.find((action) => action.type === "end_turn");
+  } else if (["chess", "battleship", "barricades", "monopoly", "risk", "world-conquest", "codenames", "poker", "blackjack"].includes(gameId)) {
+    if (gameId === "battleship") {
       const placeAction = actions.find((action) => action.type === "place_fleet");
       if (placeAction) {
         preferred = placeAction;

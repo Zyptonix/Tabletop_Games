@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 
 interface DirectionPalette {
@@ -47,6 +48,106 @@ function getPalette(currentColor?: string | undefined): DirectionPalette {
   return PALETTES[currentColor ?? ""] ?? DEFAULT_PALETTE;
 }
 
+function useShortestPathRotation(targetAngle: number): number {
+  const rotationRef = useRef<number>(targetAngle);
+  const prevTargetRef = useRef<number>(targetAngle);
+
+  if (prevTargetRef.current !== targetAngle) {
+    let diff = (targetAngle - prevTargetRef.current) % 360;
+    if (diff > 180) diff -= 360;
+    if (diff < -180) diff += 360;
+    rotationRef.current += diff;
+    prevTargetRef.current = targetAngle;
+  }
+
+  return rotationRef.current;
+}
+
+export function TurnSpotlight({
+  activeSeatAngle,
+  currentColor,
+  isNoMercy = false,
+  originRef
+}: {
+  activeSeatAngle?: number | undefined;
+  currentColor?: string | undefined;
+  isNoMercy?: boolean | undefined;
+  originRef?: React.Ref<HTMLDivElement> | undefined;
+}) {
+  const reduceMotion = useReducedMotion();
+  const palette = getPalette(currentColor);
+
+  // Spotlight rotation offset by -90deg since the beam origin points downwards (6 o'clock) at 0deg
+  // Uses shortest-path unwrapping so transitions across the 180/-180 branch cut (West to North-West) glide smoothly without doing a 360 spin
+  const rawTargetAngle = activeSeatAngle !== undefined ? activeSeatAngle - 90 : 0;
+  const spotlightRotation = useShortestPathRotation(rawTargetAngle);
+
+  if (activeSeatAngle === undefined || reduceMotion) {
+    return null;
+  }
+
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 z-0 grid place-items-center overflow-visible translate-y-16"
+    >
+      {/* Exact rotation pivot anchor for DOM measurement */}
+      <div ref={originRef} className="absolute left-1/2 top-1/2 h-0 w-0 -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
+
+      <motion.div
+        className="pointer-events-none absolute h-full w-full origin-center z-0 overflow-visible"
+        initial={{ rotate: spotlightRotation, opacity: 0 }}
+        animate={{ rotate: spotlightRotation, opacity: 1 }}
+        transition={{
+          rotate: { type: "spring", stiffness: 120, damping: 22, mass: 0.8 },
+          opacity: { duration: 0.3 }
+        }}
+      >
+        {/* Soft Volumetric Atmospheric Penumbra - wide diffuse haze that smoothly dissolves into table felt */}
+        <div
+          className="absolute left-1/2 top-1/2 h-[125vh] w-[34rem] sm:w-[42rem] -translate-x-1/2 origin-top"
+          style={{
+            background: `conic-gradient(from 0deg at 50% 0%,
+              transparent 0deg,
+              transparent 154deg,
+              ${palette.soft} 168deg,
+              ${palette.soft} 192deg,
+              transparent 206deg,
+              transparent 360deg
+            )`,
+            maskImage: "radial-gradient(ellipse 50% 80% at 50% 0%, black 0%, black 30%, transparent 80%)",
+            WebkitMaskImage: "radial-gradient(ellipse 50% 80% at 50% 0%, black 0%, black 30%, transparent 80%)",
+            filter: "blur(26px)",
+            opacity: isNoMercy ? 0.35 : 0.25
+          }}
+        />
+
+        {/* Focused Pinpoint Core Spotlight Beam - narrow, borderless, fading out smoothly towards edges */}
+        <div
+          className="absolute left-1/2 top-1/2 h-[135vh] w-[26rem] sm:w-[32rem] -translate-x-1/2 origin-top"
+          style={{
+            background: `conic-gradient(from 0deg at 50% 0%,
+              transparent 0deg,
+              transparent 166deg,
+              ${palette.soft} 173deg,
+              ${palette.pulse} 177deg,
+              ${palette.color} 180deg,
+              ${palette.pulse} 183deg,
+              ${palette.soft} 187deg,
+              transparent 194deg,
+              transparent 360deg
+            )`,
+            maskImage: "radial-gradient(ellipse 48% 85% at 50% 0%, black 0%, black 45%, rgba(0,0,0,0.5) 70%, transparent 92%)",
+            WebkitMaskImage: "radial-gradient(ellipse 48% 85% at 50% 0%, black 0%, black 45%, rgba(0,0,0,0.5) 70%, transparent 92%)",
+            filter: "blur(14px)",
+            opacity: isNoMercy ? 0.82 : 0.7
+          }}
+        />
+      </motion.div>
+    </div>
+  );
+}
+
 export function DirectionIndicator({
   direction,
   currentColor,
@@ -67,55 +168,10 @@ export function DirectionIndicator({
     <div
       aria-label={`Turn direction: ${clockwise ? "clockwise" : "counterclockwise"}`}
       role="img"
-      className="pointer-events-none absolute inset-0 z-[1] grid place-items-center overflow-hidden translate-y-8"
+      className="pointer-events-none absolute inset-0 z-[2] grid place-items-center overflow-visible translate-y-16"
     >
-      {/* Dynamic Turn Spotlight Beam pointing to the active seat */}
-      {activeSeatAngle !== undefined && !reduceMotion ? (
-        <motion.div
-          className="pointer-events-none absolute h-[140%] w-[140%] origin-center"
-          initial={{ rotate: activeSeatAngle, opacity: 0 }}
-          animate={{ rotate: activeSeatAngle, opacity: 1 }}
-          transition={{
-            rotate: { type: "spring", stiffness: 95, damping: 18, mass: 0.9 },
-            opacity: { duration: 0.4 }
-          }}
-        >
-          {/* Radiant Conic Spotlight Light Cone */}
-          <div
-            className="absolute left-1/2 top-1/2 h-[52%] w-[14rem] -translate-x-1/2 origin-top"
-            style={{
-              background: `linear-gradient(to bottom, ${palette.pulse} 0%, ${palette.soft} 40%, transparent 100%)`,
-              clipPath: "polygon(48% 0%, 52% 0%, 100% 100%, 0% 100%)",
-              filter: "blur(14px)",
-              opacity: isNoMercy ? 0.42 : 0.32
-            }}
-          />
-
-          {/* Core Spotlight Filament */}
-          <div
-            className="absolute left-1/2 top-1/2 h-[48%] w-[3.5rem] -translate-x-1/2 origin-top"
-            style={{
-              background: `linear-gradient(to bottom, white 0%, ${palette.color} 30%, transparent 95%)`,
-              clipPath: "polygon(46% 0%, 54% 0%, 80% 100%, 20% 100%)",
-              filter: "blur(6px)",
-              opacity: 0.5
-            }}
-          />
-
-          {/* Destination Landing Flare */}
-          <div
-            className="absolute left-1/2 top-[88%] h-24 w-36 -translate-x-1/2 -translate-y-1/2 rounded-full"
-            style={{
-              background: `radial-gradient(ellipse at center, ${palette.pulse} 0%, ${palette.soft} 50%, transparent 80%)`,
-              filter: "blur(12px)",
-              opacity: 0.65
-            }}
-          />
-        </motion.div>
-      ) : null}
-
-      {/* Holographic Energy Vortex Container */}
-      <div className="relative aspect-square" style={{ width: "min(70%, 32rem, 70vh)" }}>
+      {/* Holographic Energy Vortex Container - Middle Direction Circle with z-10 and isolate */}
+      <div className="relative z-10 isolate aspect-square" style={{ width: "min(84%, 38rem, 80vh)" }}>
         {/* Outermost ambient glowing energy perimeter */}
         <motion.div
           className="absolute inset-[-4%] rounded-full"

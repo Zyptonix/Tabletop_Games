@@ -9,6 +9,7 @@ import {
   Filter,
   FlaskConical,
   Gamepad2,
+  MessageSquare,
   Plus,
   RefreshCw,
   Search,
@@ -21,6 +22,8 @@ import { AppShell } from "@/components/layout/AppShell";
 import { CreateRoomPanel } from "@/components/room/CreateRoomPanel";
 import { JoinRoomPanel } from "@/components/room/JoinRoomPanel";
 import { JoinableRoomsList } from "@/components/room/JoinableRoomsList";
+import { DashboardFeedbackTab } from "@/components/feedback/DashboardFeedbackTab";
+import { GameConfirmModal } from "@/components/ui/GameConfirmModal";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { useAuth } from "@/lib/auth/useAuth";
@@ -148,6 +151,13 @@ export default function DashboardPage() {
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [dashboardTab, setDashboardTab] = useState<"games" | "feedback">("games");
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hash === "#feedback") {
+      setDashboardTab("feedback");
+    }
+  }, []);
 
   const completedGames = useMemo(() => getCompletedGames(games), [games]);
   const prototypeGames = useMemo(() => getPrototypeGames(games), [games]);
@@ -206,17 +216,25 @@ export default function DashboardPage() {
   useEffect(() => {
     void loadGames();
     void loadActiveRooms();
+    const interval = window.setInterval(() => {
+      void loadActiveRooms();
+    }, 6000);
+    return () => window.clearInterval(interval);
   }, []);
+
+  const [roomToEnd, setRoomToEnd] = useState<RoomStateView | null>(null);
 
   function openCreateDialog(game?: GameSummary) {
     setSelectedGameId(game?.id ?? null);
     setCreateDialogOpen(true);
   }
 
-  async function endRoom(room: RoomStateView) {
-    if (!window.confirm(`End room ${room.code} for everyone?`)) return;
+  async function handleConfirmEndRoom() {
+    if (!roomToEnd) return;
+    const target = roomToEnd;
+    setRoomToEnd(null);
     try {
-      await api.endRoom(room.id);
+      await api.endRoom(target.id);
       await loadActiveRooms();
     } catch (error) {
       setActiveRoomsError(error instanceof Error ? error.message : "Could not end this room.");
@@ -287,14 +305,46 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* Open Lobbies */}
-        <section className="space-y-3">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-sky-200/65">Play together</p>
-            <h2 className="mt-1 text-2xl font-black text-white">Open lobbies</h2>
-          </div>
-          <JoinableRoomsList />
-        </section>
+        {/* Top-Level Dashboard Tabs */}
+        <div className="flex items-center gap-2 border-b border-white/10 pb-4">
+          <button
+            type="button"
+            onClick={() => setDashboardTab("games")}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-black transition-all cursor-pointer ${
+              dashboardTab === "games"
+                ? "border border-emerald-400/40 bg-emerald-500/20 text-emerald-200 shadow-[0_0_16px_rgba(16,185,129,0.25)]"
+                : "border border-white/10 bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            <Gamepad2 className="h-4 w-4" />
+            <span>Games & Lobbies</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setDashboardTab("feedback")}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-black transition-all cursor-pointer ${
+              dashboardTab === "feedback"
+                ? "border border-emerald-400/40 bg-emerald-500/20 text-emerald-200 shadow-[0_0_16px_rgba(16,185,129,0.25)]"
+                : "border border-white/10 bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            <MessageSquare className="h-4 w-4" />
+            <span>Game Feedback</span>
+          </button>
+        </div>
+
+        {dashboardTab === "feedback" ? (
+          <DashboardFeedbackTab />
+        ) : (
+          <>
+            {/* Open Lobbies */}
+            <section className="space-y-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-sky-200/65">Play together</p>
+                <h2 className="mt-1 text-2xl font-black text-white">Open lobbies</h2>
+              </div>
+              <JoinableRoomsList />
+            </section>
 
         {/* Active Games */}
         <section className="space-y-4">
@@ -315,7 +365,8 @@ export default function DashboardPage() {
           {activeRooms.length > 0 ? (
             <div className="grid gap-3 lg:grid-cols-2">
               {activeRooms.map((room) => {
-                const canEnd = room.effectiveHostUserId === user?.id || user?.role === "ADMIN";
+                const canEnd = room.hostUserId === user?.id || room.effectiveHostUserId === user?.id || user?.role === "ADMIN";
+                const isPaused = room.status === "paused";
                 const humanCount = room.players.filter((player) => !player.isBot).length;
                 const botCount = room.players.filter((player) => player.isBot).length;
                 return (
@@ -324,9 +375,16 @@ export default function DashboardPage() {
                     className="flex flex-col justify-between gap-3 rounded-2xl border border-emerald-200/10 bg-[#0b1515] p-4 sm:flex-row sm:items-center"
                   >
                     <div className="min-w-0">
-                      <p className="font-black text-white">
-                        {room.gameId} <span className="font-medium text-slate-400">· Room {room.code}</span>
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-black text-white">
+                          {room.gameId} <span className="font-medium text-slate-400">· Room {room.code}</span>
+                        </p>
+                        {isPaused ? (
+                          <span className="rounded-full border border-amber-400/40 bg-amber-400/15 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-300">
+                            ⏸ Paused
+                          </span>
+                        ) : null}
+                      </div>
                       <p className="mt-1 text-sm text-slate-400">
                         {room.status} · {humanCount} human{humanCount === 1 ? "" : "s"}
                         {botCount > 0 ? ` · ${botCount} bot${botCount === 1 ? "" : "s"}` : ""}
@@ -339,7 +397,7 @@ export default function DashboardPage() {
                           variant="outline"
                           className="border-white/15 bg-white/[0.03] text-slate-100 hover:bg-white/10"
                           size="sm"
-                          onClick={() => void endRoom(room)}
+                          onClick={() => setRoomToEnd(room)}
                         >
                           <StopCircle className="h-4 w-4" /> End
                         </Button>
@@ -518,6 +576,8 @@ export default function DashboardPage() {
             </div>
           ) : null}
         </section>
+        </>
+      )}
       </div>
 
       {/* Create Room Modal Dialog */}
@@ -541,6 +601,16 @@ export default function DashboardPage() {
       <Dialog open={joinDialogOpen} title="Join a game" onClose={() => setJoinDialogOpen(false)}>
         <JoinRoomPanel />
       </Dialog>
+
+      <GameConfirmModal
+        open={Boolean(roomToEnd)}
+        title="End Game Room"
+        message={`End room ${roomToEnd?.code} for everyone? All players will be returned to dashboard.`}
+        confirmLabel="End Room"
+        isDestructive={true}
+        onConfirm={() => void handleConfirmEndRoom()}
+        onCancel={() => setRoomToEnd(null)}
+      />
     </AppShell>
   );
 }

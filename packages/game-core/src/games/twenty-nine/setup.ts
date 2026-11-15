@@ -116,6 +116,7 @@ export function createTwentyNineDeal(params: {
     trumpSuit: null,
     trumpRevealed: false,
     trumpRevealTrickNumber: null,
+    trumpRevealerPlayerId: null,
     seventhCard: null,
     seventhCardOwnerId: null,
     multiplier: 1,

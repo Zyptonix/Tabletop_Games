@@ -16,11 +16,12 @@ function routeError(response: Parameters<typeof sendError>[0], error: unknown) {
 export function createRoomsRouter(manager: RoomManager) {
   const router = Router();
 
-  router.use(authMiddleware);
-
+  // Public game catalog (available without active session)
   router.get("/games", (_request, response) => {
     response.json({ games: manager.listGames() });
   });
+
+  router.use("/rooms", authMiddleware);
 
 
   router.get("/rooms/joinable", (_request, response) => {
@@ -86,6 +87,44 @@ export function createRoomsRouter(manager: RoomManager) {
         user: request.user,
         code: parsed.data.code
       });
+      response.json({ room: manager.getRoomStateView(room) });
+    } catch (error) {
+      routeError(response, error);
+    }
+  });
+
+  router.post("/rooms/:roomId/pause", async (request, response) => {
+    if (!request.user) {
+      sendError(response, 401, ERROR_CODES.UNAUTHORIZED, "Login required.");
+      return;
+    }
+    const parsed = roomIdSchema.safeParse({ roomId: request.params.roomId });
+    if (!parsed.success) {
+      sendError(response, 400, ERROR_CODES.INVALID_PAYLOAD, "Invalid room id.");
+      return;
+    }
+
+    try {
+      const room = await manager.pauseRoom(parsed.data.roomId, request.user.id, request.user.role === "ADMIN");
+      response.json({ room: manager.getRoomStateView(room) });
+    } catch (error) {
+      routeError(response, error);
+    }
+  });
+
+  router.post("/rooms/:roomId/resume", async (request, response) => {
+    if (!request.user) {
+      sendError(response, 401, ERROR_CODES.UNAUTHORIZED, "Login required.");
+      return;
+    }
+    const parsed = roomIdSchema.safeParse({ roomId: request.params.roomId });
+    if (!parsed.success) {
+      sendError(response, 400, ERROR_CODES.INVALID_PAYLOAD, "Invalid room id.");
+      return;
+    }
+
+    try {
+      const room = await manager.resumeRoom(parsed.data.roomId, request.user.id, request.user.role === "ADMIN");
       response.json({ room: manager.getRoomStateView(room) });
     } catch (error) {
       routeError(response, error);

@@ -3,29 +3,37 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import { Button } from "./button";
+import { cn } from "@/lib/utils/cn";
 
 export function Dialog({
   open,
   title,
   children,
-  onClose
+  onClose,
+  className,
+  contentClassName
 }: {
   open: boolean;
   title: string;
   children: React.ReactNode;
   onClose: () => void;
+  className?: string;
+  contentClassName?: string;
 }) {
   return (
     <AnimatePresence>
       {open ? (
         <motion.div
-          className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 overflow-y-auto grid place-items-center bg-black/70 p-4 backdrop-blur-sm"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
           <motion.div
-            className="max-h-[88dvh] w-full max-w-md overflow-hidden rounded-[1.35rem] border border-white/10 bg-[linear-gradient(135deg,rgba(9,10,14,0.98),rgba(18,20,26,0.96))] text-white shadow-[0_28px_100px_rgba(0,0,0,0.75)]"
+            className={cn(
+              "max-h-[90dvh] w-full max-w-md overflow-hidden rounded-[1.35rem] border border-white/10 bg-[linear-gradient(135deg,rgba(9,10,14,0.98),rgba(18,20,26,0.96))] text-white shadow-[0_28px_100px_rgba(0,0,0,0.75)]",
+              className
+            )}
             initial={{ y: 16, scale: 0.98 }}
             animate={{ y: 0, scale: 1 }}
             exit={{ y: 16, scale: 0.98 }}
@@ -36,7 +44,7 @@ export function Dialog({
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <div className="max-h-[calc(88dvh-4.5rem)] overflow-y-auto p-4">{children}</div>
+            <div className={cn("max-h-[calc(90dvh-4.5rem)] overflow-y-auto overscroll-contain p-4 [scrollbar-width:thin]", contentClassName)}>{children}</div>
           </motion.div>
         </motion.div>
       ) : null}

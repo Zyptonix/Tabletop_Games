@@ -16,18 +16,21 @@ import { CardPlayAnimationOverlay } from "./CardPlayAnimationOverlay";
 import { DiscardAllAnimationOverlay } from "./DiscardAllAnimationOverlay";
 import { UnoActivityLogOverlay } from "./UnoActivityLogOverlay";
 import { DiscardPile } from "./DiscardPile";
-import { DirectionIndicator } from "./DirectionIndicator";
+import { DirectionIndicator, TurnSpotlight } from "./DirectionIndicator";
 import { DrawPile } from "./DrawPile";
 import { HandTransferAnimationOverlay } from "./HandTransferAnimationOverlay";
 import { PlayerHand } from "./PlayerHand";
 import { PlayerSeat } from "./PlayerSeat";
 import { PowerEventOverlay, type PowerSeatEffect } from "./PowerEventOverlay";
 import { ReactionOverlay, REACTION_PREFIX } from "./ReactionOverlay";
+import { TableTurnIndicator } from "./TableTurnIndicator";
 import { TurnTimerCircle } from "./TurnTimerCircle";
 import { TurnTransitionOverlay } from "./TurnTransitionOverlay";
 import { UnoActionBar } from "./UnoActionBar";
 import { UnoGameStatus } from "./UnoGameStatus";
 import { UnoRuleBookModal } from "./UnoRuleBookModal";
+import { GameFeedbackButton } from "@/components/feedback/GameFeedbackButton";
+import { GamePauseButton } from "@/components/game/GamePauseButton";
 import type { CardThemeId } from "./cardThemes";
 import { hasLegalAction } from "./unoActionUtils";
 
@@ -150,7 +153,10 @@ export function ClassicUnoTable({
   currentUserRole,
   onAction,
   onChat,
-  onEndMatch
+  onEndMatch,
+  onReaction,
+  onPause,
+  onResume
 }: {
   room: RoomStateView;
   state: UnoTableState;
@@ -162,12 +168,15 @@ export function ClassicUnoTable({
   onReaction?: ((emoji: string) => void) | undefined;
   onChat?: ((roomId: string, body: string) => void) | undefined;
   onEndMatch?: ((roomId: string) => void) | undefined;
+  onPause?: ((roomId: string) => void) | undefined;
+  onResume?: ((roomId: string) => void) | undefined;
 }) {
   const cardTheme: CardThemeId = state.gameId === "uno-no-mercy" ? "no_mercy" : "classic";
   const tableRootRef = useRef<HTMLElement | null>(null);
   const drawPileRef = useRef<HTMLDivElement | null>(null);
   const discardPileRef = useRef<HTMLDivElement | null>(null);
   const handDockRef = useRef<HTMLDivElement | null>(null);
+  const centerDockRef = useRef<HTMLDivElement | null>(null);
   const seatRefs = useRef<Map<string, HTMLElement>>(new Map());
   const lastCurrentPlayerIdRef = useRef<string | null>(state.currentPlayerId);
   const lastPenaltyAmountRef = useRef<number | null>(null);
@@ -189,7 +198,6 @@ export function ClassicUnoTable({
     amount: number;
   } | null>(null);
   const [seatPowerEffects, setSeatPowerEffects] = useState<Record<string, PowerSeatEffect>>({});
-  const [turnNotice, setTurnNotice] = useState<{ id: string; text: string; tone: "self" | "other" } | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
   const me = state.players.find((player) => player.userId === currentUserId);
@@ -331,6 +339,12 @@ export function ClassicUnoTable({
 
   const activeAccent = playAreaAccent[state.currentColor] ?? playAreaAccent.blue!;
   const isNoMercy = state.gameId === "uno-no-mercy";
+  const isMyTurn = Boolean(currentUserId && state.currentPlayerId === currentUserId);
+  const canDraw = hasLegalAction(legalActions, "draw_card");
+  const hasPlayableCard = hasLegalAction(legalActions, "play_card");
+  const canPass = hasLegalAction(legalActions, "pass_turn");
+  const isForcedDraw = isMyTurn && canDraw && !hasPlayableCard && !canPass;
+  const ENABLE_TORCH_LIGHT = false; // Backup option: set to true to restore the table-wide torch spotlight beam
 
   const targetPlayerList = useMemo(() => {
     return state.players
@@ -351,17 +365,61 @@ export function ClassicUnoTable({
       });
   }, [state.players, currentUserId, roomPlayerById]);
 
-  const activeSeatAngle = useMemo(() => {
+  const fallbackSeatAngle = useMemo(() => {
     if (!state.currentPlayerId) return undefined;
     if (state.currentPlayerId === currentUserId) {
       return 90; // Bottom seat (local player)
     }
     const slot = opponentSlots.find((s) => s.player.userId === state.currentPlayerId);
     if (!slot) return undefined;
-    const dx = slot.left - 50;
-    const dy = slot.top - 50;
+
+    // Geometric fallback alignment calibrated from center dock
+    const dx = (slot.left - 50) * 1.85;
+    const dy = slot.top - 60;
     return Math.atan2(dy, dx) * (180 / Math.PI);
   }, [currentUserId, opponentSlots, state.currentPlayerId]);
+
+  const [measuredSeatAngle, setMeasuredSeatAngle] = useState<number | undefined>(undefined);
+  const spotlightOriginRef = useRef<HTMLDivElement>(null);
+
+  // Exact geometric angle calculation measured directly from real DOM bounding rects
+  const updateExactSeatAngle = useCallback(() => {
+    if (!state.currentPlayerId) {
+      setMeasuredSeatAngle(undefined);
+      return;
+    }
+    if (state.currentPlayerId === currentUserId) {
+      setMeasuredSeatAngle(90);
+      return;
+    }
+    const seatEl = seatRefs.current.get(state.currentPlayerId);
+    const originEl = spotlightOriginRef.current;
+    if (seatEl && originEl) {
+      const seatRect = seatEl.getBoundingClientRect();
+      const originRect = originEl.getBoundingClientRect();
+      const seatX = seatRect.left + seatRect.width / 2;
+      const seatY = seatRect.top + seatRect.height / 2;
+      const originX = originRect.left + originRect.width / 2;
+      const originY = originRect.top + originRect.height / 2;
+      const dx = seatX - originX;
+      const dy = seatY - originY;
+      const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+      setMeasuredSeatAngle(angle);
+    } else {
+      setMeasuredSeatAngle(undefined);
+    }
+  }, [currentUserId, state.currentPlayerId]);
+
+  useEffect(() => {
+    updateExactSeatAngle();
+  }, [updateExactSeatAngle, opponentSlots]);
+
+  useEffect(() => {
+    window.addEventListener("resize", updateExactSeatAngle);
+    return () => window.removeEventListener("resize", updateExactSeatAngle);
+  }, [updateExactSeatAngle]);
+
+  const activeSeatAngle = measuredSeatAngle ?? fallbackSeatAngle;
 
   const reactionMessages = useMemo(
     () =>
@@ -371,15 +429,15 @@ export function ClassicUnoTable({
     [room.chat]
   );
 
-  // Timer calculations
-  const turnDurationMs = state.turnDurationMs ?? 30000;
+  // Timer calculations (defaults to 20 seconds for both UNO games)
+  const turnDurationMs = state.turnDurationMs ?? 20000;
   const turnExpiresAt = state.turnExpiresAt ? new Date(state.turnExpiresAt).getTime() : null;
   const turnRemainingMs = turnExpiresAt ? Math.max(0, turnExpiresAt - now) : turnDurationMs;
   const turnProgress = Math.max(0, Math.min(1, turnRemainingMs / turnDurationMs));
   const turnSecondsLeft = Math.max(0, Math.ceil(turnRemainingMs / 1000));
 
   useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    const id = window.setInterval(() => setNow(Date.now()), 50);
     return () => window.clearInterval(id);
   }, []);
 
@@ -440,27 +498,6 @@ export function ClassicUnoTable({
     lastPenaltyAmountRef.current = null;
   }, [pendingPenalty, room.players, state.players]);
 
-  useEffect(() => {
-    if (!state.currentPlayerId) {
-      return;
-    }
-
-    const currentPlayer = state.players.find((player) => player.userId === state.currentPlayerId);
-    const nextMessage =
-      state.currentPlayerId === currentUserId
-        ? "Your turn!"
-        : `${currentPlayer?.displayName ?? "Player"}'s turn`;
-
-    setTurnNotice({
-      id: `${state.currentPlayerId}-${Date.now()}`,
-      text: nextMessage,
-      tone: state.currentPlayerId === currentUserId ? "self" : "other"
-    });
-
-    const timeout = window.setTimeout(() => setTurnNotice(null), 1750);
-    return () => window.clearTimeout(timeout);
-  }, [currentUserId, state.currentPlayerId, state.players]);
-
   const triggerSeatPowerEffect = useCallback((playerId: string, effect: PowerSeatEffect) => {
     setSeatPowerEffects((current) => ({ ...current, [playerId]: effect }));
     window.setTimeout(() => {
@@ -496,14 +533,87 @@ export function ClassicUnoTable({
       (currentUserRole === "ADMIN" || room.effectiveHostUserId === currentUserId)
   );
 
-  const placementRows =
-    state.results?.placements.map((placement) => ({
-      ...placement,
-      displayName:
-        room.players.find((player) => player.userId === placement.userId)?.displayName ??
-        state.players.find((player) => player.userId === placement.userId)?.displayName ??
-        `Player ${placement.userId.slice(0, 6)}`
-    })) ?? [];
+  const wonByElimination = useMemo(() => {
+    if (!state.results?.winnerUserId) return false;
+    const activePlayers = state.players.filter((p) => !p.eliminated);
+    return activePlayers.length <= 1;
+  }, [state.results, state.players]);
+
+  const placementRows = useMemo(() => {
+    const list =
+      state.results?.placements.map((placement) => {
+        const statePlayer = state.players.find((player) => player.userId === placement.userId);
+        const roomPlayer = room.players.find((player) => player.userId === placement.userId);
+        const isWinner = placement.result === "WIN" || placement.placement === 1;
+        const isEliminated = Boolean(statePlayer?.eliminated);
+        const handCount = statePlayer?.handCount ?? 0;
+        const seat = statePlayer?.seat ?? roomPlayer?.seat ?? 0;
+        const displayName =
+          roomPlayer?.displayName ??
+          statePlayer?.displayName ??
+          `Player ${placement.userId.slice(0, 6)}`;
+        const isBot = roomPlayer?.isBot ?? false;
+
+        let statusText = "Finished";
+        let statusBadge = "bg-white/10 text-white/70 border-white/15";
+        let statusIcon = "🏁";
+
+        if (isWinner) {
+          if (wonByElimination) {
+            statusText = "Sole Survivor";
+            statusBadge = "bg-amber-400/20 text-amber-300 border-amber-400/40";
+            statusIcon = "👑";
+          } else {
+            statusText = "Emptied Hand";
+            statusBadge = "bg-emerald-500/20 text-emerald-300 border-emerald-400/40";
+            statusIcon = "🏆";
+          }
+        } else if (isEliminated) {
+          statusText = "Eliminated";
+          statusBadge = "bg-rose-500/20 text-rose-300 border-rose-500/30";
+          statusIcon = "💀";
+        } else {
+          statusText = `${handCount} card${handCount === 1 ? "" : "s"} left`;
+          statusBadge = "bg-sky-500/20 text-sky-300 border-sky-400/30";
+          statusIcon = "🃏";
+        }
+
+        const rankWord =
+          placement.placement === 1
+            ? "First"
+            : placement.placement === 2
+            ? "Second"
+            : placement.placement === 3
+            ? "Third"
+            : placement.placement === 4
+            ? "Fourth"
+            : placement.placement === 5
+            ? "Fifth"
+            : placement.placement === 6
+            ? "Sixth"
+            : placement.placement === 7
+            ? "Seventh"
+            : placement.placement === 8
+            ? "Eighth"
+            : `${placement.placement}th`;
+
+        return {
+          ...placement,
+          displayName,
+          isBot,
+          isWinner,
+          isEliminated,
+          handCount,
+          seat,
+          statusText,
+          statusBadge,
+          statusIcon,
+          rankWord
+        };
+      }) ?? [];
+
+    return list.slice().sort((a, b) => a.placement - b.placement);
+  }, [state.results, state.players, room.players, wonByElimination]);
 
   function playCard(payload: PlayPayload) {
     onAction("play_card", payload);
@@ -544,26 +654,36 @@ export function ClassicUnoTable({
         <div className="pointer-events-none absolute inset-0 uno-fullscreen-glow" />
         <ReactionOverlay messages={reactionMessages} />
 
-        <AnimatePresence>
-          {turnNotice ? (
+        {/* Top Middle Persistent Turn Banner */}
+        <AnimatePresence mode="wait">
+          {!state.results && state.currentPlayerId && currentPlayer ? (
             <motion.div
-              key={turnNotice.id}
-              initial={{ opacity: 0, y: -10, scale: 0.96 }}
+              key={`top-turn-${state.currentPlayerId}`}
+              initial={{ opacity: 0, y: -12, scale: 0.94 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -14, scale: 0.98 }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
-              className="pointer-events-none absolute inset-x-0 top-4 z-[60] flex justify-center"
+              exit={{ opacity: 0, y: -10, scale: 0.94 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+              className="pointer-events-none absolute inset-x-0 top-3.5 z-[60] flex justify-center px-4"
             >
               <div
                 className={cn(
-                  "inline-flex items-center gap-2.5 rounded-full border px-4 py-2.5 text-[0.72rem] font-black uppercase tracking-[0.22em] shadow-[0_18px_40px_rgba(0,0,0,0.38)]",
-                  turnNotice.tone === "self"
-                    ? "border-lime-200/75 bg-[linear-gradient(135deg,rgba(34,197,94,0.34),rgba(16,185,129,0.22))] text-lime-50"
-                    : "border-cyan-300/65 bg-[linear-gradient(135deg,rgba(14,165,233,0.24),rgba(59,130,246,0.16))] text-sky-50"
+                  "inline-flex items-center gap-2.5 rounded-full border px-4 py-2 text-[0.74rem] font-black uppercase tracking-[0.2em] shadow-[0_14px_35px_rgba(0,0,0,0.45)] backdrop-blur-xl transition-all duration-300",
+                  isMyTurn
+                    ? "border-lime-300/80 bg-[linear-gradient(135deg,rgba(34,197,94,0.38),rgba(16,185,129,0.28))] text-lime-100 shadow-[0_0_24px_rgba(34,197,94,0.35),0_18px_40px_rgba(0,0,0,0.45)]"
+                    : "border-sky-300/60 bg-[linear-gradient(135deg,rgba(14,165,233,0.26),rgba(59,130,246,0.18))] text-sky-100 shadow-[0_0_20px_rgba(14,165,233,0.2),0_18px_40px_rgba(0,0,0,0.45)]"
                 )}
               >
-                <span className="h-2.5 w-2.5 rounded-full bg-current shadow-[0_0_18px_rgba(190,242,100,0.8)]" />
-                {turnNotice.text}
+                {isMyTurn ? (
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-lime-400 opacity-75" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-lime-300 shadow-[0_0_12px_rgba(190,242,100,0.95)]" />
+                  </span>
+                ) : (
+                  <span className="h-2.5 w-2.5 rounded-full bg-sky-300 shadow-[0_0_12px_rgba(56,189,248,0.9)]" />
+                )}
+                <span className="truncate max-w-[14rem] sm:max-w-xs">
+                  {isMyTurn ? "Your turn!" : `${currentPlayer.displayName}'s turn`}
+                </span>
               </div>
             </motion.div>
           ) : null}
@@ -601,6 +721,20 @@ export function ClassicUnoTable({
 
             <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
               <UnoGameStatus state={state} currentPlayerName={currentPlayerName} />
+
+              <GamePauseButton
+                room={room}
+                currentUserId={currentUserId}
+                onPause={onPause}
+                onResume={onResume}
+                variant="uno"
+              />
+
+              <GameFeedbackButton
+                gameId={state.gameId}
+                gameName={displayGameTitle(state.gameId)}
+                variant="uno"
+              />
 
               <Button
                 type="button"
@@ -688,27 +822,103 @@ export function ClassicUnoTable({
                 onSeatEffect={triggerSeatPowerEffect}
               />
 
-              <section className="relative z-10 grid h-full min-h-0 grid-rows-[minmax(0,1fr)_15rem] gap-2 px-3 pb-3">
-                <div className={cn(isNoMercy ? "uno-no-mercy-table" : "classic-uno-table", "relative min-h-0 overflow-hidden rounded-[2.25rem] bg-transparent shadow-none")}>
+              <section
+                className={cn(
+                  "relative z-10 grid h-full min-h-0 grid-rows-[minmax(0,1fr)_15rem] gap-2 rounded-[2.25rem] p-3 overflow-visible shadow-2xl",
+                  isNoMercy ? "uno-no-mercy-table" : "classic-uno-table"
+                )}
+              >
+                {/* Full-Table Spotlight Torch beam (backup option; kept disabled in favor of intense hand glow) */}
+                <AnimatePresence>
+                  {ENABLE_TORCH_LIGHT && isMyTurn ? (
+                    <motion.div
+                      key="player-turn-torch-light"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.5, ease: "easeOut" }}
+                      className="pointer-events-none absolute inset-0 z-0 origin-bottom overflow-hidden"
+                    >
+                      {/* Wide Conic light beam spreading upward from bottom-center across the whole table */}
+                      <div
+                        className="absolute inset-0 opacity-65"
+                        style={{
+                          background:
+                            "conic-gradient(from 180deg at 50% 100%, transparent 35deg, rgba(255,255,255,0.06) 50deg, rgba(255,255,255,0.18) 70deg, rgba(255,255,255,0.35) 90deg, rgba(255,255,255,0.18) 110deg, rgba(255,255,255,0.06) 130deg, transparent 145deg)",
+                          filter: "blur(44px)"
+                        }}
+                      />
+
+                      {/* Wide linear light beam connecting player at bottom to center and top */}
+                      <div
+                        className="absolute inset-0 opacity-70"
+                        style={{
+                          background:
+                            "linear-gradient(to top, rgba(255,255,255,0.42) 0%, rgba(255,255,255,0.24) 35%, rgba(255,255,255,0.1) 70%, transparent 100%)",
+                          clipPath: "polygon(22% 100%, 78% 100%, 96% 0%, 4% 0%)",
+                          filter: "blur(32px)"
+                        }}
+                      />
+
+                      {/* White glowing spotlight pool illuminating the middle discard and draw piles */}
+                      <motion.div
+                        animate={{
+                          opacity: [0.75, 1, 0.75],
+                          scale: [0.97, 1.04, 0.97]
+                        }}
+                        transition={{ repeat: Infinity, duration: 3.2, ease: "easeInOut" }}
+                        className="absolute left-1/2 top-[42%] -translate-x-1/2 -translate-y-1/2 rounded-full"
+                        style={{
+                          width: "min(85%, 36rem, 64vh)",
+                          height: "min(50%, 22rem, 42vh)",
+                          background:
+                            "radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.36) 0%, rgba(255,255,255,0.18) 45%, rgba(255,255,255,0.03) 72%, transparent 100%)",
+                          filter: "blur(32px)"
+                        }}
+                      />
+
+                      {/* Soft ambient illumination on the player bottom dock */}
+                      <div
+                        className="absolute inset-x-0 bottom-0 h-48 opacity-55"
+                        style={{
+                          background:
+                            "radial-gradient(ellipse 70% 100% at 50% 100%, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0.1) 55%, transparent 100%)",
+                          filter: "blur(36px)"
+                        }}
+                      />
+                    </motion.div>
+                  ) : null}
+                </AnimatePresence>
+
+                <div className="relative min-h-0 overflow-visible">
+                  {/* Dynamic Turn Spotlight - strictly rendered below both the center glow and direction indicator circles */}
+                  <TurnSpotlight
+                    originRef={spotlightOriginRef}
+                    activeSeatAngle={activeSeatAngle}
+                    currentColor={state.currentColor}
+                    isNoMercy={isNoMercy}
+                  />
+
+                  {/* Center table ambient glow ring - rendered on top of spotlight, below direction indicator */}
                   <div
-                    className="pointer-events-none absolute left-1/2 top-[calc(50%+2rem)] aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border"
+                    className="pointer-events-none absolute left-1/2 top-[calc(50%+4rem)] aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border z-[1] opacity-60"
                     style={{
-                      width: "min(72%, 31rem, 68vh)",
+                      width: "min(85%, 38rem, 80vh)",
                       borderColor: activeAccent.border,
                       background: `radial-gradient(circle, ${activeAccent.strongGlow} 0%, ${activeAccent.glow} 28%, ${activeAccent.soft} 58%, transparent 76%)`,
-                      filter: `drop-shadow(0 0 20px ${activeAccent.glow})`,
+                      filter: `drop-shadow(0 0 14px ${activeAccent.glow})`,
                       boxShadow: `
-                        inset 0 0 95px ${activeAccent.glow},
-                        0 0 55px ${activeAccent.glow},
-                        0 0 105px ${activeAccent.soft}
+                        inset 0 0 70px ${activeAccent.glow},
+                        0 0 40px ${activeAccent.glow},
+                        0 0 75px ${activeAccent.soft}
                       `
                     }}
                   />
 
+                  {/* Center Direction Indicator circles - rendered on top of both spotlight and glow */}
                   <DirectionIndicator
                     direction={state.direction}
                     currentColor={state.currentColor}
-                    activeSeatAngle={activeSeatAngle}
                     isNoMercy={isNoMercy}
                   />
 
@@ -737,24 +947,27 @@ export function ClassicUnoTable({
                         stackHitAmount={stackHitNotice?.playerId === player.userId ? stackHitNotice.amount : undefined}
                         powerEffect={seatPowerEffects[player.userId]}
                         turnProgress={player.isCurrentTurn ? turnProgress : undefined}
+                        activeColor={state.currentColor ?? (state.topDiscard as RenderableCard)?.color}
                         isNoMercy={isNoMercy}
                       />
                     </div>
                   ))}
 
-                  <div className="relative z-10 grid h-full min-h-0 place-items-center">
+                  <div className="relative z-10 grid h-full min-h-0 place-items-center translate-y-8">
                     <motion.div
+                      ref={centerDockRef}
                       layout
-                      className="relative z-10 translate-y-8 flex items-center justify-center gap-10 rounded-[3rem] px-8 py-7 backdrop-blur-xl sm:gap-16 sm:px-12"
+                      className="relative z-10 translate-y-16 flex items-center justify-center gap-6 sm:gap-10 md:gap-12 rounded-[3rem] px-6 py-6 backdrop-blur-xl sm:px-10"
                       style={{
                         border: `1px solid ${activeAccent.border}`,
                         background: isNoMercy
                           ? "radial-gradient(ellipse at 50% 18%, rgba(55,8,22,0.82), rgba(18,2,7,0.88) 72%, rgba(0,0,0,0.72) 100%)"
                           : "radial-gradient(ellipse at 50% 18%, rgba(13,62,48,0.76), rgba(3,16,12,0.82) 72%, rgba(0,0,0,0.62) 100%)",
                         boxShadow: `
-                          0 30px 90px rgba(0,0,0,0.68),
-                          0 0 44px ${activeAccent.glow},
-                          inset 0 1px 0 rgba(255,255,255,0.06)
+                          0 30px 90px rgba(0,0,0,0.72),
+                          0 0 65px ${activeAccent.strongGlow},
+                          0 0 115px ${activeAccent.glow},
+                          inset 0 1px 0 rgba(255,255,255,0.12)
                         `
                       }}
                     >
@@ -771,7 +984,10 @@ export function ClassicUnoTable({
                       <div ref={drawPileRef}>
                         <DrawPile
                           count={state.drawPileCount}
-                          canDraw={hasLegalAction(legalActions, "draw_card")}
+                          canDraw={canDraw}
+                          isForcedDraw={isForcedDraw}
+                          isMyTurn={isMyTurn}
+                          activeColor={state.currentColor ?? (state.topDiscard as RenderableCard)?.color}
                           theme={cardTheme}
                           onDraw={() => onAction("draw_card")}
                         />
@@ -792,14 +1008,25 @@ export function ClassicUnoTable({
                         </AnimatePresence>
                         <DiscardPile card={state.topDiscard as RenderableCard} theme={cardTheme} currentColor={state.currentColor} />
                       </div>
+
+                      <TableTurnIndicator
+                        player={currentPlayer}
+                        roomPlayer={currentPlayer ? roomPlayerById.get(currentPlayer.userId) : undefined}
+                        isMyTurn={isMyTurn}
+                        turnProgress={turnProgress}
+                        turnSecondsLeft={turnSecondsLeft}
+                        activeColor={state.currentColor ?? (state.topDiscard as RenderableCard)?.color}
+                        activeSeatAngle={activeSeatAngle}
+                        isNoMercy={isNoMercy}
+                      />
                     </motion.div>
                   </div>
                 </div>
 
                 <div ref={handDockRef} className="uno-hand-zone relative z-20 -mt-5 min-h-0 overflow-visible px-2">
-                  <div className="mx-auto flex max-w-[76rem] items-center justify-between gap-3 px-2 pb-1">
+                  <div className="relative z-30 mx-auto flex max-w-[76rem] items-center justify-between gap-3 px-2 pb-1 bg-transparent">
                     <div className="flex min-h-14 items-center gap-3">
-                      <div className="rounded-full border border-white/10 bg-black/42 p-1.5 shadow-[0_0_28px_rgb(0_0_0_/_0.36)] backdrop-blur-xl">
+                      <div className="rounded-full border border-white/10 bg-transparent p-1.5">
                         <TurnTimerCircle
                           active={Boolean(currentPlayer)}
                           progress={turnProgress}
@@ -811,30 +1038,39 @@ export function ClassicUnoTable({
 
                       {me?.isCurrentTurn ? (
                         <motion.div
-                          initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                          initial={{ opacity: 0, y: 8, scale: 0.92 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: -10, scale: 0.96 }}
-                          className="inline-flex min-h-9 items-center gap-2 rounded-full border px-4 text-[0.7rem] font-black uppercase tracking-[0.26em]"
+                          exit={{ opacity: 0, y: -10, scale: 0.92 }}
+                          className="inline-flex min-h-11 items-center gap-3 rounded-full border px-5 py-1.5 text-xs sm:text-sm font-black uppercase tracking-[0.28em] shadow-xl backdrop-blur-md"
                           style={{
-                            borderColor: activeAccent.border,
-                            background: "linear-gradient(135deg, rgba(34,197,94,0.3), rgba(14,165,233,0.18))",
-                            color: activeAccent.text,
-                            boxShadow: `0 0 30px ${activeAccent.glow}`
+                            borderColor: "rgba(255, 255, 255, 0.35)",
+                            background:
+                              "linear-gradient(135deg, rgba(34,197,94,0.42), rgba(14,165,233,0.26) 60%, rgba(255,255,255,0.12) 100%)",
+                            color: "#ffffff",
+                            boxShadow: `0 0 35px ${activeAccent.strongGlow}, inset 0 1px 0 rgba(255,255,255,0.25)`
                           }}
                         >
-                          <span
-                            className="h-2.5 w-2.5 rounded-full"
-                            style={{
-                              backgroundColor: activeAccent.text,
-                              boxShadow: `0 0 18px ${activeAccent.strongGlow}`
-                            }}
-                          />
-                          It is your turn
+                          <span className="relative flex h-3 w-3 items-center justify-center">
+                            <span
+                              className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"
+                              style={{ backgroundColor: activeAccent.text }}
+                            />
+                            <span
+                              className="relative inline-flex h-2.5 w-2.5 rounded-full"
+                              style={{
+                                backgroundColor: activeAccent.text,
+                                boxShadow: `0 0 16px ${activeAccent.strongGlow}`
+                              }}
+                            />
+                          </span>
+                          <span className="font-black drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+                            YOUR TURN!
+                          </span>
                         </motion.div>
                       ) : null}
                     </div>
 
-                    <div className="hidden md:block">
+                    <div className="hidden md:block relative z-50">
                       <UnoActionBar
                         legalActions={legalActions}
                         mode={state.gameId}
@@ -846,9 +1082,9 @@ export function ClassicUnoTable({
                     </div>
                   </div>
 
-                  <div className="flex min-h-0 items-end justify-center gap-3">
+                  <div className="relative z-10 flex min-h-0 items-end justify-center gap-3">
                     {me ? (
-                      <div ref={registerSeatRef(me.userId)} className="shrink-0">
+                      <div ref={registerSeatRef(me.userId)} className="relative z-30 shrink-0">
                         <div
                           aria-label={`${me.displayName}, ${me.handCount} cards${me.isCurrentTurn ? ", your turn" : ""}`}
                           className={cn(
@@ -875,7 +1111,7 @@ export function ClassicUnoTable({
                           {me.isCurrentTurn ? <span className="text-[0.52rem] font-black uppercase text-emerald-300">Your turn</span> : null}
                         </div>
 
-                        <div className="hidden w-[min(17rem,24vw)] pb-1 sm:block">
+                        <div className="relative z-30 hidden w-[min(17rem,24vw)] pb-1 sm:block">
                           <PlayerSeat
                             player={me}
                             roomPlayer={roomPlayerById.get(me.userId)}
@@ -887,6 +1123,7 @@ export function ClassicUnoTable({
                             stackHitAmount={stackHitNotice?.playerId === me.userId ? stackHitNotice.amount : undefined}
                             powerEffect={seatPowerEffects[me.userId]}
                             turnProgress={me.isCurrentTurn ? turnProgress : undefined}
+                            activeColor={state.currentColor ?? (state.topDiscard as RenderableCard)?.color}
                             isNoMercy={isNoMercy}
                           />
                         </div>
@@ -901,7 +1138,12 @@ export function ClassicUnoTable({
                         targetPlayers={targetPlayerList}
                         onPlay={playCard}
                         isMyTurn={Boolean(me?.isCurrentTurn)}
+                        activeColor={state.currentColor ?? (state.topDiscard as RenderableCard)?.color}
                         myHandCount={me?.hand?.length ?? me?.handCount ?? 0}
+                        turnProgress={turnProgress}
+                        turnSecondsLeft={turnSecondsLeft}
+                        turnExpiresAt={state.turnExpiresAt}
+                        turnDurationMs={turnDurationMs}
                         isNoMercy={isNoMercy}
                       />
                     ) : null}
@@ -990,44 +1232,193 @@ export function ClassicUnoTable({
         ) : null}
 
         {state.phase === "finished" ? (
-          <Dialog open title="Match Results" onClose={goDashboard}>
+          <Dialog
+            open
+            title="Match Standings"
+            onClose={goDashboard}
+            className="max-w-xl sm:max-w-2xl"
+          >
             <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="space-y-4">
-              <div className="overflow-hidden rounded-[1.45rem] border border-amber-200/20 bg-[radial-gradient(circle_at_18%_20%,rgba(251,191,36,0.28),transparent_38%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(3,7,18,0.96))] p-4 text-white shadow-[0_18px_60px_rgba(0,0,0,0.38)]">
+              {/* Champion Headline Banner */}
+              <div className="overflow-hidden rounded-[1.45rem] border border-amber-400/30 bg-[radial-gradient(circle_at_18%_20%,rgba(251,191,36,0.32),transparent_45%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(3,7,18,0.96))] p-4 text-white shadow-[0_18px_60px_rgba(0,0,0,0.45)]">
                 <div className="flex items-center gap-3">
-                  <span className="grid h-12 w-12 place-items-center rounded-full bg-amber-300 text-zinc-950 shadow-[0_0_32px_rgba(251,191,36,0.42)]">
-                    <Trophy className="h-5 w-5" />
+                  <span className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-amber-300 via-amber-400 to-amber-600 text-slate-950 shadow-[0_0_32px_rgba(251,191,36,0.5)] shrink-0 text-xl font-black">
+                    🏆
                   </span>
                   <div className="min-w-0">
-                    <p className="truncate text-xl font-black">
-                      {winner?.userId === currentUserId ? "You won" : `${winnerName ?? "Someone"} won`}
+                    <p className="truncate text-lg sm:text-xl font-black text-amber-200">
+                      {winner?.userId === currentUserId ? "Victory! You Won the Match!" : `${winnerName ?? "Player"} Won the Match!`}
                     </p>
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/50">Final scoreboard</p>
+                    <p className="text-xs font-semibold text-white/60">
+                      {wonByElimination
+                        ? "All opponents eliminated by mercy rules • Final Arena Standings"
+                        : "Cards cleared from hand • Final Arena Standings"}
+                    </p>
                   </div>
                 </div>
               </div>
 
-              <div className="max-h-[22vh] space-y-1 overflow-hidden pr-1 [scrollbar-color:rgba(251,191,36,0.65)_rgba(255,255,255,0.08)] [scrollbar-width:thin]">
-                {placementRows.map((placement) => (
-                  <div
-                    key={placement.userId}
-                    className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.055] p-3 text-sm shadow-[0_10px_30px_rgba(0,0,0,0.24)]"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate font-black text-white">
-                        #{placement.placement} {placement.displayName}
-                      </p>
-                      <p className="text-xs font-semibold text-white/45">
-                        {placement.result === "WIN" ? "Winner" : "Finished"}
-                      </p>
-                    </div>
-                    <span className="rounded-full border border-amber-200/20 bg-amber-300/14 px-3 py-1 font-black text-amber-100 shadow-sm">
-                      {placement.score}
-                    </span>
+              {/* 3D Olympic Position Stand (Podium for Top 3) */}
+              {placementRows.length >= 2 ? (
+                <div className="relative rounded-2xl border border-white/10 bg-black/40 p-3 pt-6 backdrop-blur-md">
+                  <div className="flex items-end justify-center gap-2 sm:gap-4 px-1">
+                    {/* 2nd Place (Silver - Left) */}
+                    {placementRows[1] ? (
+                      <div className="flex flex-col items-center flex-1 max-w-[140px]">
+                        <div className="relative mb-2 flex flex-col items-center text-center">
+                          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-slate-200 via-slate-400 to-slate-600 border-2 border-slate-200 text-slate-950 font-black shadow-[0_0_20px_rgba(203,213,225,0.4)] text-xl">
+                            🥈
+                          </div>
+                          <span className="mt-1.5 text-xs font-black text-slate-200 truncate max-w-[120px]">
+                            {placementRows[1].displayName}
+                          </span>
+                          <span className="text-[10px] font-bold text-slate-400">
+                            {placementRows[1].statusText}
+                          </span>
+                        </div>
+                        {/* 2nd Podium Base */}
+                        <div className="w-full h-20 rounded-t-2xl border-t-2 border-x-2 border-slate-400/50 bg-gradient-to-b from-slate-400/30 via-slate-700/40 to-slate-950/90 p-2 flex flex-col items-center justify-start shadow-lg">
+                          <span className="text-xl font-black text-slate-200">2nd</span>
+                          <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">Second</span>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* 1st Place (Gold - Center, Highest) */}
+                    {placementRows[0] ? (
+                      <div className="flex flex-col items-center flex-1 max-w-[160px] -mt-5 z-10">
+                        <div className="relative mb-2 flex flex-col items-center text-center">
+                          <span className="text-2xl animate-bounce mb-0.5">👑</span>
+                          <div className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-amber-300 via-amber-400 to-amber-600 border-2 border-amber-200 text-slate-950 font-black shadow-[0_0_30px_rgba(251,191,36,0.65)] text-2xl">
+                            🥇
+                          </div>
+                          <span className="mt-1.5 text-xs sm:text-sm font-black text-amber-200 truncate max-w-[140px]">
+                            {placementRows[0].displayName}
+                          </span>
+                          <span className="text-[10px] font-black text-amber-400">
+                            {placementRows[0].statusText}
+                          </span>
+                        </div>
+                        {/* 1st Podium Base */}
+                        <div className="w-full h-28 rounded-t-2xl border-t-2 border-x-2 border-amber-400/70 bg-gradient-to-b from-amber-500/35 via-amber-700/40 to-slate-950/90 p-2 flex flex-col items-center justify-start shadow-[0_0_35px_rgba(251,191,36,0.3)]">
+                          <span className="text-2xl font-black text-amber-300">1st</span>
+                          <span className="text-[10px] font-black uppercase tracking-wider text-amber-400">Champion</span>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* 3rd Place (Bronze - Right) */}
+                    {placementRows[2] ? (
+                      <div className="flex flex-col items-center flex-1 max-w-[140px]">
+                        <div className="relative mb-2 flex flex-col items-center text-center">
+                          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-amber-700 via-amber-800 to-amber-950 border-2 border-amber-600/70 text-amber-200 font-black shadow-[0_0_18px_rgba(217,119,6,0.3)] text-xl">
+                            🥉
+                          </div>
+                          <span className="mt-1.5 text-xs font-black text-amber-200 truncate max-w-[120px]">
+                            {placementRows[2].displayName}
+                          </span>
+                          <span className="text-[10px] font-bold text-amber-500/80">
+                            {placementRows[2].statusText}
+                          </span>
+                        </div>
+                        {/* 3rd Podium Base */}
+                        <div className="w-full h-16 rounded-t-2xl border-t-2 border-x-2 border-amber-700/50 bg-gradient-to-b from-amber-800/30 via-amber-950/50 to-slate-950/90 p-2 flex flex-col items-center justify-start shadow-md">
+                          <span className="text-xl font-black text-amber-400">3rd</span>
+                          <span className="text-[9px] font-black uppercase tracking-wider text-amber-500/80">Third</span>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
-                ))}
+                </div>
+              ) : null}
+
+              {/* Full Standings List (All Players with Smooth Scrolling Enabled) */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between px-2 text-[10px] font-black uppercase tracking-wider text-white/40">
+                  <span>Player & Rank</span>
+                  <span>Match Result</span>
+                </div>
+                <div className="max-h-[50vh] sm:max-h-[56vh] overflow-y-auto overscroll-contain touch-pan-y space-y-2 pr-2 [scrollbar-color:rgba(251,191,36,0.65)_rgba(255,255,255,0.08)] [scrollbar-width:thin]">
+                  {placementRows.map((placement) => {
+                    const isMe = placement.userId === currentUserId;
+                    const isFirst = placement.placement === 1;
+                    const isSecond = placement.placement === 2;
+                    const isThird = placement.placement === 3;
+
+                    return (
+                      <div
+                        key={placement.userId}
+                        className={cn(
+                          "flex items-center justify-between gap-3 rounded-2xl border p-2.5 sm:p-3 text-sm transition-all shadow-md",
+                          isFirst
+                            ? "border-amber-400/50 bg-gradient-to-r from-amber-500/20 via-slate-900/90 to-amber-950/30 ring-1 ring-amber-400/30"
+                            : isSecond
+                            ? "border-slate-300/30 bg-gradient-to-r from-slate-400/15 via-slate-900/90 to-slate-950/50"
+                            : isThird
+                            ? "border-amber-700/30 bg-gradient-to-r from-amber-800/15 via-slate-900/90 to-slate-950/50"
+                            : "border-white/10 bg-white/[0.04] hover:bg-white/[0.07]"
+                        )}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          {/* Position Pill */}
+                          <div
+                            className={cn(
+                              "flex items-center justify-center rounded-xl px-2.5 py-1 text-xs font-black shadow-sm shrink-0 min-w-[62px]",
+                              isFirst
+                                ? "bg-amber-400 text-slate-950 ring-1 ring-amber-200"
+                                : isSecond
+                                ? "bg-slate-300 text-slate-950"
+                                : isThird
+                                ? "bg-amber-700 text-amber-100"
+                                : "bg-white/10 text-white/80"
+                            )}
+                          >
+                            <span>{placement.rankWord}</span>
+                          </div>
+
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="truncate font-black text-white text-sm">
+                                {placement.displayName}
+                              </span>
+                              {isMe ? (
+                                <span className="rounded bg-amber-400/20 border border-amber-400/40 px-1.5 py-0.2 text-[8px] font-black text-amber-300 uppercase">
+                                  YOU
+                                </span>
+                              ) : null}
+                              {placement.isBot ? (
+                                <span className="rounded bg-sky-500/20 border border-sky-400/30 px-1.5 py-0.2 text-[8px] font-black text-sky-300 uppercase">
+                                  BOT
+                                </span>
+                              ) : null}
+                            </div>
+                            <p className="text-[11px] font-semibold text-white/45">
+                              Seat #{placement.seat + 1}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Status Badge (NO POINTS!) */}
+                        <div
+                          className={cn(
+                            "flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-black shrink-0 shadow-sm",
+                            placement.statusBadge
+                          )}
+                        >
+                          <span>{placement.statusIcon}</span>
+                          <span>{placement.statusText}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
-              <Button type="button" className="w-full rounded-full bg-amber-300 font-black text-zinc-950 hover:bg-amber-200" onClick={goDashboard}>
+              <Button
+                type="button"
+                className="w-full rounded-full bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 py-3 font-black text-slate-950 shadow-lg hover:brightness-110 active:scale-[0.99] transition"
+                onClick={goDashboard}
+              >
                 Back to Dashboard
               </Button>
             </motion.div>

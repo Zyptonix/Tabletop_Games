@@ -12,6 +12,14 @@ export const loginSchema = z.object({
   password: z.string().min(1).max(200)
 });
 
+export const guestLoginSchema = z.object({
+  displayName: z
+    .string()
+    .trim()
+    .min(1, "Please enter a display name.")
+    .max(30, "Display name cannot exceed 30 characters.")
+});
+
 export const createUserSchema = z.object({
   username: usernameSchema,
   email: z.string().email().optional().nullable(),
@@ -21,4 +29,5 @@ export const createUserSchema = z.object({
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
+export type GuestLoginInput = z.infer<typeof guestLoginSchema>;
 export type CreateUserInput = z.infer<typeof createUserSchema>;

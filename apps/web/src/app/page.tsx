@@ -1,9 +1,5 @@
-import { LoginPanel } from "@/components/auth/LoginPanel";
+import { LandingPortal } from "@/components/home/LandingPortal";
 
-export default function LoginPage() {
-  return (
-    <main className="grid min-h-screen place-items-center px-4">
-      <LoginPanel />
-    </main>
-  );
+export default function HomePage() {
+  return <LandingPortal />;
 }

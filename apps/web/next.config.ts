@@ -8,7 +8,24 @@ dotenv.config({ path: path.resolve(configDir, "../..", ".env") });
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@tabletop/shared", "@tabletop/game-core"],
-  reactStrictMode: true
+  reactStrictMode: true,
+  async rewrites() {
+    const backendUrl =
+      process.env.SERVER_INTERNAL_URL ||
+      process.env.NEXT_PUBLIC_SERVER_URL ||
+      process.env.NEXT_PUBLIC_API_BASE_URL;
+
+    if (!backendUrl || backendUrl.startsWith("/")) {
+      return [];
+    }
+
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${backendUrl.replace(/\/$/, "")}/:path*`
+      }
+    ];
+  }
 };
 
 export default nextConfig;

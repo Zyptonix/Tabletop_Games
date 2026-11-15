@@ -51,6 +51,7 @@ export function CasinoPlayingCard({
   const candidates = useMemo(() => {
     if (isHidden || !rank || !suitName) return [];
     return [
+      `/game-assets/twenty-nine/cards_better/${rank}_of_${suitName}.png`,
       `/game-assets/twenty-nine/cards/${rank}_of_${suitName}.png`,
       `/game-assets/twenty-nine/${rank}_of_${suitName}.png`,
       `/game-assets/29/cards/${rank}_of_${suitName}.png`

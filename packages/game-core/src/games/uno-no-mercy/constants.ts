@@ -4,7 +4,7 @@ export const NO_MERCY_MAX_PLAYERS = 12;
 
 export const DEFAULT_NO_MERCY_SETTINGS = {
   cardsPerPlayer: 7,
-  turnSeconds: 60,
+  turnSeconds: 20,
   eliminationHandSize: 25,
   allowDrawingWhenPlayable: true,
   mustCallUno: false

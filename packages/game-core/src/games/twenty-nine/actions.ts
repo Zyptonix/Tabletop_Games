@@ -22,5 +22,6 @@ export const twentyNineActionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("reveal_trump") }),
   z.object({ type: z.literal("declare_pair") }),
   z.object({ type: z.literal("declare_single_hand") }),
-  z.object({ type: z.literal("play_card"), cardId: z.string().min(1) })
+  z.object({ type: z.literal("play_card"), cardId: z.string().min(1) }),
+  z.object({ type: z.literal("skip_hand") })
 ]);

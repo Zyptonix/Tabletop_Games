@@ -104,6 +104,7 @@ export function createInitialClassicUnoState(params: {
     updatedAt: params.now,
     turnStartedAt: params.now,
     winnerUserId: null,
-    results: null
+    results: null,
+    eliminatedPlayerIds: []
   };
 }

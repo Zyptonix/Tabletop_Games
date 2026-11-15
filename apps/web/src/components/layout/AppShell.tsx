@@ -56,10 +56,21 @@ export function AppShell({ children, wide = false }: { children: React.ReactNode
             ) : null}
           </nav>
           <div className="flex items-center gap-2">
-            <span className="hidden text-sm font-semibold text-emerald-200/80 sm:inline">{user?.displayName}</span>
-            <Button type="button" variant="ghost" size="icon" aria-label="Logout" onClick={logout}>
-              <LogOut className="h-4 w-4" />
-            </Button>
+            {user ? (
+              <>
+                <span className="hidden text-sm font-semibold text-emerald-200/80 sm:inline">{user.displayName}</span>
+                <Button type="button" variant="ghost" size="icon" aria-label="Logout" onClick={logout}>
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </>
+            ) : (
+              <Link
+                href="/"
+                className="rounded-lg border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs font-bold text-slate-200 hover:bg-white/10"
+              >
+                Sign In
+              </Link>
+            )}
           </div>
         </div>
       </header>

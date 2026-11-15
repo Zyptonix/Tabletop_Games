@@ -25,6 +25,7 @@ function clonePlayers(state: ClassicUnoState): ClassicUnoState {
     })),
     drawPile: [...state.drawPile],
     discardPile: [...state.discardPile],
+    eliminatedPlayerIds: [...(state.eliminatedPlayerIds ?? [])],
     pendingPenalty: state.pendingPenalty ? { ...state.pendingPenalty } : null
   };
 }

@@ -21,6 +21,53 @@ interface PublicSeatPlayer {
   eliminated?: boolean | undefined;
 }
 
+const SEAT_COLOR_THEME: Record<
+  string,
+  {
+    borderClass: string;
+    bgClass: string;
+    shadow: string;
+    haloBg: string;
+    subtleGlow: string;
+  }
+> = {
+  red: {
+    borderClass: "border-rose-500",
+    bgClass: "bg-[linear-gradient(135deg,rgba(225,29,72,0.88),rgba(136,19,55,0.76)_42%,rgba(0,0,0,0.66)_100%)]",
+    shadow: "shadow-[0_0_36px_rgba(244,63,94,0.7),0_0_60px_rgba(239,68,68,0.45),0_18px_44px_rgba(0,0,0,0.6)]",
+    haloBg: "bg-rose-400/45",
+    subtleGlow: "bg-rose-500/20"
+  },
+  blue: {
+    borderClass: "border-sky-500",
+    bgClass: "bg-[linear-gradient(135deg,rgba(2,132,199,0.88),rgba(12,74,110,0.76)_42%,rgba(0,0,0,0.66)_100%)]",
+    shadow: "shadow-[0_0_36px_rgba(56,189,248,0.7),0_0_60px_rgba(14,165,233,0.45),0_18px_44px_rgba(0,0,0,0.6)]",
+    haloBg: "bg-sky-400/45",
+    subtleGlow: "bg-sky-500/20"
+  },
+  green: {
+    borderClass: "border-emerald-500",
+    bgClass: "bg-[linear-gradient(135deg,#39FF14_0%,#2323FF_100%)]",
+    shadow: "shadow-[0_0_36px_rgba(52,211,153,0.7),0_0_60px_rgba(16,185,129,0.45),0_18px_44px_rgba(0,0,0,0.6)]",
+    haloBg: "bg-emerald-400/45",
+    subtleGlow: "bg-lime-400/24"
+  },
+  yellow: {
+    borderClass: "border-amber-400",
+    bgClass: "bg-[linear-gradient(135deg,rgba(217,119,6,0.88),rgba(120,53,15,0.76)_42%,rgba(0,0,0,0.66)_100%)]",
+    shadow: "shadow-[0_0_36px_rgba(251,191,36,0.7),0_0_60px_rgba(234,179,8,0.45),0_18px_44px_rgba(0,0,0,0.6)]",
+    haloBg: "bg-amber-400/45",
+    subtleGlow: "bg-amber-500/20"
+  },
+  wild: {
+    borderClass: "border-fuchsia-500",
+    bgClass: "bg-[linear-gradient(135deg,rgba(192,38,211,0.88),rgba(112,26,117,0.76)_42%,rgba(0,0,0,0.66)_100%)]",
+    shadow: "shadow-[0_0_36px_rgba(232,121,249,0.7),0_0_60px_rgba(217,70,239,0.45),0_18px_44px_rgba(0,0,0,0.6)]",
+    haloBg: "bg-fuchsia-400/45",
+    subtleGlow: "bg-fuchsia-500/20"
+  }
+};
+
 function getInitials(name: string) {
   const parts = name
     .split(/\s+/)
@@ -46,6 +93,7 @@ export function PlayerSeat({
   stackHitAmount,
   powerEffect,
   turnProgress,
+  activeColor,
   isNoMercy = false
 }: {
   player: PublicSeatPlayer;
@@ -58,11 +106,13 @@ export function PlayerSeat({
   stackHitAmount?: number | undefined;
   powerEffect?: PowerSeatEffect | undefined;
   turnProgress?: number | undefined;
+  activeColor?: string | undefined;
   isNoMercy?: boolean | undefined;
 }) {
   const connected = roomPlayer?.connected ?? false;
   const avatarUrl = player.avatarUrl ?? roomPlayer?.avatarUrl ?? null;
   const inactive = !connected || player.eliminated;
+  const turnTheme = SEAT_COLOR_THEME[activeColor ?? "green"] ?? SEAT_COLOR_THEME.green!;
 
   return (
     <div
@@ -70,7 +120,7 @@ export function PlayerSeat({
         "relative isolate overflow-visible rounded-[1.55rem] border text-white backdrop-blur-xl transition-all duration-200",
         compact ? "min-h-[5.25rem]" : "min-h-[6.05rem]",
         player.isCurrentTurn
-          ? "border-2 border-emerald-500 bg-[linear-gradient(135deg,#39FF14_0%,#2323FF_100%)] scale-[1.02] shadow-[0_0_36px_rgba(52,211,153,0.7),0_0_60px_rgba(16,185,129,0.45),0_18px_44px_rgba(0,0,0,0.6)]"
+          ? cn("border-2 scale-[1.02]", turnTheme.borderClass, turnTheme.bgClass, turnTheme.shadow)
           : "border-emerald-300/12 bg-[linear-gradient(135deg,rgba(7,22,14,0.88),rgba(5,15,12,0.76)_42%,rgba(0,0,0,0.66)_100%)] shadow-[0_18px_44px_rgba(0,0,0,0.66),0_0_24px_rgba(34,197,94,0.07)]",
         inactive && "opacity-60 grayscale",
         isSelf ? "p-4" : compact ? "p-3" : "p-3.5"
@@ -78,9 +128,9 @@ export function PlayerSeat({
     >
       {player.isCurrentTurn ? (
         <>
-          {/* Bright Luminous Neon Green Glow Halo */}
+          {/* Bright Luminous Glow Halo */}
           <motion.div
-            className="pointer-events-none absolute -inset-2 rounded-[2rem] bg-emerald-400/45 blur-xl"
+            className={cn("pointer-events-none absolute -inset-2 rounded-[2rem] blur-xl", turnTheme.haloBg)}
             animate={{ opacity: [0.7, 1, 0.7], scale: [0.99, 1.025, 0.99] }}
             transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
           />
@@ -98,7 +148,7 @@ export function PlayerSeat({
       <div
         className={cn(
           "pointer-events-none absolute top-1/2 h-16 w-32 -translate-y-1/2 rounded-full blur-2xl",
-          player.isCurrentTurn ? "bg-lime-400/24" : "bg-emerald-500/10",
+          player.isCurrentTurn ? turnTheme.subtleGlow : "bg-emerald-500/10",
           fanSide === "right" ? "left-[-1.8rem]" : "right-[-1.8rem]"
         )}
       />

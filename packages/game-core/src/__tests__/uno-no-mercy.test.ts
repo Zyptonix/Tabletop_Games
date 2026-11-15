@@ -10,6 +10,7 @@ import {
   getLegalNoMercyActions,
   getNoMercyDeckCountSummary,
   getPublicNoMercyState,
+  getNoMercyResults,
   noMercyActionSchema,
   validateNoMercyAction,
   type NoMercyCard,
@@ -103,9 +104,9 @@ function hasActionType(actions: Array<{ type: string }>, type: string): boolean 
 }
 
 describe("uno no mercy", () => {
-  it("defaults new No Mercy rooms to a 60 second turn timer", () => {
-    expect(DEFAULT_NO_MERCY_SETTINGS.turnSeconds).toBe(60);
-    expect(stateWithHands({ p1: [card("red", "1")] }).settings.turnSeconds).toBe(60);
+  it("defaults new No Mercy rooms to a 20 second turn timer", () => {
+    expect(DEFAULT_NO_MERCY_SETTINGS.turnSeconds).toBe(20);
+    expect(stateWithHands({ p1: [card("red", "1")] }).settings.turnSeconds).toBe(20);
   });
 
   it("builds the exact provided No Mercy deck counts", () => {
@@ -596,6 +597,50 @@ describe("uno no mercy", () => {
     expect(publicForP1.turnStartedAt).toBe(state.turnStartedAt);
     expect(publicForP1.turnDurationMs).toBe((state.settings.turnSeconds ?? 0) * 1000);
     expect(publicForP1.turnExpiresAt).toBeTruthy();
+  });
+
+  it("calculates survival order placements and scoring when players are eliminated", () => {
+    const state = stateWithHands({
+      p1: [],
+      p2: [],
+      p3: [card("red", "5")]
+    });
+    state.players[0]!.eliminated = true;
+    state.players[1]!.eliminated = true;
+    state.eliminatedPlayerIds = ["p1", "p2"];
+    state.winnerUserId = "p3";
+    state.phase = "finished";
+
+    const results = getNoMercyResults(state);
+    expect(results.winnerUserId).toBe("p3");
+    expect(results.placements[0]?.userId).toBe("p3");
+    expect(results.placements[0]?.placement).toBe(1);
+    expect(results.placements[1]?.userId).toBe("p2");
+    expect(results.placements[1]?.placement).toBe(2);
+    expect(results.placements[2]?.userId).toBe("p1");
+    expect(results.placements[2]?.placement).toBe(3);
+    expect(results.placements[0]?.result).toBe("WIN");
+    expect(results.placements[1]?.result).toBe("LOSS");
+    expect(results.placements[2]?.result).toBe("LOSS");
+  });
+
+  it("calculates empty hand win placements with hand points and eliminated survival", () => {
+    const state = stateWithHands({
+      p1: [],
+      p2: [card("red", "2")],
+      p3: [card("yellow", "8")]
+    });
+    state.winnerUserId = "p1";
+    state.phase = "finished";
+
+    const results = getNoMercyResults(state);
+    expect(results.winnerUserId).toBe("p1");
+    expect(results.placements[0]?.userId).toBe("p1");
+    expect(results.placements[1]?.userId).toBe("p2");
+    expect(results.placements[2]?.userId).toBe("p3");
+    expect(results.placements[0]?.result).toBe("WIN");
+    expect(results.placements[1]?.result).toBe("LOSS");
+    expect(results.placements[2]?.result).toBe("LOSS");
   });
 });
 

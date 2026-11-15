@@ -16,6 +16,21 @@ if errorlevel 1 (
   echo ERROR: Failed to activate Conda environment "%ENV_DIR%".
   goto :end
 )
+
+REM Ensure PostgreSQL is running on 127.0.0.1:55432
+if exist "%ROOT%.pgdata\PG_VERSION" (
+  pg_ctl -D "%ROOT%.pgdata" status >nul 2>&1
+  if errorlevel 1 (
+    echo PostgreSQL is not running. Starting local database on 127.0.0.1:55432...
+    pg_ctl -D "%ROOT%.pgdata" -l "%ROOT%postgres.log" -o "-p 55432 -h 127.0.0.1" start
+    if errorlevel 1 (
+      echo WARNING: Failed to start PostgreSQL. Check postgres.log.
+    ) else (
+      echo PostgreSQL started successfully.
+    )
+  )
+)
+
 echo Starting Tabletop Arena backend. Keep this window open.
 call corepack pnpm --filter @tabletop/server start
 echo.

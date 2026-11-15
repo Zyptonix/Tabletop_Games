@@ -24,6 +24,7 @@ export function getPublicNoMercyState(params: { state: NoMercyState; viewerId: s
       hand: player.userId === viewerId ? player.hand : undefined,
       unoCalled: player.unoCalled,
       eliminated: player.eliminated,
+      eliminatedAtActionNumber: player.eliminatedAtActionNumber,
       isCurrentTurn: player.userId === state.currentPlayerId
     })),
     currentPlayerId: state.currentPlayerId,
@@ -39,6 +40,7 @@ export function getPublicNoMercyState(params: { state: NoMercyState; viewerId: s
     actionNumber: state.actionNumber,
     winnerUserId: state.winnerUserId,
     results: state.results,
+    eliminatedPlayerIds: state.eliminatedPlayerIds,
     turnStartedAt: state.turnStartedAt,
     turnDurationMs,
     turnExpiresAt

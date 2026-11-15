@@ -3,6 +3,7 @@ import type { GamePlayer } from "../../engine/GameTypes";
 export type BoardGameId =
   | "chess"
   | "battleship"
+  | "snakes-and-ladders"
   | "ludo"
   | "barricades"
   | "monopoly"

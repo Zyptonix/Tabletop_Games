@@ -26,6 +26,7 @@ import {
   type GridGameState,
   chessModule,
   battleshipModule,
+  snakesAndLaddersModule,
   ludoModule,
   barricadesModule,
   monopolyModule,
@@ -38,8 +39,9 @@ import {
   type BoardGameAction,
   type BoardGameSettings
 } from "@tabletop/game-core";
-import type { GameId } from "@tabletop/shared";
+import { type GameId, isGamePublished } from "@tabletop/shared";
 import type { GameModule, RegisteredGameSummary } from "@tabletop/game-core";
+import { env } from "../config/env";
 
 type AnyGameModule = GameModule<unknown, unknown, unknown>;
 
@@ -74,7 +76,7 @@ const modules = new Map<GameId, AnyGameModule>([
   ],
   ["chess", chessModule as GameModule<BoardGameState, BoardGameAction, BoardGameSettings> as AnyGameModule],
   ["battleship", battleshipModule as GameModule<BoardGameState, BoardGameAction, BoardGameSettings> as AnyGameModule],
-  ["ludo", ludoModule as GameModule<BoardGameState, BoardGameAction, BoardGameSettings> as AnyGameModule],
+  ["snakes-and-ladders", snakesAndLaddersModule as AnyGameModule],
   ["barricades", barricadesModule as GameModule<BoardGameState, BoardGameAction, BoardGameSettings> as AnyGameModule],
   ["monopoly", monopolyModule as GameModule<BoardGameState, BoardGameAction, BoardGameSettings> as AnyGameModule],
   ["risk", riskModule as GameModule<BoardGameState, BoardGameAction, BoardGameSettings> as AnyGameModule],
@@ -84,18 +86,43 @@ const modules = new Map<GameId, AnyGameModule>([
   ["blackjack", blackjackModule as GameModule<BoardGameState, BoardGameAction, BoardGameSettings> as AnyGameModule]
 ]);
 
+const ALIASES: Record<string, GameId> = {
+  ludo: "snakes-and-ladders"
+};
+
 export class GameRegistry {
   get(gameId: GameId): AnyGameModule | null {
-    return modules.get(gameId) ?? null;
+    const canonicalId = ALIASES[gameId as string] ?? gameId;
+    const isAllowed = isGamePublished(
+      canonicalId,
+      env.DEPLOYED_GAMES,
+      env.NODE_ENV === "production"
+    );
+    if (!isAllowed) {
+      return null;
+    }
+    return modules.get(canonicalId) ?? null;
   }
 
   list(): RegisteredGameSummary[] {
-    return [...modules.values()].map((module) => ({
-      id: module.id,
-      displayName: module.displayName,
-      minPlayers: module.minPlayers,
-      maxPlayers: module.maxPlayers
-    }));
+    const seen = new Set<string>();
+    const list: RegisteredGameSummary[] = [];
+
+    for (const module of modules.values()) {
+      if (seen.has(module.id)) continue;
+      seen.add(module.id);
+      if (!isGamePublished(module.id, env.DEPLOYED_GAMES, env.NODE_ENV === "production")) {
+        continue;
+      }
+      list.push({
+        id: module.id,
+        displayName: module.displayName,
+        minPlayers: module.minPlayers,
+        maxPlayers: module.maxPlayers
+      });
+    }
+
+    return list;
   }
 }
 

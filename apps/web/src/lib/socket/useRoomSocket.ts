@@ -5,6 +5,7 @@ import { io, type Socket } from "socket.io-client";
 import type { GameEvent } from "@tabletop/game-core";
 import type { ClientToServerEvents, RoomStateView, ServerToClientEvents, TimerView } from "@tabletop/shared";
 import { useAuthStore } from "@/lib/stores/authStore";
+import { getStoredToken } from "@/lib/api/client";
 
 type ArenaSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
@@ -55,6 +56,7 @@ export interface RoomSocketState {
   addBot: (roomId: string) => void;
   fillBots: (roomId: string) => void;
   removeBots: (roomId: string) => void;
+  selectSeat: (roomId: string, seat: number) => void;
   sendChat: (roomId: string, body: string) => void;
   sendDebugScenario: (roomId: string, scenario: string, targetPlayerId?: string) => void;
 }
@@ -101,6 +103,7 @@ export function useRoomSocket(roomCode?: string): RoomSocketState {
 
   useEffect(() => {
     const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || undefined;
+    const token = getStoredToken();
     const nextSocket: ArenaSocket = io(socketUrl, {
       path: process.env.NEXT_PUBLIC_SOCKET_PATH ?? "/socket.io",
       withCredentials: true,
@@ -109,7 +112,8 @@ export function useRoomSocket(roomCode?: string): RoomSocketState {
       reconnectionAttempts: Infinity,
       reconnectionDelay: 500,
       reconnectionDelayMax: 5_000,
-      timeout: 20_000
+      timeout: 20_000,
+      ...(token ? { auth: { token } } : {})
     });
 
     setSocket(nextSocket);
@@ -199,6 +203,7 @@ export function useRoomSocket(roomCode?: string): RoomSocketState {
       addBot: (roomId: string) => socket?.emit("room:add-bot", { roomId }),
       fillBots: (roomId: string) => socket?.emit("room:fill-bots", { roomId }),
       removeBots: (roomId: string) => socket?.emit("room:remove-bots", { roomId }),
+      selectSeat: (roomId: string, seat: number) => socket?.emit("room:select-seat", { roomId, seat }),
       sendDebugScenario: (roomId: string, scenario: string, targetPlayerId?: string) => {
         socket?.emit("debug:uno-scenario", { roomId, scenario, targetPlayerId });
       },

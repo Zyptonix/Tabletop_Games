@@ -140,6 +140,83 @@ function getHandDensity(cardCount: number, availableWidth: number) {
   };
 }
 
+const HAND_COLOR_GLOW: Record<
+  string,
+  {
+    border: string;
+    glow: string;
+    strongGlow: string;
+    soft: string;
+    ambient: string;
+    innerGlow: string;
+    surfaceTop: string;
+    surfaceMid: string;
+    headerClass: string;
+    badgeClass: string;
+  }
+> = {
+  red: {
+    border: "rgba(244, 63, 94, 0.95)",
+    glow: "rgba(239, 68, 68, 0.85)",
+    strongGlow: "rgba(255, 29, 72, 1)",
+    soft: "rgba(225, 29, 72, 0.55)",
+    ambient: "rgba(239, 68, 68, 0.65)",
+    innerGlow: "rgba(239, 68, 68, 0.45)",
+    surfaceTop: "rgba(239, 68, 68, 0.3)",
+    surfaceMid: "rgba(65, 8, 22, 0.75)",
+    headerClass: "text-rose-300",
+    badgeClass: "text-rose-200"
+  },
+  blue: {
+    border: "rgba(56, 189, 248, 0.95)",
+    glow: "rgba(14, 165, 233, 0.85)",
+    strongGlow: "rgba(56, 189, 248, 1)",
+    soft: "rgba(2, 132, 199, 0.55)",
+    ambient: "rgba(14, 165, 233, 0.65)",
+    innerGlow: "rgba(14, 165, 233, 0.45)",
+    surfaceTop: "rgba(14, 165, 233, 0.3)",
+    surfaceMid: "rgba(8, 36, 68, 0.75)",
+    headerClass: "text-sky-300",
+    badgeClass: "text-sky-200"
+  },
+  green: {
+    border: "rgba(74, 222, 128, 0.95)",
+    glow: "rgba(34, 197, 94, 0.85)",
+    strongGlow: "rgba(74, 222, 128, 1)",
+    soft: "rgba(22, 163, 74, 0.55)",
+    ambient: "rgba(34, 197, 94, 0.65)",
+    innerGlow: "rgba(34, 197, 94, 0.45)",
+    surfaceTop: "rgba(34, 197, 94, 0.3)",
+    surfaceMid: "rgba(6, 52, 26, 0.75)",
+    headerClass: "text-emerald-300",
+    badgeClass: "text-emerald-200"
+  },
+  yellow: {
+    border: "rgba(250, 204, 21, 0.95)",
+    glow: "rgba(234, 179, 8, 0.85)",
+    strongGlow: "rgba(250, 204, 21, 1)",
+    soft: "rgba(202, 138, 4, 0.55)",
+    ambient: "rgba(234, 179, 8, 0.65)",
+    innerGlow: "rgba(234, 179, 8, 0.45)",
+    surfaceTop: "rgba(234, 179, 8, 0.3)",
+    surfaceMid: "rgba(55, 38, 4, 0.75)",
+    headerClass: "text-amber-300",
+    badgeClass: "text-amber-200"
+  },
+  wild: {
+    border: "rgba(240, 171, 252, 0.95)",
+    glow: "rgba(217, 70, 239, 0.85)",
+    strongGlow: "rgba(240, 171, 252, 1)",
+    soft: "rgba(192, 38, 211, 0.55)",
+    ambient: "rgba(217, 70, 239, 0.65)",
+    innerGlow: "rgba(217, 70, 239, 0.45)",
+    surfaceTop: "rgba(217, 70, 239, 0.3)",
+    surfaceMid: "rgba(55, 8, 62, 0.75)",
+    headerClass: "text-fuchsia-300",
+    badgeClass: "text-fuchsia-200"
+  }
+};
+
 export function PlayerHand({
   hand,
   legalActions,
@@ -147,7 +224,12 @@ export function PlayerHand({
   targetPlayers = [],
   onPlay,
   isMyTurn = false,
+  activeColor = "red",
   myHandCount,
+  turnProgress,
+  turnSecondsLeft,
+  turnExpiresAt,
+  turnDurationMs = 20000,
   isNoMercy = false
 }: {
   hand: RenderableCard[];
@@ -156,7 +238,12 @@ export function PlayerHand({
   targetPlayers?: TargetPlayer[];
   onPlay: (payload: { cardId: string; declaredColor?: UnoDeclaredColor; targetPlayerId?: string }) => void;
   isMyTurn?: boolean;
+  activeColor?: string | undefined;
   myHandCount?: number | undefined;
+  turnProgress?: number | undefined;
+  turnSecondsLeft?: number | undefined;
+  turnExpiresAt?: number | string | null | undefined;
+  turnDurationMs?: number | undefined;
   isNoMercy?: boolean | undefined;
 }) {
   const [colorCardId, setColorCardId] = useState<string | null>(null);
@@ -203,32 +290,244 @@ export function PlayerHand({
     knownCardIdsRef.current = new Set(hand.map((card) => card.id));
   }, [hand]);
 
+  const colorGlow = HAND_COLOR_GLOW[activeColor] ?? HAND_COLOR_GLOW.red!;
+
+  // Smooth live animation progress driven continuously when turnExpiresAt is provided,
+  // falling back cleanly to turnProgress.
+  const [liveProgress, setLiveProgress] = useState<number>(() => {
+    return typeof turnProgress === "number" ? turnProgress : 1;
+  });
+
+  useEffect(() => {
+    if (!isMyTurn) {
+      setLiveProgress(1);
+      return;
+    }
+
+    const expiresMs = turnExpiresAt
+      ? typeof turnExpiresAt === "number"
+        ? turnExpiresAt
+        : new Date(turnExpiresAt).getTime()
+      : null;
+
+    if (!expiresMs) {
+      if (typeof turnProgress === "number") {
+        setLiveProgress(turnProgress);
+      }
+      return;
+    }
+
+    let rafId: number;
+    const duration = turnDurationMs && turnDurationMs > 0 ? turnDurationMs : 20000;
+
+    const tick = () => {
+      const remaining = Math.max(0, expiresMs - Date.now());
+      const p = Math.max(0, Math.min(1, remaining / duration));
+      setLiveProgress(p);
+
+      if (remaining > 0) {
+        rafId = requestAnimationFrame(tick);
+      }
+    };
+
+    rafId = requestAnimationFrame(tick);
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, [isMyTurn, turnExpiresAt, turnDurationMs, turnProgress]);
+
+  // Turn active glowing fraction from 100% (full at 20s) down to 0% (depleted at 0s).
+  // Depletes linearly from RIGHT to LEFT:
+  // Active portion is 0% to activePercent%
+  // Depleted / transparent portion is activePercent% to 100%
+  const activePercent = Math.max(0, Math.min(100, liveProgress * 100));
+
+  // Smooth linear opacity fade-out as activePercent reaches 0 (last ~1.6 seconds)
+  // Ensures buttery soft fade-out into black without any abrupt snapping or unmounting glitches!
+  const fadeOpacity = Math.max(0, Math.min(1, activePercent / 8));
+  const isUrgent = typeof turnSecondsLeft === "number" && turnSecondsLeft <= 5;
+
   return (
-    <div className="relative mx-auto w-full max-w-[59rem] overflow-visible xl:max-w-[65rem] 2xl:max-w-[72rem]">
-      <div className="mb-2 flex items-center justify-between px-2 text-xs font-black uppercase tracking-wide text-amber-200/90">
-        <span>Your hand</span>
-        <span>{hand.length} cards</span>
+    <div className="relative z-10 mx-auto w-full max-w-[59rem] overflow-visible xl:max-w-[65rem] 2xl:max-w-[72rem]">
+      {/* Seamless Ambient Light Pool radiating outward from behind the hand - at lowest layer so all seats and cards sit on top */}
+      <AnimatePresence>
+        {isMyTurn && activePercent > 0 ? (
+          <>
+            {/* Broad Atmospheric Upward Bloom reaching nicely above the hand */}
+            <motion.div
+              key="hand-ambient-glow-broad"
+              initial={{ opacity: 0 }}
+              animate={{
+                opacity: fadeOpacity * 0.9,
+                transition: { duration: 0.25, ease: "linear" }
+              }}
+              exit={{
+                opacity: 0,
+                transition: { duration: 0.4, ease: "easeOut" }
+              }}
+              className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-36 sm:-top-48 -bottom-16 w-[150vw] -z-10 overflow-visible"
+              style={{
+                background: `radial-gradient(ellipse 70% 90% at 50% 95%, ${colorGlow.ambient} 0%, ${colorGlow.glow} 34%, ${colorGlow.soft} 62%, transparent 90%)`,
+                filter: "blur(68px)",
+                WebkitMaskImage: `linear-gradient(to right, black 0%, black calc(${activePercent}% - 8%), transparent calc(${activePercent}% + 8%), transparent 100%)`,
+                maskImage: `linear-gradient(to right, black 0%, black calc(${activePercent}% - 8%), transparent calc(${activePercent}% + 8%), transparent 100%)`
+              }}
+            />
+
+            {/* Vibrant Core Upward Glow illuminating the arena above the hand */}
+            <motion.div
+              key="hand-ambient-glow-core"
+              initial={{ opacity: 0 }}
+              animate={{
+                opacity: fadeOpacity * 0.95,
+                transition: { duration: 0.25, ease: "linear" }
+              }}
+              exit={{
+                opacity: 0,
+                transition: { duration: 0.4, ease: "easeOut" }
+              }}
+              className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-24 sm:-top-32 -bottom-12 w-[130vw] -z-10 overflow-visible"
+              style={{
+                background: `radial-gradient(ellipse 65% 85% at 50% 92%, ${colorGlow.strongGlow} 0%, ${colorGlow.ambient} 32%, ${colorGlow.glow} 56%, transparent 86%)`,
+                filter: "blur(46px)",
+                WebkitMaskImage: `linear-gradient(to right, black 0%, black calc(${activePercent}% - 8%), transparent calc(${activePercent}% + 8%), transparent 100%)`,
+                maskImage: `linear-gradient(to right, black 0%, black calc(${activePercent}% - 8%), transparent calc(${activePercent}% + 8%), transparent 100%)`
+              }}
+            />
+          </>
+        ) : null}
+      </AnimatePresence>
+
+      <div className="relative z-20 mb-2 flex items-center justify-between px-2 text-xs font-black uppercase tracking-wide">
+        <div className="flex items-center gap-2.5">
+          <span
+            className={cn(
+              "transition-all duration-300 font-black",
+              isMyTurn ? cn(colorGlow.headerClass, "scale-105") : "text-amber-200/90"
+            )}
+            style={isMyTurn ? { textShadow: `0 0 18px ${colorGlow.strongGlow}` } : undefined}
+          >
+            Your hand
+          </span>
+          {isMyTurn && typeof turnSecondsLeft === "number" ? (
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[0.62rem] font-black border transition-all duration-300",
+                isUrgent
+                  ? "border-red-400/80 bg-red-500/25 text-red-200 animate-pulse shadow-[0_0_12px_rgba(239,68,68,0.7)]"
+                  : "border-white/20 bg-black/40 text-white/80"
+              )}
+            >
+              ⏱️ {turnSecondsLeft}s
+            </span>
+          ) : null}
+        </div>
+        <span
+          className={cn(
+            "transition-all duration-300 font-black",
+            isMyTurn ? colorGlow.badgeClass : "text-amber-200/90"
+          )}
+        >
+          {hand.length} cards
+        </span>
       </div>
 
       <div
         ref={handFrameRef}
         className={cn(
-          "relative min-h-[10.6rem] overflow-visible rounded-[2rem] px-4 pb-4 pt-6 shadow-[inset_0_1px_0_rgb(255_255_255_/_0.06),0_-22px_70px_rgb(45_140_255_/_0.12),0_24px_90px_rgb(0_0_0_/_0.45)] backdrop-blur-sm",
-          isMyTurn
-            ? "bg-[linear-gradient(to_bottom,rgba(59,130,246,0.18),rgba(8,18,34,0.52)_34%,rgba(0,0,0,0.36))] ring-1 ring-sky-400/40"
-            : "bg-[linear-gradient(to_bottom,rgb(255_255_255_/_0.035),rgb(0_0_0_/_0.08)_38%,rgb(0_0_0_/_0.28))]"
+          "relative z-20 min-h-[10.6rem] overflow-visible rounded-[2rem] px-4 pb-4 pt-6 backdrop-blur-sm transition-all duration-300",
+          "bg-[linear-gradient(to_bottom,rgb(255_255_255_/_0.035),rgb(0_0_0_/_0.08)_38%,rgb(0_0_0_/_0.28))] shadow-[inset_0_1px_0_rgb(255_255_255_/_0.06),0_24px_90px_rgb(0_0_0_/_0.45)]"
         )}
-        style={
-          isMyTurn
-            ? {
-                boxShadow:
-                  "inset 0 1px 0 rgba(255,255,255,0.08), 0 0 0 1px rgba(96,165,250,0.28), 0 0 34px rgba(59,130,246,0.35), 0 24px 90px rgba(0,0,0,0.45)",
-                transform: "rotate(-0.3deg)"
-              }
-            : undefined
-        }
+        style={{
+          border: isMyTurn ? `1.5px solid ${colorGlow.border}` : "1.5px solid rgba(255, 255, 255, 0.08)",
+          boxShadow: isMyTurn
+            ? `0 0 18px ${colorGlow.glow}, inset 0 1px 1px rgba(255, 255, 255, 0.25)`
+            : undefined,
+          transform: isMyTurn ? "rotate(-0.3deg)" : undefined
+        }}
       >
-        <div className="relative flex h-full items-end justify-center overflow-visible">
+        {/* Full Active Color Glowing Border - starts full active color, then depletes smoothly from right to left into black. Background is transparent so cards are completely unaffected */}
+        <AnimatePresence>
+          {isMyTurn && activePercent > 0 ? (
+            <motion.div
+              key="hand-timer-border"
+              aria-hidden="true"
+              initial={{ opacity: 0 }}
+              animate={{
+                opacity: fadeOpacity,
+                transition: { duration: 0.15, ease: "linear" }
+              }}
+              exit={{
+                opacity: 0,
+                transition: { duration: 0.35, ease: "easeOut" }
+              }}
+              className="pointer-events-none absolute -inset-[2.5px] rounded-[2rem] z-10"
+              style={{
+                border: `2.5px solid ${colorGlow.strongGlow}`,
+                background: "transparent",
+                boxShadow: `
+                  0 0 4px #ffffff,
+                  0 0 8px #ffffff,
+                  0 0 16px ${colorGlow.strongGlow},
+                  0 0 30px ${colorGlow.border},
+                  0 0 50px ${colorGlow.glow},
+                  inset 0 0 14px ${colorGlow.innerGlow},
+                  inset 0 0 2px rgba(255, 255, 255, 0.8)
+                `,
+                WebkitMaskImage: `linear-gradient(to right, black 0%, black calc(${activePercent}% - 5%), transparent calc(${activePercent}% + 5%), transparent 100%)`,
+                maskImage: `linear-gradient(to right, black 0%, black calc(${activePercent}% - 5%), transparent calc(${activePercent}% + 5%), transparent 100%)`
+              }}
+            />
+          ) : null}
+        </AnimatePresence>
+
+        {/* Active Disappearing Glow Boundary Edge Spark along the border moving right to left */}
+        {isMyTurn && activePercent > 1 && activePercent < 99 ? (
+          <div
+            className="pointer-events-none absolute top-0 -translate-x-1/2 -translate-y-1/2 z-20"
+            style={{
+              left: `${activePercent}%`,
+              opacity: fadeOpacity
+            }}
+          >
+            {/* Bright spark on the border at the transition point */}
+            <div
+              className="h-3 w-10 sm:w-14 rounded-full bg-white"
+              style={{
+                boxShadow: `0 0 12px #ffffff, 0 0 24px ${colorGlow.strongGlow}, 0 0 40px ${colorGlow.border}`
+              }}
+            />
+          </div>
+        ) : null}
+
+        {/* Soft Ambient Backlight beneath the cards - smoothly masks right to left with active card color without bouncing */}
+        <AnimatePresence>
+          {isMyTurn && activePercent > 0 ? (
+            <motion.div
+              key="hand-bottom-backlight"
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-32 rounded-full z-0"
+              initial={{ opacity: 0 }}
+              animate={{
+                opacity: fadeOpacity * 0.85,
+                transition: { duration: 0.25, ease: "linear" }
+              }}
+              exit={{
+                opacity: 0,
+                transition: { duration: 0.35, ease: "easeOut" }
+              }}
+              style={{
+                background: `radial-gradient(ellipse at 50% 90%, ${colorGlow.ambient} 0%, ${colorGlow.glow} 40%, transparent 75%)`,
+                filter: "blur(28px)",
+                WebkitMaskImage: `linear-gradient(to right, black 0%, black calc(${activePercent}% - 8%), transparent calc(${activePercent}% + 8%), transparent 100%)`,
+                maskImage: `linear-gradient(to right, black 0%, black calc(${activePercent}% - 8%), transparent calc(${activePercent}% + 8%), transparent 100%)`
+              }}
+            />
+          ) : null}
+        </AnimatePresence>
+
+        {/* Cards Layer - strictly elevated above border and glow, completely unaffected */}
+        <div className="relative z-30 flex h-full items-end justify-center overflow-visible">
           <AnimatePresence initial={false}>
             {sortedHand.map((card, index) => {
               const playable = playableIds.has(card.id);

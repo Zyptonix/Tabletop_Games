@@ -1,8 +1,9 @@
 import type { BoardGameId } from "./shared/types";
-export const BOARD_GAME_IDS: BoardGameId[] = ["chess", "battleship", "ludo", "barricades", "monopoly", "risk", "world-conquest", "codenames", "poker", "blackjack"];
+export const BOARD_GAME_IDS: BoardGameId[] = ["chess", "battleship", "snakes-and-ladders", "ludo", "barricades", "monopoly", "risk", "world-conquest", "codenames", "poker", "blackjack"];
 export * from "./shared/types";
 export * from "./chess";
 export * from "./battleship";
+export * from "./snakes-and-ladders";
 export * from "./ludo";
 export * from "./barricades";
 export * from "./monopoly";
