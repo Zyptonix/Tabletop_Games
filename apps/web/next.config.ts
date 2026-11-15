@@ -10,12 +10,18 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@tabletop/shared", "@tabletop/game-core"],
   reactStrictMode: true,
   async rewrites() {
-    const backendUrl =
+    const raw =
       process.env.SERVER_INTERNAL_URL ||
       process.env.NEXT_PUBLIC_SERVER_URL ||
       process.env.NEXT_PUBLIC_API_BASE_URL;
 
+    const backendUrl = raw ? raw.trim().replace(/^['"]|['"]$/g, "") : undefined;
+
     if (!backendUrl || backendUrl.startsWith("/")) {
+      return [];
+    }
+
+    if (!backendUrl.startsWith("http://") && !backendUrl.startsWith("https://")) {
       return [];
     }
 

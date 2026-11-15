@@ -102,10 +102,10 @@ export function useRoomSocket(roomCode?: string): RoomSocketState {
   }, [roomCode]);
 
   useEffect(() => {
-    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || undefined;
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL?.trim() || undefined;
     const token = getStoredToken();
     const nextSocket: ArenaSocket = io(socketUrl, {
-      path: process.env.NEXT_PUBLIC_SOCKET_PATH ?? "/socket.io",
+      path: process.env.NEXT_PUBLIC_SOCKET_PATH?.trim() || "/socket.io",
       withCredentials: true,
       transports: ["websocket", "polling"],
       reconnection: true,
