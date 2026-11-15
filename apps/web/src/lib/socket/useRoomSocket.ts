@@ -5,6 +5,7 @@ import { io, type Socket } from "socket.io-client";
 import type { GameEvent } from "@tabletop/game-core";
 import type { ClientToServerEvents, RoomStateView, ServerToClientEvents, TimerView } from "@tabletop/shared";
 import { useAuthStore } from "@/lib/stores/authStore";
+import { getStoredToken } from "@/lib/api/client";
 
 type ArenaSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
@@ -102,6 +103,7 @@ export function useRoomSocket(roomCode?: string): RoomSocketState {
 
   useEffect(() => {
     const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || undefined;
+    const token = getStoredToken();
     const nextSocket: ArenaSocket = io(socketUrl, {
       path: process.env.NEXT_PUBLIC_SOCKET_PATH ?? "/socket.io",
       withCredentials: true,
@@ -110,7 +112,8 @@ export function useRoomSocket(roomCode?: string): RoomSocketState {
       reconnectionAttempts: Infinity,
       reconnectionDelay: 500,
       reconnectionDelayMax: 5_000,
-      timeout: 20_000
+      timeout: 20_000,
+      ...(token ? { auth: { token } } : {})
     });
 
     setSocket(nextSocket);

@@ -33,11 +33,69 @@ export function createAdminRouter(manager: RoomManager) {
         username: user.username,
         email: user.email,
         role: user.role,
+        isGuest: Boolean(user.isGuest),
         displayName: user.profile?.displayName ?? user.username,
         createdAt: user.createdAt,
         inActiveRoom: manager.listRoomsForUser(user.id).length > 0
       }))
     });
+  });
+
+  // Admin can change a user's role (promote/demote)
+  router.patch("/admin/users/:userId/role", async (request, response) => {
+    const userId = request.params.userId;
+    const role = request.body?.role;
+
+    if (typeof userId !== "string" || !userId || (role !== "USER" && role !== "ADMIN")) {
+      sendError(response, 400, ERROR_CODES.INVALID_PAYLOAD, "Role must be 'USER' or 'ADMIN'.");
+      return;
+    }
+
+    if (request.user?.id === userId && role !== "ADMIN") {
+      sendError(response, 400, ERROR_CODES.INVALID_ACTION, "You cannot demote your own admin account.");
+      return;
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      sendError(response, 404, ERROR_CODES.INVALID_PAYLOAD, "User not found.");
+      return;
+    }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { role }
+    });
+
+    response.json({ ok: true, role });
+  });
+
+  // Admin can prune inactive guest accounts older than 7 days
+  router.post("/admin/users/prune-guests", async (_request, response) => {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const staleGuests = await prisma.user.findMany({
+      where: {
+        isGuest: true,
+        createdAt: { lt: sevenDaysAgo }
+      },
+      select: { id: true }
+    });
+
+    const idsToPrune = staleGuests
+      .map((g) => g.id)
+      .filter((id) => manager.listRoomsForUser(id).length === 0);
+
+    if (idsToPrune.length === 0) {
+      response.json({ ok: true, prunedCount: 0 });
+      return;
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.room.deleteMany({ where: { hostUserId: { in: idsToPrune } } });
+      await tx.user.deleteMany({ where: { id: { in: idsToPrune } } });
+    });
+
+    response.json({ ok: true, prunedCount: idsToPrune.length });
   });
 
   // Admin can set a new password for any account.

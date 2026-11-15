@@ -1,3 +1,5 @@
+import { isGamePublished } from "@tabletop/shared";
+
 /**
  * Tabletop Arena game lifecycle configuration.
  *
@@ -39,16 +41,23 @@ export const GAME_STATUS: Record<string, GameStatus> = {
 
 export const DEFAULT_GAME_STATUS: GameStatus = "prototype";
 
+const DEPLOYED_GAMES_ENV = process.env.NEXT_PUBLIC_DEPLOYED_GAMES;
+const IS_PROD = process.env.NODE_ENV === "production";
+
+export function isAvailableGame(gameId: string): boolean {
+  return isGamePublished(gameId, DEPLOYED_GAMES_ENV, IS_PROD);
+}
+
 export function getGameStatus(gameId: string): GameStatus {
   return GAME_STATUS[gameId] ?? DEFAULT_GAME_STATUS;
 }
 
 export function isCompletedGame(gameId: string): boolean {
-  return getGameStatus(gameId) === "complete";
+  return isAvailableGame(gameId) && getGameStatus(gameId) === "complete";
 }
 
 export function isPrototypeGame(gameId: string): boolean {
-  return getGameStatus(gameId) === "prototype";
+  return isAvailableGame(gameId) && getGameStatus(gameId) === "prototype";
 }
 
 export function getCompletedGames<T extends { id: string }>(games: readonly T[]): T[] {

@@ -40,6 +40,24 @@ export function readSessionFromCookie(cookieHeader: string | undefined): Session
   return token ? verifySession(token) : null;
 }
 
+export function readSessionFromHeader(authHeader: string | undefined): SessionClaims | null {
+  if (!authHeader) {
+    return null;
+  }
+  const parts = authHeader.split(" ");
+  if (parts.length === 2 && parts[0]?.toLowerCase() === "bearer" && parts[1]) {
+    return verifySession(parts[1]);
+  }
+  return null;
+}
+
+export function extractSessionClaims(
+  authHeader: string | undefined,
+  cookieHeader: string | undefined
+): SessionClaims | null {
+  return readSessionFromHeader(authHeader) ?? readSessionFromCookie(cookieHeader);
+}
+
 export function setSessionCookie(response: Response, token: string): void {
   const isSecureOrigin = env.PUBLIC_APP_URL.startsWith("https://");
 

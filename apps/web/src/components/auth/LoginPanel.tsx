@@ -7,8 +7,14 @@ import { api, ApiError } from "@/lib/api/client";
 import { useAuthStore } from "@/lib/stores/authStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import type { AuthUser } from "@tabletop/shared";
 
-export function LoginPanel() {
+interface LoginPanelProps {
+  onSuccess?: (user: AuthUser) => void;
+  redirectPath?: string | null;
+}
+
+export function LoginPanel({ onSuccess, redirectPath = "/dashboard" }: LoginPanelProps = {}) {
   const router = useRouter();
   const setUser = useAuthStore((state) => state.setUser);
 
@@ -41,13 +47,22 @@ export function LoginPanel() {
           password
         });
 
-        setUser(login.user);
+        const currentUser = login.user;
+        setUser(currentUser);
+        if (onSuccess) {
+          onSuccess(currentUser);
+        } else if (redirectPath) {
+          router.replace(redirectPath);
+        }
       } else {
         const result = await api.login({ username, password });
         setUser(result.user);
+        if (onSuccess) {
+          onSuccess(result.user);
+        } else if (redirectPath) {
+          router.replace(redirectPath);
+        }
       }
-
-      router.replace("/dashboard");
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : "Request failed.");
     } finally {

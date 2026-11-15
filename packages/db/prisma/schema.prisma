@@ -30,8 +30,9 @@ model User {
   id           String   @id @default(cuid())
   username     String   @unique
   email        String?  @unique
-  passwordHash String
+  passwordHash String?
   role         UserRole @default(USER)
+  isGuest      Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -40,6 +41,8 @@ model User {
   matchPlayers     MatchPlayer[]
   playerGameStats  PlayerGameStats[]
   achievements     ProfileAchievement[]
+
+  @@index([isGuest, createdAt])
 }
 
 model Profile {
@@ -166,4 +169,24 @@ model ProfileAchievement {
   achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
 
   @@unique([userId, achievementId])
+}
+
+model Feedback {
+  id              String   @id @default(cuid())
+  userId          String?
+  authorName      String
+  authorAvatarUrl String?
+  authorRole      String?
+  gameId          String
+  gameName        String
+  category        String
+  title           String?
+  message         String
+  rating          Int?
+  status          String   @default("open")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([gameId])
+  @@index([status])
 }

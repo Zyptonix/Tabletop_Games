@@ -10,10 +10,17 @@ export interface AuthUser {
   xp: number;
   level: number;
   coins: number;
+  isGuest?: boolean;
+}
+
+export interface AuthResponse {
+  user: AuthUser;
+  token?: string;
 }
 
 export interface SessionClaims {
   sub: string;
   username: string;
   role: UserRole;
+  isGuest?: boolean;
 }

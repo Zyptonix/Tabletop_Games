@@ -1,6 +1,29 @@
 import type { AuthUser, CreateFeedbackInput, FeedbackItem, JoinableRoomSummary, RoomStateView } from "@tabletop/shared";
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api";
+const TOKEN_KEY = "tabletop_token";
+
+export function getStoredToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setStoredToken(token: string | null): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (token) {
+      window.localStorage.setItem(TOKEN_KEY, token);
+    } else {
+      window.localStorage.removeItem(TOKEN_KEY);
+    }
+  } catch {
+    // Ignore storage errors in restricted contexts
+  }
+}
 
 export class ApiError extends Error {
   constructor(
@@ -13,13 +36,17 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const token = getStoredToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(init.headers as Record<string, string> | undefined)
+  };
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...init.headers
-    }
+    headers
   });
 
   const data = await response.json().catch(() => null);
@@ -31,22 +58,49 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
-  login: (payload: { username: string; password: string }) =>
-    request<{ user: AuthUser }>("/auth/login", {
+  login: async (payload: { username: string; password: string }) => {
+    const result = await request<{ user: AuthUser; token?: string }>("/auth/login", {
       method: "POST",
       body: JSON.stringify(payload)
-    }),
-  register: (payload: {
+    });
+    if (result.token) {
+      setStoredToken(result.token);
+    }
+    return result;
+  },
+  guestLogin: async (payload: { displayName: string }) => {
+    const result = await request<{ user: AuthUser; token?: string }>("/auth/guest", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+    if (result.token) {
+      setStoredToken(result.token);
+    }
+    return result;
+  },
+  register: async (payload: {
     username: string;
     email?: string | null;
     displayName: string;
     password: string;
-  }) =>
-    request<{ user: AuthUser }>("/auth/register", {
+  }) => {
+    const result = await request<{ user: AuthUser; token?: string }>("/auth/register", {
       method: "POST",
       body: JSON.stringify(payload)
-    }),
-  logout: () => request<{ ok: true }>("/auth/logout", { method: "POST" }),
+    });
+    if (result.token) {
+      setStoredToken(result.token);
+    }
+    return result;
+  },
+  logout: async () => {
+    try {
+      await request<{ ok: true }>("/auth/logout", { method: "POST" });
+    } finally {
+      setStoredToken(null);
+    }
+    return { ok: true as const };
+  },
   me: () => request<{ user: AuthUser }>("/auth/me"),
   createUser: (payload: {
     username: string;
@@ -66,6 +120,7 @@ export const api = {
         username: string;
         email: string | null;
         role: "USER" | "ADMIN";
+        isGuest?: boolean;
         displayName: string;
         createdAt: string;
         inActiveRoom: boolean;
@@ -76,6 +131,17 @@ export const api = {
     request<{ ok: true }>(`/admin/users/${userId}/password`, {
       method: "PATCH",
       body: JSON.stringify({ password })
+    }),
+
+  adminUpdateUserRole: (userId: string, role: "USER" | "ADMIN") =>
+    request<{ ok: true; role: string }>(`/admin/users/${userId}/role`, {
+      method: "PATCH",
+      body: JSON.stringify({ role })
+    }),
+
+  adminPruneGuests: () =>
+    request<{ ok: true; prunedCount: number }>("/admin/users/prune-guests", {
+      method: "POST"
     }),
 
   adminDeleteUser: (userId: string) =>

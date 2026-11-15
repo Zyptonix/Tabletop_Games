@@ -23,6 +23,7 @@ import { CreateRoomPanel } from "@/components/room/CreateRoomPanel";
 import { JoinRoomPanel } from "@/components/room/JoinRoomPanel";
 import { JoinableRoomsList } from "@/components/room/JoinableRoomsList";
 import { DashboardFeedbackTab } from "@/components/feedback/DashboardFeedbackTab";
+import { GameConfirmModal } from "@/components/ui/GameConfirmModal";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { useAuth } from "@/lib/auth/useAuth";
@@ -221,15 +222,19 @@ export default function DashboardPage() {
     return () => window.clearInterval(interval);
   }, []);
 
+  const [roomToEnd, setRoomToEnd] = useState<RoomStateView | null>(null);
+
   function openCreateDialog(game?: GameSummary) {
     setSelectedGameId(game?.id ?? null);
     setCreateDialogOpen(true);
   }
 
-  async function endRoom(room: RoomStateView) {
-    if (!window.confirm(`End room ${room.code} for everyone?`)) return;
+  async function handleConfirmEndRoom() {
+    if (!roomToEnd) return;
+    const target = roomToEnd;
+    setRoomToEnd(null);
     try {
-      await api.endRoom(room.id);
+      await api.endRoom(target.id);
       await loadActiveRooms();
     } catch (error) {
       setActiveRoomsError(error instanceof Error ? error.message : "Could not end this room.");
@@ -392,7 +397,7 @@ export default function DashboardPage() {
                           variant="outline"
                           className="border-white/15 bg-white/[0.03] text-slate-100 hover:bg-white/10"
                           size="sm"
-                          onClick={() => void endRoom(room)}
+                          onClick={() => setRoomToEnd(room)}
                         >
                           <StopCircle className="h-4 w-4" /> End
                         </Button>
@@ -596,6 +601,16 @@ export default function DashboardPage() {
       <Dialog open={joinDialogOpen} title="Join a game" onClose={() => setJoinDialogOpen(false)}>
         <JoinRoomPanel />
       </Dialog>
+
+      <GameConfirmModal
+        open={Boolean(roomToEnd)}
+        title="End Game Room"
+        message={`End room ${roomToEnd?.code} for everyone? All players will be returned to dashboard.`}
+        confirmLabel="End Room"
+        isDestructive={true}
+        onConfirm={() => void handleConfirmEndRoom()}
+        onCancel={() => setRoomToEnd(null)}
+      />
     </AppShell>
   );
 }

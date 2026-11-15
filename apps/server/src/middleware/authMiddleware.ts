@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { prisma } from "@tabletop/db";
 import { ERROR_CODES, type AuthUser } from "@tabletop/shared";
-import { readSessionFromCookie } from "../auth/session";
+import { extractSessionClaims } from "../auth/session";
 import { serializeUser } from "../auth/serializeUser";
 
 declare global {
@@ -13,7 +13,7 @@ declare global {
 }
 
 export async function authMiddleware(request: Request, response: Response, next: NextFunction) {
-  const claims = readSessionFromCookie(request.headers.cookie);
+  const claims = extractSessionClaims(request.headers.authorization, request.headers.cookie);
   if (!claims) {
     response.status(401).json({ code: ERROR_CODES.UNAUTHORIZED, message: "Login required." });
     return;
@@ -35,7 +35,7 @@ export async function authMiddleware(request: Request, response: Response, next:
 
 export async function optionalAuthMiddleware(request: Request, _response: Response, next: NextFunction) {
   try {
-    const claims = readSessionFromCookie(request.headers.cookie);
+    const claims = extractSessionClaims(request.headers.authorization, request.headers.cookie);
     if (!claims) {
       return next();
     }

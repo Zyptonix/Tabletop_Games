@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { prisma } from "@tabletop/db";
-import { createUserSchema, ERROR_CODES, loginSchema } from "@tabletop/shared";
+import { createUserSchema, guestLoginSchema, ERROR_CODES, loginSchema } from "@tabletop/shared";
 import { hashPassword, verifyPassword } from "./password";
 import { clearSessionCookie, setSessionCookie, signSession } from "./session";
 import { serializeUser } from "./serializeUser";
@@ -21,7 +21,7 @@ authRouter.post("/auth/login", async (request, response) => {
     include: { profile: true }
   });
 
-  if (!user || !(await verifyPassword(user.passwordHash, parsed.data.password))) {
+  if (!user || !user.passwordHash || !(await verifyPassword(user.passwordHash, parsed.data.password))) {
     sendError(response, 401, ERROR_CODES.UNAUTHORIZED, "Invalid username or password.");
     return;
   }
@@ -30,11 +30,51 @@ authRouter.post("/auth/login", async (request, response) => {
   const token = signSession({
     sub: user.id,
     username: user.username,
-    role: user.role
+    role: user.role,
+    isGuest: user.isGuest
   });
 
   setSessionCookie(response, token);
-  response.json({ user: authUser });
+  response.json({ user: authUser, token });
+});
+
+authRouter.post("/auth/guest", async (request, response) => {
+  const parsed = guestLoginSchema.safeParse(request.body);
+  if (!parsed.success) {
+    sendError(response, 400, ERROR_CODES.INVALID_PAYLOAD, "Enter a valid display name.", parsed.error.flatten());
+    return;
+  }
+
+  const cleanName = parsed.data.displayName.trim();
+  const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+  const sanitized = cleanName.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 10);
+  const baseUsername = `guest_${sanitized || "player"}_${randomSuffix}`;
+
+  const user = await prisma.user.create({
+    data: {
+      username: baseUsername,
+      role: "USER",
+      isGuest: true,
+      passwordHash: null,
+      profile: {
+        create: {
+          displayName: cleanName
+        }
+      }
+    },
+    include: { profile: true }
+  });
+
+  const authUser = serializeUser(user);
+  const token = signSession({
+    sub: user.id,
+    username: user.username,
+    role: user.role,
+    isGuest: true
+  });
+
+  setSessionCookie(response, token);
+  response.status(201).json({ user: authUser, token });
 });
 
 authRouter.post("/auth/logout", (_request, response) => {
@@ -87,6 +127,7 @@ authRouter.post("/auth/register", async (request, response) => {
       username: parsed.data.username,
       email: parsed.data.email ?? null,
       role: "USER",
+      isGuest: false,
       passwordHash: await hashPassword(parsed.data.password),
       profile: {
         create: {
@@ -97,9 +138,17 @@ authRouter.post("/auth/register", async (request, response) => {
     include: { profile: true }
   });
 
-  response.status(201).json({ user: serializeUser(user) });
-});
+  const authUser = serializeUser(user);
+  const token = signSession({
+    sub: user.id,
+    username: user.username,
+    role: user.role,
+    isGuest: false
+  });
 
+  setSessionCookie(response, token);
+  response.status(201).json({ user: authUser, token });
+});
 
 authRouter.post("/auth/users", authMiddleware, adminMiddleware, async (request, response) => {
   const parsed = createUserSchema.safeParse(request.body);
@@ -127,6 +176,7 @@ authRouter.post("/auth/users", authMiddleware, adminMiddleware, async (request, 
       username: parsed.data.username,
       email: parsed.data.email ?? null,
       role: parsed.data.role,
+      isGuest: false,
       passwordHash: await hashPassword(parsed.data.password),
       profile: {
         create: {

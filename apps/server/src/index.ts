@@ -11,8 +11,8 @@ async function main() {
 
   createSocketServer(httpServer, manager);
 
-  httpServer.listen(env.SERVER_PORT, () => {
-    console.log(`Tabletop server listening on ${env.SERVER_PORT}.`);
+  httpServer.listen(env.SERVER_PORT, "0.0.0.0", () => {
+    console.log(`Tabletop server listening on 0.0.0.0:${env.SERVER_PORT}.`);
   });
 
   try {

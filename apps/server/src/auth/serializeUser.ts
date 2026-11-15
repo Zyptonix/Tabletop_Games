@@ -5,6 +5,7 @@ type UserWithProfile = {
   username: string;
   email: string | null;
   role: "USER" | "ADMIN";
+  isGuest?: boolean;
   profile: {
     displayName: string;
     avatarUrl: string | null;
@@ -24,6 +25,7 @@ export function serializeUser(user: UserWithProfile): AuthUser {
     avatarUrl: user.profile?.avatarUrl ?? null,
     xp: user.profile?.xp ?? 0,
     level: user.profile?.level ?? 1,
-    coins: user.profile?.coins ?? 0
+    coins: user.profile?.coins ?? 0,
+    isGuest: Boolean(user.isGuest)
   };
 }

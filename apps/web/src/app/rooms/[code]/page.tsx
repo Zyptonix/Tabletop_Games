@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import { Copy, Loader2 } from "lucide-react";
+import { Copy, Loader2, Sparkles, Zap } from "lucide-react";
 import type {
   PublicClassicUnoState,
   PublicGridGameState,
@@ -19,6 +19,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/lib/auth/useAuth";
+import { useAuthStore } from "@/lib/stores/authStore";
+import { api, ApiError } from "@/lib/api/client";
+import { LoginPanel } from "@/components/auth/LoginPanel";
 import { useRoomSocket } from "@/lib/socket/useRoomSocket";
 import { GameShell } from "@/features/game-shell/GameShell";
 import { BoardGamesTable } from "@/features/games/board-games/BoardGamesTable";
@@ -34,18 +37,112 @@ import { GamePausedOverlay } from "@/components/game/GamePausedOverlay";
 
 export default function RoomPage() {
   const params = useParams<{ code: string }>();
-  const { user, loading } = useAuth({ required: true });
+  const { user, loading } = useAuth({ required: false });
+  const setUser = useAuthStore((state) => state.setUser);
   const roomCode = params.code?.toUpperCase();
   const socketState = useRoomSocket(loading || !user ? undefined : roomCode);
   const [myLobbyPiece, setMyLobbyPiece] = useState<SnakesAndLaddersPieceId>("horse");
 
-  if (loading || !user) {
+  // In-room guest onboarding state
+  const [inviteGuestName, setInviteGuestName] = useState("");
+  const [guestJoining, setGuestJoining] = useState(false);
+  const [guestError, setGuestError] = useState<string | null>(null);
+  const [showLoginInRoom, setShowLoginInRoom] = useState(false);
+
+  if (loading) {
     return (
       <AppShell>
         <div className="grid min-h-[50vh] place-items-center">
-          <div className="flex items-center gap-3 rounded-lg bg-white p-4 shadow">
-            <Loader2 className="h-5 w-5 animate-spin text-emerald-700" />
-            <span className="font-semibold">Loading your account...</span>
+          <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#0d161d] px-5 py-4 text-white shadow-xl">
+            <Loader2 className="h-5 w-5 animate-spin text-emerald-400" />
+            <span className="text-sm font-semibold">Connecting to arena...</span>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (!user) {
+    return (
+      <AppShell>
+        <div className="grid min-h-[65vh] place-items-center p-4">
+          <div className="w-full max-w-md overflow-hidden rounded-3xl border border-emerald-500/30 bg-[#0a1215] p-6 text-white shadow-[0_0_60px_rgba(0,0,0,0.7)]">
+            <div className="text-center">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs font-black uppercase tracking-wider text-emerald-300">
+                <Sparkles className="h-3.5 w-3.5" /> Room Invite
+              </span>
+              <h2 className="mt-3 text-2xl font-black">You&apos;re Invited to Play!</h2>
+              <p className="mt-1 text-xs text-slate-400">
+                Room Code: <span className="font-mono font-black text-amber-300">{roomCode}</span>
+              </p>
+            </div>
+
+            {showLoginInRoom ? (
+              <div className="mt-6">
+                <LoginPanel onSuccess={(authUser) => setUser(authUser)} redirectPath={null} />
+                <button
+                  type="button"
+                  onClick={() => setShowLoginInRoom(false)}
+                  className="mt-3 w-full text-center text-xs font-semibold text-slate-400 hover:text-white"
+                >
+                  ← Back to Quick Guest Join
+                </button>
+              </div>
+            ) : (
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!inviteGuestName.trim()) return;
+                  setGuestJoining(true);
+                  setGuestError(null);
+                  try {
+                    const res = await api.guestLogin({ displayName: inviteGuestName.trim() });
+                    setUser(res.user);
+                  } catch (err) {
+                    setGuestError(err instanceof ApiError ? err.message : "Failed to join room.");
+                    setGuestJoining(false);
+                  }
+                }}
+                className="mt-6 space-y-4"
+              >
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Enter your nickname to join
+                  </label>
+                  <input
+                    type="text"
+                    value={inviteGuestName}
+                    onChange={(e) => setInviteGuestName(e.target.value)}
+                    placeholder="e.g. Maverick, Player1"
+                    autoFocus
+                    required
+                    maxLength={25}
+                    className="mt-1.5 w-full rounded-xl border border-white/10 bg-black/40 px-3.5 py-2.5 text-sm font-bold text-white outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400"
+                  />
+                </div>
+
+                {guestError && <p className="text-xs font-semibold text-rose-400">{guestError}</p>}
+
+                <button
+                  type="submit"
+                  disabled={guestJoining || !inviteGuestName.trim()}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 py-3 text-sm font-black text-white shadow-lg transition hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50"
+                >
+                  {guestJoining ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                  {guestJoining ? "Joining..." : "⚡ Join Match Immediately"}
+                </button>
+
+                <div className="pt-2 text-center">
+                  <button
+                    type="button"
+                    onClick={() => setShowLoginInRoom(true)}
+                    className="text-xs font-semibold text-slate-400 hover:text-emerald-300 transition"
+                  >
+                    Already have an account? Sign in
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       </AppShell>
@@ -56,9 +153,9 @@ export default function RoomPage() {
     return (
       <AppShell>
         <div className="grid min-h-[50vh] place-items-center">
-          <div className="flex items-center gap-3 rounded-lg bg-white p-4 shadow">
-            <Loader2 className="h-5 w-5 animate-spin text-emerald-700" />
-            <span className="font-semibold">Joining room {roomCode}</span>
+          <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#0d161d] px-5 py-4 text-white shadow-xl">
+            <Loader2 className="h-5 w-5 animate-spin text-emerald-400" />
+            <span className="text-sm font-semibold">Entering room {roomCode}...</span>
           </div>
         </div>
       </AppShell>

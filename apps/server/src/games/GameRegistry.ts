@@ -39,8 +39,9 @@ import {
   type BoardGameAction,
   type BoardGameSettings
 } from "@tabletop/game-core";
-import type { GameId } from "@tabletop/shared";
+import { type GameId, isGamePublished } from "@tabletop/shared";
 import type { GameModule, RegisteredGameSummary } from "@tabletop/game-core";
+import { env } from "../config/env";
 
 type AnyGameModule = GameModule<unknown, unknown, unknown>;
 
@@ -92,6 +93,14 @@ const ALIASES: Record<string, GameId> = {
 export class GameRegistry {
   get(gameId: GameId): AnyGameModule | null {
     const canonicalId = ALIASES[gameId as string] ?? gameId;
+    const isAllowed = isGamePublished(
+      canonicalId,
+      env.DEPLOYED_GAMES,
+      env.NODE_ENV === "production"
+    );
+    if (!isAllowed) {
+      return null;
+    }
     return modules.get(canonicalId) ?? null;
   }
 
@@ -102,6 +111,9 @@ export class GameRegistry {
     for (const module of modules.values()) {
       if (seen.has(module.id)) continue;
       seen.add(module.id);
+      if (!isGamePublished(module.id, env.DEPLOYED_GAMES, env.NODE_ENV === "production")) {
+        continue;
+      }
       list.push({
         id: module.id,
         displayName: module.displayName,

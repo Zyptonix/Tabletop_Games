@@ -16,7 +16,7 @@ import {
   type ClientToServerEvents,
   type ServerToClientEvents
 } from "@tabletop/shared";
-import { readSessionFromCookie } from "../auth/session";
+import { readSessionFromCookie, readSessionFromHeader, verifySession } from "../auth/session";
 import { serializeUser } from "../auth/serializeUser";
 import { corsOriginDelegate, env, unoDebugScenariosEnabled } from "../config/env";
 import { RoomManager } from "../rooms/RoomManager";
@@ -71,7 +71,13 @@ function socketError(error: unknown) {
 
 async function authenticateSocket(socket: AppSocket, next: (error?: Error) => void) {
   try {
-    const claims = readSessionFromCookie(socket.request.headers.cookie);
+    const handshakeAuth = socket.handshake.auth as { token?: string } | undefined;
+    const headerAuth = socket.handshake.headers.authorization;
+    const claims =
+      (handshakeAuth?.token ? verifySession(handshakeAuth.token) : null) ??
+      readSessionFromHeader(headerAuth) ??
+      readSessionFromCookie(socket.request.headers.cookie);
+
     if (!claims) {
       next(new Error("UNAUTHORIZED"));
       return;

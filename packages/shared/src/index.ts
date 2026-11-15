@@ -1,5 +1,6 @@
 export * from "./constants/gameIds";
 export * from "./constants/rooms";
+export * from "./config/publishedGames";
 export * from "./errors/codes";
 export * from "./schemas/auth";
 export * from "./schemas/chat";

@@ -19,7 +19,9 @@ const envSchema = z.object({
   SOCKET_PATH: z.string().default("/socket.io"),
   NODE_ENV: nodeEnvSchema.default("development"),
   SERVER_PORT: z.coerce.number().int().positive().default(4000),
-  ENABLE_UNO_DEBUG_PANEL: z.enum(["true", "false"]).optional()
+  ENABLE_UNO_DEBUG_PANEL: z.enum(["true", "false"]).optional(),
+  DEPLOYED_GAMES: z.string().optional(),
+  ALLOWED_ORIGINS: z.string().optional()
 });
 
 export const env = envSchema.parse({
@@ -29,16 +31,26 @@ export const env = envSchema.parse({
   PUBLIC_APP_URL: resolvePublicAppUrl(nodeEnv),
   SOCKET_PATH: cleanEnvValue(process.env.SOCKET_PATH),
   NODE_ENV: nodeEnv,
-  SERVER_PORT: cleanEnvValue(process.env.SERVER_PORT),
-  ENABLE_UNO_DEBUG_PANEL: cleanEnvValue(process.env.ENABLE_UNO_DEBUG_PANEL ?? process.env.NEXT_PUBLIC_ENABLE_UNO_DEBUG_PANEL)
+  SERVER_PORT: cleanEnvValue(process.env.PORT ?? process.env.SERVER_PORT),
+  ENABLE_UNO_DEBUG_PANEL: cleanEnvValue(process.env.ENABLE_UNO_DEBUG_PANEL ?? process.env.NEXT_PUBLIC_ENABLE_UNO_DEBUG_PANEL),
+  DEPLOYED_GAMES: cleanEnvValue(process.env.DEPLOYED_GAMES ?? process.env.NEXT_PUBLIC_DEPLOYED_GAMES),
+  ALLOWED_ORIGINS: cleanEnvValue(process.env.ALLOWED_ORIGINS)
 });
 
-export const corsOrigins = [
-  env.PUBLIC_APP_URL,
-  "http://localhost:3000",
-  "http://localhost:8080",
-  "http://127.0.0.1:8080"
-];
+const extraOrigins = env.ALLOWED_ORIGINS
+  ? env.ALLOWED_ORIGINS.split(",").map((s) => s.trim().replace(/\/$/, "")).filter(Boolean)
+  : [];
+
+export const corsOrigins = Array.from(
+  new Set([
+    env.PUBLIC_APP_URL.replace(/\/$/, ""),
+    "http://localhost:3000",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+    "http://127.0.0.1:3000",
+    ...extraOrigins
+  ])
+);
 
 export function corsOriginDelegate(origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void): void {
   callback(null, isAllowedCorsOrigin(origin));
@@ -49,16 +61,29 @@ function isAllowedCorsOrigin(origin: string | undefined): boolean {
     return true;
   }
 
-  if (corsOrigins.includes(origin)) {
+  const normalized = origin.replace(/\/$/, "");
+
+  if (corsOrigins.includes(normalized)) {
     return true;
   }
 
-  if (env.NODE_ENV !== "production") {
-    try {
-      return new URL(origin).hostname.endsWith(".trycloudflare.com");
-    } catch {
-      return false;
+  try {
+    const url = new URL(origin);
+    const hostname = url.hostname.toLowerCase();
+    // Allow any Vercel deployment (production or preview branches)
+    if (hostname.endsWith(".vercel.app")) {
+      return true;
     }
+    // Allow Render internal / preview hosts
+    if (hostname.endsWith(".onrender.com")) {
+      return true;
+    }
+    // Allow Cloudflare quick tunnels in non-production
+    if (env.NODE_ENV !== "production" && hostname.endsWith(".trycloudflare.com")) {
+      return true;
+    }
+  } catch {
+    return false;
   }
 
   return false;
