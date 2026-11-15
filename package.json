@@ -10,7 +10,7 @@
                     "dev:server":  "corepack pnpm --filter @tabletop/server dev",
                     "dev:proxy":  "node scripts/dev-proxy.mjs",
                     "build":  "pnpm --filter @tabletop/db prisma:generate && corepack pnpm -r build",
-                    "build:server":  "pnpm --filter @tabletop/db prisma:generate && pnpm --filter @tabletop/server build",
+                    "build:server":  "pnpm --filter @tabletop/db prisma:generate",
                     "typecheck":  "corepack pnpm -r typecheck",
                     "test":  "corepack pnpm -r test",
                     "lint":  "corepack pnpm -r lint",
