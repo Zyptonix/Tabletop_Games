@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     region: oregon
-    buildCommand: corepack enable && pnpm install --frozen-lockfile=false && pnpm --filter @tabletop/db prisma:generate && pnpm --filter @tabletop/server build
+    buildCommand: corepack enable && pnpm install --frozen-lockfile=false --prod=false && pnpm run build:server
     startCommand: pnpm --filter @tabletop/server start
     healthCheckPath: /health
     envVars:
