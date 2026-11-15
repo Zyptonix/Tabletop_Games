@@ -29,7 +29,7 @@ export class FeedbackService {
         orderBy: { createdAt: "desc" }
       });
       if (rows && rows.length > 0) {
-        this.cache = rows.map((r) => ({
+        const items: FeedbackItem[] = rows.map((r) => ({
           id: r.id,
           userId: r.userId,
           authorName: r.authorName,
@@ -45,7 +45,8 @@ export class FeedbackService {
           createdAt: r.createdAt.toISOString(),
           updatedAt: r.updatedAt.toISOString()
         }));
-        return this.cache;
+        this.cache = items;
+        return items;
       }
     } catch {
       // Prisma table may not exist yet or local DB unreachable
@@ -56,7 +57,7 @@ export class FeedbackService {
       const raw = await fs.readFile(FEEDBACK_FILE, "utf-8");
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        this.cache = parsed;
+        this.cache = parsed as FeedbackItem[];
         return this.cache;
       }
     } catch {
@@ -64,7 +65,7 @@ export class FeedbackService {
     }
 
     this.cache = [];
-    return this.cache;
+    return [];
   }
 
   private async persistFile(): Promise<void> {
