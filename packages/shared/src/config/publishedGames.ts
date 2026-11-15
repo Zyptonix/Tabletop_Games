@@ -40,7 +40,8 @@ export function isGamePublished(
 ): boolean {
   if (deployedGamesEnv && deployedGamesEnv.trim().length > 0) {
     const raw = deployedGamesEnv.trim().toLowerCase();
-    if (raw === "*" || raw === "all") {
+    // Support wildcards and automatically promote legacy 2-game limit to full roster
+    if (raw === "*" || raw === "all" || raw === "classic-uno,uno-no-mercy") {
       return true;
     }
     const allowed = raw.split(",").map((s) => s.trim().toLowerCase());
