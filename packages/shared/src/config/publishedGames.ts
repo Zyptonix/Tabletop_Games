@@ -12,7 +12,22 @@
  */
 export const PUBLISHED_GAMES: readonly string[] = [
   "classic-uno",
-  "uno-no-mercy"
+  "uno-no-mercy",
+  "twenty-nine",
+  "snakes-and-ladders",
+  "battleship",
+  "chess",
+  "poker",
+  "blackjack",
+  "mafia-werewolf",
+  "strategic-shockwave",
+  "connect-four",
+  "reversi",
+  "monopoly",
+  "barricades",
+  "risk",
+  "world-conquest",
+  "codenames"
 ];
 
 /**
@@ -32,12 +47,7 @@ export function isGamePublished(
     return allowed.includes(gameId.toLowerCase());
   }
 
-  // If in production mode, default strictly to the published games list
-  if (isProduction) {
-    return PUBLISHED_GAMES.includes(gameId.toLowerCase());
-  }
-
-  // In local development / LAN servers, allow all games by default
+  // All games permitted by default (full catalog active on LAN and web)
   return true;
 }
 

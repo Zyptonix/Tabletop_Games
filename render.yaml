@@ -11,7 +11,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: DEPLOYED_GAMES
-        value: classic-uno,uno-no-mercy
+        value: "*"
       - key: DATABASE_URL
         sync: false
       - key: JWT_SECRET
