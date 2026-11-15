@@ -120,10 +120,10 @@ export function PlayerSeat({
         "relative isolate overflow-visible rounded-[1.55rem] border text-white backdrop-blur-xl transition-all duration-200",
         compact ? "min-h-[5.25rem]" : "min-h-[6.05rem]",
         player.isCurrentTurn
-          ? cn("border-2 scale-[1.02]", turnTheme.borderClass, turnTheme.bgClass, turnTheme.shadow)
+          ? cn("border-2 scale-[1.01]", turnTheme.borderClass, turnTheme.bgClass, turnTheme.shadow)
           : "border-emerald-300/12 bg-[linear-gradient(135deg,rgba(7,22,14,0.88),rgba(5,15,12,0.76)_42%,rgba(0,0,0,0.66)_100%)] shadow-[0_18px_44px_rgba(0,0,0,0.66),0_0_24px_rgba(34,197,94,0.07)]",
         inactive && "opacity-60 grayscale",
-        isSelf ? "p-4" : compact ? "p-3" : "p-3.5"
+        isSelf ? "p-3 sm:p-3.5" : compact ? "p-3" : "p-3.5"
       )}
     >
       {player.isCurrentTurn ? (
