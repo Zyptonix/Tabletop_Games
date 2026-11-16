@@ -1,6 +1,6 @@
 import type { AuthUser, CreateFeedbackInput, FeedbackItem, JoinableRoomSummary, RoomStateView } from "@tabletop/shared";
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api";
+export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || "/api").replace(/\/$/, "");
 const TOKEN_KEY = "tabletop_token";
 
 export function getStoredToken(): string | null {

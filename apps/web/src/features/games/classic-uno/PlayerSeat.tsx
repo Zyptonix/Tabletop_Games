@@ -118,12 +118,12 @@ export function PlayerSeat({
     <div
       className={cn(
         "relative isolate overflow-visible rounded-[1.55rem] border text-white backdrop-blur-xl transition-all duration-200",
-        compact ? "min-h-[5.25rem]" : "min-h-[6.05rem]",
+        compact || isSelf ? "min-h-[4.75rem]" : "min-h-[6.05rem]",
         player.isCurrentTurn
-          ? cn("border-2 scale-[1.02]", turnTheme.borderClass, turnTheme.bgClass, turnTheme.shadow)
+          ? cn("border-2 scale-[1.01]", turnTheme.borderClass, turnTheme.bgClass, turnTheme.shadow)
           : "border-emerald-300/12 bg-[linear-gradient(135deg,rgba(7,22,14,0.88),rgba(5,15,12,0.76)_42%,rgba(0,0,0,0.66)_100%)] shadow-[0_18px_44px_rgba(0,0,0,0.66),0_0_24px_rgba(34,197,94,0.07)]",
         inactive && "opacity-60 grayscale",
-        isSelf ? "p-4" : compact ? "p-3" : "p-3.5"
+        compact || isSelf ? "p-2.5 sm:p-3" : "p-3.5"
       )}
     >
       {player.isCurrentTurn ? (
@@ -158,7 +158,7 @@ export function PlayerSeat({
       <div
         className={cn(
           "relative z-10 flex items-center justify-between gap-3",
-          compact ? "min-h-[4.1rem]" : "min-h-[4.7rem]",
+          compact || isSelf ? "min-h-[3.75rem]" : "min-h-[4.7rem]",
           fanSide === "right" ? "pr-[6.45rem]" : "pl-[6.45rem]"
         )}
       >
@@ -210,36 +210,31 @@ export function PlayerSeat({
 
             <div
               className={cn(
-                "mt-2 flex items-center gap-2",
+                "mt-1.5 flex flex-wrap items-center gap-1.5",
                 player.isCurrentTurn ? "text-amber-200 drop-shadow-[0_1px_3px_rgba(0,0,0,0.85)]" : "text-amber-300",
                 fanSide === "left" && "justify-end"
               )}
             >
-              <Star className="h-4 w-4 fill-current" />
-              <span className="text-[1rem] font-black leading-none">{player.handCount}</span>
-            </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Star className="h-4 w-4 fill-current" />
+                <span className="text-[0.95rem] font-black leading-none">{player.handCount}</span>
+              </div>
 
-            <div
-              className={cn(
-                "mt-2 flex flex-wrap items-center gap-1.5",
-                fanSide === "left" && "justify-end"
-              )}
-            >
               {player.isCurrentTurn ? (
                 <div
-                  className="inline-flex items-center gap-1.5 rounded-full border border-white/50 bg-black/45 px-2.5 py-0.5 text-[0.62rem] font-black uppercase tracking-wider text-white shadow-[0_0_12px_rgba(0,0,0,0.35)] backdrop-blur-sm"
+                  className="inline-flex items-center gap-1 rounded-full border border-white/50 bg-black/45 px-2 py-0.5 text-[0.58rem] font-black uppercase tracking-wider text-white shadow-[0_0_12px_rgba(0,0,0,0.35)] backdrop-blur-sm"
                 >
-                  <span className="relative flex h-2 w-2">
+                  <span className="relative flex h-1.5 w-1.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-80 bg-lime-400" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-lime-300" />
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-lime-300" />
                   </span>
                   <span>Turn</span>
                 </div>
               ) : null}
               {isNoMercy && player.handCount >= 18 && !player.eliminated ? (
-                <div className="inline-flex items-center gap-1 rounded-full border border-rose-400/80 bg-rose-500/25 px-2 py-0.5 text-[0.58rem] font-black uppercase tracking-wider text-rose-200 shadow-[0_0_14px_rgba(244,63,94,0.45)] animate-pulse">
-                  <Skull className="h-2.5 w-2.5" />
-                  <span>{player.handCount}/25 Danger</span>
+                <div className="inline-flex items-center gap-1 rounded-full border border-rose-400/80 bg-rose-500/25 px-1.5 py-0.5 text-[0.55rem] font-black uppercase tracking-wider text-rose-200 shadow-[0_0_14px_rgba(244,63,94,0.45)] animate-pulse">
+                  <Skull className="h-2 w-2" />
+                  <span>Danger</span>
                 </div>
               ) : null}
               {player.unoCalled ? <Badge tone="uno">UNO</Badge> : null}

@@ -46,6 +46,7 @@ export interface RoomSocketState {
   gameEvents: GameEvent[];
   timer: TimerView | null;
   error: string | null;
+  roomEnded: { roomId: string; code?: string; reason?: string } | null;
   sendAction: (roomId: string, type: string, payload?: Record<string, unknown>) => void;
   sendReady: (roomId: string, ready: boolean) => void;
   updateRoomSettings: (roomId: string, settings: Record<string, unknown>) => void;
@@ -83,6 +84,7 @@ export function useRoomSocket(roomCode?: string): RoomSocketState {
   const [gameEvents, setGameEvents] = useState<GameEvent[]>([]);
   const [timer, setTimer] = useState<TimerView | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [roomEnded, setRoomEnded] = useState<{ roomId: string; code?: string; reason?: string } | null>(null);
     useEffect(() => {
     if (!error) return;
 
@@ -99,13 +101,14 @@ export function useRoomSocket(roomCode?: string): RoomSocketState {
     setGameState(null);
     setLegalActions([]);
     setGameEvents([]);
+    setRoomEnded(null);
   }, [roomCode]);
 
   useEffect(() => {
-    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || undefined;
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL?.trim() || undefined;
     const token = getStoredToken();
     const nextSocket: ArenaSocket = io(socketUrl, {
-      path: process.env.NEXT_PUBLIC_SOCKET_PATH ?? "/socket.io",
+      path: process.env.NEXT_PUBLIC_SOCKET_PATH?.trim() || "/socket.io",
       withCredentials: true,
       transports: ["websocket", "polling"],
       reconnection: true,
@@ -151,6 +154,21 @@ export function useRoomSocket(roomCode?: string): RoomSocketState {
       if (normalizedCode && roomCodeRef.current && normalizedCode === roomCodeRef.current) {
         joinedRoomCodeRef.current = normalizedCode;
       }
+      if (payload.status === "abandoned") {
+        setRoomEnded({
+          roomId: payload.id,
+          code: payload.code,
+          reason: "The host has ended this game room."
+        });
+        setTimer(null);
+        setLegalActions([]);
+      }
+    });
+
+    nextSocket.on("room:ended", (payload) => {
+      setRoomEnded(payload);
+      setTimer(null);
+      setLegalActions([]);
     });
     
     nextSocket.on("game:state", (payload) => {
@@ -185,6 +203,7 @@ export function useRoomSocket(roomCode?: string): RoomSocketState {
       gameEvents,
       timer,
       error,
+      roomEnded,
       sendAction: (roomId: string, type: string, payload: Record<string, unknown> = {}) => {
         socket?.emit("game:action", {
           actionId: createActionId(),

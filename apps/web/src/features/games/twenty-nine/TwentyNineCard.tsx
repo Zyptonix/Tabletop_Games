@@ -91,17 +91,27 @@ export function CardSpriteImage({
 
 export function TwentyNineCardBack({
   className,
-  small = false
+  small = false,
+  variant = "default"
 }: {
   className?: string;
   small?: boolean;
+  variant?: "default" | "clean";
 }) {
   const candidates = useMemo(
-    () => [
-      "/game-assets/twenty-nine/cards_better/back.png",
-      "/game-assets/twenty-nine/cards/back.png"
-    ],
-    []
+    () =>
+      variant === "clean"
+        ? [
+            "/game-assets/twenty-nine/cards_clean_back.svg",
+            "/game-assets/twenty-nine/cards_clean_back.jpg",
+            "/game-assets/twenty-nine/cards_better/back.png",
+            "/game-assets/twenty-nine/cards/back.png"
+          ]
+        : [
+            "/game-assets/twenty-nine/cards_better/back.png",
+            "/game-assets/twenty-nine/cards/back.png"
+          ],
+    [variant]
   );
   const [index, setIndex] = useState(0);
 
@@ -122,9 +132,9 @@ export function TwentyNineCardBack({
           onError={() => setIndex((curr) => curr + 1)}
         />
       ) : (
-        <div className="absolute inset-0 flex flex-col items-center justify-center p-1 text-center">
-          <div className="rounded-md border border-emerald-400/40 bg-emerald-950/60 px-2 py-1">
-            <span className="text-sm font-black tracking-widest text-emerald-200">29</span>
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-1 text-center bg-slate-950">
+          <div className="rounded-md border border-amber-400/40 bg-slate-900/90 px-2 py-1">
+            <span className="text-sm font-black tracking-widest text-amber-300">29</span>
           </div>
         </div>
       )}

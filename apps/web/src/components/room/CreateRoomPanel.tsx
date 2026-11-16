@@ -242,11 +242,15 @@ export function CreateRoomPanel({ initialGameId, hideGameSelect = false, allowed
             </div>
           ) : null}
 
-          {error ? <p role="alert" className="flex items-start gap-2 rounded-lg border border-rose-300/15 bg-rose-950/35 p-3 text-sm text-rose-200"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{error}</p> : null}
+          {error ? <p role="alert" className="flex items-start gap-2 rounded-xl border border-rose-500/30 bg-rose-950/40 p-3 text-xs font-bold text-rose-200"><AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{error}</p> : null}
 
-          <Button type="submit" className="w-full" disabled={loading || loadingGames || !gameId || noGamesAvailable}>
-            <Plus className="h-4 w-4" />
-            {loading ? "Creating room…" : "Create room"}
+          <Button
+            type="submit"
+            className="h-12 w-full rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-sm font-black text-zinc-950 shadow-[0_0_24px_rgba(16,185,129,0.35)] transition-all hover:scale-[1.01] hover:brightness-110 active:scale-[0.99] cursor-pointer"
+            disabled={loading || loadingGames || !gameId || noGamesAvailable}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            {loading ? "Creating Game Table…" : "LAUNCH GAME TABLE"}
           </Button>
         </form>
       </CardContent>

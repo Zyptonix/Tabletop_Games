@@ -1,0 +1,1628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Twenty-Nine (29) Complete WYSIWYG Layout Sandbox</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0,0,0,0.25); }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.35); }
+
+    .glow-gold {
+      box-shadow: 0 0 25px rgba(245, 158, 11, 0.45), inset 0 0 15px rgba(245, 158, 11, 0.2);
+    }
+    .card-shadow {
+      box-shadow: 0 8px 18px -3px rgba(0,0,0,0.7), 0 4px 6px -2px rgba(0,0,0,0.5);
+    }
+
+    /* Draggable / Resizable Canvas Layer Styling */
+    .sandbox-layer {
+      position: absolute;
+      user-select: none;
+      touch-action: none;
+      transition: box-shadow 0.15s ease, outline 0.15s ease;
+    }
+    .sandbox-layer:hover {
+      outline: 2px dashed rgba(245, 158, 11, 0.7);
+      outline-offset: 3px;
+    }
+    .sandbox-layer.selected {
+      outline: 2px solid #38bdf8 !important;
+      outline-offset: 3px;
+      box-shadow: 0 0 25px rgba(56, 189, 248, 0.45) !important;
+    }
+    .sandbox-layer.locked {
+      outline: none !important;
+    }
+
+    /* Layer Tag Badge */
+    .layer-tag {
+      position: absolute;
+      top: -22px;
+      left: 0;
+      background: #0284c7;
+      color: #ffffff;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 1px 7px;
+      border-radius: 5px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s;
+      white-space: nowrap;
+      z-index: 1000;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+    }
+    .sandbox-layer:hover .layer-tag,
+    .sandbox-layer.selected .layer-tag {
+      opacity: 1;
+    }
+
+    /* Resize Handle */
+    .resize-handle {
+      position: absolute;
+      right: -6px;
+      bottom: -6px;
+      width: 14px;
+      height: 14px;
+      background: #38bdf8;
+      border: 2px solid #ffffff;
+      border-radius: 4px;
+      cursor: nwse-resize;
+      opacity: 0;
+      transition: opacity 0.15s, transform 0.15s;
+      z-index: 1001;
+    }
+    .sandbox-layer:hover .resize-handle,
+    .sandbox-layer.selected .resize-handle {
+      opacity: 1;
+    }
+    .resize-handle:hover {
+      transform: scale(1.35);
+      background: #fbbf24;
+    }
+
+    /* Numbered Comment Pin */
+    .comment-pin {
+      position: absolute;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #ef4444;
+      color: white;
+      font-weight: 900;
+      font-size: 12px;
+      display: grid;
+      place-items: center;
+      border: 2px solid #ffffff;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.6), 0 0 12px rgba(239,68,68,0.7);
+      cursor: pointer;
+      z-index: 2000;
+      transform: translate(-50%, -50%);
+      transition: transform 0.15s;
+    }
+    .comment-pin:hover {
+      transform: translate(-50%, -50%) scale(1.25);
+      background: #f97316;
+    }
+    .comment-pin.active {
+      transform: translate(-50%, -50%) scale(1.3);
+      background: #f59e0b;
+      ring: 4px solid rgba(245, 158, 11, 0.4);
+    }
+
+    /* Grid Overlay */
+    .grid-bg {
+      background-size: 24px 24px;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    }
+  </style>
+</head>
+<body class="bg-[#05090e] text-slate-100 min-h-screen flex flex-col font-sans select-none overflow-x-hidden">
+
+  <!-- TOP APP TOOLBAR: MODE SWITCHER, CONTROLS, EXPORT -->
+  <header class="h-14 bg-[#0a111a] border-b border-white/10 px-4 flex items-center justify-between z-50 shrink-0 shadow-lg">
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2">
+        <span class="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 grid place-items-center font-black text-sm">29</span>
+        <h1 class="font-black text-sm text-white tracking-wide">Twenty-Nine Full Screen WYSIWYG Sandbox</h1>
+      </div>
+      <span class="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-2 py-0.5 rounded-full font-bold">All 18 Elements Free-Floating</span>
+    </div>
+
+    <!-- Mode Selector & Main Tools -->
+    <div class="flex items-center gap-2">
+      <!-- Mode Toggle -->
+      <div class="flex items-center bg-black/60 p-1 rounded-xl border border-white/10">
+        <button id="btn-mode-drag" onclick="setMode('drag')" class="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black transition bg-sky-500 text-white shadow">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/></svg>
+          <span>Drag & Resize</span>
+        </button>
+        <button id="btn-mode-comment" onclick="setMode('comment')" class="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black transition text-white/60 hover:text-white">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg>
+          <span>Pin Comment (<span id="comment-count-badge">0</span>)</span>
+        </button>
+      </div>
+
+      <div class="h-5 w-px bg-white/10 mx-1"></div>
+
+      <!-- Quick Toggles -->
+      <button onclick="toggleGrid()" id="btn-grid" title="Toggle Grid Snapping & Overlay" class="px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-bold text-white/80 flex items-center gap-1.5">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16M6 4v16M12 4v16M18 4v16"/></svg>
+        <span>Grid: <b id="grid-status-text">Snap 8px</b></span>
+      </button>
+
+      <button onclick="resetAllPositions()" title="Reset all layers to default layout" class="px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-bold text-rose-300 flex items-center gap-1">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        <span>Reset Layout</span>
+      </button>
+    </div>
+
+    <!-- Inspector Readout & Export Actions -->
+    <div class="flex items-center gap-2">
+      <div id="inspector-quick" class="hidden sm:flex items-center gap-2 px-3 py-1 bg-black/40 border border-white/10 rounded-xl text-[11px] font-mono text-white/70">
+        <span id="quick-selected-name" class="font-bold text-sky-400">Select element</span>
+        <span id="quick-coords">X: - | Y: - | W: - | H: -</span>
+      </div>
+
+      <button onclick="toggleNotesPanel()" class="px-3 py-1.5 rounded-xl border border-amber-400/30 bg-amber-500/10 hover:bg-amber-500/20 text-xs font-black text-amber-300 flex items-center gap-1.5">
+        <span>📝 Notes Panel</span>
+      </button>
+
+      <button onclick="openExportModal()" class="px-3.5 py-1.5 rounded-xl border border-emerald-400/50 bg-gradient-to-r from-emerald-500 to-teal-600 hover:brightness-110 text-xs font-black text-black shadow-[0_0_15px_rgba(52,211,153,0.4)] flex items-center gap-1.5 transition active:scale-95">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+        <span>Export Instructions</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN WORKSPACE CONTAINER -->
+  <div class="flex-1 flex overflow-hidden relative">
+
+    <!-- CANVAS VIEWPORT (TABLE FELT ROOT) -->
+    <main id="canvas-container" class="flex-1 relative overflow-auto grid-bg flex items-center justify-center p-6 min-h-[920px]">
+
+      <!-- TABLE CANVAS BOUNDING BOX (1600x960 Desktop Felt) -->
+      <div id="table-canvas" class="relative w-[1560px] h-[920px] bg-[#07130e] border-[14px] border-[#381e0b] rounded-[60px] shadow-[inset_0_0_120px_rgba(0,0,0,0.95),0_25px_60px_rgba(0,0,0,0.9)] overflow-hidden shrink-0 select-none"
+           style="background: radial-gradient(ellipse at 50% 50%, #064e3b 0%, #033c2d 40%, #02261c 75%, #01130d 100%);">
+
+        <!-- Outer Decorative Gold Racetrack Ring -->
+        <div class="pointer-events-none absolute inset-5 rounded-[45px] border-2 border-amber-300/15"></div>
+
+        <!-- ============================================================== -->
+        <!-- 1. TOP ROOM NAVIGATION & CONTROLS HEADER BAR -->
+        <!-- ============================================================== -->
+        <div id="layer-top-nav-bar" class="sandbox-layer w-[1480px] h-[52px]" style="left: 26px; top: 16px; z-index: 45;" data-title="1. Top Navigation & Header Bar">
+          <div class="layer-tag">Top Navigation Bar</div>
+          <div class="resize-handle"></div>
+          
+          <div class="w-full h-full rounded-2xl bg-[#09151f]/95 border border-white/10 px-4 flex items-center justify-between shadow-xl backdrop-blur-md">
+            <!-- Left: Brand & Game Title -->
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 grid place-items-center font-black text-sm">♠</div>
+              <div class="flex items-center gap-2">
+                <span class="font-black text-sm text-white">Tabletop Arena</span>
+                <span class="text-white/40">/</span>
+                <span class="font-bold text-xs text-amber-300">Twenty-Nine (29)</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-400/10 text-amber-300 border border-amber-400/30">Match Live</span>
+              </div>
+            </div>
+
+            <!-- Right: Room Code, Pause, Feedback, Rules, Chat, End, Leave -->
+            <div class="flex items-center gap-2.5">
+              <div class="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-950/40 px-3 py-1 shadow-sm">
+                <div>
+                  <span class="block text-[8px] font-black uppercase tracking-widest text-emerald-400">Room Code</span>
+                  <span class="font-mono text-xs font-black tracking-wider text-white">ROOM-401</span>
+                </div>
+                <button class="grid h-6 w-6 place-items-center rounded-lg border border-emerald-400/30 bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/35" title="Copy Room Code">📋</button>
+              </div>
+
+              <div class="h-6 w-px bg-white/10"></div>
+
+              <button class="px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-bold text-white/80" title="Pause Game">⏸️ Pause</button>
+              <button class="px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-bold text-white/80" title="Feedback">💬 Feedback</button>
+              <button class="px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-bold text-white/80" title="Rules & Card Point Values">📖 Rules</button>
+              <button class="relative px-2.5 py-1.5 rounded-xl border border-emerald-400/50 bg-emerald-500/20 text-emerald-300 text-xs font-bold" title="Activity Log & Chat">
+                <span>💬 Chat</span>
+                <span class="absolute -top-1 -right-1 bg-emerald-400 text-black text-[9px] font-black w-4 h-4 rounded-full grid place-items-center">3</span>
+              </button>
+              <button class="px-2.5 py-1.5 rounded-xl border border-rose-500/30 bg-rose-500/15 hover:bg-rose-500/25 text-xs font-black text-rose-300" title="End Match (Host)">🚩 End Match</button>
+              <button class="px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/15 text-xs font-bold text-white/50 hover:text-white" title="Leave Room">🚪 Leave</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- 2. TOP MATCH STATUS ALERT PLAQUE / CONTRACT BANNER (CENTER TOP) -->
+        <!-- ============================================================== -->
+        <div id="layer-top-contract-banner" class="sandbox-layer w-[760px] h-[40px]" style="left: 386px; top: 76px; z-index: 40;" data-title="2. In-Game Status Alert Plaque">
+          <div class="layer-tag">Top Status Alert Plaque</div>
+          <div class="resize-handle"></div>
+
+          <div class="w-full h-full rounded-full border border-white/15 bg-black/75 px-4 flex items-center justify-between shadow-xl backdrop-blur-md">
+            <!-- Total Game Points Race -->
+            <div class="flex items-center gap-1.5">
+              <span class="text-[11px] font-black px-2.5 py-0.5 rounded-full border border-rose-400/50 bg-rose-950/80 text-rose-300 shadow">Red +2</span>
+              <span class="text-[9px] text-white/30 font-bold uppercase">vs</span>
+              <span class="text-[11px] font-black px-2.5 py-0.5 rounded-full border border-sky-400/50 bg-sky-950/80 text-sky-300 shadow">Blue +1</span>
+            </div>
+
+            <span class="h-3.5 w-px bg-white/20"></span>
+
+            <span class="text-xs font-black uppercase tracking-wider text-amber-300">Hand #2</span>
+
+            <span class="h-3.5 w-px bg-white/20"></span>
+
+            <!-- Target & Stakes -->
+            <div class="flex items-center gap-1 text-xs font-black text-white">
+              <span class="text-white/60">Target:</span>
+              <span class="text-amber-300 text-sm">18</span>
+              <span class="text-[10px] text-rose-400 bg-rose-500/20 px-1.5 py-0.2 rounded font-extrabold border border-rose-400/30">×1 Stakes</span>
+            </div>
+
+            <span class="h-3.5 w-px bg-white/20"></span>
+
+            <!-- Declarer -->
+            <div class="flex items-center gap-1 text-xs">
+              <span class="text-white/40 font-bold">Declarer:</span>
+              <span class="font-black text-rose-300">Rahim (Partner)</span>
+              <span class="text-[9px] font-black px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 border border-rose-400/30">RED</span>
+            </div>
+
+            <span class="h-3.5 w-px bg-white/20"></span>
+
+            <!-- Trump Status -->
+            <div class="flex items-center gap-1 rounded-full border border-emerald-400/40 bg-emerald-500/20 px-2 py-0.5 text-[10px] font-black text-emerald-200">
+              <span>♠ Spades (Revealed)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- 3. FELT TRICK HEADER PILL (Trick number, Lead suit, Points) -->
+        <!-- ============================================================== -->
+        <div id="layer-felt-trick-header" class="sandbox-layer w-[460px] h-[36px]" style="left: 536px; top: 126px; z-index: 38;" data-title="3. Felt Trick Header Pill">
+          <div class="layer-tag">Felt Trick Header Pill</div>
+          <div class="resize-handle"></div>
+
+          <div class="w-full h-full rounded-full border border-amber-400/40 bg-black/85 px-4 flex items-center justify-between shadow-2xl backdrop-blur-md">
+            <span class="text-xs font-black text-amber-300">Trick 3 of 8</span>
+            <span class="text-white/20">|</span>
+            <div class="flex items-center gap-1 text-xs font-bold text-white">
+              <span class="text-emerald-400 text-sm">♠</span>
+              <span>Lead: Spades</span>
+            </div>
+            <span class="text-white/20">|</span>
+            <span class="text-xs font-black text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-400/30">+3 pts</span>
+          </div>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- 4. STAT WIDGET: MATCH SCORE / RACE TO 6 (Now Independent) -->
+        <!-- ============================================================== -->
+        <div id="widget-match-score" class="sandbox-layer w-[220px] h-[95px]" style="left: 30px; top: 80px; z-index: 35;" data-title="4. Match Score (Race to 6)">
+          <div class="layer-tag">Match Points (Race to 6)</div>
+          <div class="resize-handle"></div>
+
+          <div class="w-full h-full rounded-2xl bg-black/80 border border-white/10 p-2.5 shadow-2xl backdrop-blur-xl flex flex-col justify-between">
+            <div class="flex items-center justify-between text-[10px] font-black uppercase text-amber-300">
+              <span>Match Race</span>
+              <span class="text-white/40">First to 6</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mt-1">
+              <div class="rounded-xl bg-rose-950/70 border border-rose-400/40 p-1.5 text-center">
+                <span class="block text-[9px] font-black text-rose-300">RED</span>
+                <span class="text-base font-black text-white">+2</span>
+                <div class="h-1 bg-black/60 rounded-full overflow-hidden mt-1"><div class="h-full bg-rose-500 w-[33%]"></div></div>
+              </div>
+              <div class="rounded-xl bg-sky-950/70 border border-sky-400/40 p-1.5 text-center">
+                <span class="block text-[9px] font-black text-sky-300">BLUE</span>
+                <span class="text-base font-black text-white">+1</span>
+                <div class="h-1 bg-black/60 rounded-full overflow-hidden mt-1"><div class="h-full bg-sky-500 w-[17%]"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- 5. STAT WIDGET: CURRENT HAND CONTRACT (Target, Declarer, Stakes) -->
+        <!-- ============================================================== -->
+        <div id="widget-hand-contract" class="sandbox-layer w-[220px] h-[85px]" style="left: 30px; top: 185px; z-index: 35;" data-title="5. Hand Contract & Target">
+          <div class="layer-tag">Hand Contract & Target</div>
+          <div class="resize-handle"></div>
+
+          <div class="w-full h-full rounded-2xl bg-black/80 border border-white/10 p-2.5 shadow-2xl backdrop-blur-xl flex flex-col justify-between">
+            <div class="flex items-center justify-between text-[10px] font-black uppercase text-white/60">
+              <span>Hand #2 Contract</span>
+              <span class="text-rose-400 font-bold">1× Standard</span>
+            </div>
+            <div class="flex items-center justify-between bg-white/[0.04] border border-white/10 rounded-xl px-2.5 py-1 mt-1">
+              <div>
+                <span class="block text-[8px] font-bold text-amber-300/70 uppercase">Target</span>
+                <span class="text-base font-black text-amber-300 leading-none">18</span>
+              </div>
+              <div class="text-right">
+                <span class="block text-[8px] font-bold text-white/40 uppercase">Setter</span>
+                <span class="text-[11px] font-black text-rose-300 truncate max-w-[100px] block">Rahim (Red)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- 6. STAT WIDGET: TRUMP SUIT STATUS (Lock/Unlock, Revealed) -->
+        <!-- ============================================================== -->
+        <div id="widget-trump-status" class="sandbox-layer w-[220px] h-[65px]" style="left: 30px; top: 280px; z-index: 35;" data-title="6. Trump Suit Status">
+          <div class="layer-tag">Trump Status Widget</div>
+          <div class="resize-handle"></div>
+
+          <div class="w-full h-full rounded-2xl bg-black/80 border border-white/10 px-3 py-2 shadow-2xl backdrop-blur-xl flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-2xl text-emerald-400 leading-none">♠</span>
+              <div>
+                <span class="block text-[9px] font-bold text-white/40 uppercase">Active Trump</span>
+                <span class="text-xs font-black text-emerald-300">Spades</span>
+              </div>
+            </div>
+            <span class="text-[9px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 px-2 py-0.5 rounded-full">
+              REVEALED 🔓
+            </span>
+          </div>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- 7. STAT WIDGET: CARD POINTS RACE (28 PTS MAX THIS HAND) -->
+        <!-- ============================================================== -->
+        <div id="widget-hand-points-28" class="sandbox-layer w-[220px] h-[95px]" style="left: 30px; top: 355px; z-index: 35;" data-title="7. Card Points Race (28 Pts)">
+          <div class="layer-tag">Card Points (28 Pts Max)</div>
+          <div class="resize-handle"></div>
+
+          <div class="w-full h-full rounded-2xl bg-black/80 border border-white/10 p-2.5 shadow-2xl backdrop-blur-xl flex flex-col justify-between">
+            <div class="flex justify-between text-[10px] font-black uppercase text-white/60">
+              <span>Card Points Captured</span>
+              <span class="text-amber-300">28 Max</span>
+            </div>
+            <div class="space-y-1 mt-1">
+              <div>
+                <div class="flex justify-between text-[9px] font-black text-rose-300">
+                  <span>Team Red</span>
+                  <span>12 / 28 pts</span>
+                </div>
+                <div class="h-1.5 bg-black/60 rounded-full overflow-hidden mt-0.5">
+                  <div class="h-full bg-rose-500 w-[43%]"></div>
+                </div>
+              </div>
+              <div>
+                <div class="flex justify-between text-[9px] font-black text-sky-300">
+                  <span>Team Blue</span>
+                  <span>7 / 28 pts</span>
+                </div>
+                <div class="h-1.5 bg-black/60 rounded-full overflow-hidden mt-0.5">
+                  <div class="h-full bg-sky-500 w-[25%]"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- 8. STAT WIDGET: 8-TRICKS WON PROGRESS (Dual Visualizer) -->
+        <!-- ============================================================== -->
+        <div id="widget-tricks-progress" class="sandbox-layer w-[220px] h-[100px]" style="left: 30px; top: 460px; z-index: 35;" data-title="8. Tricks Won (8 Slots)">
+          <div class="layer-tag">8-Tricks Won Visualizer</div>
+          <div class="resize-handle"></div>
+
+          <div class="w-full h-full rounded-2xl bg-black/80 border border-white/10 p-2.5 shadow-2xl backdrop-blur-xl flex flex-col justify-between">
+            <div class="flex justify-between text-[10px] font-black uppercase text-white/70">
+              <span>Tricks Won (8 Max)</span>
+              <span class="text-emerald-400">3/8 Done</span>
+            </div>
+            <div class="space-y-1.5 mt-1">
+              <div class="flex items-center gap-1.5 text-[9px] text-rose-300 font-bold">
+                <span class="w-9 shrink-0">Red (2)</span>
+                <div class="grid grid-cols-8 gap-1 flex-1">
+                  <div class="h-3.5 bg-rose-500 rounded-sm"></div>
+                  <div class="h-3.5 bg-rose-500 rounded-sm"></div>
+                  <div class="h-3.5 border border-dashed border-white/20 bg-white/5 rounded-sm"></div>
+                  <div class="h-3.5 border border-dashed border-white/20 bg-white/5 rounded-sm"></div>
+                  <div class="h-3.5 border border-dashed border-white/20 bg-white/5 rounded-sm"></div>
+                  <div class="h-3.5 border border-dashed border-white/20 bg-white/5 rounded-sm"></div>
+                  <div class="h-3.5 border border-dashed border-white/20 bg-white/5 rounded-sm"></div>
+                  <div class="h-3.5 border border-dashed border-white/20 bg-white/5 rounded-sm"></div>
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5 text-[9px] text-sky-300 font-bold">
+                <span class="w-9 shrink-0">Blue (1)</span>
+                <div class="grid grid-cols-8 gap-1 flex-1">
+                  <div class="h-3.5 bg-sky-500 rounded-sm"></div>
+                  <div class="h-3.5 border border-dashed border-white/20 bg-white/5 rounded-sm"></div>
+                  <div class="h-3.5 border border-dashed border-white/20 bg-white/5 rounded-sm"></div>
+                  <div class="h-3.5 border border-dashed border-white/20 bg-white/5 rounded-sm"></div>
+                  <div class="h-3.5 border border-dashed border-white/20 bg-white/5 rounded-sm"></div>
+                  <div class="h-3.5 border border-dashed border-white/20 bg-white/5 rounded-sm"></div>
+                  <div class="h-3.5 border border-dashed border-white/20 bg-white/5 rounded-sm"></div>
+                  <div class="h-3.5 border border-dashed border-white/20 bg-white/5 rounded-sm"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- 9. STAT WIDGET: TARGET REACHED / SKIP HAND ALERT -->
+        <!-- ============================================================== -->
+        <div id="widget-skip-hand-alert" class="sandbox-layer w-[220px] h-[44px]" style="left: 30px; top: 570px; z-index: 35;" data-title="9. Target Reached Skip Alert">
+          <div class="layer-tag">Target Reached Skip Alert</div>
+          <div class="resize-handle"></div>
+
+          <div class="w-full h-full rounded-xl border border-emerald-400/40 bg-emerald-500/20 px-3 flex items-center justify-between text-xs font-black text-emerald-200 shadow-md">
+            <span class="flex items-center gap-1">✨ Target Reached!</span>
+            <button class="bg-emerald-500 hover:bg-emerald-400 text-black px-2 py-0.5 rounded text-[10px] font-black shadow">Skip ⏩</button>
+          </div>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- 10. NORTH SEAT (PARTNER) -->
+        <!-- ============================================================== -->
+        <div id="layer-north-seat" class="sandbox-layer w-[170px] h-[120px]" style="left: 695px; top: 172px; z-index: 25;" data-title="10. North Seat (Partner)">
+          <div class="layer-tag">North Seat (Partner)</div>
+          <div class="resize-handle"></div>
+
+          <div class="w-full h-full flex flex-col items-center justify-center">
+            <div class="mb-1 rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider bg-rose-950/80 border border-rose-400/40 text-rose-200 shadow-md">
+              🤝 Partner (Red)
+            </div>
+            <div class="relative">
+              <div class="w-14 h-14 rounded-full border-2 border-rose-400/80 bg-gradient-to-br from-rose-950 to-slate-950 grid place-items-center font-black text-white text-base shadow-xl">
+                <span>P2</span>
+              </div>
+              <span class="absolute -bottom-1 -right-1 bg-black/80 text-[9px] font-black text-amber-300 px-1.5 py-0.2 rounded-full border border-amber-400/40">1 Trick</span>
+            </div>
+            <span class="text-xs font-black text-white mt-1">Rahim (Partner)</span>
+            <span class="text-[10px] text-white/50">4 cards in hand</span>
+          </div>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- 11. WEST SEAT (OPPONENT 1) -->
+        <!-- ============================================================== -->
+        <div id="layer-west-seat" class="sandbox-layer w-[150px] h-[130px]" style="left: 280px; top: 380px; z-index: 25;" data-title="11. West Seat (Opponent)">
+          <div class="layer-tag">West Seat (Opponent)</div>
+          <div class="resize-handle"></div>
+
+          <div class="w-full h-full flex flex-col items-center justify-center">
+            <div class="mb-1 rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider bg-sky-950/80 border border-sky-400/40 text-sky-200 shadow-md">
+              ⚔️ Opponent (Blue)
+            </div>
+            <div class="relative">
+              <div class="w-14 h-14 rounded-full border-2 border-sky-400/80 bg-gradient-to-br from-sky-950 to-slate-950 grid place-items-center font-black text-white text-base shadow-xl">
+                <span>BOT</span>
+              </div>
+              <span class="absolute -bottom-1 -right-1 bg-black/80 text-[9px] font-black text-sky-300 px-1.5 py-0.2 rounded-full border border-sky-400/40">0 Tricks</span>
+            </div>
+            <span class="text-xs font-black text-white mt-1">Karim (Bot)</span>
+            <span class="text-[10px] text-white/50">Bid 17 · Passed</span>
+          </div>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- 12. EAST SEAT (OPPONENT 2) -->
+        <!-- ============================================================== -->
+        <div id="layer-east-seat" class="sandbox-layer w-[150px] h-[130px]" style="left: 1130px; top: 380px; z-index: 25;" data-title="12. East Seat (Opponent)">
+          <div class="layer-tag">East Seat (Opponent)</div>
+          <div class="resize-handle"></div>
+
+          <div class="w-full h-full flex flex-col items-center justify-center">
+            <div class="mb-1 rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider bg-sky-950/80 border border-sky-400/40 text-sky-200 shadow-md">
+              ⚔️ Opponent (Blue)
+            </div>
+            <div class="relative">
+              <div class="w-14 h-14 rounded-full border-2 border-sky-400/80 bg-gradient-to-br from-sky-950 to-slate-950 grid place-items-center font-black text-white text-base shadow-xl">
+                <span>BOT</span>
+              </div>
+              <span class="absolute -bottom-1 -right-1 bg-black/80 text-[9px] font-black text-sky-300 px-1.5 py-0.2 rounded-full border border-sky-400/40">1 Trick</span>
+            </div>
+            <span class="text-xs font-black text-white mt-1">Tariq (Bot)</span>
+            <span class="text-[10px] text-white/50">Passed</span>
+          </div>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- 13. GRAND CENTRAL TRICK CIRCULAR ARENA -->
+        <!-- ============================================================== -->
+        <div id="layer-center-disc" class="sandbox-layer w-[656px] h-[536px]" style="left: 432px; top: 120px; z-index: 20;" data-title="13. Center Trick Arena">
+          <div class="layer-tag">Center Trick Felt Disc (656x536)</div>
+          <div class="resize-handle"></div>
+
+          <div class="w-full h-full relative flex items-center justify-center">
+            <!-- Circular Felt Background -->
+            <div class="absolute inset-0 rounded-full border-4 border-amber-400/40 shadow-[inset_0_0_70px_rgba(0,0,0,0.95),0_25px_60px_rgba(0,0,0,0.85)]"
+                 style="background: radial-gradient(circle at center, #4a260f 0%, #2e1506 55%, #160802 85%, #0a0301 100%);"></div>
+            <!-- Inner Inlay Ring -->
+            <div class="pointer-events-none absolute inset-6 rounded-full border-2 border-dashed border-amber-300/30"></div>
+
+            <!-- Compass Points -->
+            <span class="pointer-events-none absolute top-3 text-[11px] font-black text-amber-200/30">N</span>
+            <span class="pointer-events-none absolute bottom-3 text-[11px] font-black text-amber-200/30">S</span>
+            <span class="pointer-events-none absolute left-4 text-[11px] font-black text-amber-200/30">W</span>
+            <span class="pointer-events-none absolute right-4 text-[11px] font-black text-amber-200/30">E</span>
+
+            <!-- CENTER TRUMP SHOWCASE PEDESTAL (Note #7) -->
+            <div class="relative z-10 flex flex-col items-center justify-center rounded-2xl border-2 border-emerald-400/80 bg-gradient-to-b from-emerald-950/90 via-slate-950/90 to-black/95 px-3 py-2 shadow-[0_0_25px_rgba(52,211,153,0.35)] ring-2 ring-emerald-400/30">
+              <span class="text-[9px] font-black uppercase text-emerald-300">Active Trump</span>
+              <div class="p-1.5 rounded-lg bg-white my-0.5">
+                <span class="text-2xl leading-none text-slate-950">♠</span>
+              </div>
+              <span class="text-[10px] font-black text-white">Spades</span>
+              <span class="text-[7px] font-black text-emerald-400 uppercase tracking-widest">ACTIVE</span>
+            </div>
+
+            <!-- North Card (J of Spades - XL size) -->
+            <div class="absolute top-4 left-1/2 -translate-x-1/2 z-10 rotate-1 card-shadow">
+              <div class="w-20 h-28 rounded-xl bg-white border border-slate-300 p-1.5 flex flex-col justify-between text-neutral-900 font-bold shadow-md">
+                <div class="leading-none text-xs">J<br><span class="text-slate-900">♠</span></div>
+                <div class="text-center text-xl text-slate-900">♠</div>
+                <div class="leading-none text-xs text-right rotate-180">J<br><span class="text-slate-900">♠</span></div>
+              </div>
+              <span class="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-black/85 text-[9px] text-amber-300 px-1.5 rounded font-black border border-amber-400/30">+3 pts</span>
+            </div>
+
+            <!-- South Card (10 of Spades - XL size) -->
+            <div class="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 -rotate-1 card-shadow">
+              <div class="w-20 h-28 rounded-xl bg-white border border-slate-300 p-1.5 flex flex-col justify-between text-neutral-900 font-bold shadow-md ring-2 ring-emerald-400">
+                <div class="leading-none text-xs">10<br><span class="text-slate-900">♠</span></div>
+                <div class="text-center text-xl text-slate-900">♠</div>
+                <div class="leading-none text-xs text-right rotate-180">10<br><span class="text-slate-900">♠</span></div>
+              </div>
+              <span class="absolute -top-2 left-1/2 -translate-x-1/2 bg-amber-400 text-[9px] text-slate-950 px-2 rounded-full font-black shadow">👑 Winning</span>
+            </div>
+
+            <!-- West Card (9 of Hearts - XL size) -->
+            <div class="absolute left-6 top-1/2 -translate-y-1/2 z-10 -rotate-4 card-shadow">
+              <div class="w-20 h-28 rounded-xl bg-white border border-slate-300 p-1.5 flex flex-col justify-between text-rose-600 font-bold shadow-md">
+                <div class="leading-none text-xs">9<br><span class="text-rose-600">♥</span></div>
+                <div class="text-center text-xl text-rose-600">♥</div>
+                <div class="leading-none text-xs text-right rotate-180">9<br><span class="text-rose-600">♥</span></div>
+              </div>
+              <span class="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-black/85 text-[9px] text-amber-300 px-1.5 rounded font-black border border-amber-400/30">+2 pts</span>
+            </div>
+
+            <!-- East Card (A of Spades - XL size) -->
+            <div class="absolute right-6 top-1/2 -translate-y-1/2 z-10 rotate-3 card-shadow">
+              <div class="w-20 h-28 rounded-xl bg-white border border-slate-300 p-1.5 flex flex-col justify-between text-neutral-900 font-bold shadow-md">
+                <div class="leading-none text-xs">A<br><span class="text-slate-900">♠</span></div>
+                <div class="text-center text-xl text-slate-900">♠</div>
+                <div class="leading-none text-xs text-right rotate-180">A<br><span class="text-slate-900">♠</span></div>
+              </div>
+              <span class="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-black/85 text-[9px] text-amber-300 px-1.5 rounded font-black border border-amber-400/30">+1 pt</span>
+            </div>
+
+            <!-- Direction Arrow (Pointing towards South winner) -->
+            <div class="absolute bottom-[-20px] left-1/2 -translate-x-1/2 z-20 text-sky-400 font-black animate-bounce">
+              <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- 14. OPPONENT CAPTURED DECK (Left Flank Deck) -->
+        <!-- ============================================================== -->
+        <div id="layer-opponent-deck" class="sandbox-layer w-[80px] h-[115px]" style="left: 450px; top: 410px; z-index: 25;" data-title="14. Opponent Captured Deck">
+          <div class="layer-tag">Opponent Deck</div>
+          <div class="resize-handle"></div>
+
+          <div class="w-full h-full flex flex-col items-center justify-center">
+            <span class="text-[10px] font-black uppercase text-rose-300 mb-0.5">Opponent</span>
+            <div class="w-14 h-20 rounded-lg border border-white/20 bg-gradient-to-br from-indigo-950 via-slate-900 to-black p-1 flex flex-col justify-end text-center shadow-lg">
+              <span class="text-[9px] font-black text-rose-200">1 Trick</span>
+              <span class="text-[8px] font-bold text-white/50">4 pts</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- 15. PHYSICAL TRUMP CARD (On Table Felt - Click to Flip) -->
+        <!-- ============================================================== -->
+        <div id="layer-trump-card" class="sandbox-layer w-[80px] h-[115px]" style="left: 450px; top: 285px; z-index: 25;" data-title="15. Physical Trump Card on Felt">
+          <div class="layer-tag">Trump Card on Felt</div>
+          <div class="resize-handle"></div>
+
+          <div class="w-full h-full flex flex-col items-center justify-center" onclick="toggleTrumpReveal()">
+            <div class="flex items-center gap-1 mb-0.5">
+              <span class="text-[10px] font-black uppercase text-amber-300">Trump</span>
+              <span id="trump-badge-status" class="text-[8px] bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 px-1 rounded font-bold">REVEALED</span>
+            </div>
+            <div id="trump-card-visual" class="w-14 h-20 rounded-lg border-2 border-emerald-400 bg-white p-1 flex flex-col items-center justify-center text-slate-950 shadow-[0_0_15px_rgba(52,211,153,0.4)] cursor-pointer">
+              <span class="text-2xl leading-none">♠</span>
+              <span class="text-[10px] font-black">Spades</span>
+              <span class="text-[7px] font-extrabold uppercase text-emerald-700 tracking-wider">ACTIVE</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- 16. YOUR TEAM CAPTURED DECK (Right Flank Deck) -->
+        <!-- ============================================================== -->
+        <div id="layer-team-deck" class="sandbox-layer w-[80px] h-[115px]" style="left: 1030px; top: 410px; z-index: 25;" data-title="16. Your Team Captured Deck">
+          <div class="layer-tag">Your Team Deck</div>
+          <div class="resize-handle"></div>
+
+          <div class="w-full h-full flex flex-col items-center justify-center">
+            <span class="text-[10px] font-black uppercase text-sky-300 mb-0.5">Your Team</span>
+            <div class="w-14 h-20 rounded-lg border border-white/20 bg-gradient-to-br from-sky-950 via-slate-900 to-black p-1 flex flex-col justify-end text-center shadow-lg">
+              <span class="text-[9px] font-black text-sky-200">2 Tricks</span>
+              <span class="text-[8px] font-bold text-white/50">8 pts</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- 17. FLOATING TURN PROMPT BADGE -->
+        <!-- ============================================================== -->
+        <div id="layer-turn-prompt" class="sandbox-layer w-[200px] h-[36px]" style="left: 680px; top: 660px; z-index: 38;" data-title="17. Floating Turn Status Badge">
+          <div class="layer-tag">Turn Status Prompt</div>
+          <div class="resize-handle"></div>
+
+          <div class="w-full h-full rounded-full border-2 border-amber-300 bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 px-4 flex items-center justify-center gap-1.5 shadow-[0_0_22px_rgba(251,191,36,0.8)] font-black text-xs uppercase tracking-wider">
+            <span>✨ Your Turn to Play</span>
+          </div>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- 18. EVENT TOAST OVERLAY (In-Game Announcement) -->
+        <!-- ============================================================== -->
+        <div id="layer-event-overlay" class="sandbox-layer w-[300px] h-[80px]" style="left: 1140px; top: 640px; z-index: 42;" data-title="18. In-Game Event Toast Overlay">
+          <div class="layer-tag">Event Toast Overlay</div>
+          <div class="resize-handle"></div>
+
+          <div class="w-full h-full rounded-2xl border border-violet-400/40 bg-black/85 px-4 py-2.5 shadow-2xl backdrop-blur-xl flex flex-col items-end text-right justify-between">
+            <span class="rounded-full border border-violet-400/60 bg-violet-500/20 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-violet-200">
+              AUCTION ACHII (DITTO)
+            </span>
+            <h3 class="text-base font-black text-white leading-tight">ACHII 17!</h3>
+            <p class="text-[10px] text-white/70 truncate max-w-full">Karim matched the bid with Achii (Ditto)!</p>
+          </div>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- 19. ACTION & BIDDING BUTTONS BAR -->
+        <!-- ============================================================== -->
+        <div id="layer-action-bar" class="sandbox-layer w-[520px] h-[54px]" style="left: 520px; top: 705px; z-index: 35;" data-title="19. Action & Bidding Bar">
+          <div class="layer-tag">Action & Bidding Bar</div>
+          <div class="resize-handle"></div>
+
+          <div class="w-full h-full rounded-2xl bg-black/90 border border-amber-400/40 px-3 flex items-center justify-between shadow-2xl backdrop-blur-xl">
+            <div class="flex items-center gap-1.5">
+              <button class="w-7 h-7 rounded-lg bg-white/10 border border-white/20 text-white font-black text-sm grid place-items-center">−</button>
+              <div class="text-center px-1">
+                <span class="block text-[8px] font-black uppercase text-amber-300/70">Bid</span>
+                <span class="text-sm font-black text-amber-300 leading-none">18</span>
+              </div>
+              <button class="w-7 h-7 rounded-lg bg-white/10 border border-white/20 text-white font-black text-sm grid place-items-center">+</button>
+              <button class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-black font-black text-xs shadow-[0_0_15px_rgba(245,158,11,0.5)]">Bid 18</button>
+            </div>
+
+            <div class="flex items-center gap-1.5">
+              <!-- Achii (Ditto) Button -->
+              <button class="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 border border-violet-400/50 text-white font-black text-xs shadow-lg">
+                <span>🤝 Achii (Ditto)</span>
+                <span class="text-[10px] opacity-75">(17)</span>
+              </button>
+              <button class="px-2.5 py-1.5 rounded-xl bg-white/10 border border-white/20 text-white/80 font-bold text-xs">Pass</button>
+              <button class="px-2.5 py-1.5 rounded-xl bg-emerald-600/30 border border-emerald-400/40 text-emerald-300 font-bold text-xs">Reveal Trump</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- 20. BOTTOM HAND DOCK & PLAYABLE CARDS -->
+        <!-- ============================================================== -->
+        <div id="layer-bottom-hand" class="sandbox-layer w-[700px] h-[150px]" style="left: 430px; top: 765px; z-index: 30;" data-title="20. Bottom Hand Dock">
+          <div class="layer-tag">Bottom Player Hand Dock</div>
+          <div class="resize-handle"></div>
+
+          <div class="w-full h-full rounded-2xl bg-black/85 border border-white/10 p-2 shadow-2xl backdrop-blur-xl flex flex-col justify-between">
+            <!-- Header Row -->
+            <div class="flex items-center justify-between px-2 text-xs">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.8)]"></span>
+                <span class="font-black text-white">Your Hand (South)</span>
+                <span class="bg-amber-400 text-slate-950 font-black text-[9px] px-2 py-0.5 rounded-full uppercase">Winning Bid (18)</span>
+                <span class="text-white/40">·</span>
+                <span class="text-white/60 text-[11px]">8 cards</span>
+              </div>
+              <span class="text-[10px] text-amber-300 font-bold">Lead a Card or Follow Suit</span>
+            </div>
+
+            <!-- Hand Cards Fan (8 Cards) -->
+            <div class="flex items-end justify-center -space-x-3 pb-0.5">
+              <!-- Card 1: J Spades -->
+              <div class="w-14 h-22 rounded-lg bg-white border border-slate-300 p-1 flex flex-col justify-between text-slate-900 font-bold shadow-lg hover:-translate-y-3 transition cursor-pointer">
+                <div class="text-[11px] leading-none">J<br>♠</div>
+                <div class="text-center text-sm">♠</div>
+                <div class="text-[11px] leading-none text-right rotate-180">J<br>♠</div>
+              </div>
+              <!-- Card 2: 9 Spades -->
+              <div class="w-14 h-22 rounded-lg bg-white border border-slate-300 p-1 flex flex-col justify-between text-slate-900 font-bold shadow-lg hover:-translate-y-3 transition cursor-pointer">
+                <div class="text-[11px] leading-none">9<br>♠</div>
+                <div class="text-center text-sm">♠</div>
+                <div class="text-[11px] leading-none text-right rotate-180">9<br>♠</div>
+              </div>
+              <!-- Card 3: A Hearts -->
+              <div class="w-14 h-22 rounded-lg bg-white border border-slate-300 p-1 flex flex-col justify-between text-rose-600 font-bold shadow-lg hover:-translate-y-3 transition cursor-pointer">
+                <div class="text-[11px] leading-none">A<br>♥</div>
+                <div class="text-center text-sm">♥</div>
+                <div class="text-[11px] leading-none text-right rotate-180">A<br>♥</div>
+              </div>
+              <!-- Card 4: 10 Clubs -->
+              <div class="w-14 h-22 rounded-lg bg-white border border-slate-300 p-1 flex flex-col justify-between text-slate-900 font-bold shadow-lg hover:-translate-y-3 transition cursor-pointer">
+                <div class="text-[11px] leading-none">10<br>♣</div>
+                <div class="text-center text-sm">♣</div>
+                <div class="text-[11px] leading-none text-right rotate-180">10<br>♣</div>
+              </div>
+              <!-- Card 5: K Diamonds -->
+              <div class="w-14 h-22 rounded-lg bg-white border border-slate-300 p-1 flex flex-col justify-between text-rose-600 font-bold shadow-lg hover:-translate-y-3 transition cursor-pointer">
+                <div class="text-[11px] leading-none">K<br>♦</div>
+                <div class="text-center text-sm">♦</div>
+                <div class="text-[11px] leading-none text-right rotate-180">K<br>♦</div>
+              </div>
+              <!-- Card 6: Q Spades -->
+              <div class="w-14 h-22 rounded-lg bg-white border border-slate-300 p-1 flex flex-col justify-between text-slate-900 font-bold shadow-lg hover:-translate-y-3 transition cursor-pointer">
+                <div class="text-[11px] leading-none">Q<br>♠</div>
+                <div class="text-center text-sm">♠</div>
+                <div class="text-[11px] leading-none text-right rotate-180">Q<br>♠</div>
+              </div>
+              <!-- Card 7: 8 Hearts -->
+              <div class="w-14 h-22 rounded-lg bg-white border border-slate-300 p-1 flex flex-col justify-between text-rose-600 font-bold shadow-lg hover:-translate-y-3 transition cursor-pointer">
+                <div class="text-[11px] leading-none">8<br>♥</div>
+                <div class="text-center text-sm">♥</div>
+                <div class="text-[11px] leading-none text-right rotate-180">8<br>♥</div>
+              </div>
+              <!-- Card 8: 7 Diamonds -->
+              <div class="w-14 h-22 rounded-lg bg-white border border-slate-300 p-1 flex flex-col justify-between text-rose-600 font-bold shadow-lg hover:-translate-y-3 transition cursor-pointer">
+                <div class="text-[11px] leading-none">7<br>♦</div>
+                <div class="text-center text-sm">♦</div>
+                <div class="text-[11px] leading-none text-right rotate-180">7<br>♦</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /#table-canvas -->
+
+      <!-- Comment Pins Container (Rendered over the canvas) -->
+      <div id="pins-container" class="pointer-events-auto absolute inset-0"></div>
+
+    </main>
+
+    <!-- RIGHT SLIDE-OUT PANEL: PROPERTY INSPECTOR & STICKY NOTES -->
+    <aside id="sidebar-panel" class="w-80 bg-[#080f17] border-l border-white/10 flex flex-col shrink-0 z-40 shadow-2xl transition-all">
+      <!-- Tabs -->
+      <div class="flex border-b border-white/10 text-xs font-black">
+        <button onclick="setTab('inspector')" id="tab-inspector" class="flex-1 py-3 text-center border-b-2 border-sky-400 text-sky-400 bg-white/5">
+          Inspector
+        </button>
+        <button onclick="setTab('notes')" id="tab-notes" class="flex-1 py-3 text-center border-b-2 border-transparent text-white/60 hover:text-white">
+          Comments (<span id="notes-tab-count">0</span>)
+        </button>
+        <button onclick="setTab('layers')" id="tab-layers" class="flex-1 py-3 text-center border-b-2 border-transparent text-white/60 hover:text-white">
+          Elements (<span id="layers-tab-count">20</span>)
+        </button>
+      </div>
+
+      <!-- TAB 1: INSPECTOR -->
+      <div id="panel-inspector" class="flex-1 p-4 overflow-y-auto space-y-4">
+        <div id="inspector-empty" class="text-center py-10 text-white/40 text-xs">
+          Click any element on the felt to view, resize, scale, or fine-tune its position.
+        </div>
+
+        <div id="inspector-active" class="hidden space-y-4">
+          <div class="pb-2 border-b border-white/10">
+            <span class="text-[10px] font-black uppercase text-sky-400 tracking-wider">Selected Layer</span>
+            <h2 id="ins-title" class="text-sm font-black text-white">Center Trick Arena</h2>
+            <span id="ins-id" class="text-[10px] font-mono text-white/40">#layer-center-disc</span>
+          </div>
+
+          <!-- Position & Dimensions Inputs -->
+          <div class="space-y-3">
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-[10px] font-bold text-white/60 mb-1">Left (X px)</label>
+                <input id="input-left" type="number" oninput="updateSelectedProp('left', this.value)" class="w-full bg-black/60 border border-white/15 rounded-lg px-2.5 py-1 text-xs text-white font-mono focus:border-sky-400 outline-none">
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-white/60 mb-1">Top (Y px)</label>
+                <input id="input-top" type="number" oninput="updateSelectedProp('top', this.value)" class="w-full bg-black/60 border border-white/15 rounded-lg px-2.5 py-1 text-xs text-white font-mono focus:border-sky-400 outline-none">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-[10px] font-bold text-white/60 mb-1">Width (px)</label>
+                <input id="input-width" type="number" oninput="updateSelectedProp('width', this.value)" class="w-full bg-black/60 border border-white/15 rounded-lg px-2.5 py-1 text-xs text-white font-mono focus:border-sky-400 outline-none">
+              </div>
+              <div>
+                <label class="block text-[10px] font-bold text-white/60 mb-1">Height (px)</label>
+                <input id="input-height" type="number" oninput="updateSelectedProp('height', this.value)" class="w-full bg-black/60 border border-white/15 rounded-lg px-2.5 py-1 text-xs text-white font-mono focus:border-sky-400 outline-none">
+              </div>
+            </div>
+
+            <!-- Scale Slider -->
+            <div>
+              <div class="flex justify-between text-[10px] font-bold text-white/60 mb-1">
+                <span>Scale Size</span>
+                <span id="scale-readout" class="font-mono text-amber-300">100%</span>
+              </div>
+              <input id="input-scale" type="range" min="50" max="150" value="100" oninput="updateSelectedScale(this.value)" class="w-full accent-amber-400">
+            </div>
+
+            <!-- Nudge Tools -->
+            <div>
+              <label class="block text-[10px] font-bold text-white/60 mb-1">Nudge Position</label>
+              <div class="grid grid-cols-3 gap-1 text-center">
+                <div></div>
+                <button onclick="nudge(0, -5)" class="p-1 rounded bg-white/10 hover:bg-white/20 text-xs font-bold">▲ -5px</button>
+                <div></div>
+                <button onclick="nudge(-5, 0)" class="p-1 rounded bg-white/10 hover:bg-white/20 text-xs font-bold">◀ -5px</button>
+                <button onclick="centerSelectedHorizontal()" title="Center Horizontally" class="p-1 rounded bg-sky-500/20 text-sky-300 border border-sky-400/30 text-[10px] font-bold">Center</button>
+                <button onclick="nudge(5, 0)" class="p-1 rounded bg-white/10 hover:bg-white/20 text-xs font-bold">+5px ▶</button>
+                <div></div>
+                <button onclick="nudge(0, 5)" class="p-1 rounded bg-white/10 hover:bg-white/20 text-xs font-bold">▼ +5px</button>
+                <div></div>
+              </div>
+            </div>
+
+            <!-- Quick Alignment Helpers -->
+            <div class="pt-2 border-t border-white/10 space-y-1.5">
+              <button onclick="centerSelectedHorizontal()" class="w-full py-1.5 rounded-lg border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-bold text-white">
+                Align Center Horizontally
+              </button>
+              <button onclick="resetSelectedElement()" class="w-full py-1.5 rounded-lg border border-rose-400/30 bg-rose-500/10 hover:bg-rose-500/20 text-xs font-bold text-rose-300">
+                Reset Element to Default
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: STICKY NOTES / COMMENTS LIST -->
+      <div id="panel-notes" class="hidden flex-1 p-4 overflow-y-auto space-y-3">
+        <div class="flex items-center justify-between pb-2 border-b border-white/10">
+          <span class="text-xs font-black text-amber-300 uppercase tracking-wide">Numbered Notes</span>
+          <button onclick="setMode('comment')" class="px-2 py-0.5 rounded bg-amber-500 hover:bg-amber-400 text-black font-black text-[10px]">
+            + Add Note
+          </button>
+        </div>
+
+        <div id="notes-list" class="space-y-2">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+
+      <!-- TAB 3: LAYERS / ELEMENTS LIST -->
+      <div id="panel-layers" class="hidden flex-1 p-4 overflow-y-auto space-y-1.5">
+        <span class="text-[10px] font-black uppercase text-white/50 block mb-2">All Table Elements (Click to Select)</span>
+        <div id="layers-list" class="space-y-1">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+
+      <!-- SIDEBAR FOOTER -->
+      <div class="p-3 border-t border-white/10 bg-black/40 flex items-center justify-between">
+        <button onclick="openExportModal()" class="w-full py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs shadow-lg transition active:scale-95 flex items-center justify-center gap-1.5">
+          <span>📋 Export Instructions</span>
+        </button>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- NOTE DIALOG POPUP (When clicking to edit a pin) -->
+  <div id="pin-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[3000] hidden flex items-center justify-center p-4">
+    <div class="bg-[#0b141f] border-2 border-amber-400/80 rounded-2xl p-4 w-full max-w-sm shadow-[0_0_30px_rgba(0,0,0,0.8)] text-white space-y-3 animate-in fade-in zoom-in-95">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span id="modal-pin-number" class="w-6 h-6 rounded-full bg-red-500 text-white font-black text-xs grid place-items-center">1</span>
+          <h3 class="font-black text-sm text-white">Add Change Comment</h3>
+        </div>
+        <button onclick="closePinModal()" class="text-white/40 hover:text-white text-base">✕</button>
+      </div>
+
+      <div>
+        <label class="block text-[10px] font-bold text-white/60 mb-1">Target Element / Location</label>
+        <input id="modal-pin-target" type="text" class="w-full bg-black/60 border border-white/15 rounded-lg px-2.5 py-1.5 text-xs text-amber-300 font-bold focus:border-amber-400 outline-none" placeholder="e.g. Center Trick Disc">
+      </div>
+
+      <div>
+        <label class="block text-[10px] font-bold text-white/60 mb-1">Your Instruction / What to Change</label>
+        <textarea id="modal-pin-text" rows="3" class="w-full bg-black/60 border border-white/15 rounded-lg p-2 text-xs text-white focus:border-amber-400 outline-none placeholder:text-white/30" placeholder="e.g. Shift this 30px higher and make the cards 10% smaller so they don't cover the partner avatar..."></textarea>
+      </div>
+
+      <div class="flex items-center justify-between pt-1">
+        <button onclick="deleteCurrentPin()" class="px-3 py-1.5 rounded-lg border border-rose-500/40 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-bold text-xs">
+          Delete Pin
+        </button>
+        <button onclick="saveCurrentPin()" class="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md">
+          Save Note
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXPORT SPECIFICATION & INSTRUCTIONS MODAL -->
+  <div id="export-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-[4000] hidden flex items-center justify-center p-4">
+    <div class="bg-[#0b141f] border border-white/15 rounded-3xl p-5 w-full max-w-2xl shadow-2xl text-white space-y-4 max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between pb-2 border-b border-white/10 shrink-0">
+        <div>
+          <h2 class="text-base font-black text-white flex items-center gap-2">
+            <span>📋 Tabletop Twenty-Nine Layout Instructions</span>
+            <span class="text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-2 py-0.5 rounded-full">Ready to Paste</span>
+          </h2>
+          <p class="text-xs text-white/60">Copy the summary below and paste it in chat. I will apply these exact layout changes to the React code!</p>
+        </div>
+        <button onclick="closeExportModal()" class="text-white/40 hover:text-white text-lg">✕</button>
+      </div>
+
+      <!-- Tabs inside export modal -->
+      <div class="flex gap-2 shrink-0">
+        <button onclick="setExportTab('markdown')" id="btn-export-md" class="px-3 py-1 rounded-lg text-xs font-black bg-sky-500 text-white">Markdown Instructions</button>
+        <button onclick="setExportTab('css')" id="btn-export-css" class="px-3 py-1 rounded-lg text-xs font-black bg-white/5 text-white/70 hover:text-white">Tailwind / CSS Classes</button>
+        <button onclick="setExportTab('json')" id="btn-export-json" class="px-3 py-1 rounded-lg text-xs font-black bg-white/5 text-white/70 hover:text-white">Raw JSON State</button>
+      </div>
+
+      <!-- Output Code Box -->
+      <div class="flex-1 min-h-[260px] bg-black/70 border border-white/10 rounded-xl p-3 font-mono text-xs overflow-auto select-text text-amber-200">
+        <pre id="export-output" class="whitespace-pre-wrap leading-relaxed"></pre>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center justify-between pt-2 border-t border-white/10 shrink-0">
+        <button onclick="importJsonPrompt()" class="px-3 py-1.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-bold text-white/80">
+          📥 Import Saved JSON
+        </button>
+        <div class="flex items-center gap-2">
+          <button onclick="closeExportModal()" class="px-4 py-1.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-bold text-white/80">
+            Close
+          </button>
+          <button id="btn-copy-clipboard" onclick="copyExportToClipboard()" class="px-5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-black font-black text-xs shadow-lg hover:brightness-110 active:scale-95 flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+            <span id="copy-btn-text">Copy to Clipboard</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- JAVASCRIPT: DRAG, RESIZE, PINS, INSPECTOR & EXPORT ENGINE -->
+  <!-- ============================================================== -->
+  <script>
+    // Complete Default Layout Specifications (Updated to user's exact tuned layout)
+    const DEFAULT_LAYOUT = {
+      "layer-top-nav-bar":          { left: 26,   top: 16,  width: 1480, height: 52,  scale: 100, title: "1. Top Navigation & Header Bar" },
+      "layer-top-contract-banner":   { left: 16,   top: 616, width: 340,  height: 52,  scale: 100, title: "2. In-Game Status Alert Plaque" },
+      "layer-felt-trick-header":     { left: 352,  top: 48,  width: 460,  height: 36,  scale: 100, title: "3. Felt Trick Header Pill" },
+      "widget-match-score":          { left: 56,   top: 728, width: 220,  height: 95,  scale: 100, title: "4. Match Points (Race to 6)" },
+      "widget-hand-contract":        { left: 72,   top: 176, width: 220,  height: 85,  scale: 100, title: "5. Hand Contract & Target" },
+      "widget-trump-status":         { left: 1224, top: 256, width: 220,  height: 65,  scale: 100, title: "6. Trump Suit Status" },
+      "widget-hand-points-28":       { left: 1200, top: 656, width: 220,  height: 95,  scale: 100, title: "7. Card Points Race (28 Pts)" },
+      "widget-tricks-progress":      { left: 1200, top: 768, width: 220,  height: 100, scale: 100, title: "8. 8-Tricks Won Visualizer" },
+      "widget-skip-hand-alert":      { left: 408,  top: 680, width: 220,  height: 44,  scale: 100, title: "9. Target Reached Skip Alert" },
+      "layer-north-seat":            { left: 1056, top: 104, width: 170,  height: 120, scale: 100, title: "10. North Seat (Partner)" },
+      "layer-west-seat":             { left: 32,   top: 360, width: 150,  height: 130, scale: 100, title: "11. West Seat (Opponent)" },
+      "layer-east-seat":             { left: 1368, top: 392, width: 150,  height: 130, scale: 100, title: "12. East Seat (Opponent)" },
+      "layer-center-disc":           { left: 432,  top: 120, width: 656,  height: 536, scale: 100, title: "13. Center Trick Arena" },
+      "layer-opponent-deck":         { left: 280,  top: 408, width: 112,  height: 144, scale: 100, title: "14. Opponent Captured Deck" },
+      "layer-trump-card":            { left: 272,  top: 264, width: 80,   height: 115, scale: 100, title: "15. Trump Card on Table Felt" },
+      "layer-team-deck":             { left: 1144, top: 392, width: 120,  height: 144, scale: 100, title: "16. Your Team Captured Deck" },
+      "layer-turn-prompt":           { left: 680,  top: 660, width: 200,  height: 36,  scale: 100, title: "17. Turn Status Prompt" },
+      "layer-event-overlay":         { left: 1080, top: 552, width: 320,  height: 90,  scale: 100, title: "18. Event Toast Overlay" },
+      "layer-action-bar":            { left: 520,  top: 705, width: 520,  height: 54,  scale: 100, title: "19. Action & Bidding Bar" },
+      "layer-bottom-hand":           { left: 430,  top: 765, width: 700,  height: 150, scale: 100, title: "20. Bottom Hand Dock" }
+    };
+
+    // Live State
+    let currentLayout = JSON.parse(JSON.stringify(DEFAULT_LAYOUT));
+    let comments = []; // [{ id, number, x, y, target, text }]
+    let activeMode = 'drag'; // 'drag' | 'comment'
+    let selectedLayerId = null;
+    let gridSnap = 8; // 0 (off), 8, 16
+    let editingPinId = null;
+    let exportTab = 'markdown'; // 'markdown' | 'css' | 'json'
+    let trumpRevealed = true;
+
+    // DOM Elements
+    const canvas = document.getElementById('table-canvas');
+    const pinsContainer = document.getElementById('pins-container');
+
+    // Initialize Layers and Listeners
+    function init() {
+      // Restore from localStorage if present
+      const saved = localStorage.getItem('twenty_nine_layout_sandbox_state_v3');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed.layout) {
+            // merge with defaults for any new layers
+            for (const key of Object.keys(DEFAULT_LAYOUT)) {
+              if (parsed.layout[key]) {
+                currentLayout[key] = parsed.layout[key];
+              }
+            }
+          }
+          if (parsed.comments) comments = parsed.comments;
+        } catch (e) {
+          console.error("Failed to load saved state", e);
+        }
+      }
+
+      applyAllLayouts();
+      renderLayersList();
+      renderComments();
+      setupInteractions();
+    }
+
+    function saveState() {
+      localStorage.setItem('twenty_nine_layout_sandbox_state_v3', JSON.stringify({
+        layout: currentLayout,
+        comments: comments
+      }));
+    }
+
+    function applyAllLayouts() {
+      for (const [id, data] of Object.entries(currentLayout)) {
+        const el = document.getElementById(id);
+        if (el) {
+          el.style.left = data.left + 'px';
+          el.style.top = data.top + 'px';
+          el.style.width = data.width + 'px';
+          el.style.height = data.height + 'px';
+          el.style.transform = `scale(${data.scale / 100})`;
+          el.style.transformOrigin = 'center center';
+        }
+      }
+    }
+
+    // Toggle Trump Card Face (Concealed vs Revealed)
+    function toggleTrumpReveal() {
+      trumpRevealed = !trumpRevealed;
+      const badge = document.getElementById('trump-badge-status');
+      const visual = document.getElementById('trump-card-visual');
+      if (trumpRevealed) {
+        badge.innerText = 'REVEALED';
+        badge.className = 'text-[8px] bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 px-1 rounded font-bold';
+        visual.className = 'w-14 h-20 rounded-lg border-2 border-emerald-400 bg-white p-1 flex flex-col items-center justify-center text-slate-950 shadow-[0_0_15px_rgba(52,211,153,0.4)] cursor-pointer';
+        visual.innerHTML = '<span class="text-2xl leading-none">♠</span><span class="text-[10px] font-black">Spades</span><span class="text-[7px] font-extrabold uppercase text-emerald-700 tracking-wider">ACTIVE</span>';
+      } else {
+        badge.innerText = 'CONCEALED';
+        badge.className = 'text-[8px] bg-amber-500/20 text-amber-300 border border-amber-400/40 px-1 rounded font-bold';
+        visual.className = 'w-14 h-20 rounded-lg border-2 border-amber-400 bg-gradient-to-br from-indigo-950 via-slate-900 to-black p-1 flex flex-col items-center justify-center text-amber-300 shadow-md cursor-pointer';
+        visual.innerHTML = '<span class="text-lg">🔒</span><span class="text-[8px] font-black text-white/50 uppercase mt-1">HIDDEN</span>';
+      }
+    }
+
+    // Set Active Tool Mode
+    function setMode(mode) {
+      activeMode = mode;
+      const btnDrag = document.getElementById('btn-mode-drag');
+      const btnComment = document.getElementById('btn-mode-comment');
+
+      if (mode === 'drag') {
+        btnDrag.className = 'flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black transition bg-sky-500 text-white shadow';
+        btnComment.className = 'flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black transition text-white/60 hover:text-white';
+        canvas.style.cursor = 'default';
+      } else {
+        btnComment.className = 'flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black transition bg-amber-500 text-slate-950 shadow';
+        btnDrag.className = 'flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black transition text-white/60 hover:text-white';
+        canvas.style.cursor = 'crosshair';
+      }
+    }
+
+    // Toggle Grid
+    function toggleGrid() {
+      if (gridSnap === 8) {
+        gridSnap = 16;
+        document.getElementById('grid-status-text').innerText = 'Snap 16px';
+      } else if (gridSnap === 16) {
+        gridSnap = 0;
+        document.getElementById('grid-status-text').innerText = 'Snap OFF';
+      } else {
+        gridSnap = 8;
+        document.getElementById('grid-status-text').innerText = 'Snap 8px';
+      }
+    }
+
+    function snap(val) {
+      if (!gridSnap || gridSnap <= 1) return Math.round(val);
+      return Math.round(val / gridSnap) * gridSnap;
+    }
+
+    // Drag & Resize Engine
+    function setupInteractions() {
+      document.querySelectorAll('.sandbox-layer').forEach(layer => {
+        let isDragging = false;
+        let startX = 0, startY = 0;
+        let initialLeft = 0, initialTop = 0;
+
+        layer.addEventListener('pointerdown', (e) => {
+          if (activeMode !== 'drag') return;
+          if (e.target.classList.contains('resize-handle')) return;
+
+          selectLayer(layer.id);
+          isDragging = true;
+          startX = e.clientX;
+          startY = e.clientY;
+          initialLeft = currentLayout[layer.id].left;
+          initialTop = currentLayout[layer.id].top;
+          layer.setPointerCapture(e.pointerId);
+          e.stopPropagation();
+        });
+
+        layer.addEventListener('pointermove', (e) => {
+          if (!isDragging) return;
+          const dx = e.clientX - startX;
+          const dy = e.clientY - startY;
+          
+          let newLeft = snap(initialLeft + dx);
+          let newTop = snap(initialTop + dy);
+
+          // Boundary clamping within canvas
+          newLeft = Math.max(0, Math.min(canvas.clientWidth - 50, newLeft));
+          newTop = Math.max(0, Math.min(canvas.clientHeight - 30, newTop));
+
+          currentLayout[layer.id].left = newLeft;
+          currentLayout[layer.id].top = newTop;
+          layer.style.left = newLeft + 'px';
+          layer.style.top = newTop + 'px';
+
+          updateInspectorDisplay();
+        });
+
+        const stopDrag = (e) => {
+          if (isDragging) {
+            isDragging = false;
+            try { layer.releasePointerCapture(e.pointerId); } catch(_) {}
+            saveState();
+          }
+        };
+        layer.addEventListener('pointerup', stopDrag);
+        layer.addEventListener('pointercancel', stopDrag);
+
+        // Resize Handle Listener
+        const resizeHandle = layer.querySelector('.resize-handle');
+        if (resizeHandle) {
+          let isResizing = false;
+          let rStartX = 0, rStartY = 0;
+          let startW = 0, startH = 0;
+
+          resizeHandle.addEventListener('pointerdown', (e) => {
+            selectLayer(layer.id);
+            isResizing = true;
+            rStartX = e.clientX;
+            rStartY = e.clientY;
+            startW = currentLayout[layer.id].width;
+            startH = currentLayout[layer.id].height;
+            resizeHandle.setPointerCapture(e.pointerId);
+            e.stopPropagation();
+          });
+
+          resizeHandle.addEventListener('pointermove', (e) => {
+            if (!isResizing) return;
+            const dw = e.clientX - rStartX;
+            const dh = e.clientY - rStartY;
+
+            let newW = snap(Math.max(50, startW + dw));
+            let newH = snap(Math.max(30, startH + dh));
+
+            currentLayout[layer.id].width = newW;
+            currentLayout[layer.id].height = newH;
+            layer.style.width = newW + 'px';
+            layer.style.height = newH + 'px';
+
+            updateInspectorDisplay();
+          });
+
+          const stopResize = (e) => {
+            if (isResizing) {
+              isResizing = false;
+              try { resizeHandle.releasePointerCapture(e.pointerId); } catch(_) {}
+              saveState();
+            }
+          };
+          resizeHandle.addEventListener('pointerup', stopResize);
+          resizeHandle.addEventListener('pointercancel', stopResize);
+        }
+      });
+
+      // Canvas Click Listener for Comment Pinning Mode
+      canvas.addEventListener('click', (e) => {
+        if (activeMode !== 'comment') return;
+        const rect = canvas.getBoundingClientRect();
+        const x = Math.round(e.clientX - rect.left);
+        const y = Math.round(e.clientY - rect.top);
+
+        const clickedLayer = document.elementFromPoint(e.clientX, e.clientY)?.closest('.sandbox-layer');
+        const targetTitle = clickedLayer ? currentLayout[clickedLayer.id]?.title : "Table Felt";
+
+        createPin(x, y, targetTitle);
+      });
+    }
+
+    // Layer Selection
+    function selectLayer(id) {
+      selectedLayerId = id;
+      document.querySelectorAll('.sandbox-layer').forEach(l => l.classList.remove('selected'));
+      const active = document.getElementById(id);
+      if (active) active.classList.add('selected');
+
+      updateInspectorDisplay();
+      setTab('inspector');
+    }
+
+    function updateInspectorDisplay() {
+      if (!selectedLayerId || !currentLayout[selectedLayerId]) {
+        document.getElementById('inspector-empty').classList.remove('hidden');
+        document.getElementById('inspector-active').classList.add('hidden');
+        document.getElementById('quick-selected-name').innerText = 'Select element';
+        document.getElementById('quick-coords').innerText = 'X: - | Y: - | W: - | H: -';
+        return;
+      }
+
+      const item = currentLayout[selectedLayerId];
+      document.getElementById('inspector-empty').classList.add('hidden');
+      document.getElementById('inspector-active').classList.remove('hidden');
+
+      document.getElementById('ins-title').innerText = item.title;
+      document.getElementById('ins-id').innerText = '#' + selectedLayerId;
+
+      document.getElementById('input-left').value = item.left;
+      document.getElementById('input-top').value = item.top;
+      document.getElementById('input-width').value = item.width;
+      document.getElementById('input-height').value = item.height;
+      document.getElementById('input-scale').value = item.scale;
+      document.getElementById('scale-readout').innerText = item.scale + '%';
+
+      document.getElementById('quick-selected-name').innerText = item.title.split('.')[1] || item.title;
+      document.getElementById('quick-coords').innerText = `X: ${item.left} | Y: ${item.top} | W: ${item.width} | H: ${item.height}`;
+    }
+
+    function updateSelectedProp(prop, value) {
+      if (!selectedLayerId) return;
+      const num = parseInt(value, 10);
+      if (isNaN(num)) return;
+
+      currentLayout[selectedLayerId][prop] = num;
+      const el = document.getElementById(selectedLayerId);
+      if (el) el.style[prop] = num + 'px';
+      saveState();
+      updateInspectorDisplay();
+    }
+
+    function updateSelectedScale(value) {
+      if (!selectedLayerId) return;
+      const num = parseInt(value, 10);
+      currentLayout[selectedLayerId].scale = num;
+      const el = document.getElementById(selectedLayerId);
+      if (el) el.style.transform = `scale(${num / 100})`;
+      document.getElementById('scale-readout').innerText = num + '%';
+      saveState();
+    }
+
+    function nudge(dx, dy) {
+      if (!selectedLayerId) return;
+      currentLayout[selectedLayerId].left = snap(currentLayout[selectedLayerId].left + dx);
+      currentLayout[selectedLayerId].top = snap(currentLayout[selectedLayerId].top + dy);
+      const el = document.getElementById(selectedLayerId);
+      if (el) {
+        el.style.left = currentLayout[selectedLayerId].left + 'px';
+        el.style.top = currentLayout[selectedLayerId].top + 'px';
+      }
+      saveState();
+      updateInspectorDisplay();
+    }
+
+    function centerSelectedHorizontal() {
+      if (!selectedLayerId) return;
+      const canvasW = canvas.clientWidth;
+      const itemW = currentLayout[selectedLayerId].width;
+      const newLeft = Math.round((canvasW - itemW) / 2);
+      currentLayout[selectedLayerId].left = newLeft;
+      const el = document.getElementById(selectedLayerId);
+      if (el) el.style.left = newLeft + 'px';
+      saveState();
+      updateInspectorDisplay();
+    }
+
+    function resetSelectedElement() {
+      if (!selectedLayerId) return;
+      const def = DEFAULT_LAYOUT[selectedLayerId];
+      if (!def) return;
+      currentLayout[selectedLayerId] = JSON.parse(JSON.stringify(def));
+      applyAllLayouts();
+      saveState();
+      updateInspectorDisplay();
+    }
+
+    function resetAllPositions() {
+      if (!confirm("Reset all 20 elements back to default coordinates?")) return;
+      currentLayout = JSON.parse(JSON.stringify(DEFAULT_LAYOUT));
+      applyAllLayouts();
+      saveState();
+      updateInspectorDisplay();
+    }
+
+    // Tabs inside Sidebar
+    function setTab(tab) {
+      document.getElementById('tab-inspector').className = tab === 'inspector' ? 'flex-1 py-3 text-center border-b-2 border-sky-400 text-sky-400 bg-white/5' : 'flex-1 py-3 text-center border-b-2 border-transparent text-white/60 hover:text-white';
+      document.getElementById('tab-notes').className = tab === 'notes' ? 'flex-1 py-3 text-center border-b-2 border-amber-400 text-amber-300 bg-white/5' : 'flex-1 py-3 text-center border-b-2 border-transparent text-white/60 hover:text-white';
+      document.getElementById('tab-layers').className = tab === 'layers' ? 'flex-1 py-3 text-center border-b-2 border-emerald-400 text-emerald-300 bg-white/5' : 'flex-1 py-3 text-center border-b-2 border-transparent text-white/60 hover:text-white';
+
+      document.getElementById('panel-inspector').classList.toggle('hidden', tab !== 'inspector');
+      document.getElementById('panel-notes').classList.toggle('hidden', tab !== 'notes');
+      document.getElementById('panel-layers').classList.toggle('hidden', tab !== 'layers');
+    }
+
+    function toggleNotesPanel() {
+      setTab('notes');
+    }
+
+    // Render Layers tab list
+    function renderLayersList() {
+      const container = document.getElementById('layers-list');
+      container.innerHTML = '';
+      const keys = Object.keys(currentLayout);
+      document.getElementById('layers-tab-count').innerText = keys.length;
+
+      for (const [id, data] of Object.entries(currentLayout)) {
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between p-2 rounded-lg bg-black/40 border border-white/5 hover:border-sky-400/50 cursor-pointer transition';
+        row.innerHTML = `
+          <div class="flex items-center gap-2 truncate pr-2">
+            <span class="w-2 h-2 rounded-full bg-sky-400 shrink-0"></span>
+            <span class="text-xs font-bold text-white truncate">${data.title}</span>
+          </div>
+          <span class="text-[10px] font-mono text-white/40 shrink-0">${data.width}×${data.height}</span>
+        `;
+        row.onclick = () => selectLayer(id);
+        container.appendChild(row);
+      }
+    }
+
+    // ==============================================================
+    // NUMBERED COMMENT PIN SYSTEM
+    // ==============================================================
+    function createPin(x, y, targetTitle) {
+      const pinId = 'pin_' + Date.now();
+      const pinNumber = comments.length + 1;
+      const newPin = {
+        id: pinId,
+        number: pinNumber,
+        x: x,
+        y: y,
+        target: targetTitle || 'Table Felt',
+        text: ''
+      };
+      comments.push(newPin);
+      saveState();
+      renderComments();
+      openPinModal(pinId);
+    }
+
+    function renderComments() {
+      pinsContainer.innerHTML = '';
+      const listContainer = document.getElementById('notes-list');
+      listContainer.innerHTML = '';
+
+      document.getElementById('comment-count-badge').innerText = comments.length;
+      document.getElementById('notes-tab-count').innerText = comments.length;
+
+      if (comments.length === 0) {
+        listContainer.innerHTML = '<div class="text-center py-8 text-white/30 text-xs">No comments yet. Switch to "Pin Comment" mode in the top bar to drop notes directly on the table!</div>';
+        return;
+      }
+
+      comments.forEach((c, idx) => {
+        c.number = idx + 1;
+
+        // 1. Render Pin on Table Canvas
+        const pin = document.createElement('div');
+        pin.className = 'comment-pin';
+        pin.style.left = c.x + 'px';
+        pin.style.top = c.y + 'px';
+        pin.innerText = c.number;
+        pin.title = `Note #${c.number}: ${c.target}\n${c.text}`;
+        pin.onclick = (e) => {
+          e.stopPropagation();
+          openPinModal(c.id);
+        };
+        pinsContainer.appendChild(pin);
+
+        // 2. Render Card in Sidebar Notes List
+        const card = document.createElement('div');
+        card.className = 'p-2.5 rounded-xl bg-black/60 border border-white/10 hover:border-amber-400/50 cursor-pointer transition space-y-1';
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1.5 truncate pr-2">
+              <span class="w-5 h-5 rounded-full bg-red-500 text-white font-black text-[10px] grid place-items-center shrink-0">${c.number}</span>
+              <span class="text-xs font-black text-amber-300 truncate">${c.target}</span>
+            </div>
+            <span class="text-[9px] font-mono text-white/40 shrink-0">(${c.x}, ${c.y})</span>
+          </div>
+          <p class="text-xs text-white/80 line-clamp-2">${c.text || '<i class="text-white/30">Click to write note...</i>'}</p>
+        `;
+        card.onclick = () => openPinModal(c.id);
+        listContainer.appendChild(card);
+      });
+    }
+
+    function openPinModal(id) {
+      editingPinId = id;
+      const pin = comments.find(p => p.id === id);
+      if (!pin) return;
+
+      document.getElementById('modal-pin-number').innerText = pin.number;
+      document.getElementById('modal-pin-target').value = pin.target;
+      document.getElementById('modal-pin-text').value = pin.text;
+      document.getElementById('pin-modal').classList.remove('hidden');
+      document.getElementById('modal-pin-text').focus();
+    }
+
+    function closePinModal() {
+      document.getElementById('pin-modal').classList.add('hidden');
+      editingPinId = null;
+    }
+
+    function saveCurrentPin() {
+      if (!editingPinId) return;
+      const pin = comments.find(p => p.id === editingPinId);
+      if (pin) {
+        pin.target = document.getElementById('modal-pin-target').value.trim() || 'General Table';
+        pin.text = document.getElementById('modal-pin-text').value.trim();
+        saveState();
+        renderComments();
+      }
+      closePinModal();
+    }
+
+    function deleteCurrentPin() {
+      if (!editingPinId) return;
+      comments = comments.filter(p => p.id !== editingPinId);
+      saveState();
+      renderComments();
+      closePinModal();
+    }
+
+    // ==============================================================
+    // EXPORT SPECIFICATION & INSTRUCTIONS
+    // ==============================================================
+    function openExportModal() {
+      document.getElementById('export-modal').classList.remove('hidden');
+      generateExportOutput();
+    }
+
+    function closeExportModal() {
+      document.getElementById('export-modal').classList.add('hidden');
+    }
+
+    function setExportTab(tab) {
+      exportTab = tab;
+      document.getElementById('btn-export-md').className = tab === 'markdown' ? 'px-3 py-1 rounded-lg text-xs font-black bg-sky-500 text-white' : 'px-3 py-1 rounded-lg text-xs font-black bg-white/5 text-white/70 hover:text-white';
+      document.getElementById('btn-export-css').className = tab === 'css' ? 'px-3 py-1 rounded-lg text-xs font-black bg-sky-500 text-white' : 'px-3 py-1 rounded-lg text-xs font-black bg-white/5 text-white/70 hover:text-white';
+      document.getElementById('btn-export-json').className = tab === 'json' ? 'px-3 py-1 rounded-lg text-xs font-black bg-sky-500 text-white' : 'px-3 py-1 rounded-lg text-xs font-black bg-white/5 text-white/70 hover:text-white';
+      generateExportOutput();
+    }
+
+    function generateExportOutput() {
+      const output = document.getElementById('export-output');
+
+      if (exportTab === 'markdown') {
+        let md = `# Twenty-Nine Frontend Layout Instructions\n\n`;
+        md += `## 1. Summary of Modified Elements\n`;
+
+        let changesCount = 0;
+        for (const [id, current] of Object.entries(currentLayout)) {
+          const original = DEFAULT_LAYOUT[id];
+          if (!original) continue;
+          const hasPosChanged = current.left !== original.left || current.top !== original.top;
+          const hasSizeChanged = current.width !== original.width || current.height !== original.height || current.scale !== original.scale;
+
+          if (hasPosChanged || hasSizeChanged) {
+            changesCount++;
+            md += `### ${current.title} (\`${id}\`)\n`;
+            if (hasPosChanged) {
+              const dx = current.left - original.left;
+              const dy = current.top - original.top;
+              md += `- **Position**: X: \`${current.left}px\` (${dx >= 0 ? '+' : ''}${dx}px), Y: \`${current.top}px\` (${dy >= 0 ? '+' : ''}${dy}px)\n`;
+            }
+            if (hasSizeChanged) {
+              md += `- **Dimensions**: Width: \`${current.width}px\`, Height: \`${current.height}px\` (Scale: ${current.scale}%)\n`;
+            }
+            md += `\n`;
+          }
+        }
+
+        if (changesCount === 0) {
+          md += `*No layout elements were moved or resized from default positions.*\n\n`;
+        }
+
+        md += `## 2. Comments and Change Requests (${comments.length})\n`;
+        if (comments.length === 0) {
+          md += `*No sticky comments added.*\n`;
+        } else {
+          comments.forEach((c) => {
+            md += `### Note #${c.number}: ${c.target} (at X: ${c.x}px, Y: ${c.y}px)\n`;
+            md += `> ${c.text || '(No text specified)'}\n\n`;
+          });
+        }
+
+        md += `## 3. Exact Layout Specs (All 20 Elements)\n`;
+        md += `| Element | Left | Top | Width | Height | Scale |\n`;
+        md += `| :--- | :--- | :--- | :--- | :--- | :--- |\n`;
+        for (const [id, d] of Object.entries(currentLayout)) {
+          md += `| ${d.title} | ${d.left}px | ${d.top}px | ${d.width}px | ${d.height}px | ${d.scale}% |\n`;
+        }
+
+        output.innerText = md;
+      } else if (exportTab === 'css') {
+        let css = `/* Tailwind CSS Classes for TwentyNine Components */\n\n`;
+        for (const [id, d] of Object.entries(currentLayout)) {
+          css += `/* ${d.title} (${id}) */\n`;
+          css += `className="absolute left-[${d.left}px] top-[${d.top}px] w-[${d.width}px] h-[${d.height}px]`;
+          if (d.scale !== 100) css += ` scale-[${d.scale / 100}]`;
+          css += `"\n\n`;
+        }
+        output.innerText = css;
+      } else {
+        const exportState = {
+          version: "2.0",
+          timestamp: new Date().toISOString(),
+          layout: currentLayout,
+          comments: comments
+        };
+        output.innerText = JSON.stringify(exportState, null, 2);
+      }
+    }
+
+    function copyExportToClipboard() {
+      const text = document.getElementById('export-output').innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        const btnText = document.getElementById('copy-btn-text');
+        btnText.innerText = 'Copied to Clipboard! ✓';
+        setTimeout(() => {
+          btnText.innerText = 'Copy to Clipboard';
+        }, 2000);
+      }).catch(err => {
+        alert("Clipboard write failed. Please manually select the text and press Ctrl+C.");
+      });
+    }
+
+    function importJsonPrompt() {
+      const input = prompt("Paste your saved Twenty-Nine layout JSON state below:");
+      if (!input) return;
+      try {
+        const parsed = JSON.parse(input);
+        if (parsed.layout) currentLayout = parsed.layout;
+        if (parsed.comments) comments = parsed.comments;
+        applyAllLayouts();
+        renderComments();
+        renderLayersList();
+        saveState();
+        generateExportOutput();
+        alert("Layout state imported successfully!");
+      } catch (err) {
+        alert("Invalid JSON format. Please check the string and try again.");
+      }
+    }
+
+    // Start on DOMContentLoaded
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

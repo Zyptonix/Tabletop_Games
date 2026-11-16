@@ -48,15 +48,38 @@ function getPalette(currentColor?: string | undefined): DirectionPalette {
   return PALETTES[currentColor ?? ""] ?? DEFAULT_PALETTE;
 }
 
-function useShortestPathRotation(targetAngle: number): number {
+type UnoDirection = 1 | -1 | "clockwise" | "counterclockwise";
+
+function useDirectionalRotation(
+  targetAngle: number,
+  direction?: UnoDirection | undefined
+): number {
   const rotationRef = useRef<number>(targetAngle);
   const prevTargetRef = useRef<number>(targetAngle);
 
   if (prevTargetRef.current !== targetAngle) {
-    let diff = (targetAngle - prevTargetRef.current) % 360;
-    if (diff > 180) diff -= 360;
-    if (diff < -180) diff += 360;
-    rotationRef.current += diff;
+    const prevMod = ((prevTargetRef.current % 360) + 360) % 360;
+    const targetMod = ((targetAngle % 360) + 360) % 360;
+    const isClockwise = direction === 1 || direction === "clockwise";
+    const isCounterClockwise = direction === -1 || direction === "counterclockwise";
+
+    let delta: number;
+    if (isClockwise) {
+      // In clockwise play, the beam must always sweep clockwise (forward, >= 0).
+      // Even if skipping players across the table, it sweeps clockwise through them to the target.
+      delta = ((targetMod - prevMod) % 360 + 360) % 360;
+    } else if (isCounterClockwise) {
+      // In counter-clockwise play, the beam must always sweep counter-clockwise (backward, <= 0).
+      delta = -(((prevMod - targetMod) % 360 + 360) % 360);
+    } else {
+      // Fallback: shortest path unwrapping
+      let diff = (targetMod - prevMod) % 360;
+      if (diff > 180) diff -= 360;
+      if (diff < -180) diff += 360;
+      delta = diff;
+    }
+
+    rotationRef.current += delta;
     prevTargetRef.current = targetAngle;
   }
 
@@ -66,11 +89,13 @@ function useShortestPathRotation(targetAngle: number): number {
 export function TurnSpotlight({
   activeSeatAngle,
   currentColor,
+  direction = 1,
   isNoMercy = false,
   originRef
 }: {
   activeSeatAngle?: number | undefined;
   currentColor?: string | undefined;
+  direction?: UnoDirection | undefined;
   isNoMercy?: boolean | undefined;
   originRef?: React.Ref<HTMLDivElement> | undefined;
 }) {
@@ -78,9 +103,9 @@ export function TurnSpotlight({
   const palette = getPalette(currentColor);
 
   // Spotlight rotation offset by -90deg since the beam origin points downwards (6 o'clock) at 0deg
-  // Uses shortest-path unwrapping so transitions across the 180/-180 branch cut (West to North-West) glide smoothly without doing a 360 spin
+  // Continuously unwraps rotation strictly adhering to the game's current direction of play
   const rawTargetAngle = activeSeatAngle !== undefined ? activeSeatAngle - 90 : 0;
-  const spotlightRotation = useShortestPathRotation(rawTargetAngle);
+  const spotlightRotation = useDirectionalRotation(rawTargetAngle, direction);
 
   if (activeSeatAngle === undefined || reduceMotion) {
     return null;

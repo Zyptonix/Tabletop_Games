@@ -1,6 +1,7 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertCircle,
@@ -76,13 +77,13 @@ function getTheme(gameId?: string): ThemeConfig {
 
   if (normalized.includes("twenty-nine")) {
     return {
-      accentGlow: "shadow-[0_0_60px_rgba(16,185,129,0.25)]",
-      borderColor: "border-emerald-500/40",
-      headerGradient: "from-emerald-600/30 via-amber-500/15 to-transparent",
-      badgeStyle: "border-amber-400/40 bg-amber-500/15 text-amber-200",
-      buttonGradient: "from-emerald-600 via-teal-600 to-amber-500 hover:from-emerald-500 hover:to-amber-400 text-slate-950 font-black shadow-[0_0_20px_rgba(16,185,129,0.3)]",
-      starColor: "text-amber-300 fill-amber-300",
-      containerBg: "bg-[linear-gradient(145deg,rgba(8,19,15,0.98),rgba(11,26,20,0.97))]"
+      accentGlow: "shadow-[0_0_60px_rgba(245,158,11,0.25)]",
+      borderColor: "border-amber-500/40",
+      headerGradient: "from-amber-600/30 via-yellow-600/15 to-transparent",
+      badgeStyle: "border-amber-400/50 bg-amber-500/20 text-amber-300",
+      buttonGradient: "from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:to-yellow-400 text-zinc-950 font-black shadow-[0_0_20px_rgba(245,158,11,0.35)]",
+      starColor: "text-amber-400 fill-amber-400",
+      containerBg: "bg-[linear-gradient(145deg,rgba(26,14,8,0.98),rgba(18,9,5,0.98))]"
     };
   }
 
@@ -156,6 +157,7 @@ export function GameFeedbackModal({
   const { user } = useAuth();
   const selectId = useId();
 
+  const [mounted, setMounted] = useState(false);
   const [selectedGameId, setSelectedGameId] = useState<string>(initialGameId || "classic-uno");
   const [category, setCategory] = useState<FeedbackCategory>("suggestion");
   const [rating, setRating] = useState<number | null>(null);
@@ -166,6 +168,27 @@ export function GameFeedbackModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (initialGameId) {
+      setSelectedGameId(initialGameId);
+    }
+  }, [initialGameId]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !submitting) {
+        handleModalClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, submitting]);
 
   // Sync initialGameId if provided
   const activeGameId = initialGameId || selectedGameId;
@@ -231,33 +254,39 @@ export function GameFeedbackModal({
     onClose();
   };
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <AnimatePresence>
       {open ? (
         <motion.div
-          className="fixed inset-0 z-50 grid place-items-center bg-black/75 p-3 sm:p-5 backdrop-blur-md overflow-y-auto"
+          key="game-feedback-modal-overlay"
+          className="fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto bg-black/80 p-3 sm:p-5 backdrop-blur-md select-auto"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={(e) => {
-            if (e.target === e.currentTarget) handleModalClose();
+            if (e.target === e.currentTarget && !submitting) handleModalClose();
           }}
         >
-          <motion.div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={`${selectId}-title`}
-            className={cn(
-              "relative my-auto w-full max-w-lg overflow-hidden rounded-2xl border text-white shadow-2xl backdrop-blur-2xl transition-all",
-              theme.borderColor,
-              theme.accentGlow,
-              theme.containerBg
-            )}
-            initial={{ scale: 0.94, opacity: 0, y: 14 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.94, opacity: 0, y: 14 }}
-            transition={{ type: "spring", damping: 25, stiffness: 350 }}
-          >
+          <div className="flex min-h-full w-full items-center justify-center py-6 pointer-events-none">
+            <motion.div
+              key="game-feedback-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={`${selectId}-title`}
+              className={cn(
+                "pointer-events-auto relative my-auto w-full max-w-lg overflow-hidden rounded-2xl border text-white shadow-2xl backdrop-blur-2xl transition-all select-auto",
+                theme.borderColor,
+                theme.accentGlow,
+                theme.containerBg
+              )}
+              initial={{ scale: 0.94, opacity: 0, y: 14 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.94, opacity: 0, y: 14 }}
+              transition={{ type: "spring", damping: 25, stiffness: 350 }}
+              onClick={(e) => e.stopPropagation()}
+            >
             {/* Top Glowing Header Strip */}
             <div className={cn("relative border-b px-5 py-4 bg-gradient-to-r", theme.headerGradient, theme.borderColor)}>
               <div className="flex items-center justify-between gap-3">
@@ -503,8 +532,10 @@ export function GameFeedbackModal({
               )}
             </div>
           </motion.div>
+          </div>
         </motion.div>
       ) : null}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

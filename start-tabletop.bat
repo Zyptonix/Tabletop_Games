@@ -56,6 +56,9 @@ if errorlevel 1 (
   goto :fail_pop
 )
 
+:: Clear any inherited terminal DATABASE_URL to guarantee local DB is used
+set "DATABASE_URL="
+
 echo [1/4] Checking PostgreSQL...
 pg_ctl -D "%ROOT%.pgdata" status >nul 2>&1
 if errorlevel 1 (

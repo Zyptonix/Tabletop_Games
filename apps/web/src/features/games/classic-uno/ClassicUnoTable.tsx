@@ -824,7 +824,7 @@ export function ClassicUnoTable({
 
               <section
                 className={cn(
-                  "relative z-10 grid h-full min-h-0 grid-rows-[minmax(0,1fr)_15rem] gap-2 rounded-[2.25rem] p-3 overflow-visible shadow-2xl",
+                  "relative z-10 grid h-full min-h-0 grid-rows-[minmax(0,1fr)_auto] gap-2 rounded-[2.25rem] p-3 pb-2 overflow-visible shadow-2xl",
                   isNoMercy ? "uno-no-mercy-table" : "classic-uno-table"
                 )}
               >
@@ -896,6 +896,7 @@ export function ClassicUnoTable({
                     originRef={spotlightOriginRef}
                     activeSeatAngle={activeSeatAngle}
                     currentColor={state.currentColor}
+                    direction={state.direction}
                     isNoMercy={isNoMercy}
                   />
 
@@ -953,11 +954,11 @@ export function ClassicUnoTable({
                     </div>
                   ))}
 
-                  <div className="relative z-10 grid h-full min-h-0 place-items-center translate-y-8">
+                  <div className="relative z-10 grid h-full min-h-0 place-items-center translate-y-3 sm:translate-y-4">
                     <motion.div
                       ref={centerDockRef}
                       layout
-                      className="relative z-10 translate-y-16 flex items-center justify-center gap-6 sm:gap-10 md:gap-12 rounded-[3rem] px-6 py-6 backdrop-blur-xl sm:px-10"
+                      className="relative z-10 translate-y-6 sm:translate-y-8 flex items-center justify-center gap-6 sm:gap-10 md:gap-12 rounded-[3rem] px-6 py-6 backdrop-blur-xl sm:px-10"
                       style={{
                         border: `1px solid ${activeAccent.border}`,
                         background: isNoMercy
@@ -1082,9 +1083,9 @@ export function ClassicUnoTable({
                     </div>
                   </div>
 
-                  <div className="relative z-10 flex min-h-0 items-end justify-center gap-3">
+                  <div className="relative z-10 flex min-h-0 items-center justify-center gap-3 pb-1 sm:pb-2">
                     {me ? (
-                      <div ref={registerSeatRef(me.userId)} className="relative z-30 shrink-0">
+                      <div ref={registerSeatRef(me.userId)} className="relative z-30 shrink-0 self-center">
                         <div
                           aria-label={`${me.displayName}, ${me.handCount} cards${me.isCurrentTurn ? ", your turn" : ""}`}
                           className={cn(
@@ -1111,7 +1112,7 @@ export function ClassicUnoTable({
                           {me.isCurrentTurn ? <span className="text-[0.52rem] font-black uppercase text-emerald-300">Your turn</span> : null}
                         </div>
 
-                        <div className="relative z-30 hidden w-[min(17rem,24vw)] pb-1 sm:block">
+                        <div className="relative z-30 hidden w-[min(17rem,24vw)] sm:block">
                           <PlayerSeat
                             player={me}
                             roomPlayer={roomPlayerById.get(me.userId)}

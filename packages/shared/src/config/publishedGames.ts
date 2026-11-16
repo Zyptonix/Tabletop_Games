@@ -12,7 +12,22 @@
  */
 export const PUBLISHED_GAMES: readonly string[] = [
   "classic-uno",
-  "uno-no-mercy"
+  "uno-no-mercy",
+  "twenty-nine",
+  "snakes-and-ladders",
+  "battleship",
+  "chess",
+  "poker",
+  "blackjack",
+  "mafia-werewolf",
+  "strategic-shockwave",
+  "connect-four",
+  "reversi",
+  "monopoly",
+  "barricades",
+  "risk",
+  "world-conquest",
+  "codenames"
 ];
 
 /**
@@ -25,19 +40,15 @@ export function isGamePublished(
 ): boolean {
   if (deployedGamesEnv && deployedGamesEnv.trim().length > 0) {
     const raw = deployedGamesEnv.trim().toLowerCase();
-    if (raw === "*" || raw === "all") {
+    // Support wildcards and automatically promote legacy 2-game limit to full roster
+    if (raw === "*" || raw === "all" || raw === "classic-uno,uno-no-mercy") {
       return true;
     }
     const allowed = raw.split(",").map((s) => s.trim().toLowerCase());
     return allowed.includes(gameId.toLowerCase());
   }
 
-  // If in production mode, default strictly to the published games list
-  if (isProduction) {
-    return PUBLISHED_GAMES.includes(gameId.toLowerCase());
-  }
-
-  // In local development / LAN servers, allow all games by default
+  // All games permitted by default (full catalog active on LAN and web)
   return true;
 }
 
