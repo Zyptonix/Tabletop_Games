@@ -40,7 +40,7 @@ export function GameFeedbackButton({
       case "uno":
         return "border-white/12 bg-black/35 hover:bg-white/10 text-white rounded-full min-h-10 px-3";
       case "twenty-nine":
-        return "border-emerald-400/30 bg-emerald-950/40 text-emerald-200 hover:bg-emerald-500/20 hover:text-white rounded-xl px-2.5 py-1.5 text-xs font-bold";
+        return "border-emerald-400/30 bg-emerald-950/40 text-emerald-200 hover:bg-emerald-500/20 hover:text-white rounded-xl px-2.5 h-9 text-xs font-bold";
       case "snakes":
         return "border-amber-400/30 bg-amber-500/10 text-amber-200 hover:border-amber-400/60 hover:bg-amber-400/20 rounded-lg px-2.5 py-1 text-xs font-bold";
       case "casino":

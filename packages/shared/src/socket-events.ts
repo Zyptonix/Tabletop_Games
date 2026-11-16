@@ -25,6 +25,7 @@ export interface ServerToClientEvents {
   "game:timer": (payload: TimerView) => void;
   "chat:message": (payload: ChatMessageView) => void;
   "system:message": (payload: { roomId?: string; message: string }) => void;
+  "room:ended": (payload: { roomId: string; code?: string; reason?: string }) => void;
   "server:error": (payload: AppErrorPayload) => void;
 }
 

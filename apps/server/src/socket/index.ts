@@ -265,6 +265,15 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
 
   timers = new RoomTimers(io as unknown as Server<ClientToServerEvents, ServerToClientEvents>, manager, emitRoom);
 
+  manager.onRoomEnded((room) => {
+    emitRoom(room);
+    io.to(room.id).emit("room:ended", {
+      roomId: room.id,
+      code: room.code,
+      reason: "Host ended the game room."
+    });
+  });
+
   function emitError(socket: AppSocket, channel: "room:error" | "game:error" | "server:error", error: unknown) {
     socket.emit(channel, socketError(error));
   }
@@ -494,7 +503,9 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
           envelope: parsed.data
         });
         if (result.room.gameId === "twenty-nine") {
-          (result.room as any).singleHandConfirmed = true;
+          if (parsed.data.type === "play_card" || parsed.data.type === "declare_single_hand") {
+            (result.room as any).singleHandConfirmed = true;
+          }
           const hasScoredHand = result.events.some((e: any) =>
             e.type === "twenty-nine:hand_scored" || e.type === "twenty-nine:single_hand_scored"
           );

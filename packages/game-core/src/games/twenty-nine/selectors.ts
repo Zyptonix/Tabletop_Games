@@ -1,4 +1,4 @@
-import type { TwentyNineAction, TwentyNinePlayerState, TwentyNineState, TwentyNineTeam } from "./types";
+import type { TwentyNineAction, TwentyNineCard, TwentyNinePlayerState, TwentyNineState, TwentyNineTeam } from "./types";
 import { TWENTY_NINE_MAX_BID, TWENTY_NINE_MIN_BID } from "./constants";
 
 function player(state: TwentyNineState, playerId: string): TwentyNinePlayerState | undefined {
@@ -28,6 +28,24 @@ function canDeclareSingleHand(state: TwentyNineState): boolean {
 export function canSkipHand(state: TwentyNineState): boolean {
   if (state.phase !== "playing") return false;
   if (state.singleHandPlayerId) return false;
+
+  // When there is still a chance of marriage and trump is not revealed, don't let players skip hand
+  if (!state.trumpRevealed) {
+    if (state.pairDeclaredTeam === null && state.trumpSuit) {
+      const trumpSuit = state.trumpSuit;
+      const isTrumpKQ = (card: TwentyNineCard) =>
+        card.suit === trumpSuit && (card.rank === "K" || card.rank === "Q");
+
+      const kqPlayed =
+        state.completedTricks.some((ct) => ct.cards.some((p) => isTrumpKQ(p.card))) ||
+        state.currentTrick.some((p) => isTrumpKQ(p.card));
+
+      if (!kqPlayed) {
+        return false;
+      }
+    }
+  }
+
   const declarerId = state.declarerId ?? state.highestBidderId ?? state.firstBidderId;
   if (!declarerId) return false;
   const declarerTeam = teamOf(state, declarerId);

@@ -4,7 +4,10 @@ import dotenv from "dotenv";
 import { z } from "zod";
 
 const configDir = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(configDir, "../../../..", ".env") });
+dotenv.config({
+  path: path.resolve(configDir, "../../../..", ".env"),
+  override: process.env.NODE_ENV !== "production"
+});
 dotenv.config({ override: false });
 
 const nodeEnvSchema = z.enum(["development", "test", "production"]);

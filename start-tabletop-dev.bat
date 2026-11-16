@@ -49,6 +49,9 @@ if errorlevel 1 (
   goto :fail_pop
 )
 
+:: Clear any inherited terminal DATABASE_URL to guarantee local dev connects to local PostgreSQL
+set "DATABASE_URL="
+
 echo Running DEVELOPMENT mode, not the production build.
 echo Frontend: http://localhost:3000
 echo Backend:  http://localhost:4000

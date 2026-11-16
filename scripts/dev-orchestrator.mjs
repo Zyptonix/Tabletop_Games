@@ -209,13 +209,26 @@ function createService(name, command, commandArgs, options = {}) {
   return service;
 }
 
+function readLocalDatabaseUrl() {
+  const envPath = path.join(rootDir, ".env");
+  if (!fs.existsSync(envPath)) return null;
+  const envText = fs.readFileSync(envPath, "utf8");
+  const match = envText.match(/^DATABASE_URL=(.+)$/m);
+  return match ? match[1].trim() : null;
+}
+
 function startService(name, command, commandArgs, options = {}) {
   const service = createService(name, command, commandArgs, options);
   writeLine(name, `starting: ${command} ${commandArgs.join(" ")}`);
   const useShell = process.platform === "win32" && (command.endsWith(".cmd") || command.endsWith(".bat"));
+  const serviceEnv = { ...process.env, FORCE_COLOR: "1" };
+  const localDbUrl = readLocalDatabaseUrl();
+  if (localDbUrl) {
+    serviceEnv.DATABASE_URL = localDbUrl;
+  }
   const child = spawn(command, commandArgs, {
     cwd: rootDir,
-    env: { ...process.env, FORCE_COLOR: "1" },
+    env: serviceEnv,
     shell: useShell,
     windowsHide: true
   });

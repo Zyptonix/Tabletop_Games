@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ArrowRight, Crown, Eye, Gavel, Lock, Sparkles, Trophy, Unlock } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Crown, Eye, Gavel, Lock, Sparkles, Trophy, Unlock } from "lucide-react";
 import type {
   PublicTwentyNinePlayer,
   PublicTwentyNineState,
@@ -131,6 +131,10 @@ export function TwentyNineTrickArea({
     ? state.players.find((p) => p.userId === persistedCompletedTrick.winnerPlayerId)
     : null;
 
+  const winnerSlot = isHoldCompletedTrick && persistedCompletedTrick
+    ? getCompassSlot(persistedCompletedTrick.winnerPlayerId, currentUserId, state.players)
+    : null;
+
   const didMyTeamWinTrick = isHoldCompletedTrick && persistedCompletedTrick
     ? persistedCompletedTrick.winnerTeam === myTeam
     : false;
@@ -165,99 +169,25 @@ export function TwentyNineTrickArea({
         className
       )}
     >
-      {/* Top Header Row: [Total Match Points] & [Trick Status Pill] */}
-      <div className="mb-4 z-20 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-        {/* Total Match Game Points (e.g. +1 / -1) */}
-        <div className="flex items-center gap-2.5 rounded-full border border-white/15 bg-black/80 px-4 py-1 shadow-xl backdrop-blur-md">
-          <span className="text-[0.62rem] font-black uppercase tracking-wider text-white/50">
-            Match Score:
-          </span>
-          <div className="flex items-center gap-1.5 font-black">
-            <span className="h-2 w-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]" />
-            <span className="text-[0.68rem] text-rose-300 font-extrabold">Red</span>
-            <span
-              className={cn(
-                "text-xs sm:text-sm font-black tabular-nums",
-                redGamePoints > 0
-                  ? "text-emerald-300"
-                  : redGamePoints < 0
-                  ? "text-rose-400"
-                  : "text-white"
-              )}
-            >
-              {redGamePoints > 0 ? `+${redGamePoints}` : redGamePoints}
-            </span>
-          </div>
-
-          <span className="text-white/20 font-bold">vs</span>
-
-          <div className="flex items-center gap-1.5 font-black">
-            <span
-              className={cn(
-                "text-xs sm:text-sm font-black tabular-nums",
-                blueGamePoints > 0
-                  ? "text-emerald-300"
-                  : blueGamePoints < 0
-                  ? "text-rose-400"
-                  : "text-white"
-              )}
-            >
-              {blueGamePoints > 0 ? `+${blueGamePoints}` : blueGamePoints}
-            </span>
-            <span className="text-[0.68rem] text-sky-300 font-extrabold">Blue</span>
-            <span className="h-2 w-2 rounded-full bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.8)]" />
-          </div>
-        </div>
-
-        {/* Current Trick Number / Auction Status Pill */}
-        <div className="flex items-center gap-2 rounded-full border border-amber-400/40 bg-black/80 px-4 py-1 text-xs font-black shadow-xl backdrop-blur-md">
-          {state.phase === "bidding" ? (
-            <div className="flex items-center gap-1.5 text-amber-300">
-              <Gavel className="h-3.5 w-3.5" />
-              <span>Auction Phase · Hand #{state.handNumber}</span>
-            </div>
-          ) : (
-            <span className="text-amber-300">
-              Trick {isHoldCompletedTrick && persistedCompletedTrick ? persistedCompletedTrick.trickNumber : state.completedTricks.length + 1} of 8
-            </span>
-          )}
-          {ledSuit ? (
-            <>
-              <span className="text-white/20">|</span>
-              <div className="flex items-center gap-1 text-white">
-                <SuitMark suit={ledSuit} size={14} />
-                <span>Lead: {TWENTY_NINE_SUITS_INFO[ledSuit]?.label}</span>
-              </div>
-            </>
-          ) : null}
-          {currentTrickPoints > 0 ? (
-            <>
-              <span className="text-white/20">|</span>
-              <span className="text-amber-300">+{currentTrickPoints} pts</span>
-            </>
-          ) : null}
-        </div>
-      </div>
-
-      {/* MAIN TABLE ROW: Centered around the Central Trick Table Circle (Center Table is strictly 100% Dead-Center) */}
+      {/* MAIN TABLE ROW: Centered around the Grand Central Trick Table Oval */}
       <div className="relative flex items-center justify-center w-full">
-        {/* 3. GRAND CENTRAL TRICK CIRCULAR FORMATION (Center Anchor) */}
-        <div className="relative flex items-center justify-center w-[22rem] sm:w-[27rem] md:w-[31rem] lg:w-[35rem] h-[19rem] sm:h-[23rem] md:h-[26rem] lg:h-[29rem] shrink-0">
-          {/* Grand Circular Felt Disc Background */}
-          <div className="pointer-events-none absolute inset-0 m-auto rounded-full bg-[radial-gradient(circle_at_center,#44220c_0%,#2a1305_55%,#140702_85%,#090301_100%)] border-2 border-amber-400/35 shadow-[inset_0_0_60px_rgba(0,0,0,0.9),0_20px_50px_rgba(0,0,0,0.85)]" />
+        {/* GRAND CENTRAL TRICK OVAL ARENA (Maximized wide stadium oval taking up all free space) */}
+        <div className="relative flex items-center justify-center w-[min(960px,92vw,calc(100vw-320px))] h-[min(480px,52dvh)] max-h-[calc(100vh-300px)] rounded-[9999px] shrink-0">
+          {/* Grand Stadium Oval Felt Disc Background */}
+          <div className="pointer-events-none absolute inset-0 m-auto rounded-[9999px] bg-[radial-gradient(ellipse_at_center,#4a260f_0%,#2e1506_55%,#160802_85%,#0a0301_100%)] border-4 border-amber-400/40 shadow-[inset_0_0_90px_rgba(0,0,0,0.95),0_25px_60px_rgba(0,0,0,0.85)]" />
           {/* Inner Golden Dashed Inlay */}
-          <div className="pointer-events-none absolute inset-3 sm:inset-4 rounded-full border border-dashed border-amber-300/25" />
+          <div className="pointer-events-none absolute inset-4 sm:inset-6 rounded-[9999px] border-2 border-dashed border-amber-300/30" />
           {/* Subtle Compass Points */}
-          <span className="pointer-events-none absolute top-2 text-[0.65rem] font-black text-amber-200/25 uppercase tracking-widest">N</span>
-          <span className="pointer-events-none absolute bottom-2 text-[0.65rem] font-black text-amber-200/25 uppercase tracking-widest">S</span>
-          <span className="pointer-events-none absolute left-3 text-[0.65rem] font-black text-amber-200/25 uppercase tracking-widest">W</span>
-          <span className="pointer-events-none absolute right-3 text-[0.65rem] font-black text-amber-200/25 uppercase tracking-widest">E</span>
+          <span className="pointer-events-none absolute top-2 sm:top-3.5 text-[0.7rem] font-black text-amber-200/30 uppercase tracking-widest">N</span>
+          <span className="pointer-events-none absolute bottom-2 sm:bottom-3.5 text-[0.7rem] font-black text-amber-200/30 uppercase tracking-widest">S</span>
+          <span className="pointer-events-none absolute left-6 sm:left-10 text-[0.7rem] font-black text-amber-200/30 uppercase tracking-widest">W</span>
+          <span className="pointer-events-none absolute right-6 sm:right-10 text-[0.7rem] font-black text-amber-200/30 uppercase tracking-widest">E</span>
 
-          {/* Compass Cards (Large size="lg" cards for maximum visibility) */}
+          {/* Compass Cards (North moved further up, all 4 cards scaled up per user request) */}
           <SlotCardContainer
             slot="north"
             data={playedBySlot.get("north")}
-            positionClass="top-1 sm:top-2 left-1/2 -translate-x-1/2"
+            positionClass="-top-4 sm:-top-5 left-1/2 -translate-x-1/2"
             rotationClass="rotate-[1deg]"
           />
           <SlotCardContainer
@@ -269,197 +199,182 @@ export function TwentyNineTrickArea({
           <SlotCardContainer
             slot="west"
             data={playedBySlot.get("west")}
-            positionClass="left-1 sm:left-3 top-1/2 -translate-y-1/2"
-            rotationClass="rotate-[-4deg]"
+            positionClass="left-8 sm:left-14 lg:left-20 top-[38%] -translate-y-1/2"
+            rotationClass="rotate-[-3deg]"
           />
           <SlotCardContainer
             slot="east"
             data={playedBySlot.get("east")}
-            positionClass="right-1 sm:right-3 top-1/2 -translate-y-1/2"
+            positionClass="right-8 sm:right-14 lg:right-20 top-[38%] -translate-y-1/2"
             rotationClass="rotate-[3deg]"
           />
 
-          {/* Empty Table Center Prompt, Live Points Watermark, or Bidding Arena */}
-          {activeTrick.length === 0 ? (
-            state.phase === "bidding" ? (
-              <TwentyNineBiddingCenter state={state} currentUserId={currentUserId} />
-            ) : (
-              <div className="flex flex-col items-center justify-center text-center p-3 z-10">
-                <span className="text-3xl opacity-35">🃏</span>
-                <span className="text-xs font-black uppercase tracking-wider text-amber-200/40 mt-1">
-                  {state.phase === "playing" ? "Lead a Card" : "Waiting"}
-                </span>
-              </div>
-            )
-          ) : (
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-0">
-              {/* CURRENT TRICK POINTS WATERMARK:
-                  Position: Shifted to the left of dead-center.
-                  To adjust: change `-translate-x-10 sm:-translate-x-14` (e.g. `-translate-x-6` for less, `-translate-x-20` for more left) */}
-              <div className="flex flex-col items-center justify-center rounded-full bg-black/45 border border-white/10 h-16 w-16 backdrop-blur-sm shadow-inner -translate-x-4 sm:-translate-x-8 transition-transform">
-                <span className="text-sm font-black text-amber-300 drop-shadow">
-                  {currentTrickPoints > 0 ? `+${currentTrickPoints}` : "0"}
-                </span>
-                <span className="text-[0.52rem] font-extrabold uppercase tracking-widest text-white/40">
-                  PTS
-                </span>
+          {/* PHYSICAL TRUMP PILE (Positioned along lower-west flank of table oval, completely clear of West seat card fan) */}
+          {state.phase !== "bidding" ? (
+            <div className="absolute -left-20 sm:-left-24 lg:-left-28 top-[75%] sm:top-[78%] -translate-y-1/2 z-20 flex flex-col items-center shrink-0 select-none pointer-events-auto">
+              <div
+                onClick={canRevealTrump && onRevealTrump ? onRevealTrump : undefined}
+                className={cn(
+                  "flex flex-col items-center shrink-0 select-none transition-transform",
+                  canRevealTrump && "cursor-pointer hover:scale-105 group"
+                )}
+                title={
+                  state.trumpRevealed && state.trumpSuit
+                    ? `Active Trump: ${TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label}`
+                    : canRevealTrump
+                    ? "Click to ask / reveal Trump!"
+                    : "Trump Card (Concealed on felt)"
+                }
+              >
+                <div className="mb-1 flex items-center gap-1">
+                  <span className="text-[0.6rem] sm:text-xs font-black uppercase tracking-wider text-amber-300">
+                    Trump
+                  </span>
+                  {state.trumpRevealed ? (
+                    <span className="text-[0.52rem] font-black text-emerald-300 bg-emerald-500/20 px-1 rounded border border-emerald-400/40">
+                      REVEALED
+                    </span>
+                  ) : (
+                    <span
+                      className={cn(
+                        "text-[0.52rem] font-black px-1 rounded border",
+                        canRevealTrump
+                          ? "text-amber-200 bg-amber-500/30 border-amber-400 animate-pulse ring-1 ring-amber-300"
+                          : "text-amber-300/70 bg-amber-500/10 border-amber-400/30"
+                      )}
+                    >
+                      CONCEALED
+                    </span>
+                  )}
+                </div>
+
+                <div
+                  className={cn(
+                    "twenty-nine-felt-deck relative rounded-xl overflow-hidden shadow-2xl transition-all duration-300 flex items-center justify-center",
+                    state.trumpRevealed
+                      ? "border-2 border-emerald-400/90 bg-white ring-2 ring-emerald-400/50 shadow-[0_0_20px_rgba(52,211,153,0.4)]"
+                      : "border-2 border-amber-400/80 ring-2 ring-amber-400/30 bg-[#210f04]",
+                    canRevealTrump && "ring-2 ring-amber-300 shadow-[0_0_24px_rgba(245,158,11,0.6)] animate-pulse"
+                  )}
+                >
+                  {state.trumpRevealed && state.trumpSuit ? (
+                    /* Revealed Trump Card Face */
+                    <div className="relative flex flex-col items-center justify-center p-2 text-center h-full w-full bg-gradient-to-br from-white via-slate-50 to-emerald-50">
+                      <SuitMark suit={state.trumpSuit} size={28} />
+                      <span className="mt-0.5 text-[0.62rem] sm:text-xs font-black text-slate-950 uppercase tracking-tight leading-none">
+                        {TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label}
+                      </span>
+                      <span className="text-[0.5rem] font-extrabold uppercase text-emerald-600 mt-0.5">
+                        Trump
+                      </span>
+                    </div>
+                  ) : (
+                    /* Concealed Trump Card Back with Lock Overlay */
+                    <div className="relative h-full w-full">
+                      <TwentyNineCardBack className="h-full w-full rounded-xl border-0" />
+                      <div className="absolute inset-0 bg-black/45 flex flex-col items-center justify-center p-1">
+                        <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-amber-300 drop-shadow" />
+                        {canRevealTrump ? (
+                          <span className="mt-1 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 px-1.5 py-0.5 text-[0.52rem] font-black uppercase text-black shadow-md group-hover:scale-105 transition-transform">
+                            REVEAL ⚡
+                          </span>
+                        ) : (
+                          <span className="mt-1 text-[0.52rem] font-bold text-amber-200/80 uppercase">
+                            Concealed
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          )}
+          ) : null}
 
-          {/* Directional Arrow (Screenshot 4 style!) */}
+          {/* TABLE CENTERPIECE: Bidding Center during bidding, or clean spacious felt during play */}
+          {state.phase === "bidding" ? (
+            <TwentyNineBiddingCenter state={state} currentUserId={currentUserId} />
+          ) : activeTrick.length > 0 && currentTrickPoints > 0 ? (
+            <div className="pointer-events-none relative z-10 flex items-center gap-1.5 rounded-full bg-black/70 border border-amber-400/40 px-3.5 py-1 backdrop-blur-md shadow-lg">
+              <span className="text-sm font-black text-amber-300">
+                +{currentTrickPoints} pts
+              </span>
+              <span className="text-[0.6rem] font-bold uppercase tracking-wider text-white/50">
+                in trick
+              </span>
+            </div>
+          ) : null}
+
+          {/* Directional Arrow pointing towards the winning player's seat */}
           <AnimatePresence>
-            {isHoldCompletedTrick && persistedCompletedTrick ? (
-              didMyTeamWinTrick ? (
-                /* Arrow pointing RIGHT to Your Team */
+            {isHoldCompletedTrick && persistedCompletedTrick && winnerSlot ? (
+              winnerSlot === "south" ? (
                 <motion.div
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: [0, 8, 0] }}
+                  key="arrow-south"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: [0, 8, 0] }}
                   exit={{ opacity: 0 }}
                   transition={{ repeat: Infinity, duration: 1.2 }}
-                  className="absolute right-[-1.5rem] sm:right-[-2.2rem] top-1/2 -translate-y-1/2 z-30 flex items-center gap-1 text-sky-400 font-black text-sm drop-shadow-[0_0_8px_rgba(56,189,248,0.8)]"
+                  className={cn(
+                    "absolute bottom-[-1.5rem] sm:bottom-[-2.2rem] left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 font-black text-sm",
+                    didMyTeamWinTrick
+                      ? "text-sky-400 drop-shadow-[0_0_8px_rgba(56,189,248,0.8)]"
+                      : "text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.8)]"
+                  )}
                 >
-                  <ArrowRight className="h-6 w-6 sm:h-8 sm:w-8" />
+                  <ArrowDown className="h-6 w-6 sm:h-8 sm:w-8" />
                 </motion.div>
-              ) : (
-                /* Arrow pointing LEFT to Opponent */
+              ) : winnerSlot === "north" ? (
                 <motion.div
+                  key="arrow-north"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: [0, -8, 0] }}
+                  exit={{ opacity: 0 }}
+                  transition={{ repeat: Infinity, duration: 1.2 }}
+                  className={cn(
+                    "absolute top-[-1.5rem] sm:top-[-2.2rem] left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 font-black text-sm",
+                    didMyTeamWinTrick
+                      ? "text-sky-400 drop-shadow-[0_0_8px_rgba(56,189,248,0.8)]"
+                      : "text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.8)]"
+                  )}
+                >
+                  <ArrowUp className="h-6 w-6 sm:h-8 sm:w-8" />
+                </motion.div>
+              ) : winnerSlot === "west" ? (
+                <motion.div
+                  key="arrow-west"
                   initial={{ opacity: 0, x: 10 }}
                   animate={{ opacity: 1, x: [0, -8, 0] }}
                   exit={{ opacity: 0 }}
                   transition={{ repeat: Infinity, duration: 1.2 }}
-                  className="absolute left-[-1.5rem] sm:left-[-2.2rem] top-1/2 -translate-y-1/2 z-30 flex items-center gap-1 text-rose-400 font-black text-sm drop-shadow-[0_0_8px_rgba(244,63,94,0.8)]"
+                  className={cn(
+                    "absolute left-[-1.5rem] sm:left-[-2.2rem] top-1/2 -translate-y-1/2 z-30 flex items-center gap-1 font-black text-sm",
+                    didMyTeamWinTrick
+                      ? "text-sky-400 drop-shadow-[0_0_8px_rgba(56,189,248,0.8)]"
+                      : "text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.8)]"
+                  )}
                 >
                   <ArrowLeft className="h-6 w-6 sm:h-8 sm:w-8" />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="arrow-east"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: [0, 8, 0] }}
+                  exit={{ opacity: 0 }}
+                  transition={{ repeat: Infinity, duration: 1.2 }}
+                  className={cn(
+                    "absolute right-[-1.5rem] sm:right-[-2.2rem] top-1/2 -translate-y-1/2 z-30 flex items-center gap-1 font-black text-sm",
+                    didMyTeamWinTrick
+                      ? "text-sky-400 drop-shadow-[0_0_8px_rgba(56,189,248,0.8)]"
+                      : "text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.8)]"
+                  )}
+                >
+                  <ArrowRight className="h-6 w-6 sm:h-8 sm:w-8" />
                 </motion.div>
               )
             ) : null}
           </AnimatePresence>
-
-          {/* LEFT FLANK: [Opponent Captured Deck] & [Trump Slot] (Anchored outside left edge of table circle) */}
-          <div className="absolute right-full top-1/2 -translate-y-1/2 mr-3 sm:mr-5 md:mr-7 flex items-center gap-2.5 sm:gap-4 pointer-events-auto">
-            {/* 1. OPPONENT CAPTURED DECK */}
-            <div className="flex flex-col items-center shrink-0">
-              <span className="mb-1 text-[0.62rem] sm:text-xs font-black uppercase tracking-wider text-rose-300">
-                Opponent
-              </span>
-              <div className="twenty-nine-felt-deck relative rounded-lg border border-white/20 overflow-hidden shadow-2xl transition hover:scale-105">
-                <TwentyNineCardBack className="h-full w-full rounded-lg" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-1 text-center">
-                  <span className="text-[0.6rem] sm:text-[0.68rem] font-black text-rose-200">
-                    {opponentTricks} Tricks
-                  </span>
-                  <span className="text-[0.55rem] font-bold text-white/50">
-                    {opponentPoints} pts
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* 2. PHYSICAL TRUMP CARD ON TABLE FELT */}
-            <div className="flex flex-col items-center shrink-0">
-              <div className="mb-1 flex items-center gap-1">
-                <span className="text-[0.62rem] sm:text-xs font-black uppercase tracking-wider text-amber-300 flex items-center gap-1">
-                  {state.trumpRevealed ? <Unlock className="h-3 w-3 text-emerald-400" /> : <Lock className="h-3 w-3 text-amber-300" />}
-                  Trump
-                </span>
-                <span
-                  className={cn(
-                    "rounded px-1.5 py-0.2 text-[0.52rem] font-black uppercase tracking-wider border",
-                    state.trumpRevealed
-                      ? "border-emerald-400/50 bg-emerald-950/80 text-emerald-300"
-                      : "border-amber-400/50 bg-amber-950/80 text-amber-300"
-                  )}
-                >
-                  {state.trumpRevealed ? "Revealed" : "Concealed"}
-                </span>
-              </div>
-
-              <div
-                onClick={canRevealTrump && onRevealTrump ? onRevealTrump : undefined}
-                className={cn(
-                  "twenty-nine-felt-deck relative rounded-lg border overflow-hidden shadow-2xl transition duration-300",
-                  state.trumpRevealed
-                    ? "border-emerald-400/80 shadow-[0_0_20px_rgba(52,211,153,0.5)] ring-2 ring-emerald-300"
-                    : "border-amber-400/50 shadow-lg",
-                  canRevealTrump && "cursor-pointer hover:scale-110 hover:border-amber-300 animate-pulse ring-2 ring-amber-400"
-                )}
-                title={
-                  state.trumpRevealed && state.trumpSuit
-                    ? `Trump: ${TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label}`
-                    : isViewerDeclarer && state.trumpSuit
-                    ? `You set: ${TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label} (Concealed - Hidden from Table)`
-                    : canRevealTrump
-                    ? "Click to ask/reveal Trump!"
-                    : "Trump card (Concealed)"
-                }
-              >
-                {/* If Trump is Revealed: Show the authentic card face or suit */}
-                {state.trumpRevealed && state.trumpSuit ? (
-                  <div className="h-full w-full bg-white flex flex-col items-center justify-center p-1 relative">
-                    <SuitMark suit={state.trumpSuit} size={28} />
-                    <span className="text-[0.65rem] font-black text-neutral-900 leading-tight">
-                      {TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label}
-                    </span>
-                    <span className="text-[0.5rem] font-black uppercase tracking-widest text-emerald-700 mt-0.5">
-                      ACTIVE
-                    </span>
-                  </div>
-                ) : (
-                  /* If Trump is Concealed: Show card back */
-                  <div className="relative h-full w-full">
-                    <TwentyNineCardBack className="h-full w-full rounded-lg" />
-                    {/* Peek badge for Declarer so they know what they set */}
-                    {isViewerDeclarer && state.trumpSuit ? (
-                      <div className="absolute inset-x-0 bottom-0 bg-black/90 py-1 px-0.5 flex flex-col items-center justify-center border-t border-amber-400/50">
-                        <div className="flex items-center gap-1 text-[0.6rem] font-black text-amber-300">
-                          <SuitMark suit={state.trumpSuit} size={12} />
-                          <span>{TWENTY_NINE_SUITS_INFO[state.trumpSuit]?.label}</span>
-                        </div>
-                        <span className="text-[0.45rem] font-bold text-amber-300 uppercase tracking-tighter">
-                          (Secret - Concealed)
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/30">
-                        <Lock className="h-4 w-4 text-amber-300 drop-shadow-md" />
-                      </div>
-                    )}
-
-                    {/* Prompt if local player can reveal */}
-                    {canRevealTrump ? (
-                      <div className="absolute inset-0 bg-amber-500/30 flex items-center justify-center">
-                        <span className="rounded bg-amber-400 px-1 text-[0.55rem] font-black text-black">
-                          REVEAL
-                        </span>
-                      </div>
-                    ) : null}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* RIGHT FLANK: [Your Team Captured Deck] (Anchored outside right edge of table circle) */}
-          <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 sm:ml-5 md:ml-7 flex items-center gap-2.5 sm:gap-4 pointer-events-auto">
-            {/* 4. YOUR TEAM CAPTURED DECK */}
-            <div className="flex flex-col items-center shrink-0">
-              <span className="mb-1 text-[0.62rem] sm:text-xs font-black uppercase tracking-wider text-sky-300">
-                Your Team
-              </span>
-              <div className="twenty-nine-felt-deck relative rounded-lg border border-white/20 overflow-hidden shadow-2xl transition hover:scale-105">
-                <TwentyNineCardBack className="h-full w-full rounded-lg" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-1 text-center">
-                  <span className="text-[0.6rem] sm:text-[0.68rem] font-black text-sky-200">
-                    {myTeamTricks} Tricks
-                  </span>
-                  <span className="text-[0.55rem] font-bold text-white/50">
-                    {myTeamPoints} pts
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -504,11 +419,11 @@ function SlotCardContainer({
         {isWinning ? <Crown className="h-3 w-3 text-amber-300" /> : null}
       </div>
 
-      {/* Card Face with organic rotation */}
-      <div className={cn("relative transition-transform duration-300", rotationClass)}>
-        <TwentyNineCardFace card={entry.card} size="lg" isWinning={isWinning} />
+      {/* Card Face with organic rotation - Enlarged to size="xl" & Scaled Up */}
+      <div className={cn("relative transition-transform duration-300 scale-110 sm:scale-[1.18]", rotationClass)}>
+        <TwentyNineCardFace card={entry.card} size="xl" isWinning={isWinning} />
         {isWinning ? (
-          <div className="absolute top-full mt-1.5 left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded-full border border-amber-300/80 bg-gradient-to-r from-amber-400 to-amber-500 px-2.5 py-0.5 text-[0.58rem] font-black uppercase tracking-widest text-amber-950 shadow-[0_0_15px_rgba(251,191,36,0.9)]">
+          <div className="absolute top-full mt-2 left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded-full border border-amber-400 bg-amber-950/90 px-3 py-0.5 text-[0.62rem] font-black uppercase tracking-widest text-white shadow-[0_0_15px_rgba(251,191,36,0.7)]">
             👑 WINNING
           </div>
         ) : null}
@@ -621,8 +536,8 @@ function TwentyNineBiddingCenter({
       {/* Turn Indicator */}
       <div className="mt-2.5">
         {isMyTurn ? (
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-gradient-to-r from-amber-400 to-yellow-400 px-4 py-1 text-xs font-black uppercase tracking-wider text-black shadow-[0_0_15px_rgba(251,191,36,0.8)] animate-pulse">
-            <Sparkles className="h-3.5 w-3.5" />
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/80 bg-gradient-to-r from-amber-950 via-amber-900 to-amber-950 px-4 py-1 text-xs font-black uppercase tracking-wider text-white shadow-[0_0_20px_rgba(251,191,36,0.5)] animate-pulse">
+            <Sparkles className="h-3.5 w-3.5 text-amber-300" />
             <span>Your Turn to Bid or Pass!</span>
           </div>
         ) : (
@@ -661,7 +576,7 @@ function TwentyNineBiddingCenter({
                 {isLeader ? <Crown className="h-2.5 w-2.5 text-amber-300 shrink-0" /> : null}
                 <span>{pName}:</span>
                 <span className="font-black">
-                  {entry.kind === "pass" ? "Pass" : entry.kind === "ditto" ? `Ditto (${entry.value})` : `${entry.value}`}
+                  {entry.kind === "pass" ? "Pass" : entry.kind === "ditto" ? `Achii (Ditto) (${entry.value})` : `${entry.value}`}
                 </span>
               </span>
             );

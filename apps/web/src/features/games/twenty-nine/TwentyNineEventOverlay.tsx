@@ -29,7 +29,7 @@ function playerName(
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return typeof value === "object" && value !== null;
 }
 
 function normalizeTwentyNineEvent(
@@ -46,53 +46,53 @@ function normalizeTwentyNineEvent(
     case "twenty-nine:bid":
       return {
         id: event.id,
-        badge: "AUCTION BID",
-        hugeTitle: `BID ${value ?? "PLACED"}`,
+        badge: `AUCTION BID · ${actor.toUpperCase()}`,
+        hugeTitle: `${actor}: BID ${value ?? ""}`,
         subtitle: `${actor} raised the contract to ${value}!`,
         tone: "amber",
-        durationMs: 2400
+        durationMs: 2500
       };
 
     case "twenty-nine:ditto":
       return {
         id: event.id,
-        badge: "AUCTION DITTO",
-        hugeTitle: `DITTO ${value ?? ""}!`,
-        subtitle: `${actor} matched the bid with Ditto!`,
+        badge: `ACHII · ${actor.toUpperCase()}`,
+        hugeTitle: `${actor}: ACHII!`,
+        subtitle: `${actor} matched the bid with Achii (Ditto)!`,
         tone: "violet",
-        durationMs: 2400
+        durationMs: 2600
       };
 
     case "twenty-nine:pass_bid":
       return {
         id: event.id,
-        badge: "AUCTION PASS",
-        hugeTitle: "PASS",
+        badge: `PASS · ${actor.toUpperCase()}`,
+        hugeTitle: `${actor}: PASSED`,
         subtitle: `${actor} passed the bid to the next player.`,
         tone: "sky",
-        durationMs: 1900
+        durationMs: 1800
       };
 
     case "twenty-nine:double":
       return {
         id: event.id,
-        badge: "STAKES RAISED",
-        hugeTitle: "DOUBLE! ×2",
+        badge: `DOUBLE · ${actor.toUpperCase()}`,
+        hugeTitle: `${actor}: DOUBLE! ×2`,
         subtitle: `${actor} doubled the contract stakes!`,
         tone: "rose",
         multiplier: 2,
-        durationMs: 2800
+        durationMs: 3000
       };
 
     case "twenty-nine:redouble":
       return {
         id: event.id,
-        badge: "HIGH STAKES",
-        hugeTitle: "REDOUBLE! ×4",
+        badge: `REDOUBLE · ${actor.toUpperCase()}`,
+        hugeTitle: `${actor}: REDOUBLE! ×4`,
         subtitle: `${actor} redoubled to ×4 contract stakes!`,
         tone: "rose",
         multiplier: 4,
-        durationMs: 3000
+        durationMs: 3200
       };
 
     case "twenty-nine:trump_revealed": {
@@ -101,7 +101,7 @@ function normalizeTwentyNineEvent(
       return {
         id: event.id,
         badge: "TRUMP REVEALED",
-        hugeTitle: `${suitName.toUpperCase()} TRUMP`,
+        hugeTitle: `${suitName.toUpperCase()} TRUMP!`,
         subtitle: `${actor} revealed the trump suit!`,
         tone: "emerald",
         suit: rawSuit ?? undefined,
@@ -113,11 +113,11 @@ function normalizeTwentyNineEvent(
       const team = typeof payload.team === "number" ? (payload.team === 0 ? "RED" : "BLUE") : "CONTRACT";
       return {
         id: event.id,
-        badge: "ROYAL PAIR",
-        hugeTitle: "PAIR DECLARED",
+        badge: "ROYAL MARRIAGE",
+        hugeTitle: "MARRIAGE! (±4)",
         subtitle: `Team ${team} showed King & Queen! Target adjusted by 4.`,
         tone: "violet",
-        durationMs: 2800
+        durationMs: 3000
       };
     }
 
@@ -125,10 +125,10 @@ function normalizeTwentyNineEvent(
       return {
         id: event.id,
         badge: "SOLO CHALLENGE",
-        hugeTitle: "SINGLE HAND!",
+        hugeTitle: "SINGLE HAND! (±3)",
         subtitle: `${actor} declared Single Hand and plays alone!`,
         tone: "violet",
-        durationMs: 3200
+        durationMs: 3400
       };
 
     case "twenty-nine:trick_won": {
@@ -140,10 +140,10 @@ function normalizeTwentyNineEvent(
       return {
         id: event.id,
         badge: `TRICK ${number} OF 8`,
-        hugeTitle: `${teamName} TAKES TRICK`,
+        hugeTitle: `${teamName} WINS TRICK`,
         subtitle: `${playerName(state, winnerId, currentUserId)} captured trick ${number} (+${points} pts)`,
         tone: winner?.team === 0 ? "rose" : "sky",
-        durationMs: 2400
+        durationMs: 2200
       };
     }
 
@@ -152,31 +152,32 @@ function normalizeTwentyNineEvent(
       if (!result) return null;
       const winnerTeam = result.succeeded ? result.declarerTeam : result.declarerTeam === 0 ? 1 : 0;
       const winnerTeamName = winnerTeam === 0 ? "TEAM RED" : "TEAM BLUE";
-      const biddingTeamName = result.declarerTeam === 0 ? "Red" : "Blue";
       const target = result.contractTarget;
       const points = result.teamPoints[String(result.declarerTeam) as "0" | "1"] ?? 0;
       const change = result.scoreChange > 0 ? `+${result.scoreChange}` : `${result.scoreChange}`;
 
       return {
         id: event.id,
-        badge: "HAND SCORED",
-        hugeTitle: result.succeeded ? `${winnerTeamName} WINS HAND` : "CONTRACT DEFEATED (SET)",
-        subtitle: `Team ${biddingTeamName} needed ${target} pts, took ${points} pts · Game pts: ${change}`,
-        tone: winnerTeam === 0 ? "rose" : "sky",
+        badge: `HAND #${result.handNumber} SCORED`,
+        hugeTitle: `${winnerTeamName} (${change})`,
+        subtitle: result.succeeded
+          ? `Contract succeeded! Captured ${points} pts (Target: ${target}).`
+          : `Contract defeated! Only captured ${points} pts (Target: ${target}).`,
+        tone: result.succeeded ? "emerald" : "rose",
         durationMs: 3600
       };
     }
 
     case "twenty-nine:game_over": {
-      const winner = state.winnerTeam;
-      const winnerLabel = winner === 0 ? "TEAM RED" : winner === 1 ? "TEAM BLUE" : "DRAW";
+      const winnerTeam = typeof payload.winnerTeam === "number" ? payload.winnerTeam : state.winnerTeam;
+      const winnerName = winnerTeam === 0 ? "TEAM RED" : "TEAM BLUE";
       return {
         id: event.id,
-        badge: "MATCH RESULT",
-        hugeTitle: `${winnerLabel} WINS!`,
-        subtitle: winner !== null ? `${winnerLabel} reached the victory score!` : "Match ended in a tie.",
-        tone: winner === 0 ? "rose" : winner === 1 ? "sky" : "amber",
-        durationMs: 4400
+        badge: "MATCH OVER",
+        hugeTitle: `${winnerName} VICTORIOUS!`,
+        subtitle: event.message ?? "The match has reached the target score!",
+        tone: "amber",
+        durationMs: 4000
       };
     }
 
@@ -185,31 +186,46 @@ function normalizeTwentyNineEvent(
   }
 }
 
-const TONE_CONFIGS = {
+const TONE_THEMES = {
   amber: {
-    color: "#fbbf24",
+    border: "border-amber-400",
+    bg: "bg-[linear-gradient(135deg,rgba(245,158,11,0.92),rgba(146,64,14,0.85)_45%,rgba(0,0,0,0.88)_100%)]",
     glow: "rgba(245, 158, 11, 0.8)",
-    soft: "rgba(245, 158, 11, 0.25)"
+    badgeBg: "bg-amber-400 text-slate-950",
+    textGlow: "drop-shadow-[0_0_16px_rgba(251,191,36,0.85)]",
+    shadow: "shadow-[0_0_36px_rgba(245,158,11,0.6),0_18px_40px_rgba(0,0,0,0.8)]"
   },
   rose: {
-    color: "#f43f5e",
-    glow: "rgba(244, 63, 94, 0.85)",
-    soft: "rgba(244, 63, 94, 0.25)"
+    border: "border-rose-500",
+    bg: "bg-[linear-gradient(135deg,rgba(225,29,72,0.92),rgba(136,19,55,0.85)_45%,rgba(0,0,0,0.88)_100%)]",
+    glow: "rgba(244, 63, 94, 0.8)",
+    badgeBg: "bg-rose-500 text-white",
+    textGlow: "drop-shadow-[0_0_16px_rgba(244,63,94,0.85)]",
+    shadow: "shadow-[0_0_36px_rgba(244,63,94,0.6),0_18px_40px_rgba(0,0,0,0.8)]"
   },
   emerald: {
-    color: "#34d399",
-    glow: "rgba(52, 211, 153, 0.85)",
-    soft: "rgba(52, 211, 153, 0.25)"
+    border: "border-emerald-400",
+    bg: "bg-[linear-gradient(135deg,rgba(16,185,129,0.92),rgba(6,78,59,0.85)_45%,rgba(0,0,0,0.88)_100%)]",
+    glow: "rgba(52, 211, 153, 0.8)",
+    badgeBg: "bg-emerald-400 text-slate-950",
+    textGlow: "drop-shadow-[0_0_16px_rgba(52,211,153,0.85)]",
+    shadow: "shadow-[0_0_36px_rgba(52,211,153,0.6),0_18px_40px_rgba(0,0,0,0.8)]"
   },
   sky: {
-    color: "#38bdf8",
+    border: "border-sky-400",
+    bg: "bg-[linear-gradient(135deg,rgba(2,132,199,0.92),rgba(12,74,110,0.85)_45%,rgba(0,0,0,0.88)_100%)]",
     glow: "rgba(56, 189, 248, 0.8)",
-    soft: "rgba(56, 189, 248, 0.25)"
+    badgeBg: "bg-sky-400 text-slate-950",
+    textGlow: "drop-shadow-[0_0_16px_rgba(56,189,248,0.85)]",
+    shadow: "shadow-[0_0_36px_rgba(56,189,248,0.6),0_18px_40px_rgba(0,0,0,0.8)]"
   },
   violet: {
-    color: "#c084fc",
+    border: "border-violet-400",
+    bg: "bg-[linear-gradient(135deg,rgba(168,85,247,0.92),rgba(88,28,135,0.85)_45%,rgba(0,0,0,0.88)_100%)]",
     glow: "rgba(168, 85, 247, 0.85)",
-    soft: "rgba(168, 85, 247, 0.25)"
+    badgeBg: "bg-violet-400 text-slate-950",
+    textGlow: "drop-shadow-[0_0_18px_rgba(168,85,247,0.85)]",
+    shadow: "shadow-[0_0_36px_rgba(168,85,247,0.6),0_18px_40px_rgba(0,0,0,0.8)]"
   }
 };
 
@@ -217,143 +233,116 @@ export function TwentyNineEventOverlay({
   gameEvents,
   state,
   currentUserId,
+  isElevated = false,
   className
 }: {
   gameEvents: GameEvent[];
   state: PublicTwentyNineState;
   currentUserId: string | null;
+  isElevated?: boolean;
   className?: string;
 }) {
   const reduceMotion = useReducedMotion();
   const [currentSpotlight, setCurrentSpotlight] = useState<NormalizedEvent | null>(null);
-  const processedIdsRef = useRef<Set<string>>(new Set(gameEvents.map((e) => e.id)));
-  const timeoutRef = useRef<number | null>(null);
+  const queueRef = useRef<NormalizedEvent[]>([]);
+  const isPlayingRef = useRef(false);
+  const processedEventIdsRef = useRef<Set<string>>(new Set());
 
+  // Enqueue new events
   useEffect(() => {
-    return () => {
-      if (timeoutRef.current !== null) {
-        window.clearTimeout(timeoutRef.current);
+    if (!gameEvents || gameEvents.length === 0) return;
+
+    for (const evt of gameEvents) {
+      if (processedEventIdsRef.current.has(evt.id)) continue;
+      processedEventIdsRef.current.add(evt.id);
+
+      const normalized = normalizeTwentyNineEvent(evt, state, currentUserId);
+      if (normalized) {
+        queueRef.current.push(normalized);
       }
-    };
-  }, []);
-
-  useEffect(() => {
-    const unseen = gameEvents.filter((event) => !processedIdsRef.current.has(event.id));
-    if (unseen.length === 0) return;
-
-    for (const event of unseen) {
-      processedIdsRef.current.add(event.id);
     }
 
-    const now = Date.now();
-    const candidates = unseen
-      .filter((event) => {
-        const createdAt = new Date(event.createdAt).getTime();
-        return Number.isFinite(createdAt) && now - createdAt >= -1000 && now - createdAt <= 12000;
-      })
-      .map((event) => normalizeTwentyNineEvent(event, state, currentUserId))
-      .filter((item): item is NormalizedEvent => item !== null);
-
-    const newest = candidates[candidates.length - 1];
-    if (!newest) return;
-
-    setCurrentSpotlight(newest);
-
-    if (timeoutRef.current !== null) {
-      window.clearTimeout(timeoutRef.current);
+    if (!isPlayingRef.current && queueRef.current.length > 0) {
+      playNext();
     }
-
-    timeoutRef.current = window.setTimeout(() => {
-      setCurrentSpotlight((curr) => (curr?.id === newest.id ? null : curr));
-      timeoutRef.current = null;
-    }, newest.durationMs);
   }, [gameEvents, state, currentUserId]);
 
-  const tone = currentSpotlight ? TONE_CONFIGS[currentSpotlight.tone] ?? TONE_CONFIGS.amber : TONE_CONFIGS.amber;
+  const playNext = () => {
+    const next = queueRef.current.shift();
+    if (!next) {
+      isPlayingRef.current = false;
+      setCurrentSpotlight(null);
+      return;
+    }
+
+    isPlayingRef.current = true;
+    setCurrentSpotlight(next);
+
+    setTimeout(() => {
+      playNext();
+    }, next.durationMs);
+  };
+
+  const tone = currentSpotlight ? TONE_THEMES[currentSpotlight.tone] : TONE_THEMES.amber;
 
   return (
     <div
       className={cn(
-        /* =========================================================================
-           POPUP ANIMATION OVERLAY POSITIONING:
-           Anchored directly above the local player's hand cards and to the right.
-           To manually tweak:
-             - Vertical position: change `bottom-3` (e.g. `bottom-1`, `bottom-6`, `bottom-10`)
-             - Horizontal position: change `right-4 sm:right-6 md:right-8` (e.g. `right-2`, `right-12`)
-           ========================================================================= */
-        "pointer-events-none absolute bottom-3 right-20 sm:right-24 md:right-26 z-[70] flex flex-col items-end overflow-visible select-none",
+        "pointer-events-none fixed sm:absolute z-50 flex items-center justify-center left-1/2 -translate-x-1/2 transition-all duration-300",
+        isElevated ? "bottom-[18.5rem] sm:bottom-[19.5rem]" : "bottom-[13rem] sm:bottom-[13.5rem]",
         className
       )}
     >
-      <AnimatePresence mode="popLayout">
+      <AnimatePresence mode="wait">
         {currentSpotlight ? (
           <motion.div
             key={currentSpotlight.id}
-            initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.88, y: 14, x: 8 }}
-            animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
-            exit={{ opacity: 0, scale: reduceMotion ? 1 : 0.9, y: 8, filter: "blur(6px)" }}
-            transition={{ duration: reduceMotion ? 0.15 : 0.28, ease: [0.16, 1, 0.3, 1] }}
-            className="relative flex flex-col items-end text-right rounded-2xl border border-white/15 bg-black/85 px-4 py-2.5 shadow-2xl backdrop-blur-xl max-w-xs sm:max-w-sm select-none"
+            initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.75, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: reduceMotion ? 1 : 0.9, y: -16, filter: "blur(6px)" }}
+            transition={{ type: "spring", stiffness: 380, damping: 26 }}
+            className={cn(
+              "relative flex flex-col items-center text-center rounded-[1.6rem] border-2 px-5 py-2.5 select-none min-w-[15rem] max-w-sm backdrop-blur-2xl",
+              tone.border,
+              tone.bg,
+              tone.shadow
+            )}
           >
-            {/* Soft Ambient Glow */}
-            <div
-              className="pointer-events-none absolute -inset-1 rounded-2xl opacity-60"
-              style={{
-                background: `radial-gradient(circle at 85% 50%, ${tone.soft} 0%, transparent 70%)`,
-                filter: "blur(10px)"
-              }}
+            {/* Ambient Pulsing Shockwave Glow */}
+            <motion.div
+              className="pointer-events-none absolute -inset-3 rounded-[2.2rem] blur-2xl opacity-80"
+              style={{ background: tone.glow }}
+              animate={{ opacity: [0.6, 1, 0.6], scale: [0.97, 1.05, 0.97] }}
+              transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
             />
 
-            {/* Compact Shockwave Ripple */}
-            {!reduceMotion ? (
-              <motion.div
-                className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 rounded-full border"
-                style={{ borderColor: tone.color }}
-                initial={{ width: 24, height: 24, opacity: 0.8, scale: 0.5 }}
-                animate={{ width: 120, height: 120, opacity: 0, scale: 1.3 }}
-                transition={{ duration: 0.7, ease: "easeOut" }}
-              />
-            ) : null}
-
-            {/* Header Badge & Suit Pill */}
+            {/* Header Badge */}
             <div className="relative z-10 flex items-center gap-1.5 mb-1">
               {currentSpotlight.suit ? (
-                <SuitMark
-                  suit={currentSpotlight.suit}
-                  color={
-                    currentSpotlight.suit === "hearts" || currentSpotlight.suit === "diamonds"
-                      ? "#fb7185"
-                      : "#34d399"
-                  }
-                  size={18}
-                />
+                <SuitMark suit={currentSpotlight.suit} size={16} className="drop-shadow" />
               ) : null}
               <span
-                className="rounded-full border px-2 py-0.5 text-[0.58rem] font-black uppercase tracking-[0.16em] shadow-sm backdrop-blur-md"
-                style={{
-                  borderColor: tone.color,
-                  backgroundColor: tone.soft,
-                  color: "#fff"
-                }}
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-[0.58rem] font-black uppercase tracking-[0.16em] shadow-sm",
+                  tone.badgeBg
+                )}
               >
                 {currentSpotlight.badge}
               </span>
             </div>
 
-            {/* Popup Title:
-                Adjust font size here: `text-base sm:text-lg md:text-xl` */}
+            {/* Huge Punchy Title (UNO Style) */}
             <h3
-              className="relative z-10 text-base sm:text-lg md:text-xl font-black tracking-tight leading-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)]"
-              style={{
-                textShadow: `0 0 16px ${tone.glow}`
-              }}
+              className={cn(
+                "relative z-10 text-lg sm:text-xl font-black uppercase tracking-tight text-white leading-tight",
+                tone.textGlow
+              )}
             >
               {currentSpotlight.hugeTitle}
             </h3>
 
-            {/* Subtitle Details:
-                Adjust font size here: `text-[0.68rem] sm:text-xs` */}
-            <p className="relative z-10 mt-0.5 max-w-[260px] sm:max-w-[320px] text-[0.68rem] sm:text-xs font-semibold text-white/85 tracking-wide drop-shadow-sm leading-snug">
+            {/* Subtitle Description */}
+            <p className="relative z-10 mt-0.5 max-w-[240px] text-[0.72rem] font-semibold text-white/90 leading-snug drop-shadow-sm">
               {currentSpotlight.subtitle}
             </p>
           </motion.div>

@@ -10,7 +10,7 @@ const rootDir = path.resolve(scriptDir, "../../..");
 const rootEnv = path.resolve(rootDir, ".env");
 const packageEnv = path.resolve(packageDir, ".env");
 
-dotenv.config({ path: rootEnv });
+dotenv.config({ path: rootEnv, override: process.env.NODE_ENV !== "production" });
 dotenv.config({ path: packageEnv, override: false });
 
 const require = createRequire(import.meta.url);

@@ -896,6 +896,7 @@ export function ClassicUnoTable({
                     originRef={spotlightOriginRef}
                     activeSeatAngle={activeSeatAngle}
                     currentColor={state.currentColor}
+                    direction={state.direction}
                     isNoMercy={isNoMercy}
                   />
 
@@ -1082,7 +1083,7 @@ export function ClassicUnoTable({
                     </div>
                   </div>
 
-                  <div className="relative z-10 flex min-h-0 items-center justify-center gap-3 pb-2 sm:pb-3">
+                  <div className="relative z-10 flex min-h-0 items-center justify-center gap-3 pb-1 sm:pb-2">
                     {me ? (
                       <div ref={registerSeatRef(me.userId)} className="relative z-30 shrink-0 self-center">
                         <div

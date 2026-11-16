@@ -80,6 +80,14 @@ export class RoomManager {
   private readonly roomIdByCode = new Map<string, string>();
   private readonly chatRateLimiter = new ChatRateLimiter(5, 5_000);
   private readonly reactionRateLimiter = new ChatRateLimiter(2, 1_500);
+  private roomEndListeners: ((room: RoomRuntime) => void)[] = [];
+
+  onRoomEnded(listener: (room: RoomRuntime) => void): () => void {
+    this.roomEndListeners.push(listener);
+    return () => {
+      this.roomEndListeners = this.roomEndListeners.filter((l) => l !== listener);
+    };
+  }
 
   constructor(
     private readonly registry: GameRegistry = gameRegistry,
@@ -522,6 +530,13 @@ export class RoomManager {
       }
     });
     await this.saveSnapshot(room);
+    for (const listener of this.roomEndListeners) {
+      try {
+        listener(room);
+      } catch (err) {
+        console.error("Error notifying roomEndListener:", err);
+      }
+    }
     return room;
   }
 

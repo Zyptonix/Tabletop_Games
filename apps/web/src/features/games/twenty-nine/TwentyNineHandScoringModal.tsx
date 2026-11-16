@@ -17,6 +17,7 @@ import {
 import type { PublicTwentyNineState, TwentyNineHandResult } from "@tabletop/game-core";
 import { cn } from "@/lib/utils/cn";
 import { casinoAudio } from "../casino/casinoAudio";
+import { TwentyNineHandCancelledModal } from "./TwentyNineHandCancelledModal";
 
 export interface TwentyNineHandScoringModalProps {
   result: TwentyNineHandResult | null;
@@ -43,7 +44,7 @@ export function TwentyNineHandScoringModal({
   const handNumber = result?.handNumber;
 
   useEffect(() => {
-    if (!result) return;
+    if (!result || result.cancelled) return;
 
     if (isReview) {
       setStage(3);
@@ -90,6 +91,18 @@ export function TwentyNineHandScoringModal({
   }, [handNumber, isReview]);
 
   if (!result) return null;
+
+  if (result.cancelled) {
+    return (
+      <TwentyNineHandCancelledModal
+        result={result}
+        state={state}
+        currentUserId={currentUserId}
+        onDismiss={onDismiss}
+        isReview={isReview}
+      />
+    );
+  }
 
   const declarer = state.players.find((p) => p.userId === result.declarerId);
   const declarerName = declarer?.displayName ?? "Declarer";

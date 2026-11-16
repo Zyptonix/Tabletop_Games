@@ -406,6 +406,42 @@ describe("Bangladesh 29", () => {
     expect(next.lastHandResult).not.toBeNull();
   });
 
+  it("does not allow skipping hand when trump is not revealed and marriage is still possible", () => {
+    const state = makeState();
+    state.phase = "playing";
+    state.declarerId = "p0";
+    state.contractTarget = 16;
+    state.trumpSuit = "hearts";
+    state.trumpRevealed = false;
+    state.pairDeclaredTeam = null;
+    state.capturedPointsByTeam = { "0": 16, "1": 4 };
+
+    // Trump is not revealed and neither K nor Q of hearts has been played yet
+    const legal = getLegalTwentyNineActions({ state, playerId: "p0" });
+    expect(legal).not.toContainEqual({ type: "skip_hand" });
+
+    // But if Queen of trump was already played in a completed trick, marriage is impossible:
+    state.completedTricks = [
+      {
+        number: 1,
+        cards: [
+          { playerId: "p1", card: { id: "hq", suit: "hearts", rank: "Q", points: 0 } },
+          { playerId: "p2", card: { id: "c7", suit: "clubs", rank: "7", points: 0 } },
+          { playerId: "p3", card: { id: "c8", suit: "clubs", rank: "8", points: 0 } },
+          { playerId: "p0", card: { id: "cj", suit: "clubs", rank: "J", points: 3 } }
+        ],
+        winnerPlayerId: "p0",
+        winnerTeam: 0,
+        ledSuit: "clubs",
+        points: 3,
+        trumpWasRevealed: false
+      }
+    ];
+
+    const legalAfterKQ = getLegalTwentyNineActions({ state, playerId: "p0" });
+    expect(legalAfterKQ).toContainEqual({ type: "skip_hand" });
+  });
+
   it("keeps the seventh trump card private until reveal", () => {
     const state = makeState();
     const seventh: TwentyNineCard = { id: "hidden-seventh", suit: "clubs", rank: "A", points: 1 };
