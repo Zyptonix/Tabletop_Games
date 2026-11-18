@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { TwentyNineCard as CardType, TwentyNineSuit } from "@tabletop/game-core";
 import { cn } from "@/lib/utils/cn";
+import { getCardAssetCandidates, getCardBackCandidates } from "@/lib/playing-card-assets";
 
 export const TWENTY_NINE_SUITS_INFO: Record<
   TwentyNineSuit,
@@ -62,16 +63,7 @@ export function CardSpriteImage({
   suit: TwentyNineSuit;
   className?: string;
 }) {
-  const filename = `${rank}_of_${suit}.png`;
-  const candidates = useMemo(
-    () => [
-      `/game-assets/twenty-nine/cards_better/${filename}`,
-      `/game-assets/twenty-nine/cards/${filename}`,
-      `/game-assets/twenty-nine/${filename}`,
-      `/game-assets/29/cards/${filename}`
-    ],
-    [filename]
-  );
+  const candidates = useMemo(() => getCardAssetCandidates(rank, suit), [rank, suit]);
   const [index, setIndex] = useState(0);
 
   if (index >= candidates.length) {
@@ -98,21 +90,7 @@ export function TwentyNineCardBack({
   small?: boolean;
   variant?: "default" | "clean";
 }) {
-  const candidates = useMemo(
-    () =>
-      variant === "clean"
-        ? [
-            "/game-assets/twenty-nine/cards_clean_back.svg",
-            "/game-assets/twenty-nine/cards_clean_back.jpg",
-            "/game-assets/twenty-nine/cards_better/back.png",
-            "/game-assets/twenty-nine/cards/back.png"
-          ]
-        : [
-            "/game-assets/twenty-nine/cards_better/back.png",
-            "/game-assets/twenty-nine/cards/back.png"
-          ],
-    [variant]
-  );
+  const candidates = useMemo(() => getCardBackCandidates(variant), [variant]);
   const [index, setIndex] = useState(0);
 
   return (

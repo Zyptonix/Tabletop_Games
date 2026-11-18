@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
+import { getCardAssetCandidates, getCardBackCandidates } from "@/lib/playing-card-assets";
 
 const SUIT_TO_NAME: Record<string, string> = {
   "♠": "spades",
@@ -50,13 +51,11 @@ export function CasinoPlayingCard({
 
   const candidates = useMemo(() => {
     if (isHidden || !rank || !suitName) return [];
-    return [
-      `/game-assets/twenty-nine/cards_better/${rank}_of_${suitName}.png`,
-      `/game-assets/twenty-nine/cards/${rank}_of_${suitName}.png`,
-      `/game-assets/twenty-nine/${rank}_of_${suitName}.png`,
-      `/game-assets/29/cards/${rank}_of_${suitName}.png`
-    ];
+    return getCardAssetCandidates(rank, suitName);
   }, [isHidden, rank, suitName]);
+
+  const backCandidates = useMemo(() => getCardBackCandidates("default"), []);
+  const [backIndex, setBackIndex] = useState(0);
 
   const [imgIndex, setImgIndex] = useState(0);
 
@@ -97,12 +96,15 @@ export function CasinoPlayingCard({
     >
       {isHidden ? (
         <div className="relative flex h-full w-full items-center justify-center overflow-hidden bg-[#7f1d1d]">
-          <img
-            src="/game-assets/twenty-nine/cards/back.png"
-            alt="Card Back"
-            draggable={false}
-            className="absolute inset-0 h-full w-full object-cover select-none pointer-events-none"
-          />
+          {backCandidates.length > 0 && backIndex < backCandidates.length ? (
+            <img
+              src={backCandidates[backIndex]}
+              alt="Card Back"
+              draggable={false}
+              className="absolute inset-0 h-full w-full object-cover select-none pointer-events-none"
+              onError={() => setBackIndex((prev) => prev + 1)}
+            />
+          ) : null}
           {/* Subtle gold foil emblem overlay */}
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <span className="text-amber-300/40 text-xs sm:text-sm font-black drop-shadow">

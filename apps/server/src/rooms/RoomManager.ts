@@ -80,9 +80,9 @@ export class RoomManager {
   private readonly roomIdByCode = new Map<string, string>();
   private readonly chatRateLimiter = new ChatRateLimiter(5, 5_000);
   private readonly reactionRateLimiter = new ChatRateLimiter(2, 1_500);
-  private roomEndListeners: ((room: RoomRuntime) => void)[] = [];
+  private roomEndListeners: ((room: RoomRuntime, reason?: string) => void)[] = [];
 
-  onRoomEnded(listener: (room: RoomRuntime) => void): () => void {
+  onRoomEnded(listener: (room: RoomRuntime, reason?: string) => void): () => void {
     this.roomEndListeners.push(listener);
     return () => {
       this.roomEndListeners = this.roomEndListeners.filter((l) => l !== listener);
@@ -100,17 +100,23 @@ export class RoomManager {
   }
 
   listActiveRooms(): ActiveRoomSummary[] {
-    return [...this.roomsById.values()].map((room) => ({
-      id: room.id,
-      code: room.code,
-      gameId: room.gameId,
-      status: room.status,
-      playerCount: room.players.length,
-      connectedCount: room.players.filter((player) => player.connected).length,
-      hostUserId: room.hostUserId,
-      actionNumber: room.actionNumber,
-      createdAt: room.createdAt
-    }));
+    return [...this.roomsById.values()]
+      .filter((room) => room.status !== "abandoned" && room.status !== "finished")
+      .map((room) => {
+        const hostPlayer = room.players.find((player) => player.userId === room.hostUserId);
+        return {
+          id: room.id,
+          code: room.code,
+          gameId: room.gameId,
+          status: room.status,
+          playerCount: room.players.length,
+          connectedCount: room.players.filter((player) => player.connected).length,
+          hostUserId: room.hostUserId,
+          hostDisplayName: hostPlayer?.displayName,
+          actionNumber: room.actionNumber,
+          createdAt: room.createdAt
+        };
+      });
   }
 
   listJoinableRooms(): JoinableRoomSummary[] {
@@ -515,13 +521,13 @@ export class RoomManager {
     return room;
   }
 
-  async endRoom(roomId: string, userId: string, admin = false): Promise<RoomRuntime> {
+  async endRoom(roomId: string, userId: string, admin = false, reason = "Host ended the game room."): Promise<RoomRuntime> {
     const room = this.requireRoom(roomId);
     if (!admin) {
       this.requireHost(room, userId);
     }
     room.status = "abandoned";
-    this.addSystemMessage(room, "Room ended.");
+    this.addSystemMessage(room, reason);
     await prisma.room.update({
       where: { id: room.id },
       data: {
@@ -532,12 +538,50 @@ export class RoomManager {
     await this.saveSnapshot(room);
     for (const listener of this.roomEndListeners) {
       try {
-        listener(room);
+        listener(room, reason);
       } catch (err) {
         console.error("Error notifying roomEndListener:", err);
       }
     }
     return room;
+  }
+
+  async removeRoom(roomId: string, userId: string, admin = false): Promise<void> {
+    const reason = admin ? "This game room was removed by an administrator." : "Room ended.";
+    const room = this.roomsById.get(roomId);
+    if (room) {
+      if (!admin) {
+        this.requireHost(room, userId);
+      }
+      room.status = "abandoned";
+      this.addSystemMessage(room, reason);
+      await prisma.room.update({
+        where: { id: room.id },
+        data: {
+          status: "abandoned",
+          endedAt: new Date()
+        }
+      }).catch((err) => console.error("Error updating room status in DB:", err));
+
+      await this.saveSnapshot(room).catch((err) => console.error("Error saving snapshot:", err));
+
+      for (const listener of this.roomEndListeners) {
+        try {
+          listener(room, reason);
+        } catch (err) {
+          console.error("Error notifying roomEndListener:", err);
+        }
+      }
+
+      this.roomsById.delete(room.id);
+      this.roomIdByCode.delete(room.code.toUpperCase());
+      this.roomIdByCode.delete(room.code);
+    } else {
+      await prisma.room.updateMany({
+        where: { id: roomId, status: { notIn: ["abandoned", "finished"] } },
+        data: { status: "abandoned", endedAt: new Date() }
+      }).catch(() => {});
+    }
   }
 
   async updateRoomSettings(roomId: string, userId: string, settings: Record<string, unknown>): Promise<RoomRuntime> {

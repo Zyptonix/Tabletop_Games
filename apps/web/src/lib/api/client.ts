@@ -1,4 +1,4 @@
-import type { AuthUser, CreateFeedbackInput, FeedbackItem, JoinableRoomSummary, RoomStateView } from "@tabletop/shared";
+import type { ActiveRoomSummary, AuthUser, CreateFeedbackInput, FeedbackItem, JoinableRoomSummary, RoomStateView } from "@tabletop/shared";
 
 export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || "/api").replace(/\/$/, "");
 const TOKEN_KEY = "tabletop_token";
@@ -220,7 +220,11 @@ export const api = {
         totalGamesPlayed: number;
       };
     }>("/leaderboards/summary"),
-  activeRooms: () => request<{ rooms: unknown[] }>("/admin/rooms"),
+  activeRooms: () => request<{ rooms: ActiveRoomSummary[] }>("/admin/rooms"),
+  adminRemoveRoom: (roomId: string) =>
+    request<{ ok: true; roomId: string }>(`/admin/rooms/${roomId}`, {
+      method: "DELETE"
+    }),
   getFeedbacks: (params?: { gameId?: string; category?: string; status?: string }) => {
     const searchParams = new URLSearchParams();
     if (params?.gameId && params.gameId !== "all") searchParams.set("gameId", params.gameId);

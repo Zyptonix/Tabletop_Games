@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Copy, Loader2, Sparkles, Zap } from "lucide-react";
 import type {
@@ -34,6 +34,7 @@ import { MafiaWerewolfTable } from "@/features/games/mafia-werewolf/MafiaWerewol
 import { SnakesAndLaddersTable, PiecePicker } from "@/features/games/snakes-and-ladders";
 import { REACTION_PREFIX } from "@/features/games/classic-uno/ReactionOverlay";
 import { GamePausedOverlay } from "@/components/game/GamePausedOverlay";
+import { preloadTwentyNineCards, preloadFullCardDeck } from "@/lib/playing-card-assets";
 
 export default function RoomPage() {
   const params = useParams<{ code: string }>();
@@ -48,6 +49,16 @@ export default function RoomPage() {
   const [guestJoining, setGuestJoining] = useState(false);
   const [guestError, setGuestError] = useState<string | null>(null);
   const [showLoginInRoom, setShowLoginInRoom] = useState(false);
+
+  // Preload and stash card graphics when in lobby or playing
+  useEffect(() => {
+    const gameId = socketState.room?.gameId;
+    if (gameId === "twenty-nine") {
+      preloadTwentyNineCards();
+    } else if (gameId === "blackjack" || gameId === "poker") {
+      preloadFullCardDeck();
+    }
+  }, [socketState.room?.gameId]);
 
   if (loading) {
     return (
@@ -197,6 +208,19 @@ export default function RoomPage() {
     <AppShell wide={room.status !== "lobby"}>
       {socketState.error ? (
         <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800">{socketState.error}</div>
+      ) : null}
+      {socketState.roomEnded ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+          <div className="w-full max-w-md rounded-2xl border border-white/20 bg-slate-900 p-6 text-center text-white shadow-2xl">
+            <h3 className="text-xl font-black">Game Ended</h3>
+            <p className="mt-2 text-sm text-slate-300">
+              {socketState.roomEnded.reason ?? "This game room has been closed."}
+            </p>
+            <Button className="mt-5 w-full" onClick={() => (window.location.href = "/")}>
+              Return to Arena Lobby
+            </Button>
+          </div>
+        </div>
       ) : null}
       <GameShell
         connected={socketState.connected}

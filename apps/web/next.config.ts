@@ -9,6 +9,37 @@ dotenv.config({ path: path.resolve(configDir, "../..", ".env") });
 const nextConfig: NextConfig = {
   transpilePackages: ["@tabletop/shared", "@tabletop/game-core"],
   reactStrictMode: true,
+  async headers() {
+    return [
+      {
+        source: "/game-assets/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        source: "/card-themes/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        source: "/assets/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable"
+          }
+        ]
+      }
+    ];
+  },
   async rewrites() {
     const raw =
       process.env.SERVER_INTERNAL_URL ||

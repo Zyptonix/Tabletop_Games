@@ -3,7 +3,7 @@ services:
     name: tabletop-arena-server
     runtime: node
     plan: free
-    region: oregon
+    region: singapore
     buildCommand: corepack enable && pnpm install --frozen-lockfile=false --prod=false && pnpm run build:server
     startCommand: pnpm --filter @tabletop/server start
     healthCheckPath: /health

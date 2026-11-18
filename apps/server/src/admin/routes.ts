@@ -239,8 +239,28 @@ export function createAdminRouter(manager: RoomManager) {
     }
 
     try {
-      const room = await manager.endRoom(parsed.data.roomId, request.user.id, true);
+      const room = await manager.endRoom(
+        parsed.data.roomId,
+        request.user.id,
+        true,
+        "This game room was ended by an administrator."
+      );
       response.json({ room: manager.getRoomStateView(room) });
+    } catch (error) {
+      routeError(response, error);
+    }
+  });
+
+  router.delete("/admin/rooms/:roomId", async (request, response) => {
+    const parsed = roomIdSchema.safeParse(request.params);
+    if (!parsed.success || !request.user) {
+      sendError(response, 400, ERROR_CODES.INVALID_PAYLOAD, "Invalid room id.");
+      return;
+    }
+
+    try {
+      await manager.removeRoom(parsed.data.roomId, request.user.id, true);
+      response.json({ ok: true, roomId: parsed.data.roomId });
     } catch (error) {
       routeError(response, error);
     }

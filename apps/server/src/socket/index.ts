@@ -265,12 +265,12 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
 
   timers = new RoomTimers(io as unknown as Server<ClientToServerEvents, ServerToClientEvents>, manager, emitRoom);
 
-  manager.onRoomEnded((room) => {
+  manager.onRoomEnded((room, reason) => {
     emitRoom(room);
     io.to(room.id).emit("room:ended", {
       roomId: room.id,
       code: room.code,
-      reason: "Host ended the game room."
+      reason: reason || "Host ended the game room."
     });
   });
 
