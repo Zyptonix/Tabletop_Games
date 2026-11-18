@@ -13,7 +13,8 @@ import {
   Sparkles,
   X,
   History,
-  Compass
+  Compass,
+  ScrollText
 } from "lucide-react";
 import type {
   GameEvent,
@@ -61,13 +62,35 @@ export function SnakesAndLaddersTable({
 }: SnakesAndLaddersTableProps) {
   const router = useRouter();
   const [showPieceModal, setShowPieceModal] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<"standings" | "chat">("standings");
+  const [sidebarTab, setSidebarTab] = useState<"chronicle" | "chat">("chronicle");
+  const [isMoveAnimating, setIsMoveAnimating] = useState(false);
 
   const me = state.players.find((p) => p.userId === currentUserId);
   const isMyTurn = state.currentPlayerId === currentUserId;
   const currentPlayer = state.players.find((p) => p.userId === state.currentPlayerId);
   const isHost = room.effectiveHostUserId === currentUserId;
   const isFinished = state.phase === "finished";
+
+  // Lock out roll actions while a dice roll or piece move animation is actively in flight
+  useEffect(() => {
+    if (!state.lastMove) {
+      setIsMoveAnimating(false);
+      return;
+    }
+    const move = state.lastMove;
+    const rolled = move.rolled ?? 1;
+    const rollTime = 850;
+    const stepTime = (rolled + 1) * 300;
+    const pauseBeforeEvent = (move.ladder || move.snake) ? 500 : 0;
+    const specialTime = move.ladder ? 1600 : move.snake ? 3000 : move.entered ? 600 : 0;
+    const totalDuration = rollTime + stepTime + pauseBeforeEvent + specialTime;
+
+    setIsMoveAnimating(true);
+    const t = setTimeout(() => {
+      setIsMoveAnimating(false);
+    }, totalDuration);
+    return () => clearTimeout(t);
+  }, [state.actionNumber, state.lastMove]);
 
   // Automatically sync preferred piece if selected in lobby or changed
   useEffect(() => {
@@ -84,6 +107,7 @@ export function SnakesAndLaddersTable({
 
   const canRoll = Boolean(
     isMyTurn &&
+      !isMoveAnimating &&
       legalActions.some((a: unknown) => typeof a === "object" && a !== null && (a as { type: string }).type === "roll_dice")
   );
 
@@ -202,101 +226,160 @@ export function SnakesAndLaddersTable({
       </header>
 
       {/* 3-COLUMN MAIN LAYOUT:
-          LEFT: 2-Column Player Track (Positions & Last Turn Rolls) - Fits 10+ players on screen without scrolling
-          CENTER: Giant Board (Takes 100% full vertical height)
-          RIGHT: Dedicated Starting Camp Box, 3D Tumbling Dice & Standings/Chat
+          LEFT: Sleek Unified Race Leaderboard (Rankings, Avatars, Progress Bars, Recent Rolls)
+          CENTER: Giant Board (100% full vertical height)
+          RIGHT: Dice Arena, Starting Pavilion & Live Chronicle/Chat
       */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* LEFT COLUMN: 2-COLUMN PLAYER TRACK (NO STARTING CAMP, CLEAN & EXPANSIVE) */}
-        <aside className="w-80 lg:w-[380px] xl:w-[430px] shrink-0 border-r border-white/10 bg-[#0a121c] flex flex-col min-h-0 overflow-hidden">
-          <div className="flex items-center justify-between border-b border-white/10 px-3 py-2 bg-black/20">
-            <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-amber-300">
-              <Compass className="h-3.5 w-3.5" />
-              <span>Players & Recent Rolls</span>
-            </span>
-            <span className="rounded-full bg-white/10 px-2 py-0.5 text-[9px] font-black text-white/70">
+        {/* LEFT COLUMN: THE RACE LEADERBOARD */}
+        <aside className="w-72 lg:w-80 xl:w-[350px] shrink-0 border-r border-white/10 bg-[#09111b] flex flex-col min-h-0 overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-white/10 px-3.5 py-3 bg-gradient-to-r from-amber-500/10 via-transparent to-transparent">
+            <div className="flex items-center gap-2">
+              <div className="grid h-7 w-7 place-items-center rounded-lg bg-amber-500/20 text-amber-400 border border-amber-400/30 shadow-sm">
+                <Trophy className="h-4 w-4" />
+              </div>
+              <div>
+                <h2 className="text-xs font-black uppercase tracking-wider text-white">
+                  Race Standings
+                </h2>
+                <p className="text-[9.5px] text-white/50">First to Square 100 wins</p>
+              </div>
+            </div>
+            <span className="rounded-full bg-white/10 border border-white/10 px-2.5 py-0.5 text-[10px] font-bold text-white/80">
               {state.players.length} Players
             </span>
           </div>
 
-          {/* TWO-COLUMN GRID OF PLAYER CARDS - Compact, pretty, and fits on screen without scrolling */}
-          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-2 scrollbar-thin scrollbar-thumb-white/20 hover:scrollbar-thumb-white/30">
-            <div className="grid grid-cols-2 gap-1.5">
-              {state.players.map((player) => {
-                const pieceInfo = SNAKES_AND_LADDERS_PIECES.find((p) => p.id === player.piece);
-                const color = PLAYER_COLORS[player.seat % PLAYER_COLORS.length] ?? "#F59E0B";
-                const isTurn = player.userId === state.currentPlayerId;
-                const isMe = player.userId === currentUserId;
-                const badge = getPlayerBadge(player, currentUserId);
+          {/* Unified Leaderboard List - Single column, sorted by position descending */}
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-2.5 space-y-2 scrollbar-thin scrollbar-thumb-white/20 hover:scrollbar-thumb-white/30">
+            {sortedStandings.map((player, rank) => {
+              const pieceInfo = SNAKES_AND_LADDERS_PIECES.find((p) => p.id === player.piece);
+              const color = PLAYER_COLORS[player.seat % PLAYER_COLORS.length] ?? "#F59E0B";
+              const isTurn = player.userId === state.currentPlayerId;
+              const isMe = player.userId === currentUserId;
+              const isWinner = player.position === 100;
+              const badge = getPlayerBadge(player, currentUserId);
+              const progressPercent = Math.min(100, Math.max(player.position === 0 ? 0 : 2, player.position));
 
-                return (
-                  <div
-                    key={player.userId}
-                    className={`flex flex-col justify-between rounded-xl border p-2 transition-all min-h-[58px] ${
-                      isTurn
-                        ? "border-amber-400 bg-gradient-to-br from-amber-500/25 to-amber-600/10 ring-2 ring-amber-400/50 shadow-[0_0_12px_rgba(251,191,36,0.3)]"
-                        : isMe
-                        ? "border-amber-400/40 bg-white/[0.04]"
-                        : "border-white/10 bg-black/30 hover:border-white/20 hover:bg-white/[0.02]"
-                    }`}
-                  >
-                    {/* Top Row: Token + Name + Current Square */}
-                    <div className="flex items-center gap-1.5 min-w-0">
+              return (
+                <div
+                  key={player.userId}
+                  className={`group relative flex flex-col justify-between rounded-xl border p-2.5 transition-all ${
+                    isWinner
+                      ? "border-amber-400 bg-gradient-to-r from-amber-500/25 via-amber-600/10 to-transparent ring-2 ring-amber-400/50 shadow-[0_0_20px_rgba(251,191,36,0.3)]"
+                      : isTurn
+                      ? "border-amber-400/80 bg-gradient-to-r from-amber-500/20 via-amber-600/10 to-transparent ring-2 ring-amber-400/40 shadow-[0_0_14px_rgba(251,191,36,0.25)]"
+                      : isMe
+                      ? "border-amber-400/40 bg-white/[0.04] hover:bg-white/[0.07]"
+                      : "border-white/10 bg-black/30 hover:border-white/20 hover:bg-white/[0.02]"
+                  }`}
+                >
+                  {/* Top Row: Rank Badge, Token, Name + Tag, and Square Position */}
+                  <div className="flex items-center justify-between gap-2 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {/* Rank Badge */}
+                      <span className="grid h-6 w-6 place-items-center rounded-lg bg-black/50 text-xs font-black text-amber-300 shrink-0 border border-white/5">
+                        {rank === 0 ? "🥇" : rank === 1 ? "🥈" : rank === 2 ? "🥉" : `#${rank + 1}`}
+                      </span>
+
+                      {/* Piece Token */}
                       <span
-                        className="relative grid h-7 w-7 place-items-center rounded-lg border-2 text-base shrink-0 shadow"
+                        className="relative grid h-8 w-8 place-items-center rounded-xl border-2 text-base shrink-0 shadow-sm"
                         style={{ borderColor: isMe ? "#FBBF24" : color, backgroundColor: `${color}25` }}
                       >
                         {pieceInfo?.emoji ?? "🎲"}
                         <span
-                          className="absolute -top-1.5 -right-1.5 rounded-full bg-slate-900 px-0.5 text-[7px] font-black border"
+                          className="absolute -top-1.5 -right-1.5 rounded-full bg-slate-900 px-1 py-0.2 text-[7px] font-black border"
                           style={{ borderColor: isMe ? "#FBBF24" : color, color: isMe ? "#FBBF24" : color }}
                         >
                           {badge}
                         </span>
                       </span>
 
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1">
-                          <p className="text-[11px] font-black text-white truncate leading-tight">
+                      {/* Player Name and Badges */}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-black text-white truncate max-w-[110px] leading-tight">
                             {player.displayName}
                           </p>
                           {isMe ? (
-                            <span className="rounded bg-amber-400/20 px-0.5 text-[7px] font-black text-amber-300">
+                            <span className="rounded bg-amber-400/25 border border-amber-400/30 px-1 text-[7.5px] font-black text-amber-300">
                               YOU
                             </span>
                           ) : null}
                           {player.isBot ? (
-                            <span className="rounded bg-purple-400/20 px-0.5 text-[7px] font-black text-purple-300">
+                            <span className="rounded bg-purple-400/20 border border-purple-400/30 px-1 text-[7.5px] font-black text-purple-300">
                               BOT
                             </span>
                           ) : null}
                         </div>
-                        <p className="text-[9px] font-bold text-amber-300/90 leading-tight">
-                          {player.position === 0 ? "🏕️ Camp (0)" : `📍 Sq ${player.position}`}
-                        </p>
+                        {isTurn ? (
+                          <span className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-300 animate-pulse mt-0.5">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-400" /> Current Turn
+                          </span>
+                        ) : null}
                       </div>
                     </div>
 
-                    {/* Bottom Row: Last Turn Roll */}
-                    <div className="mt-1 flex items-center justify-between rounded-md border border-white/5 bg-black/40 px-1.5 py-0.5 text-[9px]">
-                      <span className="font-bold text-white/40 text-[8px]">Last:</span>
-                      {player.lastRoll ? (
-                        <div className="flex items-center gap-1 min-w-0">
-                          <span className="grid h-3.5 w-3.5 place-items-center rounded bg-amber-400 text-[8px] font-black text-slate-950 shrink-0">
-                            {player.lastRoll}
+                    {/* Position on the Board */}
+                    <div className="text-right shrink-0">
+                      {player.position === 0 ? (
+                        <div className="flex flex-col items-end">
+                          <span className="rounded-md bg-white/10 px-1.5 py-0.5 text-[9px] font-black text-white/50">
+                            In Camp
                           </span>
-                          <span className="font-semibold text-white/80 truncate text-[8.5px]">
-                            {player.lastRollResult ?? `Rolled ${player.lastRoll}`}
-                          </span>
+                          <span className="text-[8px] text-amber-300/80 mt-0.5 font-bold">Needs 1</span>
                         </div>
                       ) : (
-                        <span className="text-[8px] text-white/30 italic">No roll yet</span>
+                        <div className="flex flex-col items-end">
+                          <span className="text-xs font-black text-amber-300">
+                            Tile {player.position}
+                          </span>
+                          <span className="text-[9px] font-semibold text-white/40">
+                            {100 - player.position === 0 ? "Winner! 🏆" : `${100 - player.position} to win`}
+                          </span>
+                        </div>
                       )}
                     </div>
                   </div>
-                );
-              })}
-            </div>
+
+                  {/* Progress Bar towards Tile 100 */}
+                  <div className="mt-2 h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700 ease-out"
+                      style={{
+                        width: `${progressPercent}%`,
+                        backgroundColor: color,
+                        boxShadow: `0 0 8px ${color}80`
+                      }}
+                    />
+                  </div>
+
+                  {/* Bottom Row: Recent Roll & Action Note */}
+                  <div className="mt-1.5 flex items-center justify-between text-[9.5px]">
+                    {player.lastRoll ? (
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="flex items-center gap-1 rounded bg-white/10 px-1.5 py-0.2 font-black text-amber-300 shrink-0">
+                          <span>🎲</span> {player.lastRoll}
+                        </span>
+                        <span className="text-white/70 truncate text-[9px]">
+                          {player.lastRollResult ?? `Rolled ${player.lastRoll}`}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-white/30 italic text-[9px]">No roll yet</span>
+                    )}
+
+                    {isWinner ? (
+                      <span className="font-black text-amber-300 text-[9px] flex items-center gap-0.5">
+                        🏆 Champion
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </aside>
 
@@ -308,133 +391,139 @@ export function SnakesAndLaddersTable({
           />
         </main>
 
-        {/* RIGHT COLUMN: STARTING CAMP BOX, 3D TUMBLING DICE & STANDINGS */}
-        <aside className="w-72 lg:w-80 xl:w-84 shrink-0 border-l border-white/10 bg-[#0a121c] flex flex-col min-h-0">
-          {/* 1. SEPARATE STARTING CAMP BOX (All off-board pieces yet to enter) */}
-          <div className="p-3 border-b border-white/10 bg-gradient-to-b from-amber-950/20 to-transparent">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-black uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
-                <span>🏕️</span> Starting Camp
-              </span>
-              <span className="rounded-full bg-amber-400/20 border border-amber-400/30 px-2 py-0.2 text-[9px] font-black text-amber-200">
-                {homeBasePlayers.length} waiting
-              </span>
-            </div>
-            <p className="text-[10px] text-white/50 mb-2">
-              Roll a <strong className="text-amber-300 font-bold">1</strong> to enter the board
-            </p>
-
-            {homeBasePlayers.length === 0 ? (
-              <div className="flex items-center justify-center gap-1 rounded-lg border border-emerald-500/20 bg-emerald-950/20 py-2 text-center text-[10px] font-bold text-emerald-300">
-                <span>🏁</span> All pieces on the board!
-              </div>
-            ) : (
-              <div className="flex flex-wrap gap-2 justify-center items-center rounded-xl border border-white/10 bg-black/40 p-2 min-h-[58px]">
-                {homeBasePlayers.map((player) => {
-                  const pieceInfo = SNAKES_AND_LADDERS_PIECES.find((p) => p.id === player.piece);
-                  const color = PLAYER_COLORS[player.seat % PLAYER_COLORS.length] ?? "#F59E0B";
-                  const isTurn = player.userId === state.currentPlayerId;
-                  const isMe = player.userId === currentUserId;
-                  const badge = getPlayerBadge(player, currentUserId);
-
-                  return (
-                    <div
-                      key={player.userId}
-                      title={`${player.displayName} - Waiting for roll of 1`}
-                      className={`group relative flex flex-col items-center justify-center transition-all ${
-                        isTurn ? "scale-105" : "hover:scale-105"
-                      }`}
-                    >
-                      <div
-                        className={`relative grid h-9 w-9 place-items-center rounded-xl border-2 text-lg shadow-md transition-all ${
-                          isTurn
-                            ? "ring-2 ring-amber-400 ring-offset-1 ring-offset-slate-950 animate-bounce"
-                            : ""
-                        }`}
-                        style={{
-                          borderColor: isMe ? "#FBBF24" : color,
-                          backgroundColor: `${color}25`
-                        }}
-                      >
-                        <span>{pieceInfo?.emoji ?? "🎲"}</span>
-                        <span
-                          className="absolute -top-1.5 -right-1.5 rounded-full bg-slate-900 px-1 py-0.2 text-[7px] font-black border"
-                          style={{ borderColor: isMe ? "#FBBF24" : color, color: isMe ? "#FBBF24" : color }}
-                        >
-                          {badge}
-                        </span>
-                      </div>
-                      <span className="mt-0.5 text-[8.5px] font-bold text-white/70 truncate max-w-[48px] text-center">
-                        {player.displayName}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* 2. DICE ROLLING SECTION */}
-          <div className="p-3 border-b border-white/10 bg-gradient-to-b from-white/[0.03] to-transparent">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[11px] font-black uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
-                <Dices className="h-3.5 w-3.5" /> Dice Action
+        {/* RIGHT COLUMN: DICE ARENA, STARTING PAVILION & CHRONICLE / CHAT */}
+        <aside className="w-80 lg:w-[350px] xl:w-[380px] shrink-0 border-l border-white/10 bg-[#09111b] flex flex-col min-h-0 overflow-hidden">
+          {/* 1. THE DICE ARENA (Felted gaming tray) */}
+          <div className="p-3.5 border-b border-white/10 bg-gradient-to-b from-emerald-950/20 via-black/20 to-transparent">
+            <div className="flex items-center justify-between mb-2">
+              <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-amber-300">
+                <Dices className="h-4 w-4" /> Dice Arena
               </span>
               {state.diceRoll ? (
-                <span className="text-xs font-bold text-white/50">
-                  Last roll: <strong className="text-amber-300 text-sm">{state.diceRoll}</strong>
+                <span className="rounded-full bg-amber-400/20 border border-amber-400/30 px-2.5 py-0.5 text-[10px] font-black text-amber-300">
+                  Last Roll: {state.diceRoll}
                 </span>
               ) : null}
             </div>
 
-            {/* 3D Tumbling Dice Display & Roll Action */}
-            <div className="flex flex-col items-center justify-center py-1">
+            {/* Felted 3D Dice Box */}
+            <div className="rounded-2xl border border-white/10 bg-[#07141f] p-3 shadow-[inset_0_4px_16px_rgba(0,0,0,0.6)] flex flex-col items-center justify-center">
               <TumblingDice3D
                 value={state.diceRoll}
                 actionNumber={state.actionNumber}
                 canRoll={canRoll}
                 onRoll={() => onAction("roll_dice")}
-                disabled={!canRoll}
-                label={isMyTurn ? "Roll Dice 🎲" : `Waiting for ${currentPlayer?.displayName ?? "Player"}`}
+                disabled={!canRoll || isMoveAnimating}
+                label={
+                  isMyTurn
+                    ? isMoveAnimating
+                      ? "Moving Piece... ⏳"
+                      : "Roll Dice 🎲"
+                    : `Waiting for ${currentPlayer?.displayName ?? "Player"}`
+                }
               />
 
-              {/* Status / Bangladesh Rule Hint */}
-              <div className="mt-2 text-center">
-                {me?.position === 0 ? (
-                  <p className="text-xs font-black text-amber-300 animate-pulse">
-                    ⚠️ Roll a 1 to enter the board!
-                  </p>
-                ) : isMyTurn ? (
-                  <p className="text-xs font-black text-emerald-300">
-                    It's your turn! Roll to advance.
-                  </p>
+              {/* Status / Bangladesh Rule Guidance Banner */}
+              <div className="mt-2 text-center w-full">
+                {isMyTurn ? (
+                  me?.position === 0 ? (
+                    <p className="text-xs font-black text-amber-300 animate-pulse">
+                      ⚠️ Roll a 1 to enter the board!
+                    </p>
+                  ) : isMoveAnimating ? (
+                    <p className="text-xs font-bold text-amber-300/80 animate-pulse">
+                      Piece is advancing...
+                    </p>
+                  ) : (
+                    <p className="text-xs font-black text-emerald-300">
+                      It's your turn! Roll to advance.
+                    </p>
+                  )
                 ) : (
-                  <p className="text-xs text-white/40">
-                    Waiting for {currentPlayer?.displayName} to roll...
+                  <p className="text-xs text-white/50 truncate">
+                    Waiting for <strong className="text-white font-bold">{currentPlayer?.displayName}</strong>...
                   </p>
                 )}
+
+                <p className="text-[10px] text-amber-300/70 mt-1">
+                  🇧🇩 Bangladesh Rule: Roll a 1 grants a bonus reroll!
+                </p>
               </div>
             </div>
           </div>
 
-          {/* TABS HEADER: STANDINGS / CHAT */}
+          {/* 2. STARTING CAMP PAVILION (Compact shelf for off-board pieces) */}
+          {homeBasePlayers.length === 0 ? (
+            <div className="px-3.5 py-2 border-b border-white/10 bg-emerald-950/20 flex items-center justify-center gap-2 text-[11px] font-bold text-emerald-300">
+              <span>🏁</span>
+              <span>All players on board! Race to 100!</span>
+            </div>
+          ) : (
+            <div className="p-2.5 border-b border-white/10 bg-gradient-to-b from-amber-950/15 to-transparent">
+              <div className="flex items-center justify-between mb-1.5 px-0.5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-300 flex items-center gap-1">
+                  <span>🏕️</span> Starting Camp
+                </span>
+                <span className="rounded-full bg-amber-400/15 border border-amber-400/25 px-2 py-0.2 text-[9px] font-bold text-amber-200">
+                  {homeBasePlayers.length} waiting for 1
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5 justify-start items-center rounded-xl border border-white/10 bg-black/40 p-2">
+                {homeBasePlayers.map((player) => {
+                  const pieceInfo = SNAKES_AND_LADDERS_PIECES.find((p) => p.id === player.piece);
+                  const color = PLAYER_COLORS[player.seat % PLAYER_COLORS.length] ?? "#F59E0B";
+                  const isTurn = player.userId === state.currentPlayerId;
+                  const isMe = player.userId === currentUserId;
+
+                  return (
+                    <div
+                      key={player.userId}
+                      title={`${player.displayName} (Camp: Roll a 1 to enter)`}
+                      className={`relative group flex items-center gap-1 rounded-lg border px-2 py-1 transition-all ${
+                        isTurn
+                          ? "border-amber-400 bg-amber-500/25 ring-2 ring-amber-400/50 scale-105 shadow-[0_0_10px_rgba(251,191,36,0.4)]"
+                          : isMe
+                          ? "border-amber-400/40 bg-white/5"
+                          : "border-white/10 bg-black/30 hover:border-white/20"
+                      }`}
+                    >
+                      <span
+                        className="grid h-6 w-6 place-items-center rounded-md border text-sm"
+                        style={{ borderColor: isMe ? "#FBBF24" : color, backgroundColor: `${color}25` }}
+                      >
+                        {pieceInfo?.emoji ?? "🎲"}
+                      </span>
+                      <span className="text-[10px] font-bold text-white truncate max-w-[70px]">
+                        {player.displayName}
+                      </span>
+                      {isTurn ? (
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* 3. TABS HEADER: LIVE CHRONICLE / CHAT */}
           <div className="flex border-b border-white/10 bg-black/20 text-xs font-bold">
             <button
               type="button"
-              onClick={() => setSidebarTab("standings")}
-              className={`flex-1 py-2 text-center transition flex items-center justify-center gap-1.5 ${
-                sidebarTab === "standings"
+              onClick={() => setSidebarTab("chronicle")}
+              className={`flex-1 py-2.5 text-center transition flex items-center justify-center gap-1.5 ${
+                sidebarTab === "chronicle"
                   ? "border-b-2 border-amber-400 text-amber-300 bg-amber-400/5 font-black"
                   : "text-white/50 hover:text-white"
               }`}
             >
-              <Trophy className="h-3.5 w-3.5" />
-              <span>Standings ({state.players.length})</span>
+              <History className="h-3.5 w-3.5" />
+              <span>Chronicle ({state.activityLog?.length ?? 0})</span>
             </button>
             <button
               type="button"
               onClick={() => setSidebarTab("chat")}
-              className={`flex-1 py-2 text-center transition flex items-center justify-center gap-1.5 ${
+              className={`flex-1 py-2.5 text-center transition flex items-center justify-center gap-1.5 ${
                 sidebarTab === "chat"
                   ? "border-b-2 border-amber-400 text-amber-300 bg-amber-400/5 font-black"
                   : "text-white/50 hover:text-white"
@@ -445,92 +534,78 @@ export function SnakesAndLaddersTable({
             </button>
           </div>
 
-          {/* TAB CONTENT: STANDINGS LIST */}
-          {sidebarTab === "standings" ? (
-            <div className="flex-1 overflow-y-auto p-2.5 space-y-2">
-              {sortedStandings.map((player, rank) => {
-                const pieceInfo = SNAKES_AND_LADDERS_PIECES.find((p) => p.id === player.piece);
-                const isTurn = player.userId === state.currentPlayerId;
-                const isMe = player.userId === currentUserId;
-                const color = PLAYER_COLORS[player.seat % PLAYER_COLORS.length] ?? "#F59E0B";
-                const isWinner = player.position === 100;
-                const badge = getPlayerBadge(player, currentUserId);
+          {/* TAB CONTENT: LIVE CHRONICLE FEED */}
+          {sidebarTab === "chronicle" ? (
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-2.5 space-y-1.5 scrollbar-thin scrollbar-thumb-white/20">
+              {state.activityLog && state.activityLog.length > 0 ? (
+                [...state.activityLog].reverse().map((item, index) => {
+                  const isLadder = item.type === "ladder_climb";
+                  const isSnake = item.type === "snake_bite";
+                  const isBonus = item.type === "bonus_roll";
+                  const isWin = item.type === "game_won";
+                  const isPenalty = item.type === "three_ones";
 
-                return (
-                  <div
-                    key={player.userId}
-                    className={`flex items-center justify-between rounded-xl border p-2 transition-all ${
-                      isWinner
-                        ? "border-amber-400 bg-gradient-to-r from-amber-500/20 to-amber-600/10 ring-2 ring-amber-400/40"
-                        : isTurn
-                        ? "border-amber-400/50 bg-amber-500/10"
-                        : isMe
-                        ? "border-white/20 bg-white/5"
-                        : "border-white/5 bg-black/30"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      {/* Rank Medal */}
-                      <span className="grid h-6 w-6 place-items-center rounded-lg bg-black/40 text-xs font-black text-amber-300 shrink-0">
-                        {rank === 0 ? "🥇" : rank === 1 ? "🥈" : rank === 2 ? "🥉" : `#${rank + 1}`}
-                      </span>
-
-                      {/* Distinct Token Disc */}
-                      <span
-                        className="relative grid h-8 w-8 place-items-center rounded-lg border-2 text-lg shrink-0 shadow"
-                        style={{ borderColor: color, backgroundColor: `${color}25` }}
-                      >
-                        {pieceInfo?.emoji ?? "🎲"}
-                        <span
-                          className="absolute -top-1 -right-1 rounded bg-slate-900 px-0.5 text-[7px] font-black border"
-                          style={{ borderColor: color, color }}
-                        >
-                          {badge}
-                        </span>
-                      </span>
-
-                      {/* Player Info */}
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1">
-                          <p className="text-xs font-black text-white truncate max-w-[100px]">
-                            {player.displayName}
-                          </p>
-                          {isMe ? (
-                            <span className="rounded bg-amber-400/20 px-1 text-[8px] font-black text-amber-300">
-                              YOU
-                            </span>
-                          ) : null}
-                        </div>
-                        <p className="text-[10px] text-white/50 truncate">
-                          {player.lastRoll ? `Last: ${player.lastRoll}` : "No roll yet"}
-                        </p>
+                  return (
+                    <div
+                      key={`${item.id}-${index}`}
+                      className={`rounded-xl border p-2 transition-all ${
+                        isWin
+                          ? "border-amber-400 bg-amber-500/20 text-amber-200 shadow-md"
+                          : isLadder
+                          ? "border-amber-500/30 bg-amber-950/20 text-amber-200"
+                          : isSnake
+                          ? "border-rose-500/30 bg-rose-950/20 text-rose-200"
+                          : isBonus
+                          ? "border-yellow-500/30 bg-yellow-950/20 text-yellow-200"
+                          : isPenalty
+                          ? "border-purple-500/30 bg-purple-950/20 text-purple-200"
+                          : "border-white/5 bg-black/30 text-white/80"
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 text-xs font-bold">
+                        {isWin ? (
+                          <span className="flex items-center gap-1 text-amber-300 font-black">
+                            <Crown className="h-3.5 w-3.5" /> Match Concluded!
+                          </span>
+                        ) : isLadder ? (
+                          <span className="flex items-center gap-1 text-amber-300">
+                            <Sparkles className="h-3 w-3" /> Ladder Climb!
+                          </span>
+                        ) : isSnake ? (
+                          <span className="flex items-center gap-1 text-rose-400">
+                            <span>🐍</span> Snake Bite!
+                          </span>
+                        ) : isBonus ? (
+                          <span className="flex items-center gap-1 text-amber-300">
+                            <span>⭐</span> Bonus Roll!
+                          </span>
+                        ) : isPenalty ? (
+                          <span className="flex items-center gap-1 text-purple-300">
+                            <span>⚠️</span> Turn Forfeit
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-white/50">
+                            <Dices className="h-3 w-3" /> Dice Roll
+                          </span>
+                        )}
                       </div>
+                      <p className="text-[11px] text-white/90 mt-0.5 leading-snug">
+                        {item.message}
+                      </p>
                     </div>
-
-                    {/* Tile Position */}
-                    <div className="text-right shrink-0">
-                      {player.position === 0 ? (
-                        <span className="rounded-md bg-white/10 px-1.5 py-0.5 text-[9px] font-black text-white/60">
-                          Home (0)
-                        </span>
-                      ) : (
-                        <div className="flex flex-col items-end">
-                          <span className="text-xs font-black text-amber-300">
-                            Square {player.position}
-                          </span>
-                          <span className="text-[9px] font-semibold text-white/40">
-                            {100 - player.position} away
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              ) : (
+                <div className="flex flex-col items-center justify-center p-8 text-center text-white/40">
+                  <History className="h-8 w-8 mb-2 opacity-30" />
+                  <p className="text-xs font-bold">No activity recorded yet</p>
+                  <p className="text-[10px] text-white/25 mt-0.5">Rolls and board events will appear here in real time</p>
+                </div>
+              )}
             </div>
           ) : null}
 
-          {/* TAB CONTENT: CHAT */}
+          {/* TAB CONTENT: TABLE CHAT */}
           {sidebarTab === "chat" ? (
             <div className="flex-1 min-h-0 flex flex-col p-2">
               <RoomChat

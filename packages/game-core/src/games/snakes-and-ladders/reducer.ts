@@ -57,6 +57,7 @@ export function createInitialSnakesAndLaddersState(params: {
         piece,
         position: 0, // Starts at Home (0)
         enteredBoard: false,
+        consecutiveOnes: 0,
         consecutiveSixes: 0,
         lastRoll: null,
         lastRollResult: null
@@ -115,8 +116,9 @@ function pushActivity(
   playerId: string | null,
   now: string
 ): void {
+  const seq = state.activityLog.length + 1;
   state.activityLog.push({
-    id: `act-${state.actionNumber}-${Date.now()}`,
+    id: `act-${state.actionNumber}-${seq}-${Date.now()}`,
     type,
     message,
     playerId,
@@ -168,6 +170,7 @@ export function applySnakesAndLaddersAction(params: {
   if (action.type === "end_turn") {
     state.hasRolled = false;
     state.diceRoll = null;
+    player.consecutiveOnes = 0;
     player.consecutiveSixes = 0;
     state.currentPlayerId = nextPlayerId(state, playerId);
     state.turnStartedAt = now;
@@ -268,23 +271,25 @@ export function applySnakesAndLaddersAction(params: {
       return { accepted: true, message: `${player.displayName} won the game!`, state };
     }
 
-    // Turn Rotation & 6-Bonus Rule
-    if (roll === 6) {
-      player.consecutiveSixes += 1;
-      if (player.consecutiveSixes >= 3) {
+    // Turn Rotation & 1-Bonus Rule (Traditional Bangladesh Snakes & Ladders: roll 1 grants bonus reroll!)
+    if (roll === 1) {
+      player.consecutiveOnes = (player.consecutiveOnes ?? 0) + 1;
+      if (player.consecutiveOnes >= 3) {
+        player.consecutiveOnes = 0;
         player.consecutiveSixes = 0;
         state.hasRolled = false;
         state.diceRoll = roll;
         state.currentPlayerId = nextPlayerId(state, playerId);
         state.turnStartedAt = now;
-        pushActivity(state, "three_sixes", `⚠️ ${player.displayName} rolled 3 consecutive sixes! Turn forfeited.`, playerId, now);
+        pushActivity(state, "three_ones", `⚠️ ${player.displayName} rolled 3 consecutive ones! Turn forfeited.`, playerId, now);
       } else {
-        // Bonus roll awarded: player keeps turn
+        // Bonus reroll awarded: player keeps turn
         state.hasRolled = false; // ready for next roll
         state.diceRoll = roll;
-        pushActivity(state, "bonus_roll", `⭐ ${player.displayName} rolled a 6! Bonus roll awarded.`, playerId, now);
+        pushActivity(state, "bonus_roll", `⭐ ${player.displayName} rolled a 1! Bonus reroll awarded.`, playerId, now);
       }
     } else {
+      player.consecutiveOnes = 0;
       player.consecutiveSixes = 0;
       state.hasRolled = false;
       state.diceRoll = roll;

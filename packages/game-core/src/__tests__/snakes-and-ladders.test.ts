@@ -237,4 +237,41 @@ describe("Snakes and Ladders - Game Core", () => {
     expect(p1?.lastRollResult).toBeDefined();
     expect(typeof p1?.lastRollResult).toBe("string");
   });
+
+  it("awards a bonus reroll when rolling a 1 (traditional Bangladesh rule)", () => {
+    const players = [
+      { userId: "u1", username: "u1", displayName: "Player 1", seat: 0 },
+      { userId: "u2", username: "u2", displayName: "Player 2", seat: 1 }
+    ];
+
+    const state = createInitialSnakesAndLaddersState({
+      players,
+      seed: "test-seed-reroll-1",
+      now: "2026-01-01T00:00:00.000Z"
+    });
+
+    state.players[0]!.enteredBoard = true;
+    state.players[0]!.position = 10;
+
+    // Run rolls until we find one with roll 1, or simulate
+    let s = state;
+    let foundOne = false;
+    for (let i = 0; i < 50; i++) {
+      const res = applySnakesAndLaddersAction({
+        state: { ...s, currentPlayerId: "u1" },
+        playerId: "u1",
+        action: { type: "roll_dice" },
+        now: `2026-01-01T00:00:0${i + 1}.000Z`
+      });
+      if (res.state.diceRoll === 1) {
+        foundOne = true;
+        // On rolling 1, player retains turn for bonus reroll!
+        expect(res.state.currentPlayerId).toBe("u1");
+        expect(res.state.players[0]!.consecutiveOnes).toBeGreaterThanOrEqual(1);
+        break;
+      }
+      s = res.state;
+    }
+    expect(foundOne).toBe(true);
+  });
 });
