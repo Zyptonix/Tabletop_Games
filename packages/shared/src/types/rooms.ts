@@ -47,6 +47,7 @@ export interface ActiveRoomSummary {
   playerCount: number;
   connectedCount: number;
   hostUserId: string;
+  hostDisplayName?: string | undefined;
   actionNumber: number;
   createdAt: string;
 }

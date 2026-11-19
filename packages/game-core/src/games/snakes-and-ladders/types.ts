@@ -55,7 +55,8 @@ export interface SnakesAndLaddersPlayer {
   piece: SnakesAndLaddersPieceId;
   position: number; // 0 = Home (off-board), 1 to 100 = On Board
   enteredBoard: boolean;
-  consecutiveSixes: number;
+  consecutiveOnes: number;
+  consecutiveSixes?: number;
   lastRoll?: number | null;
   lastRollResult?: string | null;
 }

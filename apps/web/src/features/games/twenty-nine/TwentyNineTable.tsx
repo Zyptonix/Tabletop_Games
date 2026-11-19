@@ -43,6 +43,7 @@ import {
   TwentyNineCardBack,
   TWENTY_NINE_SUITS_INFO
 } from "./TwentyNineCard";
+import { preloadTwentyNineCards } from "@/lib/playing-card-assets";
 import { TwentyNineSeat } from "./TwentyNineSeat";
 import { TwentyNineTrickArea, getWinningCardId, type PersistedCompletedTrick } from "./TwentyNineTrickArea";
 import { TwentyNineHandScoringModal } from "./TwentyNineHandScoringModal";
@@ -306,6 +307,11 @@ export function TwentyNineTable({
     });
     ro.observe(handRef.current);
     return () => ro.disconnect();
+  }, []);
+
+  // Preload and stash all 32 cards + card backs into memory so dealing/trick animations never hitch or pop in
+  useEffect(() => {
+    preloadTwentyNineCards();
   }, []);
   const [flights, setFlights] = useState<Flight[]>([]);
   const [rulesOpen, setRulesOpen] = useState(false);

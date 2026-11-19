@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Dices } from "lucide-react";
+import { Dices, Sparkles } from "lucide-react";
 
 interface TumblingDice3DProps {
   value: number | null;
@@ -37,16 +37,18 @@ export function TumblingDice3D({
 }: TumblingDice3DProps) {
   const [internalRolling, setInternalRolling] = useState(false);
   const [rotations, setRotations] = useState({ x: 0, y: 0 });
-  const rollCycleRef = useRef(0);
+  const spinCounter = useRef(0);
   const halfSize = size / 2;
 
-  const isRolling = externalRolling || internalRolling;
+  const isRolling = Boolean(externalRolling || internalRolling);
 
   // Sound synthesis for satisfying wooden dice roll clatter
   const playRollAudio = () => {
     if (typeof window === "undefined") return;
     try {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (!AudioCtx) return;
       const ctx = new AudioCtx();
       const now = ctx.currentTime;
@@ -73,27 +75,28 @@ export function TumblingDice3D({
     playRollAudio();
     onRoll();
 
-    // Guaranteed reset: always end rolling animation smoothly after 850ms
+    // Reset rolling state after clean tumble duration
     setTimeout(() => {
       setInternalRolling(false);
-    }, 850);
+    }, 800);
   };
 
   useEffect(() => {
     if (value && value >= 1 && value <= 6) {
-      rollCycleRef.current += 1;
+      spinCounter.current += 1;
       const target = FACE_ROTATIONS[value] ?? { x: 0, y: 0 };
-      // Forward spin with clean 360-degree increments for seamless tumble
-      const forwardTurns = 360 * 2 * rollCycleRef.current;
+      // Increment rotations by 720 degrees on each roll for a smooth, physical forward tumble
       setRotations({
-        x: target.x + forwardTurns,
-        y: target.y + forwardTurns
+        x: target.x + 720 * spinCounter.current,
+        y: target.y + 720 * spinCounter.current
       });
+      setInternalRolling(true);
+      playRollAudio();
     }
 
     const timer = setTimeout(() => {
       setInternalRolling(false);
-    }, 850);
+    }, 800);
     return () => clearTimeout(timer);
   }, [value, actionNumber]);
 
@@ -108,17 +111,17 @@ export function TumblingDice3D({
         style={{
           width: size + 36,
           height: size + 36,
-          perspective: 900
+          perspective: 800
         }}
         onClick={handleRollClick}
       >
         {/* Dynamic Cast Shadow */}
         <motion.div
           animate={{
-            scale: isRolling ? [1, 0.55, 1.05, 1] : 1,
-            opacity: isRolling ? [0.45, 0.18, 0.5, 0.45] : 0.45
+            scale: isRolling ? [1, 0.5, 1] : 1,
+            opacity: isRolling ? [0.4, 0.15, 0.4] : 0.4
           }}
-          transition={{ duration: 0.85, ease: "easeInOut" }}
+          transition={{ duration: 0.75, ease: [0.15, 0.9, 0.3, 1] }}
           className="absolute -bottom-1 h-5 w-20 rounded-[100%] bg-black/60 blur-[6px] pointer-events-none"
         />
 
@@ -127,20 +130,19 @@ export function TumblingDice3D({
           animate={{
             rotateX: rotations.x,
             rotateY: rotations.y,
-            rotateZ: 0,
-            y: isRolling ? [-36, -6, 0] : 0,
-            scale: isRolling ? [1, 1.12, 1] : 1
+            y: isRolling ? [-32, -6, 0] : 0,
+            scale: isRolling ? [1, 1.1, 1] : 1
           }}
           transition={{
-            duration: isRolling ? 0.85 : 0.35,
-            ease: [0.16, 1, 0.3, 1]
+            duration: 0.75,
+            ease: [0.15, 0.9, 0.3, 1]
           }}
           style={{
             width: size,
             height: size,
             transformStyle: "preserve-3d"
           }}
-          className={`relative transition-transform ${canRoll && !isRolling ? "hover:scale-105" : ""}`}
+          className="relative pointer-events-none select-none"
         >
           {/* FACE 1: FRONT */}
           <div
@@ -243,8 +245,8 @@ export function TumblingDice3D({
       <motion.button
         type="button"
         disabled={!canRoll || disabled || isRolling}
-        whileHover={canRoll && !isRolling ? { scale: 1.05 } : {}}
-        whileTap={canRoll && !isRolling ? { scale: 0.95 } : {}}
+        whileHover={canRoll && !isRolling ? { scale: 1.04 } : {}}
+        whileTap={canRoll && !isRolling ? { scale: 0.96 } : {}}
         onClick={handleRollClick}
         className={`group relative flex items-center justify-center gap-2.5 rounded-2xl px-6 py-3 font-black text-sm tracking-wide shadow-xl transition-all ${
           canRoll && !isRolling
@@ -255,7 +257,12 @@ export function TumblingDice3D({
         <Dices className={`h-5 w-5 transition-transform ${canRoll ? "group-hover:rotate-45" : ""}`} />
         <span>{isRolling ? "Rolling..." : label}</span>
         {value && !isRolling ? (
-          <span className="ml-1 rounded-lg bg-black/20 px-2 py-0.5 text-xs font-black">
+          <span
+            className={`ml-1 flex items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-black ${
+              value === 1 ? "bg-rose-500/20 text-rose-300 ring-1 ring-rose-400/40" : "bg-black/20 text-white"
+            }`}
+          >
+            {value === 1 ? <Sparkles className="h-3 w-3 text-amber-300" /> : null}
             {value}
           </span>
         ) : null}

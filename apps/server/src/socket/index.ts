@@ -31,6 +31,45 @@ type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents, Record<strin
 type BotTimer = { userId: string; timeout: ReturnType<typeof setTimeout> };
 
 function getBotTurnDelay(gameId: string, gameState?: unknown): number {
+  if (gameId === "snakes-and-ladders") {
+    const s = gameState as {
+      lastMove?: {
+        rolled?: number;
+        ladder?: unknown;
+        snake?: unknown;
+        entered?: boolean;
+        bounced?: boolean;
+      } | null;
+    } | undefined;
+
+    const lastMove = s?.lastMove;
+    if (!lastMove) {
+      // First move of the match: pause 1.4s - 1.8s before initial roll
+      return 1400 + Math.floor(Math.random() * 400);
+    }
+
+    const rolled = lastMove.rolled ?? 1;
+    // 1. Dice tumble animation time on client: 850ms
+    const rollTime = 850;
+    // 2. Deliberate square-by-square steps: (rolled + 1) * 300ms
+    const stepTime = (rolled + 1) * 300;
+    // 3. Deliberate resting pause on ladder base or snake mouth: 500ms
+    const pauseBeforeEvent = (lastMove.ladder || lastMove.snake) ? 500 : 0;
+    // 4. Special event animation duration:
+    let eventTime = 0;
+    if (lastMove.ladder) {
+      eventTime = 1600; // Ladder climb animation
+    } else if (lastMove.snake) {
+      eventTime = 3000; // Snake swallow + digestion spline + tail pop
+    } else if (lastMove.entered) {
+      eventTime = 600;
+    }
+
+    // 5. Observability pause for human players: 1.0s - 1.4s
+    const pauseTime = 1000 + Math.floor(Math.random() * 400);
+
+    return rollTime + stepTime + pauseBeforeEvent + eventTime + pauseTime;
+  }
   if (gameId === "twenty-nine") {
     const s = gameState as {
       phase?: string;
@@ -265,12 +304,12 @@ export function createSocketServer(httpServer: HttpServer, manager: RoomManager)
 
   timers = new RoomTimers(io as unknown as Server<ClientToServerEvents, ServerToClientEvents>, manager, emitRoom);
 
-  manager.onRoomEnded((room) => {
+  manager.onRoomEnded((room, reason) => {
     emitRoom(room);
     io.to(room.id).emit("room:ended", {
       roomId: room.id,
       code: room.code,
-      reason: "Host ended the game room."
+      reason: reason || "Host ended the game room."
     });
   });
 

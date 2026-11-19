@@ -223,18 +223,18 @@ export function LadderSvg({
           }}
         >
           {/* Glowing Aura Ring */}
-          <circle r="22" fill={climbingColor} opacity="0.35" className="animate-ping" />
+          <circle r="32" fill={climbingColor} opacity="0.35" className="animate-ping" />
           <circle
-            r="18"
+            r="26"
             fill="#FFFFFF"
             stroke={climbingColor}
-            strokeWidth="3.5"
-            filter="drop-shadow(0 4px 8px rgba(0,0,0,0.5))"
+            strokeWidth="4"
+            filter="drop-shadow(0 6px 12px rgba(0,0,0,0.6))"
           />
           <text
-            y="7"
+            y="9"
             textAnchor="middle"
-            fontSize="18"
+            fontSize="26"
             className="select-none pointer-events-none"
           >
             {climbingPieceEmoji}

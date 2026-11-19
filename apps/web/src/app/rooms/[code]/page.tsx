@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { Copy, Loader2, Sparkles, Zap } from "lucide-react";
 import type {
@@ -34,6 +34,7 @@ import { MafiaWerewolfTable } from "@/features/games/mafia-werewolf/MafiaWerewol
 import { SnakesAndLaddersTable, PiecePicker } from "@/features/games/snakes-and-ladders";
 import { REACTION_PREFIX } from "@/features/games/classic-uno/ReactionOverlay";
 import { GamePausedOverlay } from "@/components/game/GamePausedOverlay";
+import { preloadTwentyNineCards, preloadFullCardDeck } from "@/lib/playing-card-assets";
 
 export default function RoomPage() {
   const params = useParams<{ code: string }>();
@@ -48,6 +49,16 @@ export default function RoomPage() {
   const [guestJoining, setGuestJoining] = useState(false);
   const [guestError, setGuestError] = useState<string | null>(null);
   const [showLoginInRoom, setShowLoginInRoom] = useState(false);
+
+  // Preload and stash card graphics when in lobby or playing
+  useEffect(() => {
+    const gameId = socketState.room?.gameId;
+    if (gameId === "twenty-nine") {
+      preloadTwentyNineCards();
+    } else if (gameId === "blackjack" || gameId === "poker") {
+      preloadFullCardDeck();
+    }
+  }, [socketState.room?.gameId]);
 
   if (loading) {
     return (
@@ -198,6 +209,19 @@ export default function RoomPage() {
       {socketState.error ? (
         <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800">{socketState.error}</div>
       ) : null}
+      {socketState.roomEnded ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+          <div className="w-full max-w-md rounded-2xl border border-white/20 bg-slate-900 p-6 text-center text-white shadow-2xl">
+            <h3 className="text-xl font-black">Game Ended</h3>
+            <p className="mt-2 text-sm text-slate-300">
+              {socketState.roomEnded.reason ?? "This game room has been closed."}
+            </p>
+            <Button className="mt-5 w-full" onClick={() => (window.location.href = "/")}>
+              Return to Arena Lobby
+            </Button>
+          </div>
+        </div>
+      ) : null}
       <GameShell
         connected={socketState.connected}
         room={room}
@@ -289,6 +313,61 @@ export default function RoomPage() {
                   </div>
                 ) : null}
 
+                {/* UNO & UNO No Mercy Lobby Match Settings */}
+                {room.gameId === "classic-uno" || room.gameId === "uno-no-mercy" ? (
+                  <div className="mt-4 rounded-xl border border-rose-500/25 bg-[#140a12] p-4 text-slate-200">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                      <span className="text-xs font-black uppercase tracking-wider text-rose-300 flex items-center gap-1.5">
+                        <span>🃏</span> {room.gameId === "uno-no-mercy" ? "UNO No Mercy Match Timer" : "Classic UNO Match Timer"}
+                      </span>
+                      <span className="text-[11px] font-semibold text-slate-400">
+                        {room.effectiveHostUserId === user.id ? "Host controls" : "Configured by host"}
+                      </span>
+                    </div>
+
+                    <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm font-bold text-white">Turn Timer Limit</p>
+                        <p className="text-xs text-slate-400">
+                          Set the allowed time per turn (Default is 20s). Adjust up or down for your group.
+                        </p>
+                      </div>
+
+                      {room.effectiveHostUserId === user.id ? (
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={
+                              room.settings?.turnSeconds !== undefined && room.settings?.turnSeconds !== null
+                                ? Number(room.settings.turnSeconds)
+                                : 20
+                            }
+                            onChange={(e) =>
+                              socketState.updateRoomSettings(room.id, {
+                                turnSeconds: Number(e.target.value) > 0 ? Number(e.target.value) : null
+                              })
+                            }
+                            className="min-h-10 rounded-lg border border-rose-400/30 bg-[#240e1f] px-3 text-xs font-bold text-rose-100 outline-none hover:border-rose-400"
+                          >
+                            <option value={10}>10 seconds (Hyper Blitz)</option>
+                            <option value={15}>15 seconds (Speed Run)</option>
+                            <option value={20}>20 seconds (Default - Recommended)</option>
+                            <option value={30}>30 seconds (Relaxed)</option>
+                            <option value={45}>45 seconds (Casual)</option>
+                            <option value={60}>60 seconds (Slow)</option>
+                            <option value={0}>Unlimited time</option>
+                          </select>
+                        </div>
+                      ) : (
+                        <span className="rounded-lg border border-white/10 bg-black/40 px-3 py-1.5 text-xs font-bold text-rose-300">
+                          {room.settings?.turnSeconds
+                            ? `${room.settings.turnSeconds} seconds per turn`
+                            : "Unlimited time"}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
+
                 {/* Snakes & Ladders Lobby Match Settings */}
                 {room.gameId === "snakes-and-ladders" || room.gameId === "ludo" ? (
                   <div className="mt-4 space-y-4 rounded-xl border border-amber-500/25 bg-[#051624] p-4 text-slate-200">
@@ -348,10 +427,10 @@ export default function RoomPage() {
 
                     {/* Bangladesh Standard Rules Information */}
                     <div className="rounded-lg bg-black/40 border border-white/5 p-3 text-xs text-white/70 space-y-1">
-                      <p className="font-bold text-amber-300">📜 Bangladesh Standard Rules Active:</p>
+                      <p className="font-bold text-amber-300">📜 Bangladesh Traditional Rules Active:</p>
                       <p>• <strong>Roll a 1 to enter</strong>: All pieces start at Home and require a 1 to step onto square 1.</p>
                       <p>• <strong>Exact roll to win</strong>: Overshooting square 100 bounces backwards.</p>
-                      <p>• <strong>Roll a 6</strong>: Grants a bonus roll (3 consecutive sixes forfeits turn).</p>
+                      <p>• <strong>Roll a 1 grants a reroll</strong>: Rolling a 1 gives you a bonus turn (3 consecutive ones forfeits turn).</p>
                     </div>
 
                     {/* Creative Piece Selector */}
