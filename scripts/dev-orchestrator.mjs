@@ -60,7 +60,7 @@ function shouldStart(serviceName) {
 const proxyPort = process.env.DEV_PROXY_PORT ?? "8080";
 const serverPort = process.env.SERVER_PORT ?? "4000";
 const webPort = process.env.WEB_PORT ?? "3000";
-const dbPort = readDatabasePort() ?? "55432";
+const dbPort = readDatabasePort() ?? "15432";
 const services = new Map();
 const colors = {
   reset: "\x1b[0m",
@@ -323,6 +323,20 @@ function maybeStartPostgres() {
     return;
   }
 
+  if (process.platform === "win32") {
+    // If pg_ctl reports postgres is not running, terminate any orphaned postgres auxiliary workers (--forkaux)
+    // left over from an abrupt exit so they don't hold the shared memory block or port.
+    runCommand("taskkill", ["/F", "/IM", "postgres.exe"]);
+    const pidFile = path.join(pgData, "postmaster.pid");
+    if (fs.existsSync(pidFile)) {
+      try {
+        fs.unlinkSync(pidFile);
+      } catch {
+        // Ignore if unable to delete
+      }
+    }
+  }
+
   startService("postgres", postgres, ["-D", path.join(rootDir, ".pgdata"), "-p", dbPort, "-h", "127.0.0.1"], { critical: true });
 }
 
@@ -395,6 +409,13 @@ function stopAll(exitCode = 0) {
   for (const service of [...services.values()].reverse()) {
     if (!service.child || service.external) continue;
     try {
+      if (service.name === "postgres") {
+        const pgCtl = findLocalPgCtlBinary();
+        const pgData = path.join(rootDir, ".pgdata");
+        if (pgCtl && fs.existsSync(pgData)) {
+          spawnSync(pgCtl, ["-D", pgData, "stop", "-m", "immediate"], { cwd: rootDir, shell: false, windowsHide: true });
+        }
+      }
       if (process.platform === "win32" && service.child.pid) {
         spawnSync("taskkill", ["/PID", String(service.child.pid), "/T", "/F"], {
           cwd: rootDir,
@@ -409,6 +430,9 @@ function stopAll(exitCode = 0) {
     }
   }
   setTimeout(() => {
+    if (process.platform === "win32" && services.has("postgres") && !services.get("postgres")?.external) {
+      runCommand("taskkill", ["/F", "/IM", "postgres.exe"]);
+    }
     for (const service of services.values()) {
       service.log.end();
     }

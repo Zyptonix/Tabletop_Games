@@ -22,7 +22,7 @@ async function main() {
     }
   } catch (error) {
     console.warn(
-      "Warning: Could not connect to database to restore active rooms. Make sure PostgreSQL is running at 127.0.0.1:55432 if you need persistence.",
+      "Warning: Could not connect to database to restore active rooms. Make sure PostgreSQL is running at 127.0.0.1:15432 if you need persistence.",
       error instanceof Error ? error.message : error
     );
   }

@@ -62,8 +62,10 @@ set "DATABASE_URL="
 echo [1/4] Checking PostgreSQL...
 pg_ctl -D "%ROOT%.pgdata" status >nul 2>&1
 if errorlevel 1 (
-  echo PostgreSQL is stopped. Starting it on 127.0.0.1:55432...
-  pg_ctl -D "%ROOT%.pgdata" -l "%ROOT%postgres.log" -o "-p 55432 -h 127.0.0.1" start
+  echo PostgreSQL is stopped. Starting it on 127.0.0.1:15432...
+  taskkill /F /IM postgres.exe >nul 2>&1
+  if exist "%ROOT%.pgdata\postmaster.pid" del /f /q "%ROOT%.pgdata\postmaster.pid" >nul 2>&1
+  pg_ctl -D "%ROOT%.pgdata" -l "%ROOT%postgres.log" -o "-p 15432 -h 127.0.0.1" start
   if errorlevel 1 (
     echo ERROR: PostgreSQL failed to start. See postgres.log.
     goto :fail_pop
@@ -73,9 +75,9 @@ if errorlevel 1 (
 )
 
 echo Checking the tabletop_arena database...
-psql -w -h 127.0.0.1 -p 55432 -U postgres -d tabletop_arena -v ON_ERROR_STOP=1 -c "SELECT 1;" >nul 2>&1
+psql -w -h 127.0.0.1 -p 15432 -U postgres -d tabletop_arena -v ON_ERROR_STOP=1 -c "SELECT 1;" >nul 2>&1
 if errorlevel 1 (
-  echo ERROR: Cannot connect to tabletop_arena on port 55432.
+  echo ERROR: Cannot connect to tabletop_arena on port 15432.
   echo Verify .env and the PostgreSQL database. No database was reset.
   goto :fail_pop
 )
@@ -99,7 +101,7 @@ echo Startup commands have been launched.
 echo Keep both app terminal windows open.
 echo Website: http://localhost:3000
 echo LAN site: use your hosting PC's IPv4 address on port 3000.
-echo PostgreSQL is bound to 127.0.0.1:55432, not the LAN.
+echo PostgreSQL is bound to 127.0.0.1:15432, not the LAN.
 echo.
 popd
 pause

@@ -13,24 +13,28 @@ declare global {
 }
 
 export async function authMiddleware(request: Request, response: Response, next: NextFunction) {
-  const claims = extractSessionClaims(request.headers.authorization, request.headers.cookie);
-  if (!claims) {
-    response.status(401).json({ code: ERROR_CODES.UNAUTHORIZED, message: "Login required." });
-    return;
+  try {
+    const claims = extractSessionClaims(request.headers.authorization, request.headers.cookie);
+    if (!claims) {
+      response.status(401).json({ code: ERROR_CODES.UNAUTHORIZED, message: "Login required." });
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: claims.sub },
+      include: { profile: true }
+    });
+
+    if (!user) {
+      response.status(401).json({ code: ERROR_CODES.UNAUTHORIZED, message: "Session user no longer exists." });
+      return;
+    }
+
+    request.user = serializeUser(user);
+    next();
+  } catch (error) {
+    next(error);
   }
-
-  const user = await prisma.user.findUnique({
-    where: { id: claims.sub },
-    include: { profile: true }
-  });
-
-  if (!user) {
-    response.status(401).json({ code: ERROR_CODES.UNAUTHORIZED, message: "Session user no longer exists." });
-    return;
-  }
-
-  request.user = serializeUser(user);
-  next();
 }
 
 export async function optionalAuthMiddleware(request: Request, _response: Response, next: NextFunction) {

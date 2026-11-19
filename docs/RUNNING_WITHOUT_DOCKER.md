@@ -54,7 +54,7 @@ notepad .env
 For Conda Postgres, use:
 
 ```env
-DATABASE_URL=postgresql://postgres@127.0.0.1:55432/tabletop_arena?schema=public
+DATABASE_URL=postgresql://postgres@127.0.0.1:15432/tabletop_arena?schema=public
 PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
 NEXT_PUBLIC_SOCKET_URL=http://localhost:4000

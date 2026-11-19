@@ -43,5 +43,12 @@ export function createApp(manager: RoomManager) {
   app.use(createRoomsRouter(manager));
   app.use(createAdminRouter(manager));
 
+  app.use((error: unknown, _request: express.Request, response: express.Response, _next: express.NextFunction) => {
+    console.error("Unhandled server error:", error);
+    if (!response.headersSent) {
+      response.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   return app;
 }
